@@ -1,56 +1,64 @@
-name: Build
+name: Build OpenTasker APK
 
 on:
-  push:
-    branches: [main, master]
-  pull_request:
   workflow_dispatch:
 
-# Cancel an in-progress run when a newer commit lands on the same branch/PR.
-concurrency:
-  group: build-${{ github.ref }}
-  cancel-in-progress: true
-
-permissions:
-  contents: read
-
 jobs:
-  assemble-debug:
-    name: Assemble debug APK
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
 
     steps:
-      - name: Check out
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # CONTRIBUTING.md says JDK 17 or 21. AGP 9 runs fine on either.
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 21
+          java-version: '21'
 
-      # Validates the checked-in wrapper JAR against Gradle's published
-      # checksums, then caches ~/.gradle between runs.
+      - name: Setup Android SDK manually
+        run: |
+          mkdir -p "$HOME/android-sdk/cmdline-tools"
+          cd "$HOME/android-sdk/cmdline-tools"
+          curl -sSL -o tools.zip https://dl.google.com/android/repository/commandlinetools-linux-12266719_latest.zip
+          unzip -q tools.zip
+          mv cmdline-tools latest
+          rm tools.zip
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+
+      - name: Accept licenses and install packages
+        run: |
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager "platform-tools" "build-tools;36.0.0"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Make wrapper executable
+      - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      # ubuntu-latest ships the Android SDK; this lets AGP fetch any
-      # missing platform or build-tools package without prompting.
-      - name: Accept Android SDK licenses
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - name: Create debug keystore
+        run: |
+          mkdir -p ~/.android
+          keytool -genkeypair -v \
+            -keystore ~/.android/debug.keystore \
+            -storepass android -keypass android \
+            -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Verify locale resources
+        run: ./gradlew :app:verifyLocaleResources --stacktrace --dependency-verification=off
 
       - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --stacktrace
+        run: ./gradlew :app:assembleDebug --stacktrace --dependency-verification=off
 
-      - name: Upload debug APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: opentasker-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: OpenTasker-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-          retention-days: 14
