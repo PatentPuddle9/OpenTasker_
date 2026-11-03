@@ -124,6 +124,9 @@ private fun declaredActionSummaryRes(actionId: String): Int = when (actionId) {
     "macrodroid.unsupported",
     "wifi.toggle",
     "bluetooth.toggle",
+    "brightness.read",
+    "volume.read",
+    "torch.read",
     "brightness.set",
     "volume.set",
     "airplane.toggle",
@@ -673,6 +676,18 @@ fun registerActionMetadata() {
 
     ActionMetadataRegistry.register(
         ActionMetadata(
+            id = "brightness.read",
+            nameRes = R.string.catalog_action_brightness_read_name,
+            descriptionRes = R.string.catalog_action_brightness_read_description,
+            categoryRes = R.string.catalog_category_settings,
+            fields = listOf(
+                ActionField("var", R.string.catalog_action_settings_read_field_var_label, hintRes = R.string.catalog_action_settings_read_field_var_hint),
+            ),
+        ),
+    )
+
+    ActionMetadataRegistry.register(
+        ActionMetadata(
             id = "brightness.set",
             nameRes = R.string.catalog_action_brightness_set_name,
             descriptionRes = R.string.catalog_action_brightness_set_description,
@@ -681,6 +696,19 @@ fun registerActionMetadata() {
                 ActionField("brightness", R.string.catalog_action_brightness_set_field_brightness_label, FieldType.NUMBER, required = true, numberRule = integerRule(0, 255, "auto")),
             )
         )
+    )
+
+    ActionMetadataRegistry.register(
+        ActionMetadata(
+            id = "volume.read",
+            nameRes = R.string.catalog_action_volume_read_name,
+            descriptionRes = R.string.catalog_action_volume_read_description,
+            categoryRes = R.string.catalog_category_settings,
+            fields = listOf(
+                ActionField("stream", R.string.catalog_action_volume_set_field_stream_label, FieldType.DROPDOWN, required = true, hintRes = R.string.catalog_action_volume_set_field_stream_hint, options = audioStreamOptions),
+                ActionField("var", R.string.catalog_action_settings_read_field_var_label, hintRes = R.string.catalog_action_settings_read_field_var_hint),
+            ),
+        ),
     )
 
     ActionMetadataRegistry.register(
@@ -813,6 +841,18 @@ fun registerActionMetadata() {
                 ActionField("mode", R.string.catalog_action_ringer_set_field_mode_label, FieldType.DROPDOWN, required = true, hintRes = R.string.catalog_action_ringer_set_field_mode_hint, options = listOf(option("normal", R.string.action_option_ringer_normal), option("vibrate", R.string.action_option_ringer_vibrate), option("silent", R.string.action_option_ringer_silent))),
             )
         )
+    )
+
+    ActionMetadataRegistry.register(
+        ActionMetadata(
+            id = "torch.read",
+            nameRes = R.string.catalog_action_torch_read_name,
+            descriptionRes = R.string.catalog_action_torch_read_description,
+            categoryRes = R.string.catalog_category_settings,
+            fields = listOf(
+                ActionField("var", R.string.catalog_action_settings_read_field_var_label, hintRes = R.string.catalog_action_settings_read_field_var_hint),
+            ),
+        ),
     )
 
     ActionMetadataRegistry.register(
