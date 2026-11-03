@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -144,7 +145,12 @@ internal fun ShortcutsScreen(
                         modifier = Modifier.size(48.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(shortcut.icon, style = MaterialTheme.typography.headlineMedium)
+                        Icon(
+                            painter = painterResource(WidgetIconCatalog.resolve(shortcut.icon).drawableRes),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(28.dp),
+                        )
                     }
                     Column(Modifier.weight(1f)) {
                         Text(shortcut.taskName, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -191,8 +197,9 @@ private fun loadShortcutWidgets(context: Context): List<ShortcutWidgetRow> {
             ) ?: "Choose a task",
             icon = prefs.getString(
                 TaskWidgetProvider.keyIcon(widgetId),
-                WidgetIconCatalog.default.symbol,
-            ) ?: WidgetIconCatalog.default.symbol,
+                WidgetIconCatalog.default.key,
+            ) ?: WidgetIconCatalog.default.key,
+        ).let(WidgetIconCatalog::resolve).key,
         )
     }.sortedBy { it.taskName.lowercase() }
 }
