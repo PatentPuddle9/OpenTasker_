@@ -1474,7 +1474,7 @@ private fun UpdateCheckSetupCard(
                                         tint = Color(0xFF219653),
                                     )
                                 }
-                                if (!version.supportsInAppUpdates || version.missingActionIds.isNotEmpty()) {
+                                if (!version.updaterSupportKnown || !version.supportsInAppUpdates || version.missingActionIds.isNotEmpty()) {
                                     Icon(
                                         Icons.Filled.Error,
                                         contentDescription = "Version warning",
@@ -1519,11 +1519,15 @@ private fun UpdateCheckSetupCard(
                                 color = branchWarningColor,
                             )
                         }
-                        if (!version.supportsInAppUpdates) {
+                        if (!version.updaterSupportKnown || !version.supportsInAppUpdates) {
                             Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Icon(Icons.Filled.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                                 Text(
-                                    "This version doesn't include in-app updating. It won't be able to check for or install later versions itself.",
+                                    if (version.updaterSupportKnown) {
+                                        "This version doesn't include in-app updating. It won't be able to check for or install later versions itself."
+                                    } else {
+                                        "This release doesn't confirm that in-app updating is included. Treat it as a manual-update build; it may not be able to install later versions itself."
+                                    },
                                     modifier = Modifier.weight(1f),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.error,
