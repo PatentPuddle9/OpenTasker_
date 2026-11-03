@@ -10,7 +10,7 @@ import android.graphics.Shader
 import androidx.core.graphics.ColorUtils
 
 data class WidgetStyle(
-    val icon: String = WidgetIconCatalog.default.symbol,
+    val icon: String = WidgetIconCatalog.default.key,
     val iconColor: Int = Color.WHITE,
     val backgroundColor: Int = Color.rgb(91, 58, 145),
     val gradient: Boolean = true,

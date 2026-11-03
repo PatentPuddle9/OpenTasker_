@@ -57,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -414,8 +415,7 @@ internal fun ProfileEditorDialog(
     var group by rememberSaveable(profile?.id) { mutableStateOf(profile?.group.orEmpty()) }
     var selectedIcon by rememberSaveable(profile?.id) {
         mutableStateOf(
-            profile?.icon?.takeIf { icon -> WidgetIconCatalog.all.any { it.symbol == icon } }
-                ?: WidgetIconCatalog.default.symbol,
+            WidgetIconCatalog.resolve(profile?.icon).key,
         )
     }
     var lifetimeName by rememberSaveable(profile?.id) {
@@ -514,9 +514,9 @@ internal fun ProfileEditorDialog(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         WidgetIconCatalog.all.forEach { option ->
-                            val selected = option.symbol == selectedIcon
+                            val selected = option.key == selectedIcon
                             Surface(
-                                modifier = Modifier.size(40.dp).clickable { selectedIcon = option.symbol },
+                                modifier = Modifier.size(40.dp).clickable { selectedIcon = option.key },
                                 shape = RoundedCornerShape(10.dp),
                                 color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
                                 border = BorderStroke(
@@ -525,7 +525,12 @@ internal fun ProfileEditorDialog(
                                 ),
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Text(option.symbol, style = MaterialTheme.typography.titleLarge)
+                                    Icon(
+                                        painter = painterResource(option.drawableRes),
+                                        contentDescription = option.label,
+                                        tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(22.dp),
+                                    )
                                 }
                             }
                         }

@@ -123,8 +123,9 @@ class TaskWidgetProvider : AppWidgetProvider() {
             val defaultTaskName = context.getString(R.string.app_name)
             val taskName = prefs.getString(keyTaskName(widgetId), defaultTaskName) ?: defaultTaskName
 
-            val icon = prefs.getString(keyIcon(widgetId), WidgetIconCatalog.default.symbol)
-                ?: WidgetIconCatalog.default.symbol
+            val icon = WidgetIconCatalog.resolve(
+                prefs.getString(keyIcon(widgetId), WidgetIconCatalog.default.key),
+            )
             val iconColor = prefs.getInt(keyIconColor(widgetId), WidgetStyle().iconColor)
             val backgroundColor = prefs.getInt(keyBackgroundColor(widgetId), WidgetStyle().backgroundColor)
             val gradient = prefs.getBoolean(keyGradient(widgetId), WidgetStyle().gradient)
@@ -134,8 +135,8 @@ class TaskWidgetProvider : AppWidgetProvider() {
                 R.id.widget_background,
                 WidgetBackgroundRenderer.render(backgroundColor, gradient),
             )
-            views.setTextViewText(R.id.widget_icon, icon)
-            views.setTextColor(R.id.widget_icon, iconColor)
+            views.setImageViewResource(R.id.widget_icon, icon.drawableRes)
+            views.setInt(R.id.widget_icon, "setColorFilter", iconColor)
             views.setTextViewText(R.id.widget_task_name, taskName)
             views.setTextColor(R.id.widget_task_name, WidgetBackgroundRenderer.contrastingTextColor(backgroundColor))
             views.setTextColor(R.id.widget_tap_to_run, WidgetBackgroundRenderer.contrastingTextColor(backgroundColor))

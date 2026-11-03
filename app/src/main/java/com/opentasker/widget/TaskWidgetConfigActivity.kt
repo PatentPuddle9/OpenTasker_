@@ -57,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -110,8 +111,8 @@ class TaskWidgetConfigActivity : ComponentActivity() {
         val prefs = getSharedPreferences(TaskWidgetProvider.PREFS_NAME, MODE_PRIVATE)
         val initialTaskId = prefs.getLong(TaskWidgetProvider.keyTaskId(widgetId), -1L).takeIf { it > 0L }
         val initialStyle = WidgetStyle(
-            icon = prefs.getString(TaskWidgetProvider.keyIcon(widgetId), WidgetIconCatalog.default.symbol)
-                ?: WidgetIconCatalog.default.symbol,
+            icon = prefs.getString(TaskWidgetProvider.keyIcon(widgetId), WidgetIconCatalog.default.key)
+                ?: WidgetIconCatalog.default.key,
             iconColor = prefs.getInt(TaskWidgetProvider.keyIconColor(widgetId), WidgetStyle().iconColor),
             backgroundColor = prefs.getInt(TaskWidgetProvider.keyBackgroundColor(widgetId), WidgetStyle().backgroundColor),
             gradient = prefs.getBoolean(TaskWidgetProvider.keyGradient(widgetId), WidgetStyle().gradient),
@@ -175,7 +176,7 @@ private fun ConfigScreen(
     onWidgetCreated: (Task, WidgetStyle) -> Unit,
 ) {
     var selectedTaskId by rememberSaveable { mutableStateOf(initialTaskId) }
-    var selectedIcon by rememberSaveable { mutableStateOf(initialStyle.icon) }
+    var selectedIcon by rememberSaveable { mutableStateOf(WidgetIconCatalog.resolve(initialStyle.icon).key) }
     var iconColorHex by rememberSaveable { mutableStateOf(initialStyle.iconColor.toHexColor()) }
     var backgroundColorHex by rememberSaveable { mutableStateOf(initialStyle.backgroundColor.toHexColor()) }
     var useGradient by rememberSaveable { mutableStateOf(initialStyle.gradient) }
@@ -304,7 +305,7 @@ private fun ConfigScreen(
                     Spacer(Modifier.height(2.dp))
                     Text("2. Pick an icon", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Choose from 90+ tintable symbols. The icon color is fully customizable.",
+                        "Choose from a collection of vector icons. The icon color is fully customizable.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -314,9 +315,9 @@ private fun ConfigScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         WidgetIconCatalog.all.forEach { option ->
-                            val isSelected = selectedIcon == option.symbol
+                            val isSelected = selectedIcon == option.key
                             Surface(
-                                modifier = Modifier.size(46.dp).clickable { selectedIcon = option.symbol },
+                                modifier = Modifier.size(46.dp).clickable { selectedIcon = option.key },
                                 shape = RoundedCornerShape(12.dp),
                                 color = if (isSelected) MaterialTheme.colorScheme.primaryContainer
                                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f),
@@ -327,17 +328,17 @@ private fun ConfigScreen(
                                 ),
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        option.symbol,
-                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Medium,
+                                    Icon(
+                                        painter = painterResource(option.drawableRes),
+                                        contentDescription = option.label,
+                                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(24.dp),
                                     )
                                 }
                             }
                         }
                     }
-                    Text("Selected: ${WidgetIconCatalog.all.firstOrNull { it.symbol == selectedIcon }?.label ?: "Icon"}")
+                    Text("Selected: ${WidgetIconCatalog.resolve(selectedIcon).label}")
 
                     Text("3. Choose icon color", style = MaterialTheme.typography.titleMedium)
                     WidgetColorEditor(
@@ -471,7 +472,12 @@ private fun WidgetLivePreview(
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(icon, color = iconColor ?: MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.displaySmall)
+            Icon(
+                painter = painterResource(WidgetIconCatalog.resolve(icon).drawableRes),
+                contentDescription = null,
+                tint = iconColor ?: MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(48.dp),
+            )
             Text(
                 taskName,
                 color = textColor,

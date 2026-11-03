@@ -35,7 +35,7 @@ object WidgetProfileLinks {
                 contexts = emptyList(),
                 contextExpression = null,
                 projectId = task.projectId,
-                icon = style.icon,
+                icon = WidgetIconCatalog.resolve(style.icon).key,
                 widgetId = widgetId,
                 group = "Shortcuts",
             )
@@ -46,7 +46,7 @@ object WidgetProfileLinks {
                 enterTaskId = task.id,
                 contexts = emptyList(),
                 projectId = task.projectId,
-                icon = style.icon,
+                icon = WidgetIconCatalog.resolve(style.icon).key,
                 widgetId = widgetId,
                 group = "Shortcuts",
             )
@@ -79,8 +79,8 @@ object WidgetProfileLinks {
             val decodedTask = taskEntity.toDomainDecodeResult()
             if (decodedTask.issue != null) continue
             val style = WidgetStyle(
-                icon = prefs.getString(TaskWidgetProvider.keyIcon(widgetId), WidgetIconCatalog.default.symbol)
-                    ?: WidgetIconCatalog.default.symbol,
+                icon = prefs.getString(TaskWidgetProvider.keyIcon(widgetId), WidgetIconCatalog.default.key)
+                    ?: WidgetIconCatalog.default.key,
                 iconColor = prefs.getInt(TaskWidgetProvider.keyIconColor(widgetId), WidgetStyle().iconColor),
                 backgroundColor = prefs.getInt(TaskWidgetProvider.keyBackgroundColor(widgetId), WidgetStyle().backgroundColor),
                 gradient = prefs.getBoolean(TaskWidgetProvider.keyGradient(widgetId), WidgetStyle().gradient),

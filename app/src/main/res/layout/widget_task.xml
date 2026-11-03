@@ -21,16 +21,12 @@
         android:gravity="center"
         android:padding="10dp">
 
-        <TextView
+        <ImageView
             android:id="@+id/widget_icon"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="▶︎"
-            android:fontFamily="sans"
-            android:textSize="42sp"
-            android:gravity="center"
-            android:maxLines="1"
-            android:includeFontPadding="false"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_widget_bolt"
             android:contentDescription="@string/widget_run_selected_task" />
 
         <TextView
