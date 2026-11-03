@@ -62,8 +62,11 @@ class UpdateCheckSettings(context: Context) {
         require(UpdateCheckProtocol.isSelectableBranch(branch)) {
             "The master branch cannot be used as an update source."
         }
+        val previous = preferences.getString(
+            KEY_SELECTED_BRANCH,
+            UpdateCheckProtocol.DEFAULT_SOURCE_BRANCH,
+        )
         preferences.edit {
-            val previous = getString(KEY_SELECTED_BRANCH, UpdateCheckProtocol.DEFAULT_SOURCE_BRANCH)
             putString(KEY_SELECTED_BRANCH, branch)
             if (previous != branch) clearResult()
         }
