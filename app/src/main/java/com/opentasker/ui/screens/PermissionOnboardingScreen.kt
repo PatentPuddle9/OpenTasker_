@@ -1537,13 +1537,18 @@ private fun UpdateCheckSetupCard(
                         when {
                             version.versionCode == null -> {
                                 Text(
-                                    "This release didn't publish an Android version code, so OpenTasker can't verify an in-place update.",
+                                    "This release didn't publish an Android version code. OpenTasker can't verify whether Android will accept it over the installed app. Back up your automations and treat this as a fresh install; uninstalling clears local app data.",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = MaterialTheme.colorScheme.error,
                                 )
-                                TextButton(onClick = {
-                                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(version.releaseUrl))) }
-                                }) { Text("Open release page") }
+                                OutlinedButton(
+                                    enabled = version.apkUrl != null,
+                                    onClick = {
+                                        val url = version.apkUrl ?: version.releaseUrl
+                                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) { Text("Download APK for a fresh install") }
                             }
                             version.versionCode < installedVersionCode -> {
                                 Text(
