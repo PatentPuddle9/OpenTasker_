@@ -210,6 +210,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [[ "$BUILD_BRANCH" == "Experimental" || "$BUILD_BRANCH" == "BETA" ]]; then
+            echo "Experimental and BETA already publish immutable versioned releases in release.yml."
+            exit 0
+          fi
           branch_hash="$(printf '%s' "$BUILD_BRANCH" | sha256sum | cut -d' ' -f1)"
           version_tag="opentasker-branch-build-$branch_hash-v$VERSION"
           asset_name="OpenTasker-branch-$branch_hash-v$VERSION-debug.apk"
