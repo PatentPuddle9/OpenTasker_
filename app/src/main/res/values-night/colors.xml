@@ -2,11 +2,11 @@
 <!-- Dark variants, matching the AMOLED scheme's cards in ui/theme/Theme.kt; see values/colors.xml. -->
 <resources>
     <!-- WorkshopNavy, the card colour on black -->
-    <color name="widget_background">#0C172E</color>
+    <color name="widget_background">#1A1426</color>
     <!-- WorkshopOutline -->
-    <color name="widget_border">#2B3D59</color>
-    <!-- BrandCyan -->
-    <color name="widget_primary">#13A8D5</color>
+    <color name="widget_border">#514365</color>
+    <!-- BrandPurple -->
+    <color name="widget_primary">#B69CFF</color>
     <!-- Text -->
     <color name="widget_text_primary">#F7FAFF</color>
     <!-- TextSecondary -->
