@@ -41,8 +41,9 @@ class LauncherIconContractTest {
                 assertEquals(0, image.getRGB(0, 0) ushr 24)
                 assertTrue((image.getRGB(size / 2, size / 2) ushr 24) > 0)
             }
+            val density = directory.removePrefix("mipmap-")
             val nightForeground = ImageIO.read(
-                file("app/src/main/res/mipmap-night-$directory/ic_launcher_night_foreground.png").toFile(),
+                file("app/src/main/res/mipmap-night-$density/ic_launcher_night_foreground.png").toFile(),
             )
             assertEquals(size, nightForeground.width)
             assertEquals(size, nightForeground.height)
