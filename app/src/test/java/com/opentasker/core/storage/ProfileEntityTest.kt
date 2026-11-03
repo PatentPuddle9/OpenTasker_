@@ -42,7 +42,7 @@ class ProfileEntityTest {
             id = 10,
             name = "Widget shortcut",
             enterTaskId = 71,
-            icon = "⚡︎",
+            icon = "bolt",
             widgetId = 204,
         )
 

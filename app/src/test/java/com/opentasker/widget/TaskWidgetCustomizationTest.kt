@@ -18,11 +18,14 @@ class TaskWidgetCustomizationTest {
     ).first(Files::exists)
 
     @Test
-    fun iconLibraryOffersAtLeastNinetyUniqueTintableSymbols() {
-        val symbols = WidgetIconCatalog.all.map(WidgetIconOption::symbol)
-        assertTrue("The widget picker should offer a large icon library", symbols.size >= 90)
-        assertEquals("Icon selection must not highlight duplicates", symbols.size, symbols.toSet().size)
+    fun iconLibraryOffersUniqueDrawableBackedVectorIcons() {
+        val keys = WidgetIconCatalog.all.map(WidgetIconOption::key)
+        assertTrue("The icon picker should offer a useful icon collection", keys.size >= 20)
+        assertEquals("Icon selection must not highlight duplicates", keys.size, keys.toSet().size)
+        assertTrue("Every option must have a drawable resource", WidgetIconCatalog.all.all { it.drawableRes != 0 })
         assertTrue(WidgetIconCatalog.default in WidgetIconCatalog.all)
+        assertEquals("bolt", WidgetIconCatalog.resolve("⚡︎").key)
+        assertEquals("play", WidgetIconCatalog.resolve("▶︎").key)
     }
 
     @Test
@@ -48,7 +51,8 @@ class TaskWidgetCustomizationTest {
         assertTrue(config.contains("keyBackgroundColor(widgetId)"))
         assertTrue(config.contains("keyGradient(widgetId)"))
         assertTrue(provider.contains("WidgetBackgroundRenderer.render"))
-        assertTrue(provider.contains("views.setTextColor(R.id.widget_icon"))
+        assertTrue(provider.contains("views.setImageViewResource(R.id.widget_icon"))
+        assertTrue(provider.contains("setColorFilter"))
         assertTrue(provider.contains("TaskRunActivity.EXTRA_TASK_ID"))
         assertTrue(style.contains("LinearGradient"))
         assertTrue(layout.contains("@+id/widget_background"))
