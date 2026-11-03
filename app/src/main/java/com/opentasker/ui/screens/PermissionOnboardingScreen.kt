@@ -63,6 +63,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Slider
 import androidx.compose.material3.FilterChip
 import com.opentasker.app.OpenTaskerApp_NoHilt
 import com.opentasker.core.storage.ConfigurationSnapshotPolicy
@@ -1670,6 +1671,10 @@ private fun ThemeSetupCard(
 ) {
     var menuExpanded by rememberSaveable { mutableStateOf(false) }
     var customHex by rememberSaveable(currentAccentHex) { mutableStateOf(currentAccentHex) }
+    var showColorPicker by rememberSaveable { mutableStateOf(false) }
+    var pickerHue by rememberSaveable { mutableStateOf(0f) }
+    var pickerSaturation by rememberSaveable { mutableStateOf(0.72f) }
+    var pickerBrightness by rememberSaveable { mutableStateOf(0.92f) }
     val accentPresets = listOf("#B69CFF", "#9B7BFF", "#D0A4FF", "#E18BCE", "#805AD5")
     val offeredModes = ThemeMode.entries.filter {
         it != ThemeMode.Dynamic || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
@@ -1739,14 +1744,26 @@ private fun ThemeSetupCard(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text("Accent color", style = MaterialTheme.typography.labelLarge)
+            Text(
+                "Choose one base color. Matching light, dark, and container shades are generated automatically.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 accentPresets.forEach { preset ->
                     val swatch = Color(android.graphics.Color.parseColor(preset))
                     Surface(
-                        modifier = Modifier.size(34.dp).clickable { customHex = preset; onSelectAccent(preset) },
+                        modifier = Modifier.size(34.dp).clickable {
+                            customHex = preset
+                            onSelectAccent(preset)
+                        },
                         color = swatch,
                         shape = RoundedCornerShape(50),
-                        border = BorderStroke(2.dp, if (currentAccentHex.equals(preset, true)) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant),
+                        border = BorderStroke(
+                            2.dp,
+                            if (currentAccentHex.equals(preset, true)) MaterialTheme.colorScheme.onSurface
+                            else MaterialTheme.colorScheme.outlineVariant,
+                        ),
                     ) {}
                 }
             }
@@ -1760,9 +1777,106 @@ private fun ThemeSetupCard(
                     placeholder = { Text("#B69CFF") },
                 )
                 OutlinedButton(
-                    onClick = { onSelectAccent(if (customHex.startsWith("#")) customHex else "#$customHex") },
+                    onClick = {
+                        val normalized = if (customHex.startsWith("#")) customHex else "#$customHex"
+                        onSelectAccent(normalized)
+                    },
                     enabled = Regex("#?[0-9A-Fa-f]{6}").matches(customHex),
                 ) { Text("Apply") }
+            }
+            OutlinedButton(
+                onClick = {
+                    val hsv = FloatArray(3)
+                    val baseColor = runCatching {
+                        android.graphics.Color.parseColor(currentAccentHex)
+                    }.getOrDefault(android.graphics.Color.parseColor(ThemePreference.DEFAULT_ACCENT_HEX))
+                    android.graphics.Color.colorToHSV(baseColor, hsv)
+                    pickerHue = hsv[0]
+                    pickerSaturation = hsv[1]
+                    pickerBrightness = hsv[2]
+                    showColorPicker = true
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Outlined.Palette, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Choose custom color")
+            }
+            Text("Generated shades", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    "Primary" to MaterialTheme.colorScheme.primary,
+                    "Container" to MaterialTheme.colorScheme.primaryContainer,
+                    "Accent" to MaterialTheme.colorScheme.tertiary,
+                    "Soft" to MaterialTheme.colorScheme.tertiaryContainer,
+                ).forEach { (label, shade) ->
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().height(28.dp),
+                            color = shade,
+                            shape = RoundedCornerShape(DesignSystem.Radii.sm),
+                        ) {}
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            if (showColorPicker) {
+                val pickerArgb = android.graphics.Color.HSVToColor(
+                    floatArrayOf(pickerHue, pickerSaturation, pickerBrightness),
+                )
+                val pickerHex = String.format(
+                    java.util.Locale.ROOT,
+                    "#%06X",
+                    pickerArgb and 0x00FFFFFF,
+                )
+                AlertDialog(
+                    onDismissRequest = { showColorPicker = false },
+                    title = { Text("Choose accent color") },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                color = Color(pickerArgb),
+                                shape = RoundedCornerShape(DesignSystem.Radii.md),
+                            ) {}
+                            Text(pickerHex, style = MaterialTheme.typography.labelLarge)
+                            Text("Hue · ${pickerHue.toInt()}°", style = MaterialTheme.typography.labelMedium)
+                            Slider(
+                                value = pickerHue,
+                                onValueChange = { pickerHue = it },
+                                valueRange = 0f..360f,
+                            )
+                            Text("Saturation · ${(pickerSaturation * 100).toInt()}%", style = MaterialTheme.typography.labelMedium)
+                            Slider(
+                                value = pickerSaturation,
+                                onValueChange = { pickerSaturation = it },
+                                valueRange = 0f..1f,
+                            )
+                            Text("Brightness · ${(pickerBrightness * 100).toInt()}%", style = MaterialTheme.typography.labelMedium)
+                            Slider(
+                                value = pickerBrightness,
+                                onValueChange = { pickerBrightness = it },
+                                valueRange = 0f..1f,
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                customHex = pickerHex
+                                onSelectAccent(pickerHex)
+                                showColorPicker = false
+                            },
+                        ) { Text("Use color") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showColorPicker = false }) { Text("Cancel") }
+                    },
+                )
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
