@@ -62,6 +62,19 @@ class UpdateCheckProtocolTest {
     }
 
     @Test
+    fun requestTargetsTheConfiguredForkReleaseFeed() {
+        val request = UpdateCheckProtocol.requestArguments()
+        assertEquals(
+            "https://api.github.com/repos/PatentPuddle9/OpenTasker_/releases/latest",
+            request["url"],
+        )
+        assertEquals(
+            "https://github.com/PatentPuddle9/OpenTasker_/releases/tag/",
+            UpdateCheckProtocol.RELEASES_URL_PREFIX,
+        )
+    }
+
+    @Test
     fun requestIsHttpsOnlyBoundedAndDoesNotCarryIdentityOrCredentials() {
         val request = UpdateCheckProtocol.requestArguments()
         assertEquals("GET", request["method"])
