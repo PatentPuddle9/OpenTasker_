@@ -201,7 +201,6 @@ private fun loadShortcutWidgets(context: Context): List<ShortcutWidgetRow> {
                     WidgetIconCatalog.default.key,
                 ),
             ).key,
-        ),
         )
     }.sortedBy { it.taskName.lowercase() }
 }
