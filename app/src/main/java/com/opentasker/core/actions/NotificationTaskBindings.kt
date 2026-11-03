@@ -22,6 +22,28 @@ sealed interface NotificationTaskResolution {
     data class Invalid(val rawValue: String) : NotificationTaskResolution
 }
 
+sealed interface NotificationButtonPlan {
+    val index: Int
+    val label: String
+
+    data class RunTask(
+        override val index: Int,
+        val task: NotificationTaskCandidate,
+        override val label: String,
+    ) : NotificationButtonPlan
+
+    data class Dismiss(
+        override val index: Int,
+        override val label: String,
+    ) : NotificationButtonPlan
+
+    data class Invalid(
+        override val index: Int,
+        override val label: String,
+        val reason: String,
+    ) : NotificationButtonPlan
+}
+
 /** Stable notification-button bindings with a fail-closed compatibility path for legacy names. */
 object NotificationTaskBindings {
     const val BUTTON_COUNT = 3
@@ -77,6 +99,37 @@ object NotificationTaskBindings {
         }
 
         is NotificationTaskReference.Invalid -> NotificationTaskResolution.Invalid(reference.rawValue)
+    }
+
+    /**
+     * A labeled button with no task binding is an intentional dismiss-only button.
+     * An empty label and empty task binding means that button slot is unused.
+     */
+    fun planButton(
+        args: Map<String, String>,
+        buttonIndex: Int,
+        candidates: List<NotificationTaskCandidate>,
+    ): NotificationButtonPlan? {
+        val label = args["button${buttonIndex}_label"].orEmpty().trim()
+        val reference = parse(args, buttonIndex)
+            ?: return if (buttonIndex in 1..BUTTON_COUNT && label.isNotEmpty()) {
+                NotificationButtonPlan.Dismiss(buttonIndex, label)
+            } else {
+                null
+            }
+
+        return when (val resolution = resolve(reference, candidates)) {
+            is NotificationTaskResolution.Bound -> NotificationButtonPlan.RunTask(
+                index = buttonIndex,
+                task = resolution.task,
+                label = label.ifBlank { resolution.task.name },
+            )
+            else -> NotificationButtonPlan.Invalid(
+                index = buttonIndex,
+                label = label,
+                reason = failureMessage(resolution),
+            )
+        }
     }
 
     fun failureMessage(resolution: NotificationTaskResolution): String = when (resolution) {
