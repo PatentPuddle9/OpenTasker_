@@ -17,29 +17,38 @@ class LauncherIconContractTest {
     ).first { Files.exists(it.resolve("app/src/main/AndroidManifest.xml")) }
 
     @Test
-    fun `adaptive icons use the new launcher artwork and monochrome layer`() {
-        listOf("ic_launcher.xml", "ic_launcher_round.xml").forEach { name ->
-            val adaptive = read("app/src/main/res/mipmap-anydpi-v26/$name")
-            assertTrue("@color/ic_launcher_background" in adaptive)
-            assertTrue("@mipmap/ic_launcher_foreground" in adaptive)
-            assertTrue("@drawable/ic_launcher_monochrome" in adaptive)
-        }
-
+    fun `launcher icon uses the square primary artwork as one masked tile`() {
+        val primary = ImageIO.read(
+            file("OpenTasker_Icon_Package/OpenTasker_Primary_1024.png").toFile(),
+        )
+        val launcher = ImageIO.read(
+            file("app/src/main/res/mipmap-nodpi/ic_launcher.png").toFile(),
+        )
         val foreground = ImageIO.read(
             file("app/src/main/res/mipmap-nodpi/ic_launcher_foreground.png").toFile(),
         )
+
+        assertEquals(1024, primary.width)
+        assertEquals(1024, primary.height)
+        assertEquals(1024, launcher.width)
+        assertEquals(1024, launcher.height)
         assertEquals(1024, foreground.width)
         assertEquals(1024, foreground.height)
-        assertEquals(255, foreground.getRGB(0, 0) ushr 24)
+        assertEquals(primary.getRGB(0, 0), launcher.getRGB(0, 0))
+        assertEquals(primary.getRGB(512, 512), foreground.getRGB(512, 512))
 
-        val monochrome = read("app/src/main/res/drawable/ic_launcher_monochrome.xml")
-        assertTrue(monochrome.contains("strokeColor=\"#FFFFFFFF\""))
-        assertTrue(monochrome.contains("fillColor=\"#FFFFFFFF\""))
-        assertTrue(monochrome.contains("M 512,192"))
+        listOf("ic_launcher.xml", "ic_launcher_round.xml").forEach { name ->
+            val adaptive = read("app/src/main/res/mipmap-anydpi-v26/$name")
+            assertTrue("@android:color/transparent" in adaptive)
+            assertTrue("@mipmap/ic_launcher_foreground" in adaptive)
+            assertTrue("@mipmap/ic_launcher_monochrome" in adaptive)
+        }
 
-        val background = read("app/src/main/res/values/ic_launcher_background.xml")
-        assertFalse("The launcher background must no longer use the old cyan palette", "#13A8D5" in background)
-        assertFalse(Files.exists(file("app/src/main/res/mipmap-ldpi/ic_launcher.png")))
+        val monochrome = ImageIO.read(
+            file("app/src/main/res/mipmap-nodpi/ic_launcher_monochrome.png").toFile(),
+        )
+        assertEquals(1024, monochrome.width)
+        assertEquals(1024, monochrome.height)
     }
 
     @Test
