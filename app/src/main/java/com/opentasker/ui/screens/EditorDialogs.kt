@@ -610,7 +610,6 @@ internal fun ProfileEditorDialog(
                         )
                     }
     
-                if (!widgetOwned) {
                     val triggerContexts = profile?.contexts ?: draftContexts
                     Text("Trigger conditions", style = MaterialTheme.typography.titleMedium)
                     if (triggerContexts.isEmpty()) {
@@ -666,7 +665,6 @@ internal fun ProfileEditorDialog(
                             ) { Text("Logic") }
                         }
                     }
-                }
                 } else {
                     Text(
                         "This profile is managed by a home-screen widget. Edit the task actions below; widget appearance is managed in Shortcuts.",
