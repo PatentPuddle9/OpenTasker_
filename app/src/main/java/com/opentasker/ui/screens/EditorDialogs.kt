@@ -3,6 +3,8 @@ package com.opentasker.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -91,6 +93,7 @@ import com.opentasker.feature.automation.AutomationBlueprintInputField
 import com.opentasker.feature.automation.AutomationInputKeyboard
 import com.opentasker.ui.theme.DesignSystem
 import com.opentasker.ui.theme.selectedContainerColor
+import com.opentasker.widget.WidgetIconCatalog
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -372,6 +375,7 @@ internal fun TaskEditorDialog(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ProfileEditorDialog(
     profile: Profile?,
@@ -379,6 +383,13 @@ internal fun ProfileEditorDialog(
     onDismiss: () -> Unit,
     onSave: (String, Boolean, Long, Long?, Int, Int, Int, AutomationMode, String?, ProfileLifetime, Long?, Int?, Int?, ProfileOverflowPolicy, Long?) -> Unit,
     onSimulate: ((Profile) -> Unit)? = null,
+    onEditTask: (Task) -> Unit = {},
+    onAddAction: (Task) -> Unit = {},
+    onEditAction: (Task, Int, ActionSpec) -> Unit = { _, _, _ -> },
+    onDeleteAction: (Task, Int) -> Unit = { _, _ -> },
+    onMoveAction: (Task, Int, Int) -> Unit = { _, _, _ -> },
+    onRunAction: (Task, Int) -> Unit = { _, _ -> },
+    runBusy: Boolean = false,
 ) {
     val initialTaskId = profile?.enterTaskId ?: tasks.firstOrNull()?.id ?: 0L
     var name by rememberSaveable(profile?.id) { mutableStateOf(profile?.name.orEmpty()) }
@@ -395,6 +406,12 @@ internal fun ProfileEditorDialog(
     var gracePeriod by rememberSaveable(profile?.id) { mutableStateOf((profile?.gracePeriodSec ?: 0).toString()) }
     var automationMode by rememberSaveable(profile?.id) { mutableStateOf(profile?.automationMode ?: AutomationMode.SINGLE) }
     var group by rememberSaveable(profile?.id) { mutableStateOf(profile?.group.orEmpty()) }
+    var selectedIcon by rememberSaveable(profile?.id) {
+        mutableStateOf(
+            profile?.icon?.takeIf { icon -> WidgetIconCatalog.all.any { it.symbol == icon } }
+                ?: WidgetIconCatalog.default.symbol,
+        )
+    }
     var lifetimeName by rememberSaveable(profile?.id) {
         mutableStateOf((profile?.lifetime ?: ProfileLifetime.NEVER).name)
     }
@@ -426,7 +443,8 @@ internal fun ProfileEditorDialog(
     val parsedMaxActiveExecutions = maxActiveExecutions.toIntOrNull()
     val parsedBurstLimit = burstLimit.toIntOrNull()
     val overflowPolicy = profileOverflowPolicyFromName(overflowPolicyName)
-    val selectedTaskExists = tasks.any { it.id == enterTaskId }
+    val selectedTask = tasks.firstOrNull { it.id == enterTaskId }
+    val selectedTaskExists = selectedTask != null
     val selectedExitTaskExists = exitTaskId == null || tasks.any { it.id == exitTaskId }
     val selectedFallbackTaskExists = fallbackTaskId == null || tasks.any { it.id == fallbackTaskId }
     val canSave = profileEditorCanSave(
@@ -482,6 +500,29 @@ internal fun ProfileEditorDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                Text("Profile icon", style = MaterialTheme.typography.labelLarge)
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    WidgetIconCatalog.all.forEach { option ->
+                        val selected = option.symbol == selectedIcon
+                        Surface(
+                            modifier = Modifier.size(40.dp).clickable { selectedIcon = option.symbol },
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                            border = BorderStroke(
+                                if (selected) 2.dp else 1.dp,
+                                if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                            ),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(option.symbol, style = MaterialTheme.typography.titleLarge)
+                            }
+                        }
+                    }
+                }
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),
                     shape = RoundedCornerShape(DesignSystem.Radii.lg),
@@ -527,6 +568,54 @@ internal fun ProfileEditorDialog(
                         selected = task.id == enterTaskId,
                         onClick = { enterTaskId = task.id },
                     )
+                }
+                selectedTask?.let { task ->
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("When this profile is triggered", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Actions run in order: ${task.actions.size}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        TextButton(onClick = { onEditTask(task) }) { Text("Task settings") }
+                    }
+                    OutlinedButton(
+                        onClick = { onAddAction(task) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Add action")
+                    }
+                    if (task.actions.isEmpty()) {
+                        Text(
+                            "Nothing runs yet. Add an action to define what this profile does.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        task.actions.forEachIndexed { index, action ->
+                            ActionRow(
+                                index = index,
+                                action = action,
+                                canMoveUp = index > 0,
+                                canMoveDown = index < task.actions.lastIndex,
+                                onMoveUp = { onMoveAction(task, index, index - 1) },
+                                onMoveDown = { onMoveAction(task, index, index + 1) },
+                                onEdit = { onEditAction(task, index, action) },
+                                onDelete = { onDeleteAction(task, index) },
+                                onRun = { onRunAction(task, index) },
+                                runBusy = runBusy,
+                            )
+                        }
+                    }
                 }
                 TaskActionFieldInput(
                     label = stringResource(R.string.profile_exit_task),
@@ -713,6 +802,7 @@ internal fun ProfileEditorDialog(
                         parsedBurstLimit,
                         overflowPolicy,
                         fallbackTaskId,
+                        selectedIcon,
                     )
                 },
             ) {
@@ -744,6 +834,7 @@ internal fun ProfileEditorDialog(
                                     burstLimit = parsedBurstLimit,
                                     overflowPolicy = overflowPolicy,
                                     fallbackTaskId = fallbackTaskId,
+                                    icon = selectedIcon,
                                 ),
                             )
                         },
