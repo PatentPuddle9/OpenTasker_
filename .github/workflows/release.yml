@@ -1,6 +1,13 @@
-name: Publish latest successful build
+name: Publish OpenTasker releases
 
 on:
+  workflow_run:
+    workflows:
+      - Build OpenTasker APK
+    types:
+      - completed
+    branches:
+      - Experimental
   workflow_dispatch:
 
 permissions:
@@ -8,22 +15,23 @@ permissions:
   contents: write
 
 concurrency:
-  group: publish-latest-opentasker-build
+  group: publish-opentasker-release
   cancel-in-progress: false
 
 jobs:
   publish:
-    name: Publish APK from latest successful build
+    name: Publish APK from successful Experimental build
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out Experimental
+      - name: Check out release tooling
         uses: actions/checkout@v4
         with:
           ref: Experimental
           fetch-depth: 0
 
-      - name: Find latest successful build.yml run
+      - name: Resolve the successful build run
         id: build
         env:
           GH_TOKEN: ${{ github.token }}
@@ -31,97 +39,87 @@ jobs:
         run: |
           set -euo pipefail
 
-          run_json="$(gh run list \
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_run" ]]; then
+            build_run_id="$(jq -r '.workflow_run.id // empty' "$GITHUB_EVENT_PATH")"
+            build_sha="$(jq -r '.workflow_run.head_sha // empty' "$GITHUB_EVENT_PATH")"
+            build_branch="$(jq -r '.workflow_run.head_branch // empty' "$GITHUB_EVENT_PATH")"
+            build_run_number="$(jq -r '.workflow_run.run_number // empty' "$GITHUB_EVENT_PATH")"
+          else
+            run_json="$(gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow build.yml \
+              --branch Experimental \
+              --status success \
+              --limit 1 \
+              --json databaseId,headSha,headBranch,number)"
+
+            build_run_id="$(jq -r '.[0].databaseId // empty' <<< "$run_json")"
+            build_sha="$(jq -r '.[0].headSha // empty' <<< "$run_json")"
+            build_branch="$(jq -r '.[0].headBranch // empty' <<< "$run_json")"
+            build_run_number="$(jq -r '.[0].number // empty' <<< "$run_json")"
+          fi
+
+          if [[ -z "$build_run_id" || -z "$build_sha" || -z "$build_run_number" ]]; then
+            echo "::error::Could not resolve a successful build run."
+            exit 1
+          fi
+          if [[ "$build_branch" != "Experimental" ]]; then
+            echo "::error::Refusing to publish a build from branch '$build_branch'."
+            exit 1
+          fi
+
+          run_details="$(gh run view "$build_run_id" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json databaseId,headSha,headBranch,conclusion,number)"
+          conclusion="$(jq -r '.conclusion // empty' <<< "$run_details")"
+          if [[ "$conclusion" != "success" ]]; then
+            echo "::error::Build run #$build_run_number did not succeed (conclusion: $conclusion)."
+            exit 1
+          fi
+
+          # A slower, older build must not become the latest release after a newer
+          # successful build has already been published or is ready to publish.
+          latest_success="$(gh run list \
             --repo "$GITHUB_REPOSITORY" \
             --workflow build.yml \
             --branch Experimental \
             --status success \
-            --limit 2 \
-            --json databaseId,headSha,headBranch,createdAt)"
-
-          run_id="$(jq -r '.[0].databaseId // empty' <<< "$run_json")"
-          head_sha="$(jq -r '.[0].headSha // empty' <<< "$run_json")"
-          head_branch="$(jq -r '.[0].headBranch // empty' <<< "$run_json")"
-          previous_sha="$(jq -r '.[1].headSha // empty' <<< "$run_json")"
-
-          if [[ -z "$run_id" || -z "$head_sha" ]]; then
-            echo "No successful build.yml run was found on Experimental." >&2
-            exit 1
+            --limit 1 \
+            --json number)"
+          latest_success_number="$(jq -r '.[0].number // 0' <<< "$latest_success")"
+          if (( latest_success_number > build_run_number )); then
+            echo "Skipping superseded build #$build_run_number; newer successful build #$latest_success_number exists."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
-          if [[ "$head_branch" != "Experimental" ]]; then
-            echo "Refusing unexpected build branch: $head_branch" >&2
-            exit 1
-          fi
+          echo "run_id=$build_run_id" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$build_sha" >> "$GITHUB_OUTPUT"
+          echo "run_number=$build_run_number" >> "$GITHUB_OUTPUT"
+          echo "Selected successful build #$build_run_number ($build_run_id) at $build_sha."
 
-          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
-          echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
-          echo "previous_sha=$previous_sha" >> "$GITHUB_OUTPUT"
-          echo "Selected build run #$run_id at $head_sha"
-          if [[ -n "$previous_sha" ]]; then
-            echo "Previous successful build commit: $previous_sha"
-          fi
-
-      - name: Read app version from the selected build commit
-        id: version
+      - name: Check out the exact APK source commit
+        if: steps.build.outputs.skip != 'true'
         env:
           BUILD_SHA: ${{ steps.build.outputs.head_sha }}
         shell: bash
         run: |
           set -euo pipefail
+          git fetch --no-tags origin "$BUILD_SHA"
+          git checkout --detach "$BUILD_SHA"
 
-          version_name="$(
-            git show "$BUILD_SHA:app/build.gradle.kts" |
-              sed -nE 's/^[[:space:]]*val appVersionName = "([^"]+)".*/\1/p' |
-              head -n 1
-          )"
-
-          if [[ ! "$version_name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Could not read a semantic appVersionName from the build commit (found: '$version_name')." >&2
-            exit 1
-          fi
-
-          echo "version=$version_name" >> "$GITHUB_OUTPUT"
-          echo "tag=v$version_name" >> "$GITHUB_OUTPUT"
-          echo "asset_name=OpenTasker-v$version_name-debug.apk" >> "$GITHUB_OUTPUT"
-
-
-      - name: Detect changes for the release description
-        id: changes
-        env:
-          BUILD_SHA: ${{ steps.build.outputs.head_sha }}
-          PREVIOUS_BUILD_SHA: ${{ steps.build.outputs.previous_sha }}
-          VERSION: ${{ steps.version.outputs.version }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          description_path="$RUNNER_TEMP/detected-release-description.md"
-          bash tools/generate-release-description.sh \
-            "$BUILD_SHA" \
-            "$VERSION" \
-            "$description_path" \
-            "$PREVIOUS_BUILD_SHA"
-
-          if [[ ! -s "$description_path" ]]; then
-            echo "Automatic release description is empty." >&2
-            exit 1
-          fi
-
-          echo "description_path=$description_path" >> "$GITHUB_OUTPUT"
-
-      - name: Download the APK artifact from that build
+      - name: Download APK and its version metadata
         id: artifact
+        if: steps.build.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           BUILD_RUN_ID: ${{ steps.build.outputs.run_id }}
-          ASSET_NAME: ${{ steps.version.outputs.asset_name }}
+          BUILD_RUN_NUMBER: ${{ steps.build.outputs.run_number }}
         shell: bash
         run: |
           set -euo pipefail
 
           artifact_dir="$RUNNER_TEMP/opentasker-artifact"
-          apk_path="$RUNNER_TEMP/$ASSET_NAME"
           mkdir -p "$artifact_dir"
 
           gh run download "$BUILD_RUN_ID" \
@@ -130,53 +128,104 @@ jobs:
             --dir "$artifact_dir"
 
           mapfile -t apk_files < <(find "$artifact_dir" -type f -name '*.apk' -print)
+          mapfile -t metadata_files < <(find "$artifact_dir" -type f -name 'build-info.txt' -print)
 
-          if [[ "${#apk_files[@]}" -ne 1 ]]; then
-            echo "Expected exactly one APK in OpenTasker-debug-apk; found ${#apk_files[@]}." >&2
-            find "$artifact_dir" -maxdepth 3 -type f -print >&2
+          if [[ "${#apk_files[@]}" -ne 1 || "${#metadata_files[@]}" -ne 1 ]]; then
+            echo "::error::Expected exactly one APK and one build-info.txt in the build artifact."
+            find "$artifact_dir" -maxdepth 4 -type f -print >&2
             exit 1
           fi
 
-          cp "${apk_files[0]}" "$apk_path"
-          echo "apk_path=$apk_path" >> "$GITHUB_OUTPUT"
-          echo "Prepared $ASSET_NAME"
+          metadata="${metadata_files[0]}"
+          version_name="$(sed -n 's/^versionName=//p' "$metadata")"
+          version_code="$(sed -n 's/^versionCode=//p' "$metadata")"
+          artifact_run_number="$(sed -n 's/^runNumber=//p' "$metadata")"
 
-      - name: Create or update the GitHub Release
+          if [[ ! "$version_name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+             [[ ! "$version_code" =~ ^[0-9]+$ ]] ||
+             [[ "$artifact_run_number" != "$BUILD_RUN_NUMBER" ]]; then
+            echo "::error::Build artifact version metadata is invalid or belongs to a different workflow run."
+            exit 1
+          fi
+
+          tag="v$version_name"
+          asset_name="OpenTasker-v$version_name-debug.apk"
+          apk_path="$RUNNER_TEMP/$asset_name"
+          cp "${apk_files[0]}" "$apk_path"
+
+          {
+            echo "version=$version_name"
+            echo "version_code=$version_code"
+            echo "tag=$tag"
+            echo "asset_name=$asset_name"
+            echo "apk_path=$apk_path"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Prepared $asset_name (Android versionCode $version_code)."
+
+      - name: Generate release description
+        id: changes
+        if: steps.build.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           BUILD_RUN_ID: ${{ steps.build.outputs.run_id }}
           BUILD_SHA: ${{ steps.build.outputs.head_sha }}
-          VERSION: ${{ steps.version.outputs.version }}
-          TAG: ${{ steps.version.outputs.tag }}
-          ASSET_NAME: ${{ steps.version.outputs.asset_name }}
+          VERSION: ${{ steps.artifact.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          successful_runs="$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow build.yml \
+            --branch Experimental \
+            --status success \
+            --limit 50 \
+            --json databaseId,headSha)"
+          previous_sha="$(jq -r --arg id "$BUILD_RUN_ID" \
+            '[.[] | select((.databaseId | tostring) != $id)][0].headSha // empty' \
+            <<< "$successful_runs")"
+
+          description_path="$RUNNER_TEMP/detected-release-description.md"
+          bash tools/generate-release-description.sh \
+            "$BUILD_SHA" \
+            "$VERSION" \
+            "$description_path" \
+            "$previous_sha"
+
+          if [[ ! -s "$description_path" ]]; then
+            echo "::error::Automatic release description is empty."
+            exit 1
+          fi
+
+          echo "description_path=$description_path" >> "$GITHUB_OUTPUT"
+
+      - name: Create a new GitHub Release without replacing older releases
+        if: steps.build.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_RUN_ID: ${{ steps.build.outputs.run_id }}
+          BUILD_SHA: ${{ steps.build.outputs.head_sha }}
+          VERSION: ${{ steps.artifact.outputs.version }}
+          VERSION_CODE: ${{ steps.artifact.outputs.version_code }}
+          TAG: ${{ steps.artifact.outputs.tag }}
+          ASSET_NAME: ${{ steps.artifact.outputs.asset_name }}
           APK_PATH: ${{ steps.artifact.outputs.apk_path }}
           DESCRIPTION_PATH: ${{ steps.changes.outputs.description_path }}
         shell: bash
         run: |
           set -euo pipefail
 
-          title="OpenTasker v$VERSION"
+          title="OpenTasker $TAG"
           run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID"
           marker="<!-- opentasker-build-run-id:$BUILD_RUN_ID -->"
           notes_file="$RUNNER_TEMP/release-notes.md"
-          release_json="$RUNNER_TEMP/existing-release.json"
+          existing_release="$RUNNER_TEMP/existing-release.json"
 
-          {
-            cat "$DESCRIPTION_PATH"
-            printf '\n\n---\n\n'
-            printf 'APK: **%s**\n\n' "$ASSET_NAME"
-            printf 'Built by [successful build.yml run #%s](%s) from commit \`%s\`.\n\n' "$BUILD_RUN_ID" "$run_url" "$BUILD_SHA"
-            printf '%s\n\n' '**Install note:** This is a debug APK. The build workflow generates a fresh debug signing key for each run, so Android may require uninstalling an earlier OpenTasker build before installing this APK.'
-            printf '%s\n' "$marker"
-          } > "$notes_file"
-
-          if gh release view "$TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --json assets,body > "$release_json" 2>/dev/null; then
-
-            existing_body="$(jq -r '.body // ""' "$release_json")"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets,body > "$existing_release" 2>/dev/null; then
+            existing_body="$(jq -r '.body // ""' "$existing_release")"
             has_asset=false
-            if jq -e --arg name "$ASSET_NAME" '.assets[]? | select(.name == $name)' "$release_json" >/dev/null; then
+            if jq -e --arg name "$ASSET_NAME" '.assets[]? | select(.name == $name)' "$existing_release" >/dev/null; then
               has_asset=true
             fi
 
@@ -185,22 +234,29 @@ jobs:
               exit 0
             fi
 
-            gh release upload "$TAG" "$APK_PATH" \
-              --repo "$GITHUB_REPOSITORY" \
-              --clobber
-
-            gh release edit "$TAG" \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "$title" \
-              --notes-file "$notes_file"
-
-            echo "Updated release $TAG with build run #$BUILD_RUN_ID."
-          else
-            gh release create "$TAG" "$APK_PATH" \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "$title" \
-              --target "$BUILD_SHA" \
-              --notes-file "$notes_file"
-
-            echo "Created release $TAG from build run #$BUILD_RUN_ID."
+            echo "::error::Release $TAG already exists and belongs to another or incomplete build. Refusing to edit or replace it."
+            exit 1
           fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Git tag $TAG already exists without a matching release. Refusing to move or replace it."
+            exit 1
+          fi
+
+          {
+            cat "$DESCRIPTION_PATH"
+            printf '\n\n---\n\n'
+            printf 'Version code: **%s**\n\n' "$VERSION_CODE"
+            printf 'APK: **%s**\n\n' "$ASSET_NAME"
+            printf 'Built by [successful build.yml run #%s](%s) from commit `%s`.\n\n' "$BUILD_RUN_ID" "$run_url" "$BUILD_SHA"
+            printf '%s\n' '**Install note:** This is a debug-signed APK. It can update an existing OpenTasker installation signed with the same persistent debug key. An installation signed with a different key must be uninstalled first.'
+            printf '\n\n%s\n' "$marker"
+          } > "$notes_file"
+
+          gh release create "$TAG" "$APK_PATH" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$title" \
+            --target "$BUILD_SHA" \
+            --notes-file "$notes_file"
+
+          echo "Created brand-new release $TAG from build run #$BUILD_RUN_ID."
