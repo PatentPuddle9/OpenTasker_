@@ -17,12 +17,12 @@ object DesignSystem {
     }
 
     object Screen {
-        val horizontalPadding = 20.dp
-        val verticalPadding = 16.dp
-        val cardPadding = 16.dp
-        val heroCardPadding = 20.dp
-        val sectionGap = 20.dp
-        val cardGap = 10.dp
+        val horizontalPadding = 18.dp
+        val verticalPadding = 12.dp
+        val cardPadding = 14.dp
+        val heroCardPadding = 18.dp
+        val sectionGap = 16.dp
+        val cardGap = 8.dp
     }
 
     object Radii {

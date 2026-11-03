@@ -45,6 +45,8 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
@@ -669,8 +671,8 @@ fun PermissionOnboardingScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(contentPadding),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(if (settingsOnly) 6.dp else 10.dp),
     ) {
         if (focusRequirements.isNotEmpty()) item {
             Card(
@@ -1668,10 +1670,24 @@ private fun ThemeSetupCard(
     }
     Column(Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            Surface(
+                modifier = Modifier.size(46.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = RoundedCornerShape(DesignSystem.Radii.md),
+            ) {
+                Icon(
+                    Icons.Outlined.Palette,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(12.dp),
+                )
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(stringResource(R.string.setup_theme_label), style = MaterialTheme.typography.titleSmall)
                 Text(modeLabels.getValue(currentMode), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
@@ -1750,10 +1766,22 @@ private fun DirectBootSetupCard(
                 .fillMaxWidth()
                 .toggleable(value = enabled, onValueChange = onEnabledChange, role = Role.Switch)
                 .semantics(mergeDescendants = true) { this.stateDescription = stateDescription }
-                .padding(horizontal = 8.dp, vertical = 12.dp),
+                .padding(horizontal = 8.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            Surface(
+                modifier = Modifier.size(46.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = RoundedCornerShape(DesignSystem.Radii.md),
+            ) {
+                Icon(
+                    Icons.Outlined.Security,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(12.dp),
+                )
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(stringResource(R.string.setup_direct_boot_title), style = MaterialTheme.typography.titleSmall)
                 Text(stateDescription, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
@@ -2104,7 +2132,7 @@ private fun SettingsSectionLabel(label: String) {
         text = label,
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
+        modifier = Modifier.padding(top = 14.dp, bottom = 4.dp),
     )
 }
 

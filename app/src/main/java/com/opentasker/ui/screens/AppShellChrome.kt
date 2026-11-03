@@ -114,8 +114,8 @@ internal fun OpenTaskerHeader(
                     .padding(
                         start = DesignSystem.Screen.horizontalPadding,
                         end = DesignSystem.Screen.horizontalPadding,
-                        top = 14.dp,
-                        bottom = 12.dp,
+                        top = 10.dp,
+                        bottom = 10.dp,
                     ),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -124,9 +124,9 @@ internal fun OpenTaskerHeader(
                     Text(
                         stringResource(screen.labelRes),
                         style = MaterialTheme.typography.headlineSmall.copy(
-                            fontSize = 30.sp,
-                            lineHeight = 36.sp,
-                            letterSpacing = (-0.35).sp,
+                            fontSize = 27.sp,
+                            lineHeight = 32.sp,
+                            letterSpacing = (-0.45).sp,
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -149,7 +149,7 @@ internal fun OpenTaskerHeader(
                         )
                         Text(
                             text = detail,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -158,9 +158,7 @@ internal fun OpenTaskerHeader(
                 }
                 IconButton(
                     onClick = onOpenSearch,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
+                    modifier = Modifier.size(44.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Search,
@@ -173,7 +171,7 @@ internal fun OpenTaskerHeader(
                 Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.58f)),
+                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)),
             )
         }
     }
@@ -192,25 +190,19 @@ internal fun OpenTaskerNavigationItem(
     val notSelectedDescription = stringResource(R.string.a11y_not_selected)
     Column(
         modifier = modifier
-            .heightIn(min = 60.dp)
+            .heightIn(min = 56.dp)
             .clickable(role = Role.Tab, onClick = onClick)
             .semantics(mergeDescendants = true) {
                 this.selected = selected
                 stateDescription = if (selected) selectedDescription else notSelectedDescription
             }
-            .padding(horizontal = 4.dp, vertical = 5.dp),
+            .padding(horizontal = 3.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Box(
             modifier = Modifier
-                .size(width = 50.dp, height = 32.dp)
-                .then(
-                    if (selected) Modifier.background(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.17f),
-                        shape = RoundedCornerShape(percent = 50),
-                    ) else Modifier
-                ),
+                .size(width = 44.dp, height = 28.dp),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
