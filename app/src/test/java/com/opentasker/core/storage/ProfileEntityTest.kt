@@ -37,6 +37,32 @@ class ProfileEntityTest {
     }
 
     @Test
+    fun profileEntityRoundTripPreservesGridIconAndWidgetOwnership() {
+        val profile = Profile(
+            id = 10,
+            name = "Widget shortcut",
+            enterTaskId = 71,
+            icon = "⚡︎",
+            widgetId = 204,
+        )
+
+        assertEquals(profile, profile.toEntity().toDomain())
+    }
+
+    @Test
+    fun profileSerializationDoesNotExportDeviceLocalWidgetOwnership() {
+        val profile = Profile(
+            id = 11,
+            name = "Widget shortcut",
+            enterTaskId = 72,
+            widgetId = 205,
+        )
+
+        val payload = StorageJson.encodeToString(profile)
+        assertTrue("Widget IDs are local to the installing device", "widgetId" !in payload)
+    }
+
+    @Test
     fun profileEntityRoundTripPreservesImportedReviewRequirement() {
         val profile = Profile(
             id = 8,
