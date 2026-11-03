@@ -27,9 +27,11 @@ class UpdateCheckSettings(context: Context) {
         .getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
     fun load(): UpdateCheckState {
-        val selectedBranch = preferences.getString(KEY_SELECTED_BRANCH, null)
-            ?.takeIf(UpdateCheckProtocol::isSelectableBranch)
-            ?: BuildConfig.UPDATE_SOURCE_BRANCH
+        val selectedBranch = UpdateCheckProtocol.normalizeBuildSourceBranch(
+            preferences.getString(KEY_SELECTED_BRANCH, null)
+                ?.takeIf(UpdateCheckProtocol::isSelectableBranch)
+                ?: BuildConfig.UPDATE_SOURCE_BRANCH,
+        )
         val checkedBranch = preferences.getString(KEY_CHECKED_BRANCH, null)
         val branchMatches = checkedBranch == selectedBranch
         val url = preferences.getString(KEY_RELEASE_URL, null)?.takeIf(String::isNotBlank)
