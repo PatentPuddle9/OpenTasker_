@@ -70,6 +70,7 @@ class UpdateCheckContractTest {
         assertTrue(gradle.contains("buildConfigField(\"String\", \"UPDATE_SOURCE_BRANCH\""))
         assertTrue(workflow.contains("-PopenTaskerBuildBranch=\"\$GITHUB_REF_NAME\""))
         assertTrue(settings.contains("BuildConfig.UPDATE_SOURCE_BRANCH"))
+        assertTrue(settings.contains("UpdateCheckProtocol.normalizeBuildSourceBranch"))
         assertTrue(runner.contains("branch: String = BuildConfig.UPDATE_SOURCE_BRANCH"))
         assertTrue(setup.contains("BuildConfig.IS_BETA"))
         assertTrue(setup.contains("setup_update_beta_badge"))
