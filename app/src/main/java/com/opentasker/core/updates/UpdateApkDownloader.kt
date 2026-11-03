@@ -54,7 +54,7 @@ object UpdateApkDownloader {
                 releaseAssetUrl.isHttps &&
                 releaseAssetUrl.host == "github.com" &&
                 releaseAssetUrl.encodedPath.startsWith("/PatentPuddle9/OpenTasker_/releases/download/") &&
-                releaseAssetUrl.encodedPath.count { it == '/' } >= 6 &&
+                releaseAssetUrl.encodedPath.count { it == '/' } == 6 &&
                 releaseAssetUrl.query == null &&
                 releaseAssetUrl.fragment == null
         ) {
