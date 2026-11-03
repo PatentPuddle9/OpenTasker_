@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import android.widget.RemoteViews
 import com.opentasker.app.OpenTaskerApp_NoHilt
 import com.opentasker.app.R
@@ -42,6 +43,17 @@ class TaskWidgetProvider : AppWidgetProvider() {
         }
     }
 
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: Bundle,
+    ) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
+        // Re-select the compact or expanded RemoteViews layout whenever the launcher resizes it.
+        updateWidget(context, appWidgetManager, appWidgetId)
+    }
+
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
         val pending = goAsync()
         val appContext = context.applicationContext
@@ -69,6 +81,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
 
     companion object {
         const val PREFS_NAME = "opentasker_widget_prefs"
+        private const val EXPANDED_LAYOUT_MIN_SIZE_DP = 110
 
         fun keyTaskId(widgetId: Int) = "widget_${widgetId}_task_id"
         fun keyTaskName(widgetId: Int) = "widget_${widgetId}_task_name"
@@ -130,7 +143,13 @@ class TaskWidgetProvider : AppWidgetProvider() {
             val backgroundColor = prefs.getInt(keyBackgroundColor(widgetId), WidgetStyle().backgroundColor)
             val gradient = prefs.getBoolean(keyGradient(widgetId), WidgetStyle().gradient)
 
-            val views = RemoteViews(context.packageName, R.layout.widget_task)
+            val options = manager.getAppWidgetOptions(widgetId)
+            val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
+            val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
+            val isCompact = minWidth < EXPANDED_LAYOUT_MIN_SIZE_DP ||
+                minHeight < EXPANDED_LAYOUT_MIN_SIZE_DP
+            val layoutRes = if (isCompact) R.layout.widget_task_compact else R.layout.widget_task
+            val views = RemoteViews(context.packageName, layoutRes)
             views.setImageViewBitmap(
                 R.id.widget_background,
                 WidgetBackgroundRenderer.render(backgroundColor, gradient),

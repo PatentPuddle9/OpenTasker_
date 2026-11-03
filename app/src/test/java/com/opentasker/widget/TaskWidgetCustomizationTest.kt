@@ -57,7 +57,15 @@ class TaskWidgetCustomizationTest {
         assertTrue(style.contains("LinearGradient"))
         assertTrue(layout.contains("@+id/widget_background"))
         assertTrue(layout.contains("@+id/widget_icon"))
-        assertTrue(info.contains("android:targetCellWidth=\"2\""))
-        assertTrue(info.contains("android:targetCellHeight=\"2\""))
+        assertTrue(info.contains("android:targetCellWidth=\"1\""))
+        assertTrue(info.contains("android:targetCellHeight=\"1\""))
+        assertTrue(info.contains("android:minResizeWidth=\"40dp\""))
+        assertTrue(info.contains("android:minResizeHeight=\"40dp\""))
+        assertTrue(provider.contains("onAppWidgetOptionsChanged"))
+        assertTrue(provider.contains("widget_task_compact"))
+        val compactLayout = resRoot.resolve("layout/widget_task_compact.xml").readText()
+        assertTrue(compactLayout.contains("@+id/widget_icon"))
+        assertTrue(compactLayout.contains("android:layout_width=\"32dp\""))
+        assertTrue(compactLayout.contains("android:visibility=\"gone\""))
     }
 }
