@@ -40,7 +40,7 @@ data class ProfileEntity(
     @androidx.room.ColumnInfo(defaultValue = "NULL") val burstLimit: Int? = null,
     @androidx.room.ColumnInfo(defaultValue = "'LOG'") val overflowPolicy: String = ProfileOverflowPolicy.LOG.name,
     @androidx.room.ColumnInfo(defaultValue = "NULL") val fallbackTaskId: Long? = null,
-    @androidx.room.ColumnInfo(defaultValue = "'bolt'") val icon: String = "bolt",
+    @androidx.room.ColumnInfo(defaultValue = "'⚡︎'") val icon: String = "⚡︎",
     @androidx.room.ColumnInfo(defaultValue = "NULL") val widgetId: Int? = null,
 ) {
     fun toDomain(): Profile = toDomainDecodeResult().requireDecoded()
