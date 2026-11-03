@@ -170,10 +170,14 @@ class TaskRunner(
                 }
 
                 val stepLabel = spec.label ?: spec.type
-                onStep?.invoke(pc, stepLabel)
-                if (spec.waitForCompletion) {
-                    val (result, trace) = runOne(pc, spec)
-                    onStepCompleted?.invoke(pc, stepLabel)
+                val actionIndex = pc
+                onStep?.invoke(actionIndex, stepLabel)
+                // Retrying blocks and foreach iterations depend on strict action ordering. Keep
+                // those scopes sequential even when an action's saved preference is turned off.
+                val mustWait = spec.waitForCompletion || tryStack.isNotEmpty() || loopStack.isNotEmpty()
+                if (mustWait) {
+                    val (result, trace) = runOne(actionIndex, spec)
+                    onStepCompleted?.invoke(actionIndex, stepLabel)
                     results += result
                     traces += trace
                 } else {
@@ -181,11 +185,11 @@ class TaskRunner(
                     results += null
                     traces += null
                     val pending = async(start = CoroutineStart.UNDISPATCHED) {
-                        val outcome = runOne(pc, spec)
-                        onStepCompleted?.invoke(pc, stepLabel)
+                        val outcome = runOne(actionIndex, spec)
+                        onStepCompleted?.invoke(actionIndex, stepLabel)
                         outcome
                     }
-                    pendingActions += Triple(resultSlot, pc, pending)
+                    pendingActions += Triple(resultSlot, actionIndex, pending)
                 }
                 if (result !is ActionResult.Failure &&
                     tryStack.any { frame ->
