@@ -7,9 +7,9 @@ import kotlinx.serialization.json.jsonPrimitive
 /** Pure protocol and release-version rules for the optional public update check. */
 object UpdateCheckProtocol {
     const val LATEST_RELEASE_URL =
-        "https://api.github.com/repos/SysAdminDoc/OpenTasker/releases/latest"
+        "https://api.github.com/repos/PatentPuddle9/OpenTasker_/releases/latest"
     const val RELEASES_URL_PREFIX =
-        "https://github.com/SysAdminDoc/OpenTasker/releases/tag/"
+        "https://github.com/PatentPuddle9/OpenTasker_/releases/tag/"
     const val RESPONSE_VARIABLE = "update_check_body"
     const val MAX_RESPONSE_BYTES = 65_536
     const val REQUEST_TIMEOUT_SECONDS = 15
