@@ -1,0 +1,196 @@
+name: Publish branch update channels
+
+# The workflow_run listener lives on the default branch (Experimental) and publishes a
+# rolling, prerelease-only APK channel for each successfully built non-master branch.
+on:
+  workflow_run:
+    workflows:
+      - Build OpenTasker APK
+    types:
+      - completed
+    branches:
+      - '**'
+      - '!master'
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: publish-opentasker-branch-update-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish selected branch update channel
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch != 'master'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out release tooling
+        uses: actions/checkout@v4
+        with:
+          ref: Experimental
+          fetch-depth: 0
+
+      - name: Resolve and verify the successful build
+        id: build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_run_id="$(jq -r '.workflow_run.id // empty' "$GITHUB_EVENT_PATH")"
+          build_sha="$(jq -r '.workflow_run.head_sha // empty' "$GITHUB_EVENT_PATH")"
+          build_branch="$(jq -r '.workflow_run.head_branch // empty' "$GITHUB_EVENT_PATH")"
+          build_run_number="$(jq -r '.workflow_run.run_number // empty' "$GITHUB_EVENT_PATH")"
+
+          if [[ -z "$build_run_id" || -z "$build_sha" || -z "$build_run_number" || -z "$build_branch" ]]; then
+            echo "::error::Could not resolve the successful build run."
+            exit 1
+          fi
+          if [[ "$build_branch" == "master" ]]; then
+            echo "::error::The master branch is not an update source."
+            exit 1
+          fi
+
+          run_details="$(gh run view "$build_run_id" --repo "$GITHUB_REPOSITORY" --json databaseId,headSha,headBranch,conclusion,number)"
+          conclusion="$(jq -r '.conclusion // empty' <<< "$run_details")"
+          verified_sha="$(jq -r '.headSha // empty' <<< "$run_details")"
+          verified_branch="$(jq -r '.headBranch // empty' <<< "$run_details")"
+          if [[ "$conclusion" != "success" || "$verified_sha" != "$build_sha" || "$verified_branch" != "$build_branch" ]]; then
+            echo "::error::Build run metadata did not match the completed workflow event."
+            exit 1
+          fi
+
+          latest_success="$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow build.yml \
+            --branch "$build_branch" \
+            --status success \
+            --limit 1 \
+            --json number)"
+          latest_success_number="$(jq -r '.[0].number // 0' <<< "$latest_success")"
+          if (( latest_success_number > build_run_number )); then
+            echo "Skipping superseded build #$build_run_number; newer successful build #$latest_success_number exists."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "run_id=$build_run_id" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$build_sha" >> "$GITHUB_OUTPUT"
+          echo "branch=$build_branch" >> "$GITHUB_OUTPUT"
+          echo "run_number=$build_run_number" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the exact APK source commit
+        if: steps.build.outputs.skip != 'true'
+        env:
+          BUILD_SHA: ${{ steps.build.outputs.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$BUILD_SHA"
+          git checkout --detach "$BUILD_SHA"
+
+      - name: Download and validate the build artifact
+        id: artifact
+        if: steps.build.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_RUN_ID: ${{ steps.build.outputs.run_id }}
+          BUILD_RUN_NUMBER: ${{ steps.build.outputs.run_number }}
+          BUILD_BRANCH: ${{ steps.build.outputs.branch }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact_dir="$RUNNER_TEMP/opentasker-branch-artifact"
+          mkdir -p "$artifact_dir"
+          gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" --name OpenTasker-debug-apk --dir "$artifact_dir"
+
+          mapfile -t apk_files < <(find "$artifact_dir" -type f -name '*.apk' -print)
+          mapfile -t metadata_files < <(find "$artifact_dir" -type f -name 'build-info.txt' -print)
+          if [[ "${#apk_files[@]}" -ne 1 || "${#metadata_files[@]}" -ne 1 ]]; then
+            echo "::error::Expected exactly one APK and one build-info.txt in the build artifact."
+            find "$artifact_dir" -maxdepth 4 -type f -print >&2
+            exit 1
+          fi
+
+          metadata="${metadata_files[0]}"
+          version_name="$(sed -n 's/^versionName=//p' "$metadata")"
+          version_code="$(sed -n 's/^versionCode=//p' "$metadata")"
+          artifact_run_number="$(sed -n 's/^runNumber=//p' "$metadata")"
+          if [[ ! "$version_name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+             [[ ! "$version_code" =~ ^[0-9]+$ ]] ||
+             [[ "$artifact_run_number" != "$BUILD_RUN_NUMBER" ]]; then
+            echo "::error::Build artifact version metadata is invalid or belongs to a different workflow run."
+            exit 1
+          fi
+
+          branch_hash="$(printf '%s' "$BUILD_BRANCH" | sha256sum | cut -d' ' -f1)"
+          channel_tag="opentasker-branch-$branch_hash"
+          asset_name="OpenTasker-branch-$branch_hash-debug.apk"
+          apk_path="$RUNNER_TEMP/$asset_name"
+          cp "${apk_files[0]}" "$apk_path"
+          apk_size="$(stat -c '%s' "$apk_path")"
+          if (( apk_size <= 0 || apk_size > 167772160 )); then
+            echo "::error::Branch APK size is outside the supported update limit."
+            exit 1
+          fi
+          apk_digest="$(sha256sum "$apk_path" | cut -d' ' -f1)"
+
+          {
+            echo "version=$version_name"
+            echo "version_code=$version_code"
+            echo "channel_tag=$channel_tag"
+            echo "asset_name=$asset_name"
+            echo "apk_path=$apk_path"
+            echo "apk_digest=$apk_digest"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create or refresh the branch update channel
+        if: steps.build.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_BRANCH: ${{ steps.build.outputs.branch }}
+          BUILD_SHA: ${{ steps.build.outputs.head_sha }}
+          BUILD_RUN_ID: ${{ steps.build.outputs.run_id }}
+          BUILD_RUN_NUMBER: ${{ steps.build.outputs.run_number }}
+          VERSION: ${{ steps.artifact.outputs.version }}
+          VERSION_CODE: ${{ steps.artifact.outputs.version_code }}
+          CHANNEL_TAG: ${{ steps.artifact.outputs.channel_tag }}
+          ASSET_NAME: ${{ steps.artifact.outputs.asset_name }}
+          APK_PATH: ${{ steps.artifact.outputs.apk_path }}
+          APK_DIGEST: ${{ steps.artifact.outputs.apk_digest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          title="OpenTasker branch update [$BUILD_BRANCH] v$VERSION"
+          marker="<!-- opentasker-branch-channel:$(printf '%s' "$BUILD_BRANCH" | sha256sum | cut -d' ' -f1) -->"
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID"
+          notes_file="$RUNNER_TEMP/branch-update-notes.md"
+          {
+            printf 'Latest verified OpenTasker build for branch **%s**.\n\n' "$BUILD_BRANCH"
+            printf 'Version: **%s** (Android versionCode **%s**)\n\n' "$VERSION" "$VERSION_CODE"
+            printf 'Source commit: `%s`\n\n' "$BUILD_SHA"
+            printf 'Built by [workflow run #%s](%s).\n\n' "$BUILD_RUN_NUMBER" "$run_url"
+            printf 'APK SHA-256: `%s`\n\n' "$APK_DIGEST"
+            printf '%s\n' "$marker"
+          } > "$notes_file"
+
+          existing_body="$RUNNER_TEMP/existing-branch-release-body.txt"
+          if gh release view "$CHANNEL_TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body > "$existing_body" 2>/dev/null; then
+            if ! grep -Fq "$marker" "$existing_body"; then
+              echo "::error::The branch update tag already exists but is not owned by this updater. Refusing to replace it."
+              exit 1
+            fi
+            gh release upload "$CHANNEL_TAG" "$APK_PATH" --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$CHANNEL_TAG" --repo "$GITHUB_REPOSITORY" --title "$title" --notes-file "$notes_file" --prerelease
+          else
+            gh release create "$CHANNEL_TAG" "$APK_PATH" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$title" \
+              --target "$BUILD_SHA" \
+              --notes-file "$notes_file" \
+              --prerelease
+          fi
+          echo "Published $ASSET_NAME for branch $BUILD_BRANCH ($VERSION)."
