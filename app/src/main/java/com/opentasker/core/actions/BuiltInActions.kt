@@ -46,7 +46,7 @@ class NotifyAction : DeclaredAction(ActionCatalog.require("notify.show")) {
         }
 
         val nm = ctx.app.getSystemService(NotificationManager::class.java)
-        val channelKey = args["channel"] ?: "default"
+        val channelKey = args["channel"] ?: "urgent"
         val channelDef = NotificationChannels.resolve(channelKey)
         nm.createNotificationChannel(
             NotificationChannel(channelDef.id, channelDef.name, channelDef.importance),
@@ -71,40 +71,52 @@ class NotifyAction : DeclaredAction(ActionCatalog.require("notify.show")) {
             .setAutoCancel(!persistent)
             .setOngoing(persistent)
 
-        val taskReferences = (1..NotificationTaskBindings.BUTTON_COUNT).mapNotNull { buttonIndex ->
-            NotificationTaskBindings.parse(args, buttonIndex)?.let { buttonIndex to it }
+        val hasTaskBindings = (1..NotificationTaskBindings.BUTTON_COUNT).any { buttonIndex ->
+            NotificationTaskBindings.parse(args, buttonIndex) != null
         }
-        val taskCandidates = if (taskReferences.isEmpty()) {
-            emptyList()
-        } else {
+        val taskCandidates = if (hasTaskBindings) {
             OpenTaskerApp_NoHilt.db.taskDao().getAll().map { NotificationTaskCandidate(it.id, it.name) }
+        } else {
+            emptyList()
         }
 
-        for ((i, reference) in taskReferences) {
-            val resolution = NotificationTaskBindings.resolve(reference, taskCandidates)
-            if (resolution !is NotificationTaskResolution.Bound) {
-                return ActionResult.Failure(
-                    "Notification button $i is not runnable: ${NotificationTaskBindings.failureMessage(resolution)}",
+        for (i in 1..NotificationTaskBindings.BUTTON_COUNT) {
+            when (val plan = NotificationTaskBindings.planButton(args, i, taskCandidates)) {
+                null -> Unit
+                is NotificationButtonPlan.Invalid -> return ActionResult.Failure(
+                    "Notification button ${plan.index} is not runnable: ${plan.reason}",
                 )
+                is NotificationButtonPlan.RunTask,
+                is NotificationButtonPlan.Dismiss -> {
+                    val label = plan.label
+                    // Each button gets its own PendingIntent identity so adjacent buttons and
+                    // notifications cannot overwrite one another's target or dismissal metadata.
+                    val requestCode = PendingIntentRequestCodes.next()
+                    val buttonIntent = Intent(ctx.app, NotificationActionReceiver::class.java).apply {
+                        action = when (plan) {
+                            is NotificationButtonPlan.RunTask -> {
+                                putExtra(NotificationActionReceiver.EXTRA_TASK_ID, plan.task.id)
+                                NotificationActionReceiver.ACTION_NOTIFICATION_BUTTON
+                            }
+                            is NotificationButtonPlan.Dismiss -> {
+                                putExtra(NotificationActionReceiver.EXTRA_NOTIFICATION_ID, notifId)
+                                tag?.let { putExtra(NotificationActionReceiver.EXTRA_NOTIFICATION_TAG, it) }
+                                NotificationActionReceiver.ACTION_DISMISS_NOTIFICATION
+                            }
+                            is NotificationButtonPlan.Invalid -> error("Invalid plans are handled above")
+                        }
+                        putExtra(NotificationActionReceiver.EXTRA_BUTTON_LABEL, label)
+                        putExtra("_req", requestCode)
+                    }
+                    val pi = PendingIntent.getBroadcast(
+                        ctx.app,
+                        requestCode,
+                        buttonIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                    )
+                    builder.addAction(0, label, pi)
+                }
             }
-            val label = args["button${i}_label"] ?: resolution.task.name
-            // A unique request code per button guarantees two notifications (even with adjacent
-            // ids) never share a PendingIntent slot, so FLAG_UPDATE_CURRENT can't overwrite an
-            // older button intent and fire the wrong task.
-            val requestCode = PendingIntentRequestCodes.next()
-            val buttonIntent = Intent(ctx.app, NotificationActionReceiver::class.java).apply {
-                action = NotificationActionReceiver.ACTION_NOTIFICATION_BUTTON
-                putExtra(NotificationActionReceiver.EXTRA_TASK_ID, resolution.task.id)
-                putExtra(NotificationActionReceiver.EXTRA_BUTTON_LABEL, label)
-                putExtra("_req", requestCode)
-            }
-            val pi = PendingIntent.getBroadcast(
-                ctx.app,
-                requestCode,
-                buttonIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            )
-            builder.addAction(0, label, pi)
         }
 
         val notification = builder.build()
