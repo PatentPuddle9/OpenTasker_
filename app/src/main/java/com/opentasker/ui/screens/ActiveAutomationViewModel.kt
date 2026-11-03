@@ -35,6 +35,8 @@ import com.opentasker.core.model.AutomationMode
 import com.opentasker.core.model.ActionSpec
 import com.opentasker.core.model.AutomationInvariant
 import com.opentasker.core.model.CollisionMode
+import com.opentasker.core.model.ContextSpec
+import com.opentasker.core.model.ContextExpressionNode
 import com.opentasker.core.model.Profile
 import com.opentasker.core.model.ProfileLifetime
 import com.opentasker.core.model.ProfileLifecyclePolicy
@@ -804,6 +806,8 @@ class ActiveAutomationViewModel(
         overflowPolicy: ProfileOverflowPolicy = ProfileOverflowPolicy.LOG,
         fallbackTaskId: Long? = null,
         icon: String = "⚡︎",
+        contexts: List<ContextSpec> = emptyList(),
+        contextExpression: ContextExpressionNode? = null,
         onSaved: () -> Unit = {},
     ) =
         launchWithMessage(R.string.ui_message_profile_created, onSaved = onSaved) {
@@ -826,6 +830,8 @@ class ActiveAutomationViewModel(
                 overflowPolicy = overflowPolicy,
                 fallbackTaskId = fallbackTaskId,
                 icon = icon,
+                contexts = contexts,
+                contextExpression = contextExpression,
                 ),
             )
             requireValidProfileFieldLimits(profile)
