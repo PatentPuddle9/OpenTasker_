@@ -1145,9 +1145,19 @@ fun ActiveAutomationUi(
             profile = null,
             tasks = projectTasks,
             onDismiss = { showCreateProfileDialog = false },
-            onSave = { name, enabled, enterTaskId, exitTaskId, cooldown, priority, gracePeriod, automationMode, group, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId ->
-                viewModel.createProfile(name, enabled, enterTaskId, exitTaskId, cooldown, automationMode, group, selectedProjectId ?: com.opentasker.core.model.DEFAULT_PROJECT_ID, priority, gracePeriod, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId) { showCreateProfileDialog = false }
+            onSave = { name, enabled, enterTaskId, exitTaskId, cooldown, priority, gracePeriod, automationMode, group, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon ->
+                viewModel.createProfile(name, enabled, enterTaskId, exitTaskId, cooldown, automationMode, group, selectedProjectId ?: com.opentasker.core.model.DEFAULT_PROJECT_ID, priority, gracePeriod, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon) { showCreateProfileDialog = false }
             },
+            onEditTask = ::openTaskDialog,
+            onAddAction = ::openActionPicker,
+            onEditAction = { task, index, action ->
+                ActionMetadataRegistry.get(action.type)?.let { openActionEdit(task, it, index) }
+                    ?: scope.launch { snackbarHostState.showSnackbar(unsupportedActionTypeMessage) }
+            },
+            onDeleteAction = { task, index -> viewModel.removeTaskAction(task, index) },
+            onMoveAction = { task, from, to -> viewModel.moveTaskAction(task.id, from, to) },
+            onRunAction = { task, index -> viewModel.runActionNow(task, index) },
+            runBusy = runBusy,
         )
     }
 
@@ -1206,7 +1216,7 @@ fun ActiveAutomationUi(
             profile = profile,
             tasks = remember(profile, projectTasks, tasks) { profileEditorTasks(profile, projectTasks, tasks) },
             onDismiss = { clearProfileDialog() },
-            onSave = { name, enabled, enterTaskId, exitTaskId, cooldown, priority, gracePeriod, automationMode, group, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId ->
+            onSave = { name, enabled, enterTaskId, exitTaskId, cooldown, priority, gracePeriod, automationMode, group, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon ->
                 viewModel.updateProfile(profile.copy(
                         name = name.trim(),
                         enabled = enabled,
@@ -1219,11 +1229,22 @@ fun ActiveAutomationUi(
                         maxActiveExecutions = maxActiveExecutions, burstLimit = burstLimit, overflowPolicy = overflowPolicy,
                         fallbackTaskId = fallbackTaskId,
                         lifetimeConsumed = if (lifetime == profile.lifetime) profile.lifetimeConsumed else false,
+                        icon = icon,
                     ),
                     onSaved = { clearProfileDialog() },
                 )
             },
             onSimulate = { editedProfile -> openSimulation(editedProfile) },
+            onEditTask = ::openTaskDialog,
+            onAddAction = ::openActionPicker,
+            onEditAction = { task, index, action ->
+                ActionMetadataRegistry.get(action.type)?.let { openActionEdit(task, it, index) }
+                    ?: scope.launch { snackbarHostState.showSnackbar(unsupportedActionTypeMessage) }
+            },
+            onDeleteAction = { task, index -> viewModel.removeTaskAction(task, index) },
+            onMoveAction = { task, from, to -> viewModel.moveTaskAction(task.id, from, to) },
+            onRunAction = { task, index -> viewModel.runActionNow(task, index) },
+            runBusy = runBusy,
         )
     }
 
