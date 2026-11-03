@@ -1,6 +1,7 @@
 package com.opentasker.core.model
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 /**
  * A Profile binds one or more Contexts to a Task. Legacy profiles use implicit AND semantics;
@@ -41,7 +42,7 @@ data class Profile(
     /** Monochrome symbol used to identify this profile in the Actions grid. */
     val icon: String = "⚡︎,
     /** Android home-screen widget ID when this profile is owned by a widget. */
-    val widgetId: Int? = null,
+    @Transient val widgetId: Int? = null,
 )
 
 @Serializable
