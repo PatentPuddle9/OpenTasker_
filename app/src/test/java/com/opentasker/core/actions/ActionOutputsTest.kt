@@ -78,6 +78,39 @@ class ActionOutputsTest {
     }
 
     @Test
+    fun systemStatusActionsExposeTypedVariablesForLaterConditions() {
+        val brightness = requireNotNull(ActionMetadataRegistry.get("brightness.read"))
+            .resolveOutputs(ActionSpec(type = "brightness.read"))
+        assertEquals(
+            listOf("brightness", "brightness_percent", "brightness_mode", "brightness_automatic"),
+            brightness.map { it.name },
+        )
+        assertEquals(
+            listOf(ActionValueType.NUMBER, ActionValueType.NUMBER, ActionValueType.TEXT, ActionValueType.BOOLEAN),
+            brightness.map { it.type },
+        )
+
+        val volume = requireNotNull(ActionMetadataRegistry.get("volume.read"))
+            .resolveOutputs(ActionSpec(type = "volume.read", args = mapOf("var" to "media")))
+        assertEquals(
+            listOf("media", "media_max", "media_percent", "media_muted"),
+            volume.map { it.name },
+        )
+        assertEquals(
+            listOf(ActionValueType.NUMBER, ActionValueType.NUMBER, ActionValueType.NUMBER, ActionValueType.BOOLEAN),
+            volume.map { it.type },
+        )
+
+        val flashlight = requireNotNull(ActionMetadataRegistry.get("torch.read"))
+            .resolveOutputs(ActionSpec(type = "torch.read", args = mapOf("var" to "torch")))
+        assertEquals(listOf("torch", "torch_state"), flashlight.map { it.name })
+        assertEquals(
+            listOf(ActionValueType.BOOLEAN, ActionValueType.TEXT),
+            flashlight.map { it.type },
+        )
+    }
+
+    @Test
     fun insertionAndBundleRoundTripKeepTemplateTextUnchanged() {
         val option = VariableChipOption(
             name = "COUNT",
