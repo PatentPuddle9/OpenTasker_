@@ -370,6 +370,7 @@ private fun ConfigScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun WidgetColorEditor(
     value: String,
