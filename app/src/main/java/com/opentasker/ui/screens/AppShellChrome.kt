@@ -56,8 +56,8 @@ import com.opentasker.ui.theme.DesignSystem
  */
 
 internal enum class OpenTaskerScreen(@StringRes val labelRes: Int) {
-    Profiles(R.string.nav_profiles),
-    Tasks(R.string.nav_tasks),
+    Actions(R.string.nav_actions),
+    Shortcuts(R.string.nav_shortcuts),
     Vars(R.string.nav_variables),
     Flow(R.string.nav_flow),
     Scenes(R.string.nav_scenes),
@@ -68,8 +68,8 @@ internal enum class OpenTaskerScreen(@StringRes val labelRes: Int) {
     Settings(R.string.nav_settings),
 }
 internal val primaryNavigationScreens = listOf(
-    OpenTaskerScreen.Profiles,
-    OpenTaskerScreen.Tasks,
+    OpenTaskerScreen.Actions,
+    OpenTaskerScreen.Shortcuts,
     OpenTaskerScreen.RunLog,
     OpenTaskerScreen.Setup,
 )
@@ -78,8 +78,8 @@ internal val secondaryNavigationScreens = OpenTaskerScreen.entries.filterNot { i
 internal val adaptiveNavigationScreens = OpenTaskerScreen.entries
 
 internal fun OpenTaskerScreen.icon(): ImageVector = when (this) {
-    OpenTaskerScreen.Profiles -> Icons.Outlined.Tune
-    OpenTaskerScreen.Tasks -> Icons.AutoMirrored.Outlined.PlaylistPlay
+    OpenTaskerScreen.Actions -> Icons.Outlined.Tune
+    OpenTaskerScreen.Shortcuts -> Icons.Outlined.Widgets
     OpenTaskerScreen.Vars -> Icons.Outlined.Key
     OpenTaskerScreen.Flow -> Icons.Outlined.AccountTree
     OpenTaskerScreen.Scenes -> Icons.Outlined.Widgets
@@ -91,7 +91,7 @@ internal fun OpenTaskerScreen.icon(): ImageVector = when (this) {
 }
 
 internal fun shouldNavigateBackToProfiles(screen: OpenTaskerScreen): Boolean =
-    screen != OpenTaskerScreen.Profiles
+    screen != OpenTaskerScreen.Actions
 
 @Composable
 internal fun OpenTaskerHeader(
