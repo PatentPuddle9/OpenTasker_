@@ -362,7 +362,38 @@ class DatabaseMigrationInstrumentedTest {
     }
 
     @Test
-    fun appDatabaseMigratesFullPathFrom1ToCurrent() {
+    fun appDatabaseAddsProfileIconsAndWidgetOwnershipToExistingProfiles() {
+        appDatabaseHelper.createDatabase(APP_DATABASE_NAME, 15).apply {
+            execSQL(
+                """
+                INSERT INTO profiles (
+                    id, name, enabled, enterTaskId, exitTaskId, cooldownSec, contextsJson,
+                    automationMode, profileGroup, requiresRiskAcknowledgement, projectId, priority,
+                    gracePeriodSec, lifetime, expiresAtMs, lifetimeConsumed, maxActiveExecutions,
+                    burstLimit, overflowPolicy, fallbackTaskId
+                ) VALUES (
+                    9, 'Existing profile', 0, 22, NULL, 0, '[]', 'SINGLE', NULL, 0, 1, 0,
+                    0, 'NEVER', NULL, 0, NULL, NULL, 'LOG', NULL
+                )
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        val migrated = appDatabaseHelper.createDatabase(APP_DATABASE_NAME, 15)
+        DatabaseMigrations.MIGRATION_15_16.migrate(migrated)
+        DatabaseMigrations.MIGRATION_16_17.migrate(migrated)
+
+        migrated.query("SELECT icon, widgetId FROM profiles WHERE id = 9").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("⚡︎", cursor.getString(0))
+            assertTrue("Legacy profiles are not widget-owned", cursor.isNull(1))
+        }
+        migrated.close()
+    }
+
+    @Test
+    fun appDatabaseMigratesFullPathFrom1ThroughVersion15() {
         appDatabaseHelper.createDatabase(APP_DATABASE_NAME, 1).apply {
             execSQL(
                 """
