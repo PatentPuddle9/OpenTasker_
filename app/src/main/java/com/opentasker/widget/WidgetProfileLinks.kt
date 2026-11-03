@@ -4,6 +4,7 @@ import android.content.Context
 import com.opentasker.app.OpenTaskerApp_NoHilt
 import com.opentasker.core.model.Profile
 import com.opentasker.core.model.Task
+import com.opentasker.core.storage.AppDatabase
 import com.opentasker.core.storage.toDomainDecodeResult
 import com.opentasker.core.storage.toEntity
 
@@ -63,6 +64,30 @@ object WidgetProfileLinks {
             .putLong(TaskWidgetProvider.keyProfileId(widgetId), profileId)
             .apply()
         return profileId
+    }
+
+    /** Creates links for widgets installed before widget-owned profiles were introduced. */
+    suspend fun syncExistingProfiles(context: Context, db: AppDatabase) {
+        val manager = android.appwidget.AppWidgetManager.getInstance(context)
+        val ids = manager.getAppWidgetIds(
+            android.content.ComponentName(context, TaskWidgetProvider::class.java),
+        )
+        val prefs = context.getSharedPreferences(TaskWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
+        for (widgetId in ids) {
+            val taskId = prefs.getLong(TaskWidgetProvider.keyTaskId(widgetId), -1L)
+            if (taskId <= 0L) continue
+            val taskEntity = db.taskDao().getById(taskId) ?: continue
+            val decodedTask = taskEntity.toDomainDecodeResult()
+            if (decodedTask.issue != null) continue
+            val style = WidgetStyle(
+                icon = prefs.getString(TaskWidgetProvider.keyIcon(widgetId), WidgetIconCatalog.default.symbol)
+                    ?: WidgetIconCatalog.default.symbol,
+                iconColor = prefs.getInt(TaskWidgetProvider.keyIconColor(widgetId), WidgetStyle().iconColor),
+                backgroundColor = prefs.getInt(TaskWidgetProvider.keyBackgroundColor(widgetId), WidgetStyle().backgroundColor),
+                gradient = prefs.getBoolean(TaskWidgetProvider.keyGradient(widgetId), WidgetStyle().gradient),
+            )
+            syncProfile(context, widgetId, decodedTask.value, style)
+        }
     }
 
     suspend fun deleteProfile(context: Context, widgetId: Int) {
