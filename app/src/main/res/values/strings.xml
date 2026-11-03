@@ -1439,7 +1439,8 @@
     <!-- Secondary-surface localization -->
     <string name="nav_more">More</string>
     <string name="header_profiles_detail">%1$d enabled • %2$d total</string>
-    <string name="header_tasks_detail">%1$d shortcuts</string>
+    <string name="header_tasks_detail">%1$d actions • %2$d tasks</string>
+    <string name="header_shortcuts_detail">%1$d shortcuts</string>
     <string name="header_variables_detail">%1$d global variables</string>
     <string name="header_flow_detail">%1$d profiles • %2$d tasks</string>
     <string name="header_scenes_detail">%1$d elements • %2$d scenes</string>
