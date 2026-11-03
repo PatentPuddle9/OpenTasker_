@@ -3,6 +3,7 @@ package com.opentasker.core.actions
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.opentasker.core.engine.AutomationService
 import com.opentasker.core.logging.AppLogger
@@ -10,6 +11,17 @@ import com.opentasker.core.logging.AppLogger
 class NotificationActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == ACTION_DISMISS_NOTIFICATION) {
+            if (!intent.hasExtra(EXTRA_NOTIFICATION_ID)) return
+            val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0)
+            val tag = intent.getStringExtra(EXTRA_NOTIFICATION_TAG)
+            try {
+                NotificationManagerCompat.from(context.applicationContext).cancel(tag, notificationId)
+            } catch (e: Exception) {
+                AppLogger.error(TAG, "Popup dismiss button could not cancel notification $notificationId", e)
+            }
+            return
+        }
         if (intent.action != ACTION_NOTIFICATION_BUTTON) return
         val taskId = intent.getLongExtra(EXTRA_TASK_ID, -1L).takeIf { it > 0 }
         val legacyTaskName = intent.getStringExtra(EXTRA_TASK_NAME)
@@ -36,6 +48,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
     companion object {
         const val ACTION_NOTIFICATION_BUTTON = "com.opentasker.action.NOTIFICATION_BUTTON"
+        const val ACTION_DISMISS_NOTIFICATION = "com.opentasker.action.DISMISS_NOTIFICATION"
+        const val EXTRA_NOTIFICATION_ID = "com.opentasker.extra.NOTIFICATION_ID"
+        const val EXTRA_NOTIFICATION_TAG = "com.opentasker.extra.NOTIFICATION_TAG"
         const val EXTRA_TASK_ID = "com.opentasker.extra.TASK_ID"
         /** Compatibility only for PendingIntents created before immutable ID bindings shipped. */
         const val EXTRA_TASK_NAME = "com.opentasker.extra.TASK_NAME"
