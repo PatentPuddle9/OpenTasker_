@@ -16,6 +16,14 @@ class NotificationActionReceiverTest {
             .readText()
 
     @Test
+    fun dismissOnlyButtonCancelsNotificationWithoutStartingTaskService() {
+        val receiver = source("com/opentasker/core/actions/NotificationActionReceiver.kt")
+        assertTrue(receiver.contains("ACTION_DISMISS_NOTIFICATION"))
+        assertTrue(receiver.contains("NotificationManagerCompat.from(context.applicationContext).cancel(tag, notificationId)"))
+        assertTrue(receiver.contains("EXTRA_NOTIFICATION_ID"))
+    }
+
+    @Test
     fun receiverForwardsToServiceInsteadOfRunningInline() {
         val receiver = source("com/opentasker/core/actions/NotificationActionReceiver.kt")
         assertFalse(
