@@ -67,7 +67,9 @@ object ActionCatalog {
         // variables, and the platform decides whether a fresh scan happens either way.
         define("wifi.scan", ActionCategory.SETTINGS, ActionRetrySafety.IDEMPOTENT, ::WifiScanAction),
         define("bluetooth.toggle", ActionCategory.SETTINGS, ActionRetrySafety.NEVER, ::BluetoothToggleAction),
+        define("brightness.read", ActionCategory.SETTINGS, ActionRetrySafety.IDEMPOTENT, ::BrightnessReadAction),
         define("brightness.set", ActionCategory.SETTINGS, ActionRetrySafety.IDEMPOTENT, ::BrightnessAction),
+        define("volume.read", ActionCategory.SETTINGS, ActionRetrySafety.IDEMPOTENT, ::VolumeReadAction),
         define("volume.set", ActionCategory.SETTINGS, ActionRetrySafety.IDEMPOTENT, ::VolumeAction),
         define("airplane.toggle", ActionCategory.SETTINGS, ActionRetrySafety.NEVER, ::AirplaneModeAction),
         define("mobile.toggle", ActionCategory.SETTINGS, ActionRetrySafety.NEVER, ::MobileDataAction),
@@ -80,6 +82,7 @@ object ActionCatalog {
         define("zen.rule.set", ActionCategory.SETTINGS, ActionRetrySafety.NEVER, ::ZenRuleSetAction),
         define("zen.rule.clear", ActionCategory.SETTINGS, ActionRetrySafety.IDEMPOTENT, ::ZenRuleClearAction),
         define("ringer.set", ActionCategory.SETTINGS, ActionRetrySafety.IDEMPOTENT, ::RingerModeAction),
+        define("torch.read", ActionCategory.SETTINGS, ActionRetrySafety.IDEMPOTENT, ::TorchReadAction),
         define("torch.set", ActionCategory.SETTINGS, ActionRetrySafety.NEVER, ::TorchAction),
         define("tile.set", ActionCategory.SETTINGS, ActionRetrySafety.IDEMPOTENT, ::TileStateAction),
         define("state.temporary", ActionCategory.SETTINGS, ActionRetrySafety.NEVER, ::TemporaryStateAction),
