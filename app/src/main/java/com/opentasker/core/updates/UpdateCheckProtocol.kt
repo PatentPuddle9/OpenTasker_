@@ -223,8 +223,11 @@ object UpdateCheckProtocol {
                     .find(body)?.groupValues?.get(1)?.toLongOrNull()
                 val publishedAt = release["published_at"]?.jsonPrimitive?.content
                     ?: release["created_at"]?.jsonPrimitive?.content
-                val inAppUpdates = body.contains("In-app updates: **available**", ignoreCase = true) ||
-                    isAtLeastVersion(version, FIRST_IN_APP_UPDATE_VERSION)
+                val inAppUpdates = when {
+                    body.contains("In-app updates: **not included**", ignoreCase = true) -> false
+                    body.contains("In-app updates: **available**", ignoreCase = true) -> true
+                    else -> isAtLeastVersion(version, FIRST_IN_APP_UPDATE_VERSION)
+                }
 
                 BranchVersion(
                     tag = tag,
@@ -242,7 +245,7 @@ object UpdateCheckProtocol {
             parsed
                 .groupBy(BranchVersion::version)
                 .map { (_, duplicates) ->
-                    duplicates.firstOrNull { it.tag != branchChannelTag(branch) } ?: duplicates.first()
+                    duplicates.minByOrNull { versionReleasePreference(it.tag, branch) } ?: duplicates.first()
                 }
                 .sortedWith(
                     compareByDescending<BranchVersion> { it.versionCode ?: -1L }
@@ -250,6 +253,16 @@ object UpdateCheckProtocol {
                 )
                 .mapIndexed { index, version -> version.copy(isLatest = index == 0) }
         }.getOrNull()
+    }
+
+    private fun versionReleasePreference(tag: String, branch: String): Int = when {
+        tag == branchChannelTag(branch) -> 2
+        branch.equals(DEFAULT_SOURCE_BRANCH, ignoreCase = true) &&
+            tag.matches(Regex("^v\\d+\\.\\d+\\.\\d+$")) -> 0
+        isBetaBuildBranch(branch) &&
+            tag.matches(Regex("^beta-v\\d+\\.\\d+\\.\\d+$")) -> 0
+        tag.startsWith("opentasker-branch-build-") -> 1
+        else -> 3
     }
 
     private fun releaseVersionForBranch(tag: String, title: String, branch: String): String? {
@@ -285,7 +298,7 @@ object UpdateCheckProtocol {
         versions
             .groupBy(BranchVersion::version)
             .map { (_, duplicates) ->
-                duplicates.firstOrNull { it.tag != branchChannelTag(branch) } ?: duplicates.first()
+                duplicates.minByOrNull { versionReleasePreference(it.tag, branch) } ?: duplicates.first()
             }
             .sortedWith(
                 compareByDescending<BranchVersion> { it.versionCode ?: -1L }
