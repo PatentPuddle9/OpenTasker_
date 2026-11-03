@@ -98,7 +98,7 @@ object WidgetProfileLinks {
         val entityById = if (profileId > 0L) dao.getById(profileId) else null
         val entity = entityById?.takeIf { it.widgetId == widgetId } ?: dao.getByWidgetId(widgetId)
         if (entity != null && entity.widgetId == widgetId) {
-            dao.delete(entity)
+            dao.deleteWidgetOwnedProfile(widgetId)
         }
         prefs.edit().remove(TaskWidgetProvider.keyProfileId(widgetId)).apply()
     }
