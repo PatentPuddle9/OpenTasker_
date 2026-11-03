@@ -159,7 +159,7 @@ internal fun OpenTaskerHeader(
                 IconButton(
                     onClick = onOpenSearch,
                     modifier = Modifier
-                        .size(42.dp)
+                        .size(48.dp)
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
                 ) {
                     Icon(
