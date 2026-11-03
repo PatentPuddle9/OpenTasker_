@@ -31,9 +31,9 @@ object UpdateCheckRunner {
                     return null
                 }
                 val payload = variables.get(UpdateCheckProtocol.BRANCHES_RESPONSE_VARIABLE) ?: return null
-                val pageBranches = UpdateCheckProtocol.parseBranchesResponse(payload) ?: return null
-                branches.addAll(pageBranches)
-                if (pageBranches.size < UpdateCheckProtocol.BRANCH_PAGE_SIZE) {
+                val page = UpdateCheckProtocol.parseBranchPage(payload) ?: return null
+                branches.addAll(page.branches)
+                if (!page.hasMore) {
                     return UpdateCheckProtocol.sortBranches(branches)
                 }
             }

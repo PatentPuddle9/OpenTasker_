@@ -102,6 +102,24 @@ class UpdateCheckProtocolTest {
     }
 
     @Test
+    fun fullBranchPageContinuesEvenWhenMasterIsFilteredOut() {
+        val names = (0 until UpdateCheckProtocol.BRANCH_PAGE_SIZE).map { "feature-$it" } + "master"
+        val payload = names.joinToString(prefix = "[", postfix = "]") { """{"name":"$it"}""" }
+        val page = UpdateCheckProtocol.parseBranchPage(payload)
+
+        assertTrue(page != null)
+        assertTrue(page!!.hasMore)
+        assertEquals(UpdateCheckProtocol.BRANCH_PAGE_SIZE, page.branches.size)
+        assertTrue(page.branches.none { it.equals("master", ignoreCase = true) })
+
+        val shortPayload = """[{"name":"Experimental"},{"name":"master"}]"""
+        val shortPage = UpdateCheckProtocol.parseBranchPage(shortPayload)
+        assertTrue(shortPage != null)
+        assertTrue(!shortPage!!.hasMore)
+        assertEquals(listOf("Experimental"), shortPage.branches)
+    }
+
+    @Test
     fun selectedBranchGetsItsOwnVerifiedPrereleaseAndAsset() {
         val branch = "UI-overhaul-experiment"
         val payload = branchRelease(branch, "0.2.120")
