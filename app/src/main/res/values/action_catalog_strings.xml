@@ -2,32 +2,24 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <!-- Generated from stable action catalog keys; values are the translatable presentation layer. -->
     <string name="catalog_action_notify_show_name" formatted="false">Show Popup</string>
-    <string name="catalog_action_notify_show_description" formatted="false">Show a heads-up popup with optional task buttons; buttons without a task dismiss the popup</string>
+    <string name="catalog_action_notify_show_description" formatted="false">Show a popup dialog with optional task buttons; buttons without a task dismiss the dialog</string>
     <string name="catalog_category_notification" formatted="false">Notification</string>
     <string name="catalog_action_notify_show_field_title_label" formatted="false">Title</string>
-    <string name="catalog_action_notify_show_field_title_hint" formatted="false">Notification title</string>
+    <string name="catalog_action_notify_show_field_title_hint" formatted="false">Dialog title</string>
     <string name="catalog_action_notify_show_field_text_label" formatted="false">Message</string>
-    <string name="catalog_action_notify_show_field_text_hint" formatted="false">Notification body</string>
-    <string name="catalog_action_notify_show_field_channel_label" formatted="false">Channel</string>
-    <string name="catalog_action_notify_show_field_channel_hint" formatted="false">quiet / default / urgent (defaults to urgent popup)</string>
-    <string name="catalog_action_notify_show_field_persistent_label" formatted="false">Persistent</string>
-    <string name="catalog_action_notify_show_field_persistent_hint" formatted="false">Keep until cancelled</string>
-    <string name="catalog_action_notify_show_field_tag_label" formatted="false">Tag</string>
-    <string name="catalog_action_notify_show_field_tag_hint" formatted="false">Replacement tag (same tag replaces)</string>
-    <string name="catalog_action_notify_show_field_id_label" formatted="false">ID</string>
-    <string name="catalog_action_notify_show_field_id_hint" formatted="false">Notification ID (same ID replaces)</string>
+    <string name="catalog_action_notify_show_field_text_hint" formatted="false">Dialog message</string>
     <string name="catalog_action_notify_show_field_button1_label_label" formatted="false">Button 1 label</string>
-    <string name="catalog_action_notify_show_field_button1_label_hint" formatted="false">Button text; leave its task blank to dismiss the popup</string>
+    <string name="catalog_action_notify_show_field_button1_label_hint" formatted="false">Button text; leave its task blank to dismiss the dialog</string>
     <string name="catalog_action_notify_show_field_button1_task_id_label" formatted="false">Button 1 task (optional)</string>
-    <string name="catalog_action_notify_show_field_button1_task_id_hint" formatted="false">Optional task to run; leave empty to dismiss the popup</string>
+    <string name="catalog_action_notify_show_field_button1_task_id_hint" formatted="false">Optional task to run; leave empty to dismiss the dialog</string>
     <string name="catalog_action_notify_show_field_button2_label_label" formatted="false">Button 2 label</string>
-    <string name="catalog_action_notify_show_field_button2_label_hint" formatted="false">Button text; leave its task blank to dismiss the popup</string>
+    <string name="catalog_action_notify_show_field_button2_label_hint" formatted="false">Button text; leave its task blank to dismiss the dialog</string>
     <string name="catalog_action_notify_show_field_button2_task_id_label" formatted="false">Button 2 task (optional)</string>
-    <string name="catalog_action_notify_show_field_button2_task_id_hint" formatted="false">Optional task to run; leave empty to dismiss the popup</string>
+    <string name="catalog_action_notify_show_field_button2_task_id_hint" formatted="false">Optional task to run; leave empty to dismiss the dialog</string>
     <string name="catalog_action_notify_show_field_button3_label_label" formatted="false">Button 3 label</string>
-    <string name="catalog_action_notify_show_field_button3_label_hint" formatted="false">Button text; leave its task blank to dismiss the popup</string>
+    <string name="catalog_action_notify_show_field_button3_label_hint" formatted="false">Button text; leave its task blank to dismiss the dialog</string>
     <string name="catalog_action_notify_show_field_button3_task_id_label" formatted="false">Button 3 task (optional)</string>
-    <string name="catalog_action_notify_show_field_button3_task_id_hint" formatted="false">Optional task to run; leave empty to dismiss the popup</string>
+    <string name="catalog_action_notify_show_field_button3_task_id_hint" formatted="false">Optional task to run; leave empty to dismiss the dialog</string>
     <string name="catalog_action_notify_cancel_name" formatted="false">Cancel Notification</string>
     <string name="catalog_action_notify_cancel_description" formatted="false">Cancel a notification by tag and/or ID</string>
     <string name="catalog_action_notify_cancel_field_tag_label" formatted="false">Tag</string>

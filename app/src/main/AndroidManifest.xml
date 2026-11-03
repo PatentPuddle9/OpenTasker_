@@ -303,6 +303,10 @@
         </service>
 
         <service
+            android:name="com.opentasker.core.actions.PopupDialogService"
+            android:exported="false" />
+
+        <service
             android:name="com.opentasker.core.contexts.QuickSettingsTileService"
             android:exported="true"
             android:icon="@drawable/ic_notification"

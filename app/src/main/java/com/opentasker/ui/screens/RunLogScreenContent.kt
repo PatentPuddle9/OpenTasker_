@@ -1118,6 +1118,7 @@ private fun runLogSourceName(key: String): String = stringResource(
         RunLogSource.SHORTCUT -> R.string.run_log_source_shortcut
         RunLogSource.LOCALE_PLUGIN -> R.string.run_log_source_locale_plugin
         RunLogSource.SCENE_OVERLAY -> R.string.run_log_source_scene_overlay
+        RunLogSource.POPUP_DIALOG -> R.string.run_log_source_popup_dialog
         RunLogSource.APP_FUNCTION -> R.string.run_log_source_app_function
         RunLogSource.SCHEDULER -> R.string.run_log_source_scheduler
         RunLogSource.OTHER -> R.string.run_log_source_other

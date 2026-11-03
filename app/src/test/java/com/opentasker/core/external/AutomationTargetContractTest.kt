@@ -49,6 +49,7 @@ class AutomationTargetContractTest {
     fun internalRunSourcesMapToCanonicalLogLabels() {
         assertEquals("Locale plugin", AutomationTargetContract.runSourceLabel("locale_plugin"))
         assertEquals("Scene overlay", AutomationTargetContract.runSourceLabel("scene_overlay"))
+        assertEquals("Popup dialog", AutomationTargetContract.runSourceLabel("popup_dialog"))
         assertEquals(
             AutomationTargetContract.DEFAULT_RUN_SOURCE,
             AutomationTargetContract.runSourceLabel("forged\nsource"),
@@ -60,6 +61,7 @@ class AutomationTargetContractTest {
         val receiver = loadMainSource("com/opentasker/core/external/AutomationTargetReceiver.kt")
         val locale = loadMainSource("com/opentasker/core/plugins/locale/LocalePluginTarget.kt")
         val scene = loadMainSource("com/opentasker/core/scenes/SceneOverlayService.kt")
+        val popup = loadMainSource("com/opentasker/core/actions/PopupDialogService.kt")
         val service = loadMainSource("com/opentasker/core/engine/AutomationService.kt")
 
         assertTrue(receiver.contains("fun internalRunTaskIntent("))
@@ -69,6 +71,8 @@ class AutomationTargetContractTest {
         assertTrue(locale.contains("InternalTaskRunSource.LOCALE_PLUGIN"))
         assertTrue(scene.contains("AutomationTargetContract.internalRunTaskIntent("))
         assertTrue(scene.contains("InternalTaskRunSource.SCENE_OVERLAY"))
+        assertTrue(popup.contains("AutomationTargetContract.internalRunTaskIntent("))
+        assertTrue(popup.contains("InternalTaskRunSource.POPUP_DIALOG"))
         assertTrue(service.contains("AutomationTargetContract.EXTRA_RUN_SOURCE"))
         assertTrue(service.contains("runExternalTask("))
         assertTrue(service.contains("parentExecutionId = parentExecutionId"))

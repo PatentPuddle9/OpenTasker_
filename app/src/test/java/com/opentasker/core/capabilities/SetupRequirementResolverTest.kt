@@ -163,9 +163,9 @@ class SetupRequirementResolverTest {
     }
 
     @Test
-    fun anAppUsageTriggerNeedsUsageAccessThoughItsActionsDoNot() {
+    fun anAppUsageTriggerAndPopupActionAddTheirSetupRequirements() {
         assertEquals(
-            setOf(SetupRequirement.USAGE_ACCESS),
+            setOf(SetupRequirement.USAGE_ACCESS, SetupRequirement.OVERLAY),
             SetupRequirementResolver.resolveForTemplate(
                 actionTypes = listOf("flow.wait", "notify.show"),
                 contexts = listOf(ContextSpec(ContextType.APPLICATION, mapOf("package" to "com.example"))),

@@ -42,7 +42,7 @@ class ActionDefinition(
 
 object ActionCatalog {
     val all: List<ActionDefinition> = listOf(
-        define("notify.show", ActionCategory.NOTIFICATION, ActionRetrySafety.NEVER, ::NotifyAction),
+        define("notify.show", ActionCategory.NOTIFICATION, ActionRetrySafety.NEVER, ::ShowPopupAction),
         define("notify.cancel", ActionCategory.NOTIFICATION, ActionRetrySafety.IDEMPOTENT, ::NotifyCancelAction),
         define("notify.progress", ActionCategory.NOTIFICATION, ActionRetrySafety.NEVER, ::ProgressNotificationAction),
         define("var.set", ActionCategory.VARIABLE, ActionRetrySafety.IDEMPOTENT, ::SetVariableAction),

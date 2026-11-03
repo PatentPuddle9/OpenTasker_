@@ -19,6 +19,7 @@ object RunLogSource {
     const val SHORTCUT = "shortcut"
     const val LOCALE_PLUGIN = "locale_plugin"
     const val SCENE_OVERLAY = "scene_overlay"
+    const val POPUP_DIALOG = "popup_dialog"
     const val APP_FUNCTION = "app_function"
     const val SCHEDULER = "scheduler"
     const val OTHER = "other"
@@ -51,6 +52,8 @@ object RunLogSource {
                 Classified(LOCALE_PLUGIN, null)
             trimmed.equals("Scene overlay", ignoreCase = true) ->
                 Classified(SCENE_OVERLAY, null)
+            trimmed.equals("Popup dialog", ignoreCase = true) ->
+                Classified(POPUP_DIALOG, null)
             trimmed.equals("App function", ignoreCase = true) ->
                 Classified(APP_FUNCTION, null)
             trimmed.equals("Scheduled trigger", ignoreCase = true) ->
@@ -74,6 +77,7 @@ object RunLogSource {
         SHORTCUT -> "Shortcut"
         LOCALE_PLUGIN -> "Locale plugin"
         SCENE_OVERLAY -> "Scene overlay"
+        POPUP_DIALOG -> "Popup dialog"
         APP_FUNCTION -> "App function"
         SCHEDULER -> "Scheduler"
         OTHER -> "Other"

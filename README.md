@@ -92,12 +92,14 @@
 | Network | 8 | HTTP Request, Home Assistant webhook, MQTT publish, legacy GET/POST aliases, ping, download, Wake-on-LAN |
 | Media | 6 | play, stop, pause, next, previous, mute |
 | System | 7 | vibrate, clipboard set, reboot, lock, screen off, wake, log |
-| Notification | 4 | notify/toast, progress, cancel, TTS speak |
+| Notification | 4 | Show Popup dialog, progress notification, cancel notification, TTS speak |
 | Variable | 13 | set variable, clipboard get, contacts lookup, read data (JSON/CSV/XML/HTML), date-time (format/parse/add), text (match/replace/split/join/substring) |
 | Flow | 1+10 | wait; engine: task.run, if/else/end if, for each/end for, try/catch/end try, stop |
 | Plugin | 2 | Locale setting dispatch, Locale condition query |
 | Script | 1 | SHA-256-pinned Termux `RUN_COMMAND` with bounded result capture |
 | Import | 2 | unsupported Tasker and MacroDroid action placeholders |
+
+**Show Popup** opens a real Android dialog above other apps instead of posting a notification. It uses the existing **Display over other apps** access in Setup; up to three buttons can run saved tasks, and a button without a selected task simply dismisses the dialog.
 
 Every action carries an explicit capability contract; an action with no reviewed contract resolves to unsupported rather than defaulting to available. Privileged actions (airplane, mobile data, always-on display, screenshot, reboot, screen off, kill app) are gated to fail honestly. Always-on display reads the setting back after writing it, so a build that accepts the write and ignores it reports a failure rather than a success. Set brightness and set screen timeout require the **Modify system settings** special access granted from Setup, and Wake-on-LAN requires local network access on Android 17+. Lock device needs the **Lock screen admin**, also turned on from Setup: Android only lets an app lock the screen through a device admin, and OpenTasker's asks for `force-lock` and nothing else, so it cannot wipe the device, set a password policy, or read anything. Turning it on means Android will not let you uninstall OpenTasker until you turn it back off, which the same Setup row does. No root, Shizuku, or accessibility service is involved, so it keeps working under Android 17 Advanced Protection. SMS is available in standard/F-Droid builds; Play builds omit SMS/phone-state permissions.
 

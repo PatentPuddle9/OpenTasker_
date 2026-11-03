@@ -25,6 +25,7 @@ class RunLogSourceTest {
         assertEquals(RunLogSource.EXTERNAL_INTENT, RunLogSource.classify("External intent").key)
         assertEquals(RunLogSource.MANUAL_RUN, RunLogSource.classify("Manual run").key)
         assertEquals(RunLogSource.NOTIFICATION_ACTION, RunLogSource.classify("Notification action").key)
+        assertEquals(RunLogSource.POPUP_DIALOG, RunLogSource.classify("Popup dialog").key)
         assertEquals(RunLogSource.WIDGET, RunLogSource.classify("Widget").key)
         assertEquals(RunLogSource.SHORTCUT, RunLogSource.classify("Shortcut").key)
         assertNull(RunLogSource.classify("External intent").label)
@@ -64,6 +65,7 @@ class RunLogSourceTest {
     fun displayNamesAreStable() {
         assertEquals("Profile", RunLogSource.displayName(RunLogSource.PROFILE))
         assertEquals("Quick Settings tile", RunLogSource.displayName(RunLogSource.QUICK_SETTINGS_TILE))
+        assertEquals("Popup dialog", RunLogSource.displayName(RunLogSource.POPUP_DIALOG))
         assertEquals("Unknown", RunLogSource.displayName(null))
     }
 }

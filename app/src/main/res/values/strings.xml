@@ -436,8 +436,9 @@
     <string name="setup_contacts_access_body">Needed for unattended contact lookup actions. Contact values are written as sensitive variables and never copied into run-log messages. On Android 17+, picker mode can grant only the selected fields instead.</string>
     <string name="setup_contacts_access_required_for">Unattended contact lookup</string>
     <string name="setup_overlay_access_title">Display over other apps</string>
-    <string name="setup_overlay_access_body">Needed for scene overlays and controls displayed over other apps.</string>
-    <string name="setup_overlay_access_required_for">Scenes, overlay UI</string>
+    <string name="setup_overlay_access_body">Needed for scene overlays, popup dialogs and controls displayed over other apps.</string>
+    <string name="setup_overlay_access_required_for">Scenes, popup dialogs, overlay UI</string>
+    <string name="capability_popup_dialog_overlay">Requires Display over other apps access to show popup dialogs.</string>
     <string name="setup_install_unknown_apps_title">Install unknown apps</string>
     <string name="setup_install_unknown_apps_body">Allows OpenTasker to launch Android\'s installer for a downloaded APK, such as an app update. Android still asks you to confirm the installation; this does not allow silent installs.</string>
     <string name="setup_install_unknown_apps_required_for">Installing downloaded APK updates</string>
@@ -1524,6 +1525,7 @@
     <string name="run_log_source_shortcut">Shortcut</string>
     <string name="run_log_source_locale_plugin">Locale plugin</string>
     <string name="run_log_source_scene_overlay">Scene overlay</string>
+    <string name="run_log_source_popup_dialog">Popup dialog</string>
     <string name="run_log_source_app_function">App function</string>
     <string name="run_log_source_scheduler">Scheduler</string>
     <string name="run_log_source_other">Other</string>
