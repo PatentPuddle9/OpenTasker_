@@ -47,6 +47,10 @@ class TaskWidgetProvider : AppWidgetProvider() {
         for (id in appWidgetIds) {
             editor.remove(keyTaskId(id))
             editor.remove(keyTaskName(id))
+            editor.remove(keyIcon(id))
+            editor.remove(keyIconColor(id))
+            editor.remove(keyBackgroundColor(id))
+            editor.remove(keyGradient(id))
         }
         editor.apply()
     }
@@ -56,6 +60,10 @@ class TaskWidgetProvider : AppWidgetProvider() {
 
         fun keyTaskId(widgetId: Int) = "widget_${widgetId}_task_id"
         fun keyTaskName(widgetId: Int) = "widget_${widgetId}_task_name"
+        fun keyIcon(widgetId: Int) = "widget_${widgetId}_icon"
+        fun keyIconColor(widgetId: Int) = "widget_${widgetId}_icon_color"
+        fun keyBackgroundColor(widgetId: Int) = "widget_${widgetId}_background_color"
+        fun keyGradient(widgetId: Int) = "widget_${widgetId}_gradient"
 
         /**
          * Asks every task widget to re-read its label. Call after a task rename or delete: nothing
@@ -102,8 +110,22 @@ class TaskWidgetProvider : AppWidgetProvider() {
             val defaultTaskName = context.getString(R.string.app_name)
             val taskName = prefs.getString(keyTaskName(widgetId), defaultTaskName) ?: defaultTaskName
 
+            val icon = prefs.getString(keyIcon(widgetId), WidgetIconCatalog.default.symbol)
+                ?: WidgetIconCatalog.default.symbol
+            val iconColor = prefs.getInt(keyIconColor(widgetId), WidgetStyle().iconColor)
+            val backgroundColor = prefs.getInt(keyBackgroundColor(widgetId), WidgetStyle().backgroundColor)
+            val gradient = prefs.getBoolean(keyGradient(widgetId), WidgetStyle().gradient)
+
             val views = RemoteViews(context.packageName, R.layout.widget_task)
+            views.setImageViewBitmap(
+                R.id.widget_background,
+                WidgetBackgroundRenderer.render(backgroundColor, gradient),
+            )
+            views.setTextViewText(R.id.widget_icon, icon)
+            views.setTextColor(R.id.widget_icon, iconColor)
             views.setTextViewText(R.id.widget_task_name, taskName)
+            views.setTextColor(R.id.widget_task_name, WidgetBackgroundRenderer.contrastingTextColor(backgroundColor))
+            views.setTextColor(R.id.widget_tap_to_run, WidgetBackgroundRenderer.contrastingTextColor(backgroundColor))
 
             val target = if (taskId >= 0) {
                 Intent(context, TaskRunActivity::class.java).apply {
