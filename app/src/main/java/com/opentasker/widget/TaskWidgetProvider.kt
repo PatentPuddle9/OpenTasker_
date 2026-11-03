@@ -75,6 +75,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
             editor.remove(keyIconColor(id))
             editor.remove(keyBackgroundColor(id))
             editor.remove(keyGradient(id))
+            editor.remove(keyShape(id))
         }
         editor.apply()
     }
@@ -89,6 +90,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
         fun keyIconColor(widgetId: Int) = "widget_${widgetId}_icon_color"
         fun keyBackgroundColor(widgetId: Int) = "widget_${widgetId}_background_color"
         fun keyGradient(widgetId: Int) = "widget_${widgetId}_gradient"
+        fun keyShape(widgetId: Int) = "widget_${widgetId}_shape"
         fun keyProfileId(widgetId: Int) = "widget_${widgetId}_profile_id"
 
         /**
@@ -142,6 +144,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
             val iconColor = prefs.getInt(keyIconColor(widgetId), WidgetStyle().iconColor)
             val backgroundColor = prefs.getInt(keyBackgroundColor(widgetId), WidgetStyle().backgroundColor)
             val gradient = prefs.getBoolean(keyGradient(widgetId), WidgetStyle().gradient)
+            val shape = prefs.getString(keyShape(widgetId), WidgetShapeCatalog.default.key) ?: WidgetShapeCatalog.default.key
 
             val options = manager.getAppWidgetOptions(widgetId)
             val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
@@ -152,7 +155,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, layoutRes)
             views.setImageViewBitmap(
                 R.id.widget_background,
-                WidgetBackgroundRenderer.render(backgroundColor, gradient),
+                WidgetBackgroundRenderer.render(backgroundColor, gradient, shape = shape),
             )
             views.setImageViewResource(R.id.widget_icon, icon.drawableRes)
             views.setInt(R.id.widget_icon, "setColorFilter", iconColor)
