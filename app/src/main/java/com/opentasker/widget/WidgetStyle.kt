@@ -21,8 +21,8 @@ object WidgetBackgroundRenderer {
     fun render(
         backgroundColor: Int,
         gradient: Boolean,
-        width: Int = 720,
-        height: Int = 520,
+        width: Int = 360,
+        height: Int = 260,
     ): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
