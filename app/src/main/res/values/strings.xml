@@ -1444,7 +1444,11 @@
     <string name="header_diagnostics_detail">Engine, crashes, and app logs</string>
     <string name="header_settings_detail">App-wide behavior and recovery</string>
     <string name="setup_update_title">Release update checks</string>
-    <string name="setup_update_body">Optional daily check of the public GitHub release page. It sends no account or device information, stores only a newer-version link, and never downloads or installs anything.</string>
+    <string name="setup_update_body">Checks the OpenTasker fork on GitHub for newer releases. Automatic checks can run daily, or you can check manually. It sends no account or device information and does not download or install anything.</string>
+    <string name="setup_update_check_now">Check for updates</string>
+    <string name="setup_update_checking">Checking for updates…</string>
+    <string name="setup_update_status_checking">Checking GitHub for a newer release</string>
+    <string name="setup_update_status_failed">Couldn't check for updates. Check your connection and try again.</string>
     <string name="setup_update_enabled">Release update checks enabled</string>
     <string name="setup_update_disabled">Release update checks disabled</string>
     <string name="setup_update_status_off">Off</string>
