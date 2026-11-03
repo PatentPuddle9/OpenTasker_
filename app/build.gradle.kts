@@ -150,13 +150,15 @@ val releaseKeystorePath = System.getenv("OPEN_TASKER_RELEASE_KEYSTORE")
 val releaseKeystorePassword = System.getenv("OPEN_TASKER_RELEASE_KEYSTORE_PASSWORD")
 val releaseKeyAlias = System.getenv("OPEN_TASKER_RELEASE_KEY_ALIAS")
 val releaseKeyPassword = System.getenv("OPEN_TASKER_RELEASE_KEY_PASSWORD")
+val baseAppVersionCode = 96
+val baseAppVersionName = "0.2.94"
 val appVersionCode = providers.gradleProperty("openTaskerVersionCode")
-    .orElse("96")
+    .orElse(baseAppVersionCode.toString())
     .get()
     .toIntOrNull()
     ?: error("openTaskerVersionCode must be a positive Android version code.")
 val appVersionName = providers.gradleProperty("openTaskerVersionName")
-    .orElse("0.2.94")
+    .orElse(baseAppVersionName)
     .get()
 require(Regex("^\\d+\\.\\d+\\.\\d+$").matches(appVersionName)) {
     "openTaskerVersionName must be a stable semantic version (major.minor.patch)."
