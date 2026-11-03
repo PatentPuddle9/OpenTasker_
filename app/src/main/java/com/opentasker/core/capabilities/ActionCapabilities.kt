@@ -42,7 +42,7 @@ object ActionCapabilityRegistry {
      * advertising itself as Ready.
      */
     private val ordinaryActionIds = setOf(
-        // Variables, text, and date-time: pure in-process transforms.
+        // Variables, text/date-time transforms, and read-only device-state snapshots.
         "var.set",
         "var.persist",
         "clipboard.get",
