@@ -85,6 +85,7 @@ import com.opentasker.core.model.Task
 import com.opentasker.core.storage.StorageDecodeIssue
 import com.opentasker.ui.theme.DesignSystem
 import com.opentasker.ui.utils.expandCollapseToggle
+import com.opentasker.widget.WidgetIconCatalog
 @Composable
 internal fun ProfilesScreen(
     profiles: List<Profile>,
@@ -397,7 +398,7 @@ private fun ProfileCard(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            profile.icon.ifBlank { "⚡︎" },
+                            profile.icon.takeIf { icon -> WidgetIconCatalog.all.any { it.symbol == icon } } ?: WidgetIconCatalog.default.symbol,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             style = MaterialTheme.typography.titleLarge,
                         )
