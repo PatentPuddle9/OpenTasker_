@@ -227,6 +227,13 @@ object UpdateCheckProtocol {
                     ?: targetCommit?.takeIf { it.matches(Regex("^[0-9a-fA-F]{40}$")) }
                 val versionCode = Regex("""(?:Version code|Android versionCode):?\s*\*\*(\d+)\*\*""")
                     .find(body)?.groupValues?.get(1)?.toLongOrNull()
+                val supportedActionIds = Regex("""Action catalog: `([^\`]+)`""")
+                    .find(body)?.groupValues?.get(1)
+                    ?.split(',')
+                    ?.map(String::trim)
+                    ?.filter(String::isNotBlank)
+                    ?.toSet()
+                    ?.takeIf(Set<String>::isNotEmpty)
                 val publishedAt = release["published_at"]?.jsonPrimitive?.content
                     ?: release["created_at"]?.jsonPrimitive?.content
                 val inAppUpdates = when {
@@ -246,6 +253,7 @@ object UpdateCheckProtocol {
                     sourceCommit = commit,
                     publishedAt = publishedAt,
                     supportsInAppUpdates = inAppUpdates,
+                    supportedActionIds = supportedActionIds,
                 )
             }
             parsed
