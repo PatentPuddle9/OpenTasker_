@@ -1,7 +1,6 @@
 package com.opentasker.core.storage
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Entity
 import androidx.room.Insert
 import androidx.room.Index
@@ -157,7 +156,11 @@ interface ProfileDao {
     @Insert suspend fun insert(p: ProfileEntity): Long
     @Upsert suspend fun upsert(p: ProfileEntity)
     @Update suspend fun update(p: ProfileEntity)
-    @Delete suspend fun delete(p: ProfileEntity)
+    @Query("DELETE FROM profiles WHERE id = :profileId AND widgetId IS NULL")
+    suspend fun deleteRegularProfile(profileId: Long): Int
+
+    @Query("DELETE FROM profiles WHERE widgetId = :widgetId")
+    suspend fun deleteWidgetOwnedProfile(widgetId: Int): Int
     @Query("SELECT * FROM profiles WHERE id = :id") suspend fun getById(id: Long): ProfileEntity?
     @Query("SELECT * FROM profiles WHERE widgetId = :widgetId LIMIT 1") suspend fun getByWidgetId(widgetId: Int): ProfileEntity?
     @Query("SELECT * FROM profiles") suspend fun getAll(): List<ProfileEntity>
