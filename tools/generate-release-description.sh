@@ -13,8 +13,7 @@ git cat-file -e "$BUILD_SHA^{commit}" 2>/dev/null || {
 }
 
 # Prefer the most recent earlier semantic-version release tag that is an ancestor
-# of the APK's source commit. This makes the notes describe the actual release
-# delta, not unrelated commits added after the APK was built.
+# of the APK's source commit, so commits after the build are never included.
 git fetch --force --tags origin
 
 mapfile -t ancestor_tags < <(
@@ -63,7 +62,6 @@ else
   mapfile -t changed_files < <(git diff-tree --root --no-commit-id --name-only -r "$BUILD_SHA" | sort -u)
 fi
 
-# Keep release notes readable even after a long development interval.
 subjects=("${subjects[@]:0:30}")
 changed_files=("${changed_files[@]:0:60}")
 
@@ -79,7 +77,7 @@ for subject in "${subjects[@]}"; do
     feat:*|feature:*|add:*|implement:*|support:*|add\ *|implement\ *|support\ *)
       features+=("$subject")
       ;;
-    fix:*|bug:*|repair:*|prevent:*|fix\ *|repair\ *|prevent\ *)
+    fix:*|bug:*|repair:*|prevent:*|fix\ *|repair\ *|prevent\ *|*security*|*cve*|*vulnerability*)
       fixes+=("$subject")
       ;;
     improve:*|improvement:*|refactor:*|change:*|update:*|upgrade:*|improve\ *|refactor\ *|update\ *|upgrade\ *)
@@ -87,9 +85,6 @@ for subject in "${subjects[@]}"; do
       ;;
     test:*|tests:*|build:*|ci:*|docs:*|chore:*|test\ *|build\ *|ci\ *|docs\ *|chore\ *)
       maintenance+=("$subject")
-      ;;
-    *security*|*cve*|*vulnerability*)
-      fixes+=("$subject")
       ;;
     *)
       other+=("$subject")
@@ -101,6 +96,9 @@ areas=()
 declare -A seen_areas=()
 for path in "${changed_files[@]}"; do
   case "$path" in
+    app/src/test/*|app/src/androidTest/*|core/*/src/test/*|core/*/src/androidTest/*|feature/*/src/test/*)
+      area="Automated tests"
+      ;;
     app/src/*|app/*.gradle.kts)
       area="Android app and interface"
       ;;
@@ -109,9 +107,6 @@ for path in "${changed_files[@]}"; do
       ;;
     core/storage/*|core/model/*)
       area="Data, persistence, and models"
-      ;;
-    app/src/test/*|app/src/androidTest/*|core/*/src/test/*)
-      area="Automated tests"
       ;;
     .github/*|tools/*|gradlew|gradle/*|*.gradle.kts|settings.gradle.kts)
       area="Build and repository tooling"
@@ -139,7 +134,9 @@ mkdir -p "$(dirname "$OUTPUT_FILE")"
     local heading="$1"
     shift
     local -a entries=("$@")
-    (("${#entries[@]}" == 0)) && return 0
+    if (("${#entries[@]}" == 0)); then
+      return 0
+    fi
     printf '### %s\n\n' "$heading"
     for entry in "${entries[@]}"; do
       printf -- '- %s\n' "$entry"
@@ -165,7 +162,7 @@ mkdir -p "$(dirname "$OUTPUT_FILE")"
     printf '\n'
   fi
 
-  printf '_Generated from the Git commit history and changed-file list. The bullets above reflect commit subjects; areas are inferred from changed paths._\n'
+  printf '_Generated from the Git commit history and changed-file list. Bullets use actual commit subjects; areas are inferred from changed paths._\n'
 } > "$OUTPUT_FILE"
 
 echo "Generated release description: $OUTPUT_FILE"
