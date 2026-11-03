@@ -38,6 +38,11 @@ object UpdateCheckProtocol {
     const val BRANCHES_RESPONSE_VARIABLE = "update_check_branches"
     const val MAX_RESPONSE_BYTES = 65_536
     const val MAX_BRANCHES_RESPONSE_BYTES = 262_144
+    const val VERSION_PAGE_SIZE = 30
+    const val MAX_VERSION_PAGES = 20
+    const val MAX_VERSION_RESPONSE_BYTES = 262_144
+    const val MAX_ACTION_CATALOG_BYTES = 65_536
+    const val FIRST_IN_APP_UPDATE_VERSION = "0.2.118"
     const val REQUEST_TIMEOUT_SECONDS = 15
     const val BRANCH_PAGE_SIZE = 100
     const val MAX_BRANCH_PAGES = 100
@@ -134,6 +139,140 @@ object UpdateCheckProtocol {
         /** Based on raw GitHub entries, before filtering master or duplicate names. */
         val hasMore: Boolean,
     )
+
+
+    /** Builds a bounded request for the selected branch's immutable GitHub release history. */
+    fun versionsRequestArguments(page: Int, branch: String): Map<String, String> {
+        require(page in 1..MAX_VERSION_PAGES) { "Version page is outside the allowed range." }
+        require(isSelectableBranch(branch)) { "The master branch cannot be used as an update source." }
+        return mapOf(
+            "method" to "GET",
+            "url" to "https://api.github.com/repos/PatentPuddle9/OpenTasker_/releases?per_page=$VERSION_PAGE_SIZE&page=$page",
+            "headers" to ACCEPT_HEADER,
+            "response_var" to RESPONSE_VARIABLE,
+            "status_var" to STATUS_VARIABLE,
+            "max_response_bytes" to MAX_VERSION_RESPONSE_BYTES.toString(),
+            "timeout_sec" to REQUEST_TIMEOUT_SECONDS.toString(),
+            "call_timeout_sec" to REQUEST_TIMEOUT_SECONDS.toString(),
+            "connect_timeout_sec" to REQUEST_TIMEOUT_SECONDS.toString(),
+            "read_timeout_sec" to REQUEST_TIMEOUT_SECONDS.toString(),
+            "write_timeout_sec" to REQUEST_TIMEOUT_SECONDS.toString(),
+            "redirects" to "none",
+        )
+    }
+
+    /** Raw source for the action catalogue at the exact release commit. */
+    fun actionCatalogUrl(commit: String): String {
+        require(commit.matches(Regex("^[0-9a-fA-F]{40}$"))) { "Release commit is invalid." }
+        return "https://raw.githubusercontent.com/PatentPuddle9/OpenTasker_/$commit/app/src/main/java/com/opentasker/core/actions/ActionCatalog.kt"
+    }
+
+    /** Extracts runtime and engine-handled action IDs from a historical ActionCatalog source file. */
+    fun parseActionCatalog(payload: String): Set<String>? {
+        if (payload.toByteArray(Charsets.UTF_8).size > MAX_ACTION_CATALOG_BYTES) return null
+        val ids = Regex("""define(?:Engine)?\("([^"]+)""")
+            .findAll(payload)
+            .map { it.groupValues[1] }
+            .toSet()
+        return ids.takeIf { it.isNotEmpty() }
+    }
+
+    /**
+     * Parses all published APK releases that belong to [branch]. Both immutable version tags and
+     * the older rolling branch channel are accepted. When a rolling channel duplicates an
+     * immutable version release, the immutable release wins so the selected APK never changes.
+     */
+    fun parseBranchVersions(payload: String, branch: String): List<BranchVersion>? {
+        if (!isSelectableBranch(branch)) return null
+        if (payload.toByteArray(Charsets.UTF_8).size > MAX_VERSION_RESPONSE_BYTES) return null
+        return runCatching {
+            val releases = json.parseToJsonElement(payload) as JsonArray
+            val parsed = releases.mapNotNull { element ->
+                val release = element as? JsonObject ?: return@mapNotNull null
+                if (release.booleanValue("draft")) return@mapNotNull null
+                val tag = release["tag_name"]?.jsonPrimitive?.content?.trim()
+                    ?: return@mapNotNull null
+                val title = release["name"]?.jsonPrimitive?.content?.trim().orEmpty()
+                val version = releaseVersionForBranch(tag, title, branch) ?: return@mapNotNull null
+                val releaseUrl = release["html_url"]?.jsonPrimitive?.content?.trim()
+                    ?: return@mapNotNull null
+                if (releaseUrl != RELEASES_URL_PREFIX + tag) return@mapNotNull null
+
+                val body = release["body"]?.jsonPrimitive?.content.orEmpty()
+                val assets = release["assets"]?.jsonArray.orEmpty()
+                val apkAssets = assets.mapNotNull { asset ->
+                    val objectValue = asset as? JsonObject ?: return@mapNotNull null
+                    if (objectValue["content_type"]?.jsonPrimitive?.content != APK_MIME_TYPE) return@mapNotNull null
+                    val name = objectValue["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                    val url = objectValue["browser_download_url"]?.jsonPrimitive?.content?.trim()
+                        ?: return@mapNotNull null
+                    val expectedUrl = RELEASE_DOWNLOAD_URL_PREFIX + "$tag/$name"
+                    if (url != expectedUrl || !name.endsWith(".apk", ignoreCase = true)) return@mapNotNull null
+                    val size = objectValue["size"]?.jsonPrimitive?.content?.toLongOrNull()
+                        ?.takeIf { it in 1..MAX_APK_BYTES } ?: return@mapNotNull null
+                    val digestText = objectValue["digest"]?.jsonPrimitive?.content?.trim()
+                        ?: return@mapNotNull null
+                    val digest = digestText.removePrefix("sha256:")
+                    if (!digestText.startsWith("sha256:") || !sha256Pattern.matches(digest)) return@mapNotNull null
+                    Triple(url, size, digest.lowercase(Locale.ROOT))
+                }
+                val apk = apkAssets.singleOrNull()
+                val targetCommit = release["target_commitish"]?.jsonPrimitive?.content?.trim()
+                val commit = targetCommit?.takeIf { it.matches(Regex("^[0-9a-fA-F]{40}$")) }
+                val versionCode = Regex("""(?:Version code|Android versionCode):?\s*\*\*(\d+)\*\*""")
+                    .find(body)?.groupValues?.get(1)?.toLongOrNull()
+                val publishedAt = release["published_at"]?.jsonPrimitive?.content
+                    ?: release["created_at"]?.jsonPrimitive?.content
+                val inAppUpdates = body.contains("In-app updates: **available**", ignoreCase = true) ||
+                    isAtLeastVersion(version, FIRST_IN_APP_UPDATE_VERSION)
+
+                BranchVersion(
+                    tag = tag,
+                    version = version,
+                    versionCode = versionCode,
+                    releaseUrl = releaseUrl,
+                    apkUrl = apk?.first,
+                    apkSizeBytes = apk?.second,
+                    apkSha256 = apk?.third,
+                    sourceCommit = commit,
+                    publishedAt = publishedAt,
+                    supportsInAppUpdates = inAppUpdates,
+                )
+            }
+            parsed
+                .groupBy(BranchVersion::version)
+                .map { (_, duplicates) ->
+                    duplicates.firstOrNull { it.tag != branchChannelTag(branch) } ?: duplicates.first()
+                }
+                .sortedWith(
+                    compareByDescending<BranchVersion> { it.versionCode ?: -1L }
+                        .thenByDescending { it.publishedAt.orEmpty() },
+                )
+                .mapIndexed { index, version -> version.copy(isLatest = index == 0) }
+        }.getOrNull()
+    }
+
+    private fun releaseVersionForBranch(tag: String, title: String, branch: String): String? {
+        val branchHash = branchChannelTag(branch).removePrefix(CHANNEL_TAG_PREFIX)
+        val version = when {
+            tag == branchChannelTag(branch) ->
+                Regex("""\\bv(\\d+\\.\\d+\\.\\d+)$""").find(title)?.groupValues?.get(1)
+            branch.equals(DEFAULT_SOURCE_BRANCH, ignoreCase = true) && tag.matches(Regex("^v\\d+\\.\\d+\\.\\d+$")) ->
+                tag.removePrefix("v")
+            isBetaBuildBranch(branch) && tag.matches(Regex("^beta-v\\d+\\.\\d+\\.\\d+$")) ->
+                tag.removePrefix("beta-v")
+            tag.startsWith("opentasker-branch-build-$branchHash-v") ->
+                tag.removePrefix("opentasker-branch-build-$branchHash-v")
+            else -> null
+        } ?: return null
+        return version.takeIf { SemanticVersion.parse(it) != null }
+    }
+
+    private fun isAtLeastVersion(version: String, minimum: String): Boolean {
+        val current = SemanticVersion.parse(version) ?: return false
+        val required = SemanticVersion.parse(minimum) ?: return false
+        return current >= required
+    }
 
     /** Parses a GitHub branches API page while retaining its raw pagination boundary. */
     fun parseBranchPage(payload: String): BranchPage? {
