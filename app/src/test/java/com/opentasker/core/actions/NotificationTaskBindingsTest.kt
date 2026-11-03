@@ -12,6 +12,50 @@ class NotificationTaskBindingsTest {
     )
 
     @Test
+    fun labeledButtonWithoutTaskBindingBecomesDismissButton() {
+        val plan = NotificationTaskBindings.planButton(
+            mapOf("button1_label" to "Dismiss"),
+            buttonIndex = 1,
+            candidates = emptyList(),
+        )
+
+        assertEquals(NotificationButtonPlan.Dismiss(1, "Dismiss"), plan)
+    }
+
+    @Test
+    fun emptyTaskAndEmptyLabelLeaveButtonSlotUnused() {
+        val plan = NotificationTaskBindings.planButton(
+            emptyMap(),
+            buttonIndex = 2,
+            candidates = tasks,
+        )
+
+        assertEquals(null, plan)
+    }
+
+    @Test
+    fun selectedTaskStillRunsAndUsesItsNameWhenButtonLabelIsBlank() {
+        val plan = NotificationTaskBindings.planButton(
+            mapOf("button3_task_id" to "12"),
+            buttonIndex = 3,
+            candidates = tasks,
+        )
+
+        assertEquals(NotificationButtonPlan.RunTask(3, tasks[1], "Evening"), plan)
+    }
+
+    @Test
+    fun missingSelectedTaskDoesNotSilentlyBecomeDismissButton() {
+        val plan = NotificationTaskBindings.planButton(
+            mapOf("button1_label" to "Run", "button1_task_id" to "99"),
+            buttonIndex = 1,
+            candidates = tasks,
+        )
+
+        assertTrue(plan is NotificationButtonPlan.Invalid)
+    }
+
+    @Test
     fun immutableIdSurvivesTaskRename() {
         val reference = NotificationTaskBindings.parse(mapOf("button1_task_id" to "11"), 1)!!
         val renamed = listOf(NotificationTaskCandidate(11, "Renamed"))
