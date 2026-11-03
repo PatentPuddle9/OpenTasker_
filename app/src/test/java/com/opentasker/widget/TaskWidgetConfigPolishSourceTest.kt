@@ -21,10 +21,12 @@ class TaskWidgetConfigPolishSourceTest {
     fun widgetTaskPickerUsesPremiumCardsAndGuidedEmptyState() {
         val source = sourceRoot.resolve("com/opentasker/widget/TaskWidgetConfigActivity.kt").readText()
 
-        assertTrue("Widget picker should explain the assignment flow", source.contains("R.string.widget_choose_task_title"))
+        assertTrue("Widget picker should explain the task widget setup", source.contains("Create a task widget"))
         assertTrue("Widget picker should keep a summary/header card", source.contains("WidgetConfigHeader"))
         assertTrue("Empty state should explain how to unlock widget assignment", source.contains("R.string.widget_empty_title"))
         assertTrue("Task rows should expose an explicit assign affordance", source.contains("R.string.widget_assign"))
+        assertTrue("Widget picker should expose the icon library", source.contains("WidgetIconCatalog.all"))
+        assertTrue("Widget picker should expose a live preview", source.contains("WidgetLivePreview"))
         assertFalse("Widget picker should not regress to plain divider list rows", source.contains("HorizontalDivider"))
     }
 
