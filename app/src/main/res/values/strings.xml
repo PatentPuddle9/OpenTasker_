@@ -439,7 +439,7 @@
     <string name="setup_overlay_access_body">Needed for scene overlays and controls displayed over other apps.</string>
     <string name="setup_overlay_access_required_for">Scenes, overlay UI</string>
     <string name="setup_install_unknown_apps_title">Install unknown apps</string>
-    <string name="setup_install_unknown_apps_body">Allows OpenTasker to launch Android's installer for a downloaded APK, such as an app update. Android still asks you to confirm the installation; this does not allow silent installs.</string>
+    <string name="setup_install_unknown_apps_body">Allows OpenTasker to launch Android\'s installer for a downloaded APK, such as an app update. Android still asks you to confirm the installation; this does not allow silent installs.</string>
     <string name="setup_install_unknown_apps_required_for">Installing downloaded APK updates</string>
     <string name="ui_message_run_busy">Something is already running. Wait for it to finish.</string>
     <string name="action_run_alone_busy">Running…</string>
@@ -1451,7 +1451,7 @@
     <string name="setup_update_check_now">Check for updates</string>
     <string name="setup_update_checking">Checking for updates…</string>
     <string name="setup_update_status_checking">Checking GitHub for a newer release</string>
-    <string name="setup_update_status_failed">Couldn't check for updates. Check your connection and try again.</string>
+    <string name="setup_update_status_failed">Couldn\'t check for updates. Check your connection and try again.</string>
     <string name="setup_update_enabled">Release update checks enabled</string>
     <string name="setup_update_disabled">Release update checks disabled</string>
     <string name="setup_update_status_off">Off</string>
