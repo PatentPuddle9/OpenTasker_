@@ -195,3 +195,72 @@ jobs:
               --prerelease
           fi
           echo "Published $ASSET_NAME for branch $BUILD_BRANCH ($VERSION)."
+
+      - name: Publish immutable branch version
+        if: steps.build.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_BRANCH: ${{ steps.build.outputs.branch }}
+          BUILD_SHA: ${{ steps.build.outputs.head_sha }}
+          BUILD_RUN_ID: ${{ steps.build.outputs.run_id }}
+          BUILD_RUN_NUMBER: ${{ steps.build.outputs.run_number }}
+          VERSION: ${{ steps.artifact.outputs.version }}
+          VERSION_CODE: ${{ steps.artifact.outputs.version_code }}
+          APK_PATH: ${{ steps.artifact.outputs.apk_path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch_hash="$(printf '%s' "$BUILD_BRANCH" | sha256sum | cut -d' ' -f1)"
+          version_tag="opentasker-branch-build-$branch_hash-v$VERSION"
+          asset_name="OpenTasker-branch-$branch_hash-v$VERSION-debug.apk"
+          version_apk="$RUNNER_TEMP/$asset_name"
+          cp "$APK_PATH" "$version_apk"
+          apk_size="$(stat -c '%s' "$version_apk")"
+          if (( apk_size <= 0 || apk_size > 167772160 )); then
+            echo "::error::Branch version APK size is outside the supported update limit."
+            exit 1
+          fi
+
+          source_protocol="app/src/main/java/com/opentasker/core/updates/UpdateCheckProtocol.kt"
+          source_worker="app/src/main/java/com/opentasker/core/updates/UpdateCheckWorker.kt"
+          source_setup="app/src/main/java/com/opentasker/ui/screens/PermissionOnboardingScreen.kt"
+          if [[ -f "$source_protocol" && -f "$source_worker" && -f "$source_setup" ]] &&
+             grep -q "UpdateCheckSetupCard" "$source_setup" &&
+             grep -q "UpdateCheckWorker" "$source_worker"; then
+            update_support="available"
+          else
+            update_support="not included"
+          fi
+
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID"
+          marker="<!-- opentasker-branch-version:$branch_hash:$VERSION -->"
+          notes_file="$RUNNER_TEMP/immutable-branch-version-notes.md"
+          {
+            printf 'Published APK for branch **%s**.\n\n' "$BUILD_BRANCH"
+            printf 'Version: **%s**\n\n' "$VERSION"
+            printf 'Android versionCode: **%s**\n\n' "$VERSION_CODE"
+            printf 'Source commit: `%s`\n\n' "$BUILD_SHA"
+            printf 'In-app updates: **%s**\n\n' "$update_support"
+            printf 'APK: **%s**\n\n' "$asset_name"
+            printf 'Built by [workflow run #%s](%s).\n\n' "$BUILD_RUN_NUMBER" "$run_url"
+            printf '%s\n' "$marker"
+          } > "$notes_file"
+
+          if gh release view "$version_tag" --repo "$GITHUB_REPOSITORY" --json body,assets > "$RUNNER_TEMP/immutable-existing-release.json" 2>/dev/null; then
+            existing_body="$(jq -r '.body // ""' "$RUNNER_TEMP/immutable-existing-release.json")"
+            if [[ "$existing_body" != *"$marker"* ]] ||
+               ! jq -e --arg name "$asset_name" '.assets[]? | select(.name == $name)' "$RUNNER_TEMP/immutable-existing-release.json" >/dev/null; then
+              echo "::error::Immutable branch version $version_tag already exists but does not match this build. Refusing to replace it."
+              exit 1
+            fi
+            echo "Immutable branch version $version_tag already exists for this exact build."
+            exit 0
+          fi
+
+          gh release create "$version_tag" "$version_apk" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "OpenTasker $BUILD_BRANCH v$VERSION" \
+            --target "$BUILD_SHA" \
+            --notes-file "$notes_file" \
+            --prerelease
+          echo "Published immutable version $version_tag for branch $BUILD_BRANCH."
