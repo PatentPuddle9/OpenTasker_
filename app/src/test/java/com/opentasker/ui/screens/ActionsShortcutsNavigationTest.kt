@@ -17,7 +17,7 @@ class ActionsShortcutsNavigationTest {
 
     @Test
     fun primaryNavigationUsesActionsAndShortcutsInsteadOfSeparateTasks() {
-        val shell = source("src/main/java/com/opentasker/ui/screens/AppShellChrome.kt")
+        val shell = source("app/src/main/java/com/opentasker/ui/screens/AppShellChrome.kt")
         assertTrue(shell.contains("Actions(R.string.nav_actions)"))
         assertTrue(shell.contains("Shortcuts(R.string.nav_shortcuts)"))
         assertTrue(shell.contains("OpenTaskerScreen.Actions"))
@@ -42,7 +42,7 @@ class ActionsShortcutsNavigationTest {
     @Test
     fun shortcutsListCanCreateAndEditWidgetsAndWidgetProfilesAreOwned() {
         val shortcuts = source("src/main/java/com/opentasker/ui/screens/ShortcutsScreen.kt")
-        val provider = source("src/main/java/com/opentasker/widget/TaskWidgetProvider.kt")
+        val provider = source("app/src/main/java/com/opentasker/widget/TaskWidgetProvider.kt")
         val links = source("src/main/java/com/opentasker/widget/WidgetProfileLinks.kt")
         val config = source("src/main/java/com/opentasker/widget/TaskWidgetConfigActivity.kt")
         val viewModel = source("src/main/java/com/opentasker/ui/screens/ActiveAutomationViewModel.kt")
