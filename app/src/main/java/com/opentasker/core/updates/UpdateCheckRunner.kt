@@ -1,6 +1,7 @@
 package com.opentasker.core.updates
 
 import android.content.Context
+import com.opentasker.app.BuildConfig
 import com.opentasker.core.actions.HttpRequestAction
 import com.opentasker.core.engine.ActionContext
 import com.opentasker.core.engine.ActionResult
@@ -48,7 +49,7 @@ object UpdateCheckRunner {
 
     suspend fun checkAndRecord(
         context: Context,
-        branch: String = UpdateCheckProtocol.DEFAULT_SOURCE_BRANCH,
+        branch: String = BuildConfig.UPDATE_SOURCE_BRANCH,
     ): UpdateCheckRunResult {
         if (!UpdateCheckProtocol.isSelectableBranch(branch)) return UpdateCheckRunResult.Failed
         val appContext = context.applicationContext

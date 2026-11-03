@@ -164,6 +164,24 @@ require(Regex("^\\d+\\.\\d+\\.\\d+$").matches(appVersionName)) {
     "openTaskerVersionName must be a stable semantic version (major.minor.patch)."
 }
 require(appVersionCode > 0) { "openTaskerVersionCode must be positive." }
+
+// Embed the build's source branch so installed APKs can identify their own update channel.
+// UI-overhaul-experiment was renamed to BETA; keep the old name as a compatibility alias.
+val appBuildBranch = providers.gradleProperty("openTaskerBuildBranch")
+    .orElse(providers.environmentVariable("GITHUB_REF_NAME"))
+    .orElse("Experimental")
+    .get()
+require(appBuildBranch.isNotBlank() && appBuildBranch == appBuildBranch.trim()) {
+    "openTaskerBuildBranch must be a non-blank branch name without surrounding whitespace."
+}
+val appUpdateSourceBranch = when {
+    appBuildBranch.equals("BETA", ignoreCase = true) -> "BETA"
+    appBuildBranch.equals("UI-overhaul-experiment", ignoreCase = true) -> "BETA"
+    else -> appBuildBranch
+}
+val appIsBetaBuild = appUpdateSourceBranch == "BETA"
+fun String.toBuildConfigStringLiteral(): String =
+    "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 // F-Droid store listing limits, from the F-Droid build metadata reference.
 val FDROID_SHORT_DESCRIPTION_MAX_CHARS = 80
 val FDROID_CHANGELOG_MAX_CHARS = 500
@@ -222,6 +240,10 @@ android {
         versionName = appVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "DISTRIBUTION", "\"$selectedDistribution\"")
+        buildConfigField("String", "BUILD_BRANCH", appBuildBranch.toBuildConfigStringLiteral())
+        buildConfigField("String", "UPDATE_SOURCE_BRANCH", appUpdateSourceBranch.toBuildConfigStringLiteral())
+        buildConfigField("String", "BUILD_CHANNEL", (if (appIsBetaBuild) "Beta" else "Experimental").toBuildConfigStringLiteral())
+        buildConfigField("Boolean", "IS_BETA", appIsBetaBuild.toString())
         buildConfigField("Boolean", "SMS_ACTION_AVAILABLE", smsActionAvailable.toString())
         buildConfigField("Boolean", "SMS_RECEIVE_AVAILABLE", smsReceiveAvailable.toString())
         manifestPlaceholders["smsPermissionName"] = if (smsActionAvailable) "android.permission.SEND_SMS" else "android.permission.INTERNET"

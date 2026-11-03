@@ -119,6 +119,7 @@ jobs:
           ./gradlew \
             -PopenTaskerVersionName="$OPENTASKER_VERSION_NAME" \
             -PopenTaskerVersionCode="$OPENTASKER_VERSION_CODE" \
+            -PopenTaskerBuildBranch="$GITHUB_REF_NAME" \
             :app:assembleDebug --stacktrace --dependency-verification=off
 
       - name: Write build metadata

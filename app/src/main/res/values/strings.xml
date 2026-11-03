@@ -1448,6 +1448,7 @@
     <string name="header_diagnostics_detail">Engine, crashes, and app logs</string>
     <string name="header_settings_detail">App-wide behavior and recovery</string>
     <string name="setup_update_title">Release update checks</string>
+    <string name="setup_update_beta_badge">BETA</string>
     <string name="setup_update_body">Checks the selected GitHub branch for its latest published build. Download and install verifies that branch\'s APK before Android\'s installer opens.</string>
     <string name="setup_update_branch_label">Update source branch</string>
     <string name="setup_update_branch_body">Choose which branch OpenTasker checks and installs updates from.</string>

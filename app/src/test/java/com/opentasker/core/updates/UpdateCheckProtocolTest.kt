@@ -6,6 +6,15 @@ import org.junit.Test
 
 class UpdateCheckProtocolTest {
     @Test
+    fun betaBuildBranchRecognizesCurrentAndLegacyNames() {
+        assertEquals("BETA", UpdateCheckProtocol.normalizeBuildSourceBranch("BETA"))
+        assertEquals("BETA", UpdateCheckProtocol.normalizeBuildSourceBranch("UI-overhaul-experiment"))
+        assertTrue(UpdateCheckProtocol.isBetaBuildBranch("BETA"))
+        assertTrue(UpdateCheckProtocol.isBetaBuildBranch("UI-overhaul-experiment"))
+        assertTrue(!UpdateCheckProtocol.isBetaBuildBranch("Experimental"))
+    }
+
+    @Test
     fun stableNewerReleaseIsReportedWithVerifiedApkAsset() {
         val result = UpdateCheckProtocol.parseLatestRelease(
             release(tag = "v0.2.85"),
