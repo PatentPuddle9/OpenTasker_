@@ -356,6 +356,7 @@ private fun ProfileCard(
 ) {
     val widgetOwned = profile.widgetId != null
     val profileState = when {
+        widgetOwned -> "Home-screen shortcut"
         profile.requiresRiskAcknowledgement -> stringResource(R.string.imported_profile_review_required)
         profile.enabled -> stringResource(R.string.label_enabled)
         else -> stringResource(R.string.label_paused)
