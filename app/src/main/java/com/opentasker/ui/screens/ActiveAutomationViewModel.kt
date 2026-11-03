@@ -1046,6 +1046,12 @@ class ActiveAutomationViewModel(
         }
 
     fun deleteProfile(profile: Profile) {
+        if (profile.widgetId != null) {
+            viewModelScope.launch {
+                events.send(UiMessage.Error("This profile is owned by its home-screen widget. Remove the widget to delete it."))
+            }
+            return
+        }
         viewModelScope.launch {
             runCatching {
                 db.withTransaction {
