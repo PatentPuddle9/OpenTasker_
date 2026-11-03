@@ -317,7 +317,7 @@ private fun VariableRow(
                         },
                     ),
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(11.dp),
+                    modifier = Modifier.padding(10.dp).size(22.dp),
                 )
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {

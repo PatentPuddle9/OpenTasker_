@@ -1685,7 +1685,7 @@ private fun ThemeSetupCard(
                     Icons.Outlined.Palette,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier.padding(12.dp).size(22.dp),
                 )
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -1779,7 +1779,7 @@ private fun DirectBootSetupCard(
                     Icons.Outlined.Security,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier.padding(12.dp).size(22.dp),
                 )
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
