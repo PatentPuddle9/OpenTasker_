@@ -128,7 +128,7 @@ jobs:
 
           gh run download "$BUILD_RUN_ID" \
             --repo "$GITHUB_REPOSITORY" \
-            --name OpenTasker-debug-apk \
+            --name "OpenTasker-${BUILD_BRANCH}-debug-apk" \
             --dir "$artifact_dir"
 
           mapfile -t apk_files < <(find "$artifact_dir" -type f -name '*.apk' -print)
