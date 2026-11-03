@@ -781,7 +781,7 @@ class ActiveAutomationViewModel(
         burstLimit: Int? = null,
         overflowPolicy: ProfileOverflowPolicy = ProfileOverflowPolicy.LOG,
         fallbackTaskId: Long? = null,
-        icon: String = "bolt",
+        icon: String = "⚡︎",
         onSaved: () -> Unit = {},
     ) =
         launchWithMessage(R.string.ui_message_profile_created, onSaved = onSaved) {
