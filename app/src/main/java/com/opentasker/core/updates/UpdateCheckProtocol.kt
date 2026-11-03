@@ -1,5 +1,6 @@
 package com.opentasker.core.updates
 
+import com.opentasker.app.BuildConfig
 import java.security.MessageDigest
 import java.util.Locale
 import kotlinx.serialization.json.Json
@@ -86,7 +87,7 @@ object UpdateCheckProtocol {
     fun branchApkUrl(branch: String): String =
         RELEASE_DOWNLOAD_URL_PREFIX + branchChannelTag(branch) + "/" + branchAssetName(branch)
 
-    fun requestArguments(branch: String = DEFAULT_SOURCE_BRANCH): Map<String, String> = mapOf(
+    fun requestArguments(branch: String = BuildConfig.UPDATE_SOURCE_BRANCH): Map<String, String> = mapOf(
         "method" to "GET",
         "url" to branchReleaseApiUrl(branch),
         "headers" to ACCEPT_HEADER,

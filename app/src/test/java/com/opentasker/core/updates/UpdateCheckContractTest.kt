@@ -72,6 +72,8 @@ class UpdateCheckContractTest {
         assertTrue(settings.contains("BuildConfig.UPDATE_SOURCE_BRANCH"))
         assertTrue(settings.contains("UpdateCheckProtocol.normalizeBuildSourceBranch"))
         assertTrue(runner.contains("branch: String = BuildConfig.UPDATE_SOURCE_BRANCH"))
+        val protocol = read("app/src/main/java/com/opentasker/core/updates/UpdateCheckProtocol.kt")
+        assertTrue(protocol.contains("branch: String = BuildConfig.UPDATE_SOURCE_BRANCH"))
         assertTrue(setup.contains("BuildConfig.IS_BETA"))
         assertTrue(setup.contains("setup_update_beta_badge"))
     }
