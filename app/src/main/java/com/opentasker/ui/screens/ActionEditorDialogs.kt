@@ -456,38 +456,38 @@ internal fun ActionConfigDialog(
                     )
                     Spacer(Modifier.height(12.dp))
                     if (!FlowControl.isControl(state.metadata.id)) {
-                    val waitStateDescription = stringResource(
-                        if (waitForCompletion) R.string.label_on else R.string.label_off,
-                    )
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),
-                        shape = RoundedCornerShape(DesignSystem.Radii.lg),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag(ACTION_WAIT_FOR_FINISH_TAG)
-                            .toggleable(
-                                value = waitForCompletion,
-                                role = Role.Switch,
-                                onValueChange = { waitForCompletion = it },
-                            )
-                            .semantics { stateDescription = waitStateDescription },
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text("Wait for this action to finish", style = MaterialTheme.typography.labelLarge)
-                                Text(
-                                    "When turned off, the next action may start while this one is still running. Try/retry and foreach blocks remain sequential.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        val waitStateDescription = stringResource(
+                            if (waitForCompletion) R.string.label_on else R.string.label_off,
+                        )
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),
+                            shape = RoundedCornerShape(DesignSystem.Radii.lg),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag(ACTION_WAIT_FOR_FINISH_TAG)
+                                .toggleable(
+                                    value = waitForCompletion,
+                                    role = Role.Switch,
+                                    onValueChange = { waitForCompletion = it },
                                 )
+                                .semantics { stateDescription = waitStateDescription },
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("Wait for this action to finish", style = MaterialTheme.typography.labelLarge)
+                                    Text(
+                                        "When off, the next action can start while this one is running. Try/retry and foreach blocks always remain sequential.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                Switch(checked = waitForCompletion, onCheckedChange = null)
                             }
-                            Switch(checked = waitForCompletion, onCheckedChange = null)
                         }
-                    }
-                    Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(8.dp))
                     }
                     val continueStateDescription = stringResource(
                         if (continueOnError) R.string.label_on else R.string.label_off,
