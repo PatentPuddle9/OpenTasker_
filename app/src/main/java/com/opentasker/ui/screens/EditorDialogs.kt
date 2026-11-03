@@ -384,6 +384,10 @@ internal fun ProfileEditorDialog(
     onDismiss: () -> Unit,
     onSave: (String, Boolean, Long, Long?, Int, Int, Int, AutomationMode, String?, ProfileLifetime, Long?, Int?, Int?, ProfileOverflowPolicy, Long?, String) -> Unit,
     onSimulate: ((Profile) -> Unit)? = null,
+    onAddContext: () -> Unit = {},
+    onEditContextLogic: () -> Unit = {},
+    onEditContext: (Int, ContextSpec) -> Unit = { _, _ -> },
+    onDeleteContext: (Int) -> Unit = {},
     onEditTask: (Task) -> Unit = {},
     onAddAction: (Task) -> Unit = {},
     onEditAction: (Task, Int, ActionSpec) -> Unit = { _, _, _ -> },
@@ -573,6 +577,39 @@ internal fun ProfileEditorDialog(
                         )
                     }
     
+                if (!widgetOwned && profile != null) {
+                    Text("Trigger conditions", style = MaterialTheme.typography.titleMedium)
+                    if (profile.contexts.isEmpty()) {
+                        Text(
+                            "This profile has no trigger conditions yet. Add one to decide when it should run.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        profile.contexts.forEachIndexed { index, context ->
+                            ContextRow(
+                                index = index,
+                                context = context,
+                                onEdit = { onEditContext(index, context) },
+                                onDelete = { onDeleteContext(index) },
+                            )
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        OutlinedButton(onClick = onAddContext, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Filled.Add, contentDescription = null)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Add trigger")
+                        }
+                        if (profile.contexts.size >= 2) {
+                            TextButton(onClick = onEditContextLogic) { Text("Logic") }
+                        }
+                    }
+                }
                 } else {
                     Text(
                         "This profile is managed by a home-screen widget. Edit the task actions below; widget appearance is managed in Shortcuts.",
