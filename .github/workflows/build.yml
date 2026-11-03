@@ -50,12 +50,30 @@ jobs:
             exit 1
           fi
 
+          # The secret may have been pasted with terminal line wrapping. Remove
+          # whitespace, but reject every other non-Base64 character.
+          encoded_key="$(printf '%s' "$DEBUG_KEYSTORE_BASE64" | tr -d '[:space:]')"
+          if [[ ! "$encoded_key" =~ ^[A-Za-z0-9+/]*={0,2}$ ]] ||
+             (( ${#encoded_key} == 0 || ${#encoded_key} % 4 != 0 )); then
+            echo "::error::DEBUG_KEYSTORE_BASE64 is not a complete Base64 value. Recreate it from ~/.android/debug.keystore and replace the repository secret."
+            exit 1
+          fi
+
           mkdir -p ~/.android
-          printf '%s' "$DEBUG_KEYSTORE_BASE64" | base64 --decode > ~/.android/debug.keystore
+          if ! printf '%s' "$encoded_key" | base64 --decode > ~/.android/debug.keystore; then
+            rm -f ~/.android/debug.keystore
+            echo "::error::DEBUG_KEYSTORE_BASE64 could not be decoded. The saved secret may be truncated or corrupted."
+            exit 1
+          fi
           chmod 600 ~/.android/debug.keystore
 
-          key_entry="$(keytool -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey)"
+          if ! key_entry="$(keytool -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey 2>&1)"; then
+            rm -f ~/.android/debug.keystore
+            echo "::error::Decoded file is not a usable debug keystore with alias androiddebugkey. Check the secret and original file."
+            exit 1
+          fi
           if ! grep -q "PrivateKeyEntry" <<< "$key_entry"; then
+            rm -f ~/.android/debug.keystore
             echo "::error::The saved keystore does not contain the expected androiddebugkey private key."
             exit 1
           fi
