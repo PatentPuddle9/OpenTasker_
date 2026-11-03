@@ -1102,8 +1102,8 @@ fun ActiveAutomationUi(
             profile = null,
             tasks = (projectTasks + listOfNotNull(pendingProfileTask)).distinctBy { it.id },
             onDismiss = { showCreateProfileDialog = false },
-            onSave = { name, enabled, enterTaskId, exitTaskId, cooldown, priority, gracePeriod, automationMode, group, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon ->
-                viewModel.createProfile(name, enabled, enterTaskId, exitTaskId, cooldown, automationMode, group, pendingProfileTask?.projectId ?: (selectedProjectId ?: com.opentasker.core.model.DEFAULT_PROJECT_ID), priority, gracePeriod, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon) {
+            onSave = { name, enabled, enterTaskId, exitTaskId, cooldown, priority, gracePeriod, automationMode, group, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon, contexts, contextExpression ->
+                viewModel.createProfile(name, enabled, enterTaskId, exitTaskId, cooldown, automationMode, group, pendingProfileTask?.projectId ?: (selectedProjectId ?: com.opentasker.core.model.DEFAULT_PROJECT_ID), priority, gracePeriod, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon, contexts, contextExpression) {
                     pendingProfileTask = null
                     showCreateProfileDialog = false
                 }
@@ -1176,7 +1176,7 @@ fun ActiveAutomationUi(
             profile = profile,
             tasks = remember(profile, projectTasks, tasks) { profileEditorTasks(profile, projectTasks, tasks) },
             onDismiss = { clearProfileDialog() },
-            onSave = { name, enabled, enterTaskId, exitTaskId, cooldown, priority, gracePeriod, automationMode, group, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon ->
+            onSave = { name, enabled, enterTaskId, exitTaskId, cooldown, priority, gracePeriod, automationMode, group, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon, contexts, contextExpression ->
                 viewModel.updateProfile(profile.copy(
                         name = name.trim(),
                         enabled = enabled,
@@ -1190,6 +1190,8 @@ fun ActiveAutomationUi(
                         fallbackTaskId = fallbackTaskId,
                         lifetimeConsumed = if (lifetime == profile.lifetime) profile.lifetimeConsumed else false,
                         icon = icon,
+                        contexts = contexts,
+                        contextExpression = contextExpression,
                     ),
                     onSaved = { clearProfileDialog() },
                 )
