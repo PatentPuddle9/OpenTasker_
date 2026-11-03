@@ -34,6 +34,45 @@ jobs:
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
           sdkmanager "platform-tools" "build-tools;36.0.0"
 
+      - name: Calculate unique app version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          base_version="$(sed -nE 's/^[[:space:]]*val appVersionName = "([^"]+)".*/\1/p' app/build.gradle.kts | head -n 1)"
+          base_version_code="$(sed -nE 's/^[[:space:]]*val appVersionCode = ([0-9]+).*/\1/p' app/build.gradle.kts | head -n 1)"
+
+          if [[ ! "$base_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+             [[ ! "$base_version_code" =~ ^[0-9]+$ ]]; then
+            echo "::error::Could not read the base app version from app/build.gradle.kts."
+            exit 1
+          fi
+
+          IFS='.' read -r major minor base_patch <<< "$base_version"
+          run_number="$GITHUB_RUN_NUMBER"
+          version_patch=$((base_patch + run_number))
+          version_code=$((base_version_code + run_number))
+          if (( version_code <= 0 || version_code > 2100000000 )); then
+            echo "::error::Generated Android versionCode is outside the supported range."
+            exit 1
+          fi
+
+          version_name="$major.$minor.$version_patch"
+          echo "OPENTASKER_VERSION_NAME=$version_name" >> "$GITHUB_ENV"
+          echo "OPENTASKER_VERSION_CODE=$version_code" >> "$GITHUB_ENV"
+          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+          echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
+
+          mkdir -p app/build/outputs/apk/debug
+          {
+            printf 'versionName=%s\\n' "$version_name"
+            printf 'versionCode=%s\\n' "$version_code"
+            printf 'runNumber=%s\\n' "$run_number"
+          } > app/build/outputs/apk/debug/build-info.txt
+
+          echo "This run will build OpenTasker v$version_name (Android versionCode $version_code)."
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
@@ -83,11 +122,17 @@ jobs:
         run: ./gradlew :app:verifyLocaleResources --stacktrace --dependency-verification=off
 
       - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --stacktrace --dependency-verification=off
+        run: |
+          ./gradlew \
+            -PopenTaskerVersionName="$OPENTASKER_VERSION_NAME" \
+            -PopenTaskerVersionCode="$OPENTASKER_VERSION_CODE" \
+            :app:assembleDebug --stacktrace --dependency-verification=off
 
-      - name: Upload APK
+      - name: Upload APK and build metadata
         uses: actions/upload-artifact@v4
         with:
           name: OpenTasker-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/build-info.txt
           if-no-files-found: error
