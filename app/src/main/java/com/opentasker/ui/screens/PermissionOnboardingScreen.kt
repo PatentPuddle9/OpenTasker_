@@ -77,6 +77,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
@@ -1038,6 +1039,13 @@ private fun UpdateCheckSetupCard(
     onInstallUpdate: () -> Unit,
 ) {
     var branchMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    val showNonDefaultBranchWarning =
+        UpdateCheckProtocol.requiresNonDefaultBranchWarning(state.selectedBranch)
+    val branchWarningColor = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) {
+        DesignSystem.SemanticColor.warningDark
+    } else {
+        DesignSystem.SemanticColor.warningLight
+    }
     val stateText = when {
         checking -> stringResource(R.string.setup_update_status_checking, state.selectedBranch)
         downloading -> stringResource(R.string.setup_update_status_downloading, downloadProgress)
@@ -1087,11 +1095,19 @@ private fun UpdateCheckSetupCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = DesignSystem.Screen.cardPadding,
+                    vertical = DesignSystem.Spacing.sm,
+                ),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.md),
         ) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(
+                Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.xs),
+            ) {
                 Text(
                     stringResource(R.string.setup_update_branch_label),
                     style = MaterialTheme.typography.titleSmall,
@@ -1125,6 +1141,55 @@ private fun UpdateCheckSetupCard(
                                 },
                             )
                         }
+                }
+            }
+        }
+        if (showNonDefaultBranchWarning) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = DesignSystem.Screen.cardPadding)
+                    .padding(bottom = DesignSystem.Spacing.sm),
+                shape = MaterialTheme.shapes.medium,
+                color = branchWarningColor.copy(alpha = 0.12f),
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                border = BorderStroke(
+                    1.dp,
+                    branchWarningColor.copy(alpha = DesignSystem.Opacity.subtleBorder),
+                ),
+                tonalElevation = DesignSystem.Elevation.sm,
+            ) {
+                Row(
+                    modifier = Modifier.padding(
+                        horizontal = DesignSystem.Screen.cardPadding,
+                        vertical = DesignSystem.Spacing.sm,
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.sm),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = null,
+                        tint = branchWarningColor,
+                        modifier = Modifier.size(DesignSystem.ComponentSize.iconMedium),
+                    )
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.xs),
+                    ) {
+                        Text(
+                            stringResource(R.string.setup_update_branch_non_main_title),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = branchWarningColor,
+                        )
+                        Text(
+                            stringResource(
+                                R.string.setup_update_branch_non_main_warning,
+                                state.selectedBranch,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }

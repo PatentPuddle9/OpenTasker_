@@ -1450,7 +1450,9 @@
     <string name="setup_update_title">Release update checks</string>
     <string name="setup_update_body">Checks the selected GitHub branch for its latest published build. Download and install verifies that branch's APK before Android's installer opens.</string>
     <string name="setup_update_branch_label">Update source branch</string>
-    <string name="setup_update_branch_body">Choose which branch OpenTasker checks and installs updates from. The master branch is excluded.</string>
+    <string name="setup_update_branch_body">Choose which branch OpenTasker checks and installs updates from.</string>
+    <string name="setup_update_branch_non_main_title">A non-main branch is selected</string>
+    <string name="setup_update_branch_non_main_warning">Updates are coming from %1$s, not the main Experimental branch. It may contain unfinished features or unstable builds.</string>
     <string name="setup_update_branch_loading">Loading available branches…</string>
     <string name="setup_update_branch_failed">Couldn\'t load branches.</string>
     <string name="setup_update_branch_retry">Retry</string>
