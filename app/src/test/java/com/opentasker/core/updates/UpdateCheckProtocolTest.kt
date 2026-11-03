@@ -91,15 +91,54 @@ class UpdateCheckProtocolTest {
     }
 
     @Test
-    fun requestTargetsTheConfiguredForkReleaseFeed() {
-        val request = UpdateCheckProtocol.requestArguments()
-        assertEquals(
-            "https://api.github.com/repos/PatentPuddle9/OpenTasker_/releases/latest",
-            request["url"],
+    fun branchDiscoveryExcludesMasterAndDefaultsToExperimental() {
+        val branches = UpdateCheckProtocol.parseBranchesResponse(
+            """[{"name":"feature/new-ui"},{"name":"master"},{"name":"Experimental"},{"name":"release-candidate"}]""",
         )
+        assertEquals(listOf("Experimental", "feature/new-ui", "release-candidate"), branches)
+        assertTrue(!UpdateCheckProtocol.isSelectableBranch("master"))
+        assertTrue(!UpdateCheckProtocol.isSelectableBranch("MASTER"))
+        assertTrue(runCatching { UpdateCheckProtocol.branchChannelTag("master") }.isFailure)
+    }
+
+    @Test
+    fun selectedBranchGetsItsOwnVerifiedPrereleaseAndAsset() {
+        val branch = "UI-overhaul-experiment"
+        val payload = branchRelease(branch, "0.2.120")
+        assertEquals(
+            UpdateCheckResult.Available(
+                version = "0.2.120",
+                url = UpdateCheckProtocol.RELEASES_URL_PREFIX + UpdateCheckProtocol.branchChannelTag(branch),
+                apkUrl = UpdateCheckProtocol.branchApkUrl(branch),
+                apkSizeBytes = 4096L,
+                apkSha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            ),
+            UpdateCheckProtocol.parseBranchRelease(payload, "0.2.119", branch),
+        )
+        assertTrue(
+            UpdateCheckProtocol.parseBranchRelease(payload, "0.2.120", branch) is UpdateCheckResult.NoUpdate,
+        )
+        assertTrue(
+            UpdateCheckProtocol.parseBranchRelease(payload, "0.2.119", "Experimental") is UpdateCheckResult.Invalid,
+        )
+        assertTrue(
+            UpdateCheckProtocol.parseBranchRelease(payload, "0.2.119", "master") is UpdateCheckResult.Invalid,
+        )
+    }
+
+    @Test
+    fun branchRequestUsesTheSelectedBranchChannelAndNoCredentials() {
+        val request = UpdateCheckProtocol.requestArguments("Experimental")
+        assertEquals(UpdateCheckProtocol.branchReleaseApiUrl("Experimental"), request["url"])
+        assertEquals(UpdateCheckProtocol.STATUS_VARIABLE, request["status_var"])
         assertEquals(
             "https://github.com/PatentPuddle9/OpenTasker_/releases/tag/",
             UpdateCheckProtocol.RELEASES_URL_PREFIX,
+        )
+        val branchesRequest = UpdateCheckProtocol.branchesRequestArguments(1)
+        assertEquals(
+            "https://api.github.com/repos/PatentPuddle9/OpenTasker_/branches?per_page=100&page=1",
+            branchesRequest["url"],
         )
     }
 
@@ -113,6 +152,30 @@ class UpdateCheckProtocolTest {
         assertEquals(UpdateCheckProtocol.REQUEST_TIMEOUT_SECONDS.toString(), request["timeout_sec"])
         assertTrue(request.keys.none { it.equals("authorization", ignoreCase = true) })
         assertTrue(request.values.none { it.contains("User-Agent", ignoreCase = true) })
+    }
+
+    private fun branchRelease(branch: String, version: String): String {
+        val tag = UpdateCheckProtocol.branchChannelTag(branch)
+        val title = UpdateCheckProtocol.branchReleaseTitlePrefix(branch) + version
+        val asset = UpdateCheckProtocol.branchAssetName(branch)
+        return """
+            {
+              "tag_name": "$tag",
+              "name": "$title",
+              "html_url": "${UpdateCheckProtocol.RELEASES_URL_PREFIX}$tag",
+              "draft": false,
+              "prerelease": true,
+              "assets": [
+                {
+                  "name": "$asset",
+                  "content_type": "application/vnd.android.package-archive",
+                  "browser_download_url": "${UpdateCheckProtocol.branchApkUrl(branch)}",
+                  "size": 4096,
+                  "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                }
+              ]
+            }
+        """.trimIndent()
     }
 
     private fun release(

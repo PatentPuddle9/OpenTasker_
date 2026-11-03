@@ -102,6 +102,16 @@ object UpdateCheckProtocol {
         )
     }
 
+    fun sortBranches(branches: Collection<String>): List<String> =
+        branches.asSequence()
+            .filter(::isSelectableBranch)
+            .distinct()
+            .sortedWith(
+                compareBy<String> { !it.equals(DEFAULT_SOURCE_BRANCH, ignoreCase = true) }
+                    .thenBy { it.lowercase(Locale.ROOT) },
+            )
+            .toList()
+
     /** Parses one GitHub branches API page and intentionally removes master. */
     fun parseBranchesResponse(payload: String): List<String>? {
         if (payload.toByteArray(Charsets.UTF_8).size > MAX_BRANCHES_RESPONSE_BYTES) return null
@@ -111,11 +121,7 @@ object UpdateCheckProtocol {
                     val name = item.jsonObject["name"]?.jsonPrimitive?.content?.trim()
                     name?.takeIf(::isSelectableBranch)
                 }
-                .distinct()
-                .sortedWith(
-                    compareBy<String> { !it.equals(DEFAULT_SOURCE_BRANCH, ignoreCase = true) }
-                        .thenBy { it.lowercase(Locale.ROOT) },
-                )
+                .let(::sortBranches)
         }.getOrNull()
     }
 

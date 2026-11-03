@@ -90,10 +90,6 @@ class UpdateCheckSettings(context: Context) {
         }
     }
 
-    private fun androidx.core.content.SharedPreferencesCompat.clearResult() {
-        // Not used; kept out of call sites so the preference edits stay explicit.
-    }
-
     private fun android.content.SharedPreferences.Editor.clearResult() {
         clearUpdateMetadata()
         remove(KEY_LAST_CHECKED_AT)

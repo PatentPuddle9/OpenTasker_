@@ -147,6 +147,7 @@ import com.opentasker.core.updates.UpdateCheckAvailability
 import com.opentasker.core.updates.UpdateCheckRunResult
 import com.opentasker.core.updates.UpdateCheckRunner
 import com.opentasker.core.updates.UpdateCheckSettings
+import com.opentasker.core.updates.UpdateCheckProtocol
 import com.opentasker.core.updates.UpdateCheckState
 import com.opentasker.core.updates.UpdateCheckWorker
 import com.opentasker.core.updates.UpdateApkDownloader
@@ -264,6 +265,15 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
     )
     val updateCheckState: StateFlow<UpdateCheckState> = _updateCheckState.asStateFlow()
 
+    private val _availableUpdateBranches = MutableStateFlow(listOf(UpdateCheckProtocol.DEFAULT_SOURCE_BRANCH))
+    val availableUpdateBranches: StateFlow<List<String>> = _availableUpdateBranches.asStateFlow()
+
+    private val _updateBranchesLoading = MutableStateFlow(false)
+    val updateBranchesLoading: StateFlow<Boolean> = _updateBranchesLoading.asStateFlow()
+
+    private val _updateBranchesFailed = MutableStateFlow(false)
+    val updateBranchesFailed: StateFlow<Boolean> = _updateBranchesFailed.asStateFlow()
+
     private val _updateCheckInProgress = MutableStateFlow(false)
     val updateCheckInProgress: StateFlow<Boolean> = _updateCheckInProgress.asStateFlow()
 
@@ -295,12 +305,14 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
 
     init {
         refreshExternalState()
+        refreshUpdateBranches()
     }
 
     fun refresh() {
         refreshTick.update { it + 1L }
         refreshExternalState()
         refreshUpdateCheckState()
+        refreshUpdateBranches()
     }
 
     fun setDirectBootEnabled(enabled: Boolean) {
@@ -326,10 +338,52 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
         }
     }
 
+    fun setUpdateSourceBranch(branch: String) {
+        if (!UpdateCheckAvailability.isAvailable()) return
+        if (!UpdateCheckProtocol.isSelectableBranch(branch) || branch !in _availableUpdateBranches.value) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val settings = UpdateCheckSettings(context)
+            settings.setSelectedBranch(branch)
+            _updateCheckState.value = settings.load()
+            _updateCheckFailed.value = false
+            _updateInstallFailed.value = false
+        }
+    }
+
+    fun refreshUpdateBranches() {
+        if (!UpdateCheckAvailability.isAvailable() || _updateBranchesLoading.value) return
+        _updateBranchesLoading.value = true
+        _updateBranchesFailed.value = false
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val branches = UpdateCheckRunner.fetchAvailableBranches(context)
+                if (branches.isNullOrEmpty()) {
+                    _updateBranchesFailed.value = true
+                    return@launch
+                }
+                _availableUpdateBranches.value = branches
+                val settings = UpdateCheckSettings(context)
+                val selectedBranch = settings.load().selectedBranch
+                if (selectedBranch !in branches) {
+                    settings.setSelectedBranch(branches.first())
+                }
+                _updateCheckState.value = settings.load()
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                AppLogger.warn("UpdateCheck", "Could not refresh update branches: ${error.message ?: "unknown error"}")
+                _updateBranchesFailed.value = true
+            } finally {
+                _updateBranchesLoading.value = false
+            }
+        }
+    }
+
     fun downloadAvailableUpdate(onDownloaded: (File) -> Unit) {
         if (!UpdateCheckAvailability.isAvailable() || _updateDownloadInProgress.value) return
         val update = _updateCheckState.value
         val version = update.newerVersion ?: return
+        val sourceBranch = update.selectedBranch
         val apkUrl = update.apkUrl ?: return
         val apkSizeBytes = update.apkSizeBytes ?: return
         val apkSha256 = update.apkSha256 ?: return
@@ -341,6 +395,7 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
                 val file = UpdateApkDownloader.download(
                     context = context,
                     version = version,
+                    sourceBranch = sourceBranch,
                     apkUrl = apkUrl,
                     expectedSizeBytes = apkSizeBytes,
                     expectedSha256 = apkSha256,
@@ -365,9 +420,10 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
         if (!UpdateCheckAvailability.isAvailable() || _updateCheckInProgress.value || _updateDownloadInProgress.value) return
         _updateCheckInProgress.value = true
         _updateCheckFailed.value = false
+        val sourceBranch = _updateCheckState.value.selectedBranch
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                when (UpdateCheckRunner.checkAndRecord(context)) {
+                when (UpdateCheckRunner.checkAndRecord(context, sourceBranch)) {
                     is UpdateCheckRunResult.Completed -> {
                         _updateCheckState.value = UpdateCheckSettings(context).load()
                     }
@@ -508,6 +564,9 @@ fun PermissionOnboardingScreen(
     val directBootEnabled by setupViewModel.directBootEnabled.collectAsState()
     val themeMode by setupViewModel.themeMode.collectAsState()
     val updateCheckState by setupViewModel.updateCheckState.collectAsState()
+    val availableUpdateBranches by setupViewModel.availableUpdateBranches.collectAsState()
+    val updateBranchesLoading by setupViewModel.updateBranchesLoading.collectAsState()
+    val updateBranchesFailed by setupViewModel.updateBranchesFailed.collectAsState()
     val updateCheckInProgress by setupViewModel.updateCheckInProgress.collectAsState()
     val updateCheckFailed by setupViewModel.updateCheckFailed.collectAsState()
     val updateDownloadInProgress by setupViewModel.updateDownloadInProgress.collectAsState()
@@ -641,6 +700,11 @@ fun PermissionOnboardingScreen(
                 item {
                     UpdateCheckSetupCard(
                         state = updateCheckState,
+                        availableBranches = availableUpdateBranches.filter(UpdateCheckProtocol::isSelectableBranch),
+                        branchesLoading = updateBranchesLoading,
+                        branchesFailed = updateBranchesFailed,
+                        onBranchSelected = setupViewModel::setUpdateSourceBranch,
+                        onRefreshBranches = setupViewModel::refreshUpdateBranches,
                         checking = updateCheckInProgress,
                         checkFailed = updateCheckFailed,
                         downloading = updateDownloadInProgress,
@@ -959,6 +1023,11 @@ private fun AboutCard(onOpenLink: (String) -> Unit) {
 @Composable
 private fun UpdateCheckSetupCard(
     state: UpdateCheckState,
+    availableBranches: List<String>,
+    branchesLoading: Boolean,
+    branchesFailed: Boolean,
+    onBranchSelected: (String) -> Unit,
+    onRefreshBranches: () -> Unit,
     checking: Boolean,
     checkFailed: Boolean,
     downloading: Boolean,
@@ -968,13 +1037,18 @@ private fun UpdateCheckSetupCard(
     onCheckNow: () -> Unit,
     onInstallUpdate: () -> Unit,
 ) {
+    var branchMenuExpanded by rememberSaveable { mutableStateOf(false) }
     val stateText = when {
-        checking -> stringResource(R.string.setup_update_status_checking)
+        checking -> stringResource(R.string.setup_update_status_checking, state.selectedBranch)
         downloading -> stringResource(R.string.setup_update_status_downloading, downloadProgress)
         installFailed -> stringResource(R.string.setup_update_status_install_failed)
         checkFailed -> stringResource(R.string.setup_update_status_failed)
-        state.newerVersion != null -> stringResource(R.string.setup_update_status_available, state.newerVersion)
-        state.lastCheckedAtMs != null -> stringResource(R.string.setup_update_status_current)
+        state.newerVersion != null -> stringResource(
+            R.string.setup_update_status_available,
+            state.selectedBranch,
+            state.newerVersion,
+        )
+        state.lastCheckedAtMs != null -> stringResource(R.string.setup_update_status_current, state.selectedBranch)
         !state.enabled -> stringResource(R.string.setup_update_status_off)
         else -> stringResource(R.string.setup_update_status_pending)
     }
@@ -1012,6 +1086,73 @@ private fun UpdateCheckSetupCard(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    stringResource(R.string.setup_update_branch_label),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    stringResource(R.string.setup_update_branch_body),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Box {
+                OutlinedButton(
+                    onClick = { branchMenuExpanded = true },
+                    enabled = availableBranches.isNotEmpty() && !branchesLoading && !checking && !downloading,
+                ) {
+                    Text(state.selectedBranch, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Icon(Icons.Filled.ExpandMore, contentDescription = stringResource(R.string.setup_update_branch_label))
+                }
+                DropdownMenu(
+                    expanded = branchMenuExpanded,
+                    onDismissRequest = { branchMenuExpanded = false },
+                ) {
+                    availableBranches
+                        .filter(UpdateCheckProtocol::isSelectableBranch)
+                        .forEach { branch ->
+                            DropdownMenuItem(
+                                text = { Text(branch, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                onClick = {
+                                    branchMenuExpanded = false
+                                    onBranchSelected(branch)
+                                },
+                            )
+                        }
+                }
+            }
+        }
+        if (branchesLoading) {
+            Text(
+                stringResource(R.string.setup_update_branch_loading),
+                modifier = Modifier.padding(horizontal = 8.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (branchesFailed) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End,
+            ) {
+                Text(
+                    stringResource(R.string.setup_update_branch_failed),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                TextButton(onClick = onRefreshBranches) {
+                    Text(stringResource(R.string.setup_update_branch_retry))
+                }
+            }
+        }
         if (checking || downloading) {
             LinearProgressIndicator(
                 modifier = Modifier

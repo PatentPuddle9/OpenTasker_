@@ -20,8 +20,11 @@ class UpdateCheckContractTest {
         val settings = read("app/src/main/java/com/opentasker/core/updates/UpdateCheckSettings.kt")
         assertTrue(worker.contains("class UpdateCheckWorker"))
         assertTrue(worker.contains("PeriodicWorkRequestBuilder<UpdateCheckWorker>"))
-        assertTrue(worker.contains("UpdateCheckRunner.checkAndRecord(applicationContext)"))
-        assertTrue(runner.contains("UpdateCheckProtocol.requestArguments()"))
+        assertTrue(worker.contains("UpdateCheckRunner.checkAndRecord(applicationContext, settings.selectedBranch)"))
+        assertTrue(runner.contains("UpdateCheckProtocol.requestArguments(branch)"))
+        assertTrue(runner.contains("fetchAvailableBranches"))
+        assertTrue(settings.contains("KEY_SELECTED_BRANCH"))
+        assertTrue(settings.contains("setSelectedBranch(branch)"))
         assertTrue(worker.contains("UpdateCheckAvailability.isAvailable()"))
         assertTrue(worker.contains("STANDARD_DISTRIBUTION = \"standard\""))
         assertTrue(worker.contains("cancelUniqueWork"))
@@ -37,6 +40,10 @@ class UpdateCheckContractTest {
         val application = read("app/src/main/java/com/opentasker/app/OpenTaskerApp_NoHilt.kt")
         assertTrue(setup.contains("UpdateCheckAvailability.isAvailable()"))
         assertTrue(setup.contains("UpdateCheckSetupCard"))
+        assertTrue(setup.contains("setup_update_branch_label"))
+        assertTrue(setup.contains("DropdownMenuItem"))
+        assertTrue(setup.contains("setUpdateSourceBranch"))
+        assertTrue(setup.contains("availableUpdateBranches.filter(UpdateCheckProtocol::isSelectableBranch)"))
         assertTrue(setup.contains("fun checkForUpdatesNow()"))
         assertTrue(setup.contains("onCheckNow = setupViewModel::checkForUpdatesNow"))
         assertTrue(setup.contains("setup_update_check_now"))
@@ -59,6 +66,7 @@ class UpdateCheckContractTest {
         assertTrue(protocol.contains("asset[\"digest\"]"))
         assertTrue(protocol.contains("APK_ASSET_SUFFIX = \"-debug.apk\""))
         assertTrue(downloader.contains("MessageDigest.getInstance(\"SHA-256\")"))
+        assertTrue(downloader.contains("UpdateCheckProtocol.branchApkUrl(sourceBranch)"))
         assertTrue(downloader.contains("getPackageArchiveInfo"))
         assertTrue(downloader.contains("archive.versionName != version"))
         assertTrue(downloader.contains("archiveVersionCode <= installed.versionCodeLongCompat()"))
@@ -66,6 +74,17 @@ class UpdateCheckContractTest {
         assertTrue(manifest.contains("\${applicationId}.fileprovider"))
         assertTrue(manifest.contains("@xml/update_file_paths"))
         assertTrue(paths.contains("update-apks/"))
+    }
+
+    @Test
+    fun branchChannelPublisherOnlyPublishesNonMasterPrereleaseChannels() {
+        val workflow = read(".github/workflows/publish-branch-updates.yml")
+        assertTrue(workflow.contains("- '!master'"))
+        assertTrue(workflow.contains("--prerelease"))
+        assertTrue(workflow.contains("gh release upload"))
+        assertTrue(workflow.contains("--clobber"))
+        assertTrue(workflow.contains("sha256sum"))
+        assertTrue(workflow.contains("OpenTasker-branch-$branch_hash-debug.apk"))
     }
 
     private fun read(path: String): String = repoRoot.resolve(path).readText()
