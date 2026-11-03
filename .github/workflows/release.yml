@@ -132,15 +132,12 @@ jobs:
           notes_file="$RUNNER_TEMP/release-notes.md"
           release_json="$RUNNER_TEMP/existing-release.json"
 
-          cat > "$notes_file" <<EOF
-          Automated debug APK from [successful build.yml run #$BUILD_RUN_ID]($run_url).
-
-          Build commit: `$BUILD_SHA`
-
-          **This is a debug APK, not a production-signed release build.** The build workflow generates a fresh debug signing key on each run, so Android may require uninstalling an earlier OpenTasker build before installing this APK.
-
-          $marker
-          EOF
+          {
+            printf 'Automated debug APK from [successful build.yml run #%s](%s).\n\n' "$BUILD_RUN_ID" "$run_url"
+            printf 'Build commit: `%s`\n\n' "$BUILD_SHA"
+            printf '%s\n\n' '**This is a debug APK, not a production-signed release build.** The build workflow generates a fresh debug signing key on each run, so Android may require uninstalling an earlier OpenTasker build before installing this APK.'
+            printf '%s\n' "$marker"
+          } > "$notes_file"
 
           if gh release view "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
