@@ -150,8 +150,18 @@ val releaseKeystorePath = System.getenv("OPEN_TASKER_RELEASE_KEYSTORE")
 val releaseKeystorePassword = System.getenv("OPEN_TASKER_RELEASE_KEYSTORE_PASSWORD")
 val releaseKeyAlias = System.getenv("OPEN_TASKER_RELEASE_KEY_ALIAS")
 val releaseKeyPassword = System.getenv("OPEN_TASKER_RELEASE_KEY_PASSWORD")
-val appVersionCode = 96
-val appVersionName = "0.2.94"
+val appVersionCode = providers.gradleProperty("openTaskerVersionCode")
+    .orElse("96")
+    .get()
+    .toIntOrNull()
+    ?: error("openTaskerVersionCode must be a positive Android version code.")
+val appVersionName = providers.gradleProperty("openTaskerVersionName")
+    .orElse("0.2.94")
+    .get()
+require(Regex("^\\d+\\.\\d+\\.\\d+$").matches(appVersionName)) {
+    "openTaskerVersionName must be a stable semantic version (major.minor.patch)."
+}
+require(appVersionCode > 0) { "openTaskerVersionCode must be positive." }
 // F-Droid store listing limits, from the F-Droid build metadata reference.
 val FDROID_SHORT_DESCRIPTION_MAX_CHARS = 80
 val FDROID_CHANGELOG_MAX_CHARS = 500
