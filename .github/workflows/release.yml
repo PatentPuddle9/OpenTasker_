@@ -7,6 +7,7 @@ on:
     types:
       - completed
     branches:
+      - Experimental
       - BETA
   workflow_dispatch:
 
@@ -15,12 +16,12 @@ permissions:
   contents: write
 
 concurrency:
-  group: publish-opentasker-beta-release
+  group: publish-opentasker-release
   cancel-in-progress: false
 
 jobs:
   publish:
-    name: Publish APK from successful BETA build
+    name: Publish APK from successful Experimental or BETA build
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
 
@@ -28,7 +29,7 @@ jobs:
       - name: Check out release tooling
         uses: actions/checkout@v4
         with:
-          ref: BETA
+          ref: Experimental
           fetch-depth: 0
 
       - name: Resolve the successful build run
@@ -45,10 +46,11 @@ jobs:
             build_branch="$(jq -r '.workflow_run.head_branch // empty' "$GITHUB_EVENT_PATH")"
             build_run_number="$(jq -r '.workflow_run.run_number // empty' "$GITHUB_EVENT_PATH")"
           else
+            build_branch="$GITHUB_REF_NAME"
             run_json="$(gh run list \
               --repo "$GITHUB_REPOSITORY" \
               --workflow build.yml \
-              --branch BETA \
+              --branch "$build_branch" \
               --status success \
               --limit 1 \
               --json databaseId,headSha,headBranch,number)"
@@ -63,8 +65,8 @@ jobs:
             echo "::error::Could not resolve a successful build run."
             exit 1
           fi
-          if [[ "$build_branch" != "BETA" ]]; then
-            echo "::error::Refusing to publish a build from branch '$build_branch'."
+          if [[ "$build_branch" != "Experimental" && "$build_branch" != "BETA" ]]; then
+            echo "::error::Refusing to publish a build from unsupported branch '$build_branch'."
             exit 1
           fi
 
@@ -82,7 +84,7 @@ jobs:
           latest_success="$(gh run list \
             --repo "$GITHUB_REPOSITORY" \
             --workflow build.yml \
-            --branch BETA \
+            --branch "$build_branch" \
             --status success \
             --limit 1 \
             --json number)"
@@ -96,6 +98,7 @@ jobs:
           echo "run_id=$build_run_id" >> "$GITHUB_OUTPUT"
           echo "head_sha=$build_sha" >> "$GITHUB_OUTPUT"
           echo "run_number=$build_run_number" >> "$GITHUB_OUTPUT"
+          echo "branch=$build_branch" >> "$GITHUB_OUTPUT"
           echo "Selected successful build #$build_run_number ($build_run_id) at $build_sha."
 
       - name: Check out the exact APK source commit
@@ -115,6 +118,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUILD_RUN_ID: ${{ steps.build.outputs.run_id }}
           BUILD_RUN_NUMBER: ${{ steps.build.outputs.run_number }}
+          BUILD_BRANCH: ${{ steps.build.outputs.branch }}
         shell: bash
         run: |
           set -euo pipefail
@@ -148,8 +152,13 @@ jobs:
             exit 1
           fi
 
-          tag="beta-v$version_name"
-          asset_name="OpenTasker-Beta-v$version_name-debug.apk"
+          if [[ "$BUILD_BRANCH" == "BETA" ]]; then
+            tag="beta-v$version_name"
+            asset_name="OpenTasker-Beta-v$version_name-debug.apk"
+          else
+            tag="v$version_name"
+            asset_name="OpenTasker-v$version_name-debug.apk"
+          fi
           apk_path="$RUNNER_TEMP/$asset_name"
           cp "${apk_files[0]}" "$apk_path"
 
@@ -171,6 +180,7 @@ jobs:
           BUILD_RUN_ID: ${{ steps.build.outputs.run_id }}
           BUILD_SHA: ${{ steps.build.outputs.head_sha }}
           VERSION: ${{ steps.artifact.outputs.version }}
+          BUILD_BRANCH: ${{ steps.build.outputs.branch }}
         shell: bash
         run: |
           set -euo pipefail
@@ -178,7 +188,7 @@ jobs:
           successful_runs="$(gh run list \
             --repo "$GITHUB_REPOSITORY" \
             --workflow build.yml \
-            --branch BETA \
+            --branch "$BUILD_BRANCH" \
             --status success \
             --limit 50 \
             --json databaseId,headSha)"
@@ -213,11 +223,20 @@ jobs:
           ASSET_NAME: ${{ steps.artifact.outputs.asset_name }}
           APK_PATH: ${{ steps.artifact.outputs.apk_path }}
           DESCRIPTION_PATH: ${{ steps.changes.outputs.description_path }}
+          BUILD_BRANCH: ${{ steps.build.outputs.branch }}
         shell: bash
         run: |
           set -euo pipefail
 
-          title="OpenTasker Beta v$VERSION"
+          release_flags=()
+          if [[ "$BUILD_BRANCH" == "BETA" ]]; then
+            title="OpenTasker Beta v$VERSION"
+            release_flags+=(--prerelease)
+            release_channel="Beta"
+          else
+            title="OpenTasker $TAG"
+            release_channel="Experimental"
+          fi
           run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID"
           marker="<!-- opentasker-build-run-id:$BUILD_RUN_ID -->"
           notes_file="$RUNNER_TEMP/release-notes.md"
@@ -247,7 +266,7 @@ jobs:
           {
             cat "$DESCRIPTION_PATH"
             printf '\n\n---\n\n'
-            printf 'Release channel: **Beta**\n\n'
+            printf 'Release channel: **%s**\n\n' "$release_channel"
             printf 'Version code: **%s**\n\n' "$VERSION_CODE"
             printf 'APK: **%s**\n\n' "$ASSET_NAME"
             printf 'Built by [successful build.yml run #%s](%s) from commit `%s`.\n\n' "$BUILD_RUN_NUMBER" "$run_url" "$BUILD_SHA"
@@ -259,7 +278,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --title "$title" \
             --target "$BUILD_SHA" \
-            --prerelease \
-            --notes-file "$notes_file"
+            --notes-file "$notes_file" \
+            "${release_flags[@]}"
 
           echo "Created brand-new release $TAG from build run #$BUILD_RUN_NUMBER."

@@ -79,17 +79,16 @@ class UpdateCheckContractTest {
     }
 
     @Test
-    fun betaReleaseWorkflowPublishesClearlyLabeledPrereleasesFromBetaBuilds() {
+    fun releaseWorkflowPublishesBetaAsPrereleaseAndKeepsExperimentalStable() {
         val workflow = read(".github/workflows/release.yml")
-        assertTrue(workflow.contains("branches:\\n      - BETA"))
-        assertTrue(workflow.contains("ref: BETA"))
-        assertTrue(workflow.contains("--branch BETA"))
-        assertTrue(workflow.contains("if [[ \\"$build_branch\\" != \\"BETA\\" ]]; then"))
-        assertTrue(workflow.contains("tag=\\"beta-v$version_name\\""))
-        assertTrue(workflow.contains("asset_name=\\"OpenTasker-Beta-v$version_name-debug.apk\\""))
-        assertTrue(workflow.contains("title=\\"OpenTasker Beta v$VERSION\\""))
-        assertTrue(workflow.contains("--prerelease"))
-        assertTrue(workflow.contains("Release channel: **Beta**"))
+        assertTrue(workflow.contains("branches:\\n      - Experimental\\n      - BETA"))
+        assertTrue(workflow.contains("--branch"))
+        assertTrue(workflow.contains("tag=" + "\"" + "beta-v" + "$" + "version_name" + "\""))
+        assertTrue(workflow.contains("asset_name=" + "\"" + "OpenTasker-Beta-v" + "$" + "version_name-debug.apk" + "\""))
+        assertTrue(workflow.contains("title=" + "\"" + "OpenTasker Beta v" + "$" + "VERSION" + "\""))
+        assertTrue(workflow.contains("release_flags+=(--prerelease)"))
+        assertTrue(workflow.contains("release_channel=" + "\"" + "Experimental" + "\""))
+        assertTrue(workflow.contains("title=" + "\"" + "OpenTasker " + "$" + "TAG" + "\""))
     }
 
     @Test
