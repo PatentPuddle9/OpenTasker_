@@ -341,6 +341,7 @@ private fun ConfigScreen(
                         icon = selectedIcon,
                         iconColor = iconColor?.let(::Color),
                         backgroundColor = backgroundColor?.let(::Color),
+                        gradient = useGradient,
                         textColor = previewTextColor,
                     )
 
@@ -410,6 +411,7 @@ private fun WidgetLivePreview(
     icon: String,
     iconColor: Color?,
     backgroundColor: Color?,
+    gradient: Boolean,
     textColor: Color,
 ) {
     val colors = backgroundColor?.let { base ->
