@@ -352,7 +352,7 @@ private fun ConfigScreen(
 
                     Text("4. Choose app icon shape", style = MaterialTheme.typography.titleMedium)
                     Text("Pick the silhouette used by the widget on your home screen.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         WidgetShapeCatalog.all.forEach { option ->
                             val selected = selectedShape == option.key
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { selectedShape = option.key }) {
