@@ -11,6 +11,8 @@ import com.opentasker.core.model.ActionSpec
 import com.opentasker.core.model.Task
 import com.opentasker.core.model.VariableNamePolicy
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -68,11 +70,14 @@ class TaskRunner(
         var phase: TryPhase = TryPhase.BODY,
     )
 
-    suspend fun run(task: Task): TaskRunReport {
+    suspend fun run(task: Task): TaskRunReport = supervisorScope {
         ctx.variables.pushScope()
         val started = now()
-        val results = mutableListOf<ActionResult>()
-        val traces = mutableListOf<ActionExecutionTrace>()
+        val results = mutableListOf<ActionResult?>()
+        val traces = mutableListOf<ActionExecutionTrace?>()
+        // Async actions leave a slot in execution order and are joined before the task scope closes.
+        // A deferred is used rather than an untracked launch so failures and run-log traces are kept.
+        val pendingActions = mutableListOf<Triple<Int, Int, Deferred<Pair<ActionResult, ActionExecutionTrace>>>>()
 
         val unknownActionIds = task.actions
             .map(ActionSpec::type)
@@ -86,7 +91,7 @@ class TaskRunner(
             val failure = ActionResult.Failure(
                 "task contains unknown unclassified actions: ${unknownActionIds.joinToString()}",
             )
-            return preflightFailureReport(task, started, failure, "preflight", "action classification")
+            return@supervisorScope preflightFailureReport(task, started, failure, "preflight", "action classification")
         }
 
         val unsupportedActionIds = task.actions
@@ -102,14 +107,14 @@ class TaskRunner(
             val failure = ActionResult.Failure(
                 "task contains unsupported actions: ${unsupportedActionIds.joinToString()}",
             )
-            return preflightFailureReport(task, started, failure, "preflight", "action capability")
+            return@supervisorScope preflightFailureReport(task, started, failure, "preflight", "action capability")
         }
 
         val structure = FlowStructure.analyze(task.actions)
         if (structure.error != null) {
             ctx.variables.popScope()
             val failure = ActionResult.Failure("flow control error: ${structure.error}")
-            return preflightFailureReport(task, started, failure, "flow", "flow control")
+            return@supervisorScope preflightFailureReport(task, started, failure, "flow", "flow control")
         }
 
         val loopStack = ArrayDeque<LoopFrame>()
@@ -166,10 +171,22 @@ class TaskRunner(
 
                 val stepLabel = spec.label ?: spec.type
                 onStep?.invoke(pc, stepLabel)
-                val (result, trace) = runOne(pc, spec)
-                onStepCompleted?.invoke(pc, stepLabel)
-                results += result
-                traces += trace
+                if (spec.waitForCompletion) {
+                    val (result, trace) = runOne(pc, spec)
+                    onStepCompleted?.invoke(pc, stepLabel)
+                    results += result
+                    traces += trace
+                } else {
+                    val resultSlot = results.size
+                    results += null
+                    traces += null
+                    val pending = async(start = CoroutineStart.UNDISPATCHED) {
+                        val outcome = runOne(pc, spec)
+                        onStepCompleted?.invoke(pc, stepLabel)
+                        outcome
+                    }
+                    pendingActions += Triple(resultSlot, pc, pending)
+                }
                 if (result !is ActionResult.Failure &&
                     tryStack.any { frame ->
                         frame.phase == TryPhase.BODY && pc > frame.tryIndex && pc < frame.endIndex
@@ -180,8 +197,9 @@ class TaskRunner(
                 if (result is ActionResult.Failure) {
                     val recovery = recoverFailure(task, pc, spec, result, structure, loopStack, tryStack)
                     recovery.reason?.let { reason ->
-                        traces[traces.lastIndex] = traces.last().copy(
-                            message = "${traces.last().message}; $reason",
+                        val previousTrace = requireNotNull(traces.last())
+                        traces[traces.lastIndex] = previousTrace.copy(
+                            message = "${previousTrace.message}; $reason",
                         )
                     }
                     if (recovery.nextPc != null) {
@@ -208,17 +226,43 @@ class TaskRunner(
                 }
                 pc++
             }
+
+            // Async actions may overlap later steps, but the task owns their lifetime: wait for
+            // every one before popping its variable scope or publishing the final run report.
+            // Slots preserve the task's execution order even if actions finish out of order.
+            pendingActions.forEach { (resultSlot, actionIndex, pending) ->
+                val (result, trace) = pending.await()
+                results[resultSlot] = result
+                traces[resultSlot] = trace
+                if (result is ActionResult.Failure) {
+                    if (structuredFailure == null) {
+                        structuredFailure = setFailureVariables(
+                            task = task,
+                            pc = actionIndex,
+                            spec = task.actions[actionIndex],
+                            failure = result,
+                            attempt = 1,
+                            retrying = false,
+                            retryReason = "action was allowed to finish asynchronously",
+                        )
+                        ctx.variables.set(FLOW_ERROR_CAUGHT, "false")
+                    }
+                    unhandledFailure = true
+                }
+            }
         } finally {
             ctx.variables.popScope()
         }
-        return TaskRunReport(
+        val completedResults = results.map { requireNotNull(it) { "Action result was not completed." } }
+        val completedTraces = traces.map { requireNotNull(it) { "Action trace was not completed." } }
+        return@supervisorScope TaskRunReport(
             taskId = task.id,
             taskName = task.name,
             startedAt = started,
             durationMs = now() - started,
-            results = results,
-            traces = traces,
-            success = !unhandledFailure && results.withIndex().all { (index, result) ->
+            results = completedResults,
+            traces = completedTraces,
+            success = !unhandledFailure && completedResults.withIndex().all { (index, result) ->
                 result !is ActionResult.Failure || index in handledFailureIndices
             },
             structuredError = structuredFailure,
