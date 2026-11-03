@@ -268,7 +268,7 @@
     <string name="catalog_action_settings_read_field_var_label" formatted="false">Variable prefix</string>
     <string name="catalog_action_settings_read_field_var_hint" formatted="false">Optional; defaults to the setting name</string>
     <string name="catalog_action_brightness_read_name" formatted="false">Read Screen Brightness</string>
-    <string name="catalog_action_brightness_read_description" formatted="false">Read the current brightness level, percentage, and automatic or manual mode into variables</string>
+    <string name="catalog_action_brightness_read_description" formatted="false">Read the stored screen-brightness level and percentage, plus whether automatic brightness is selected</string>
     <string name="catalog_action_brightness_set_name" formatted="false">Set Brightness</string>
     <string name="catalog_action_brightness_set_description" formatted="false">Set screen brightness level</string>
     <string name="catalog_action_brightness_set_field_brightness_label" formatted="false">Brightness (0-255)</string>
