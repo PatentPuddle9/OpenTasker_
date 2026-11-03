@@ -553,7 +553,7 @@ fun ActiveAutomationUi(
         // Counted over the same project-scoped lists the screens render, or the header disagreed
         // with the list under it whenever a project was selected.
         OpenTaskerScreen.Actions -> stringResource(R.string.header_profiles_detail, projectProfiles.count { it.enabled }, projectProfiles.size)
-        OpenTaskerScreen.Shortcuts -> stringResource(R.string.header_tasks_detail, taskWidgetCount(context))
+        OpenTaskerScreen.Shortcuts -> stringResource(R.string.header_shortcuts_detail, taskWidgetCount(context))
         OpenTaskerScreen.Vars -> stringResource(R.string.header_variables_detail, globalVariables.size)
         OpenTaskerScreen.Flow -> stringResource(R.string.header_flow_detail, projectProfiles.size, projectTasks.size)
         OpenTaskerScreen.Scenes -> stringResource(R.string.header_scenes_detail, scenes.sumOf { it.elements.size }, scenes.size)
