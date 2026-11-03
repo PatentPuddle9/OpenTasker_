@@ -244,6 +244,12 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_15_16 = object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE profiles ADD COLUMN icon TEXT NOT NULL DEFAULT 'bolt'")
+        }
+    }
+
     fun getAllMigrations(): Array<Migration> {
         return arrayOf(
             MIGRATION_1_2,
@@ -260,6 +266,7 @@ object DatabaseMigrations {
             MIGRATION_12_13,
             MIGRATION_13_14,
             MIGRATION_14_15,
+            MIGRATION_15_16,
         )
     }
 
@@ -276,6 +283,7 @@ object DatabaseMigrations {
             MIGRATION_6_7,
             MIGRATION_8_9,
             MIGRATION_14_15,
+            MIGRATION_15_16,
         )
     }
 }
@@ -337,6 +345,9 @@ object DatabaseMigrations {
  * Version 15:
  *   - execution_journal: persists admitted execution identity, source/lineage, last known step,
  *     terminal state, and whether the corresponding run-log row was written
+ *
+ * Version 16:
+ *   - profiles: adds a customizable icon symbol for the Actions grid and widget-linked profiles
  *
  * To add a migration:
  * 1. Increment database version in @Database annotation
