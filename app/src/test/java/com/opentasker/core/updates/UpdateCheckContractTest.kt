@@ -102,7 +102,9 @@ class UpdateCheckContractTest {
         assertTrue(protocol.contains("asset[\"digest\"]"))
         assertTrue(protocol.contains("APK_ASSET_SUFFIX = \"-debug.apk\""))
         assertTrue(downloader.contains("MessageDigest.getInstance(\"SHA-256\")"))
-        assertTrue(downloader.contains("UpdateCheckProtocol.branchApkUrl(sourceBranch)"))
+        assertTrue(downloader.contains("releases/download/"))
+        assertTrue(downloader.contains("expectedVersionCode != null"))
+        assertTrue(downloader.contains("archiveVersionCode != expectedVersionCode"))
         assertTrue(downloader.contains("getPackageArchiveInfo"))
         assertTrue(downloader.contains("archive.versionName != version"))
         assertTrue(downloader.contains("archiveVersionCode <= installed.versionCodeLongCompat()"))
@@ -110,6 +112,30 @@ class UpdateCheckContractTest {
         assertTrue(manifest.contains("\${applicationId}.fileprovider"))
         assertTrue(manifest.contains("@xml/update_file_paths"))
         assertTrue(paths.contains("update-apks/"))
+    }
+
+    @Test
+    fun versionHistoryAndCompatibilityWarningsAreConnectedToTheUpdater() {
+        val protocol = read("app/src/main/java/com/opentasker/core/updates/UpdateCheckProtocol.kt")
+        val runner = read("app/src/main/java/com/opentasker/core/updates/UpdateCheckRunner.kt")
+        val versions = read("app/src/main/java/com/opentasker/core/updates/BranchVersion.kt")
+        val setup = read("app/src/main/java/com/opentasker/ui/screens/PermissionOnboardingScreen.kt")
+        val immutablePublisher = read(".github/workflows/publish-branch-updates.yml")
+
+        assertTrue(protocol.contains("versionsRequestArguments"))
+        assertTrue(protocol.contains("parseBranchVersions"))
+        assertTrue(protocol.contains("parseActionCatalog"))
+        assertTrue(runner.contains("fetchAvailableVersions"))
+        assertTrue(runner.contains("fetchActionCatalog"))
+        assertTrue(versions.contains("collectEnabledProfileActionIds"))
+        assertTrue(setup.contains("missingActionIds"))
+        assertTrue(setup.contains("Latest version on this branch"))
+        assertTrue(setup.contains("In-app updating"))
+        assertTrue(setup.contains("SysAdminDoc/OpenTasker"))
+        assertTrue(setup.contains("fresh install"))
+        assertTrue(immutablePublisher.contains("opentasker-branch-build-$branch_hash-v$VERSION"))
+        assertTrue(immutablePublisher.contains("In-app updates: **"))
+        assertTrue(immutablePublisher.contains("Refusing to replace it"))
     }
 
     @Test
