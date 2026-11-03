@@ -28,7 +28,7 @@ class ActionsShortcutsNavigationTest {
 
     @Test
     fun actionsIsAnIconGridAndProfileOpensItsInlineTaskEditor() {
-        val lists = source("src/main/java/com/opentasker/ui/screens/ActiveAutomationLists.kt")
+        val lists = source("app/src/main/java/com/opentasker/ui/screens/ActiveAutomationLists.kt")
         val editor = source("src/main/java/com/opentasker/ui/screens/EditorDialogs.kt")
         assertTrue(lists.contains("LazyVerticalGrid("))
         assertTrue(lists.contains("Card(\n        onClick = onEdit"))
@@ -43,7 +43,7 @@ class ActionsShortcutsNavigationTest {
     fun shortcutsListCanCreateAndEditWidgetsAndWidgetProfilesAreOwned() {
         val shortcuts = source("src/main/java/com/opentasker/ui/screens/ShortcutsScreen.kt")
         val provider = source("app/src/main/java/com/opentasker/widget/TaskWidgetProvider.kt")
-        val links = source("src/main/java/com/opentasker/widget/WidgetProfileLinks.kt")
+        val links = source("app/src/main/java/com/opentasker/widget/WidgetProfileLinks.kt")
         val config = source("src/main/java/com/opentasker/widget/TaskWidgetConfigActivity.kt")
         val viewModel = source("src/main/java/com/opentasker/ui/screens/ActiveAutomationViewModel.kt")
 
