@@ -1071,7 +1071,7 @@ class ActiveAutomationViewModel(
                         entityId = current.id,
                         previousJson = StorageJson.encodeToString(current),
                     )
-                    db.profileDao().delete(current.toEntity())
+                    check(db.profileDao().deleteRegularProfile(current.id) == 1) { "This profile is managed by its home-screen widget." }
                 }
                 LocaleConditionGrantStore(appContext).apply {
                     revokeAllForBinding(LocaleConditionGrantStore.profileKey(profile.id))
