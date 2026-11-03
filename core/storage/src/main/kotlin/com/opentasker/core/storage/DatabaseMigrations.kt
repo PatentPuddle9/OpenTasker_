@@ -250,6 +250,12 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_16_17 = object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE profiles ADD COLUMN widgetId INTEGER DEFAULT NULL")
+        }
+    }
+
     fun getAllMigrations(): Array<Migration> {
         return arrayOf(
             MIGRATION_1_2,
@@ -267,6 +273,7 @@ object DatabaseMigrations {
             MIGRATION_13_14,
             MIGRATION_14_15,
             MIGRATION_15_16,
+            MIGRATION_16_17,
         )
     }
 
@@ -348,6 +355,9 @@ object DatabaseMigrations {
  *
  * Version 16:
  *   - profiles: adds a customizable icon symbol for the Actions grid and widget-linked profiles
+ *
+ * Version 17:
+ *   - profiles: stores the Android widget ID for non-deletable, widget-owned shortcut profiles
  *
  * To add a migration:
  * 1. Increment database version in @Database annotation
