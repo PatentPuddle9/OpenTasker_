@@ -47,6 +47,7 @@
     <string name="locale_condition_operator_ends_with">ends with</string>
     <string name="nav_actions">Actions</string>
     <string name="nav_shortcuts">Shortcuts</string>
+    <string name="widget_profile_owned">This profile is managed by its home-screen widget. Remove the widget to delete it.</string>
     <string name="nav_run_log">Run Log</string>
     <string name="nav_setup">Setup</string>
     <string name="nav_settings">Settings</string>
