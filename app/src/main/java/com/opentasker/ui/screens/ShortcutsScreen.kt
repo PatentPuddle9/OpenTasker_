@@ -180,6 +180,9 @@ internal fun requestNewTaskWidget(context: Context): Boolean {
     return manager.requestPinAppWidget(provider, null, null)
 }
 
+internal fun taskWidgetCount(context: Context): Int = AppWidgetManager.getInstance(context)
+    .getAppWidgetIds(ComponentName(context, TaskWidgetProvider::class.java)).size
+
 private fun loadShortcutWidgets(context: Context): List<ShortcutWidgetRow> {
     val manager = AppWidgetManager.getInstance(context)
     val ids = manager.getAppWidgetIds(ComponentName(context, TaskWidgetProvider::class.java))
