@@ -42,7 +42,7 @@ object UpdateCheckProtocol {
     fun isSelectableBranch(branch: String): Boolean =
         branch.isNotBlank() &&
             branch == branch.trim() &&
-            branch.length <= 255 &&
+            branch.toByteArray(Charsets.UTF_8).size <= 1024 &&
             branch.none { it == '\n' || it == '\r' || it == '\u0000' } &&
             !branch.equals("master", ignoreCase = true)
 
