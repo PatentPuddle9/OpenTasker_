@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -176,21 +179,23 @@ internal fun ProfilesScreen(
         .filter { selectedGroup == null || it.group == selectedGroup }
         .filter { profileSearchQuery.isBlank() || it.name.contains(profileSearchQuery, ignoreCase = true) }
 
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 168.dp),
         modifier = Modifier
             .fillMaxSize()
             .padding(contentPadding),
         // Extra bottom inset so the extended FAB never sits on top of the last row; Scaffold's
         // innerPadding does not reserve floating-action-button height.
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 96.dp),
-        verticalArrangement = Arrangement.spacedBy(DesignSystem.Screen.cardGap),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 96.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (storageDecodeIssues.isNotEmpty()) {
-            item {
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 StorageDecodeWarningCard(storageDecodeIssues)
             }
         }
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -220,7 +225,7 @@ internal fun ProfilesScreen(
             }
         }
         if (groups.isNotEmpty()) {
-            item {
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.sm)) {
                     item {
                         FilterChip(
@@ -363,7 +368,7 @@ private fun ProfileCard(
     onEditContext: (Int, ContextSpec) -> Unit,
     onDeleteContext: (Int) -> Unit,
 ) {
-    var expanded by rememberSaveable(profile.id) { mutableStateOf(false) }
+    val widgetOwned = profile.widgetId != null
     val profileState = when {
         profile.requiresRiskAcknowledgement -> stringResource(R.string.imported_profile_review_required)
         profile.enabled -> stringResource(R.string.label_enabled)
@@ -371,93 +376,106 @@ private fun ProfileCard(
     }
     val toggleDescription = stringResource(R.string.a11y_profile_status, profile.name)
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize(),
+        onClick = onEdit,
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f)),
         shape = RoundedCornerShape(DesignSystem.Radii.lg),
     ) {
-        Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.sm)) {
+        Column(
+            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.sm),
+        ) {
             Row(
-                modifier = Modifier.expandCollapseToggle(expanded) { expanded = !expanded },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.sm),
             ) {
                 Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.66f),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f),
                     shape = RoundedCornerShape(DesignSystem.Radii.md),
+                    modifier = Modifier.size(42.dp),
                 ) {
-                    Icon(
-                        Icons.Filled.CheckCircle,
-                        contentDescription = stringResource(R.string.a11y_profile_status, profile.name),
-                        tint = if (profile.enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(10.dp).size(22.dp),
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            profile.icon.ifBlank { "⚡︎" },
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                    }
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(profile.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(profile.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(
                         stringResource(R.string.workspace_runs_task, enterTaskName),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Switch(
-                    checked = profile.enabled,
-                    onCheckedChange = onToggle,
-                    modifier = Modifier.semantics {
-                        contentDescription = toggleDescription
-                        stateDescription = profileState
-                    },
-                )
-                ProfileActionsMenu(
-                    contentDescription = stringResource(R.string.a11y_duplicate_profile, profile.name),
-                    editDescription = stringResource(R.string.a11y_edit_profile, profile.name),
-                    canEditContextLogic = profile.contexts.size >= 2,
-                    canUndo = canUndo,
-                    canRedo = canRedo,
-                    onEdit = onEdit,
-                    onAddContext = onAddContext,
-                    onEditContextLogic = onEditContextLogic,
-                    onPreflight = onPreflight,
-                    onDuplicate = onDuplicate,
-                    onUndo = onUndo,
-                    onRedo = onRedo,
-                    onDelete = onDelete,
-                )
-                Icon(
-                    if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = stringResource(if (expanded) R.string.action_collapse else R.string.action_expand),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (widgetOwned) {
+                    Text("Widget", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                } else {
+                    Switch(
+                        checked = profile.enabled,
+                        onCheckedChange = onToggle,
+                        modifier = Modifier.semantics {
+                            contentDescription = toggleDescription
+                            stateDescription = profileState
+                        },
+                    )
+                }
             }
             Text(
                 text = listOf(
                     profileState,
                     stringResource(R.string.label_context_count, profile.contexts.size),
-                    stringResource(R.string.label_cooldown_seconds, profile.cooldownSec),
                 ).joinToString(" • "),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (expanded && profile.contexts.isEmpty()) {
+            if (!widgetOwned && profile.contexts.isEmpty()) {
                 InlineNotice(
                     title = stringResource(R.string.workspace_profile_cannot_match),
                     body = stringResource(R.string.workspace_profile_cannot_match_body),
                     color = MaterialTheme.colorScheme.error,
                 )
-            } else if (expanded) {
+            } else if (!widgetOwned) {
                 profile.contexts.forEachIndexed { index, context ->
                     ContextRow(
                         index = index,
                         context = context,
                         onEdit = { onEditContext(index, context) },
                         onDelete = { onDeleteContext(index) },
+                    )
+                }
+            }
+            if (!widgetOwned) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    TextButton(onClick = onAddContext) { Text(stringResource(R.string.profile_add_context)) }
+                    if (profile.contexts.size >= 2) {
+                        TextButton(onClick = onEditContextLogic) { Text(stringResource(R.string.profile_edit_context_logic)) }
+                    }
+                    ProfileActionsMenu(
+                        contentDescription = stringResource(R.string.a11y_duplicate_profile, profile.name),
+                        editDescription = stringResource(R.string.a11y_edit_profile, profile.name),
+                        canEditContextLogic = profile.contexts.size >= 2,
+                        canUndo = canUndo,
+                        canRedo = canRedo,
+                        onEdit = onEdit,
+                        onAddContext = onAddContext,
+                        onEditContextLogic = onEditContextLogic,
+                        onPreflight = onPreflight,
+                        onDuplicate = onDuplicate,
+                        onUndo = onUndo,
+                        onRedo = onRedo,
+                        onDelete = onDelete,
                     )
                 }
             }
@@ -970,7 +988,7 @@ internal fun ActionRow(
 }
 
 @Composable
-private fun ContextRow(
+internal fun ContextRow(
     index: Int,
     context: ContextSpec,
     onEdit: () -> Unit,
