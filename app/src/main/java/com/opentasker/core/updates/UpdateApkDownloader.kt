@@ -37,16 +37,19 @@ object UpdateApkDownloader {
     suspend fun download(
         context: Context,
         version: String,
+        sourceBranch: String,
         apkUrl: String,
         expectedSizeBytes: Long,
         expectedSha256: String,
         onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit = { _, _ -> },
     ): File = withContext(Dispatchers.IO) {
         require(version.matches(Regex("^\\d+\\.\\d+\\.\\d+$"))) { "Update version is invalid." }
-        require(
-            apkUrl.startsWith(UpdateCheckProtocol.RELEASE_DOWNLOAD_URL_PREFIX) &&
-                apkUrl.endsWith("/OpenTasker-v$version-debug.apk"),
-        ) { "APK URL is not a recognized OpenTasker release asset." }
+        require(UpdateCheckProtocol.isSelectableBranch(sourceBranch)) {
+            "The master branch cannot be used as an update source."
+        }
+        require(apkUrl == UpdateCheckProtocol.branchApkUrl(sourceBranch)) {
+            "APK URL does not match the selected branch update channel."
+        }
         require(expectedSizeBytes > 0L && expectedSizeBytes <= UpdateCheckProtocol.MAX_APK_BYTES) {
             "APK size is outside the allowed limit."
         }
@@ -78,7 +81,7 @@ object UpdateApkDownloader {
                 ?.filter { it.name.endsWith(".part") }
                 ?.forEach { it.delete() }
 
-            val fileName = "OpenTasker-v$version-debug.apk"
+            val fileName = UpdateCheckProtocol.branchAssetName(sourceBranch)
             val temporaryFile = File(updateDirectory, "$fileName.part")
             val apkFile = File(updateDirectory, fileName)
             val digest = MessageDigest.getInstance("SHA-256")

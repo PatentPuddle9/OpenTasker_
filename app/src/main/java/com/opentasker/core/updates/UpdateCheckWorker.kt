@@ -21,7 +21,7 @@ object UpdateCheckAvailability {
     fun isAvailable(): Boolean = BuildConfig.DISTRIBUTION == STANDARD_DISTRIBUTION
 }
 
-/** Performs one bounded release-feed request; it never downloads or installs an artifact. */
+/** Performs one bounded check against the user's selected branch update channel. */
 class UpdateCheckWorker(
     appContext: Context,
     params: WorkerParameters,
@@ -32,12 +32,13 @@ class UpdateCheckWorker(
 
     private suspend fun runWork(): Result {
         if (!UpdateCheckAvailability.isAvailable()) return Result.success()
-        if (!UpdateCheckSettings(applicationContext).load().enabled) return Result.success()
+        val settings = UpdateCheckSettings(applicationContext).load()
+        if (!settings.enabled) return Result.success()
 
-        return when (UpdateCheckRunner.checkAndRecord(applicationContext)) {
+        return when (UpdateCheckRunner.checkAndRecord(applicationContext, settings.selectedBranch)) {
             is UpdateCheckRunResult.Completed -> Result.success()
             UpdateCheckRunResult.Failed -> {
-                AppLogger.info(TAG, "Scheduled release check did not complete")
+                AppLogger.info(TAG, "Scheduled branch release check did not complete")
                 Result.success()
             }
         }

@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Update settings can select any published source branch except master. Checks and verified APK installs now follow that branch, with a separate rolling prerelease channel published after each successful branch build.
 - The update check can now download and verify the release APK, then open Android's installer directly. It no longer sends users to the release page; Android still asks them to confirm the installation.
 
 - Show Popup now opens a real Android dialog above other apps instead of posting a notification. It uses the existing Display over other apps access, and an unbound button dismisses the dialog without requiring a task.

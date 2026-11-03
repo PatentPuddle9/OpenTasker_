@@ -12,45 +12,84 @@ sealed interface UpdateCheckRunResult {
     data object Failed : UpdateCheckRunResult
 }
 
-/**
- * Shared implementation for the scheduled and user-requested release checks.
- *
- * This only checks release metadata and records the result. It does not download or install an APK.
- */
+/** Shared implementation for scheduled/manual branch checks and branch discovery. */
 object UpdateCheckRunner {
     private const val TAG = "UpdateCheckRunner"
 
-    suspend fun checkAndRecord(context: Context): UpdateCheckRunResult {
+    suspend fun fetchAvailableBranches(context: Context): List<String>? {
+        val appContext = context.applicationContext
+        val variables = VariableStore()
+        val branches = linkedSetOf<String>()
+        return try {
+            for (page in 1..UpdateCheckProtocol.MAX_BRANCH_PAGES) {
+                val requestResult = HttpRequestAction().run(
+                    ActionContext(appContext, variables),
+                    UpdateCheckProtocol.branchesRequestArguments(page),
+                )
+                if (requestResult !is ActionResult.Success) {
+                    AppLogger.info(TAG, "GitHub branch list request did not complete")
+                    return null
+                }
+                val payload = variables.get(UpdateCheckProtocol.BRANCHES_RESPONSE_VARIABLE) ?: return null
+                val pageBranches = UpdateCheckProtocol.parseBranchesResponse(payload) ?: return null
+                branches.addAll(pageBranches)
+                if (pageBranches.size < UpdateCheckProtocol.BRANCH_PAGE_SIZE) {
+                    return UpdateCheckProtocol.sortBranches(branches)
+                }
+            }
+            UpdateCheckProtocol.sortBranches(branches)
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            AppLogger.warn(TAG, "Could not load GitHub branches", error)
+            null
+        }
+    }
+
+    suspend fun checkAndRecord(
+        context: Context,
+        branch: String = UpdateCheckProtocol.DEFAULT_SOURCE_BRANCH,
+    ): UpdateCheckRunResult {
+        if (!UpdateCheckProtocol.isSelectableBranch(branch)) return UpdateCheckRunResult.Failed
         val appContext = context.applicationContext
         return try {
             val variables = VariableStore()
             val requestResult = HttpRequestAction().run(
                 ActionContext(appContext, variables),
-                UpdateCheckProtocol.requestArguments(),
+                UpdateCheckProtocol.requestArguments(branch),
             )
             if (requestResult !is ActionResult.Success) {
-                AppLogger.info(TAG, "Release check request did not complete")
+                // A missing branch channel simply means that branch has not published a build yet.
+                if (variables.get(UpdateCheckProtocol.STATUS_VARIABLE) == "404") {
+                    UpdateCheckSettings(appContext).record(UpdateCheckResult.NoUpdate, System.currentTimeMillis(), branch)
+                    return UpdateCheckRunResult.Completed(UpdateCheckResult.NoUpdate)
+                }
+                AppLogger.info(TAG, "Branch release check request did not complete")
                 return UpdateCheckRunResult.Failed
             }
 
             val payload = variables.get(UpdateCheckProtocol.RESPONSE_VARIABLE)
                 ?: return UpdateCheckRunResult.Failed
-            when (val parsed = UpdateCheckProtocol.parseLatestRelease(payload, com.opentasker.app.BuildConfig.VERSION_NAME)) {
+            when (val parsed = UpdateCheckProtocol.parseBranchRelease(
+                payload,
+                com.opentasker.app.BuildConfig.VERSION_NAME,
+                branch,
+            )) {
                 UpdateCheckResult.NoUpdate,
                 is UpdateCheckResult.Available,
                 -> {
-                    UpdateCheckSettings(appContext).record(parsed, System.currentTimeMillis())
+                    UpdateCheckSettings(appContext).record(parsed, System.currentTimeMillis(), branch)
                     UpdateCheckRunResult.Completed(parsed)
                 }
                 is UpdateCheckResult.Invalid -> {
-                    AppLogger.warn(TAG, "Release check returned an invalid response")
+                    AppLogger.warn(TAG, "Branch release check returned an invalid response")
                     UpdateCheckRunResult.Failed
                 }
             }
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
             throw cancelled
         } catch (error: Exception) {
-            AppLogger.warn(TAG, "Release check failed", error)
+            AppLogger.warn(TAG, "Branch release check failed", error)
             UpdateCheckRunResult.Failed
         }
     }
