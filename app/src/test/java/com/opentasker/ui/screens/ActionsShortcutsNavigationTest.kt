@@ -8,9 +8,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ActionsShortcutsNavigationTest {
-    private val root: Path = listOf(Path.of("."), Path.of("app")).first { it.resolve("src").toFile().exists() }
+    private val repoRoot: Path = listOf(Path.of("."), Path.of(".."))
+        .first { Files.exists(it.resolve("README.md")) && Files.exists(it.resolve("app/build.gradle.kts")) }
+        .toAbsolutePath()
+        .normalize()
 
-    private fun source(path: String): String = root.resolve(path).readText()
+    private fun source(path: String): String = repoRoot.resolve(path).readText()
 
     @Test
     fun primaryNavigationUsesActionsAndShortcutsInsteadOfSeparateTasks() {
@@ -54,8 +57,8 @@ class ActionsShortcutsNavigationTest {
 
     @Test
     fun profileSchemaRegistersBothWidgetOwnershipMigrations() {
-        val model = source("../core/model/src/main/kotlin/com/opentasker/core/model/Profile.kt")
-        val database = source("../core/storage/src/main/kotlin/com/opentasker/core/storage/DatabaseMigrations.kt")
+        val model = source("core/model/src/main/kotlin/com/opentasker/core/model/Profile.kt")
+        val database = source("core/storage/src/main/kotlin/com/opentasker/core/storage/DatabaseMigrations.kt")
         assertTrue(model.contains("@Transient val widgetId: Int? = null"))
         assertTrue(database.contains("Migration(15, 16)"))
         assertTrue(database.contains("Migration(16, 17)"))
