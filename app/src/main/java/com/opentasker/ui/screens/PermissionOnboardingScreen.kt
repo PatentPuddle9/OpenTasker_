@@ -709,11 +709,6 @@ fun PermissionOnboardingScreen(
     val usedActionIds = remember(profiles, tasks, globalFallbackTaskId) {
         collectEnabledProfileActionIds(profiles, tasks, globalFallbackTaskId)
     }
-    LaunchedEffect(settingsOnly, updateCheckState.selectedBranch, usedActionIds) {
-        if (settingsOnly && UpdateCheckAvailability.isAvailable()) {
-            setupViewModel.refreshBranchVersions(updateCheckState.selectedBranch, usedActionIds)
-        }
-    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -1196,6 +1191,11 @@ private fun UpdateCheckSetupCard(
     var selectedVersionTag by rememberSaveable(state.selectedBranch) { mutableStateOf<String?>(null) }
     val selectedVersion = versions.firstOrNull { it.tag == selectedVersionTag } ?: versions.firstOrNull()
     val installedVersionCode = BuildConfig.VERSION_CODE.toLong()
+    LaunchedEffect(state.selectedBranch, versionHistoryExpanded) {
+        if (versionHistoryExpanded && versions.isEmpty() && !versionsLoading && !versionsFailed) {
+            onRefreshVersions()
+        }
+    }
     val showNonDefaultBranchWarning =
         UpdateCheckProtocol.requiresNonDefaultBranchWarning(state.selectedBranch)
     val branchWarningColor = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) {
