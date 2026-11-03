@@ -339,8 +339,8 @@ private fun ConfigScreen(
                     WidgetLivePreview(
                         taskName = selectedTask.name,
                         icon = selectedIcon,
-                        iconColor = iconColor?.let(::Color),
-                        backgroundColor = backgroundColor?.let(::Color),
+                        iconColor = iconColor?.let { Color(it) },
+                        backgroundColor = backgroundColor?.let { Color(it) },
                         gradient = useGradient,
                         textColor = previewTextColor,
                     )
@@ -382,7 +382,7 @@ private fun WidgetColorEditor(
         verticalArrangement = Arrangement.spacedBy(9.dp),
     ) {
         presets.forEach { preset ->
-            val presetColor = parseWidgetColor(preset)?.let(::Color) ?: Color.Transparent
+            val presetColor = parseWidgetColor(preset)?.let { Color(it) } ?: Color.Transparent
             Surface(
                 modifier = Modifier.size(30.dp).clickable { onValueChange(preset) },
                 color = presetColor,
