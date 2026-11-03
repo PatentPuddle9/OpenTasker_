@@ -227,7 +227,7 @@ object UpdateCheckProtocol {
                     ?: targetCommit?.takeIf { it.matches(Regex("^[0-9a-fA-F]{40}$")) }
                 val versionCode = Regex("""(?:Version code|Android versionCode):?\s*\*\*(\d+)\*\*""")
                     .find(body)?.groupValues?.get(1)?.toLongOrNull()
-                val supportedActionIds = Regex("""Action catalog: `([^\`]+)`""")
+                val supportedActionIds = Regex("""Action catalog: `([^`]+)`""")
                     .find(body)?.groupValues?.get(1)
                     ?.split(',')
                     ?.map(String::trim)
