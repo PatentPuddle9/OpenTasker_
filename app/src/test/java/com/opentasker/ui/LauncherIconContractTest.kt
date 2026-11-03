@@ -48,8 +48,15 @@ class LauncherIconContractTest {
     }
 
     @Test
-    fun `store and transparent copies match the checked in master`() {
+    fun `store art and launcher renderer use the checked in icon package`() {
         val packageDirectory = "OpenTasker_Icon_Package"
+        val renderer = read("tools/render-store-assets.py")
+        assertTrue("""ICON_PACKAGE = REPO / "OpenTasker_Icon_Package"""" in renderer)
+        assertTrue("""PRIMARY_SOURCE = ICON_PACKAGE / "OpenTasker_Primary_1024.png"""" in renderer)
+        assertTrue("""FOREGROUND_SOURCE = ICON_PACKAGE / "OpenTasker_Android_Foreground_1024.png"""" in renderer)
+        assertTrue("""MONOCHROME_SOURCE = ICON_PACKAGE / "OpenTasker_Monochrome_1024.png"""" in renderer)
+        assertTrue("""DARK_MODE_SOURCE = ICON_PACKAGE / "OpenTasker_Dark_Mode_1024.png"""" in renderer)
+
         val primary = ImageIO.read(file("$packageDirectory/OpenTasker_Primary_1024.png").toFile())
         assertEquals(1024, primary.width)
         assertEquals(1024, primary.height)
