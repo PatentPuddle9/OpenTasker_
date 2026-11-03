@@ -30,4 +30,6 @@ data class ActionSpec(
     val args: Map<String, String> = emptyMap(),
     val continueOnError: Boolean = false,
     val condition: String? = null,          // optional %var-based condition
+    /** Whether the next action must wait for this action to finish. Defaults to sequential. */
+    val waitForCompletion: Boolean = true,
 )
