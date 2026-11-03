@@ -263,6 +263,10 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
         .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemeMode.System)
 
+    val accentColorHex: StateFlow<String> = ThemePreference.observeAccentColor(context)
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemePreference.DEFAULT_ACCENT_HEX)
+
     private val _updateCheckState = MutableStateFlow(
         if (UpdateCheckAvailability.isAvailable()) UpdateCheckSettings(context).load() else UpdateCheckState(),
     )
@@ -326,8 +330,12 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
     }
 
     fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch(Dispatchers.IO) { ThemePreference.set(context, mode) }
+    }
+
+    fun setAccentColor(hex: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            ThemePreference.set(context, mode)
+            runCatching { ThemePreference.setAccentColor(context, hex) }
         }
     }
 
@@ -569,6 +577,7 @@ fun PermissionOnboardingScreen(
     val items = loadedItems.orEmpty()
     val directBootEnabled by setupViewModel.directBootEnabled.collectAsState()
     val themeMode by setupViewModel.themeMode.collectAsState()
+    val accentColorHex by setupViewModel.accentColorHex.collectAsState()
     val updateCheckState by setupViewModel.updateCheckState.collectAsState()
     val availableUpdateBranches by setupViewModel.availableUpdateBranches.collectAsState()
     val updateBranchesLoading by setupViewModel.updateBranchesLoading.collectAsState()
@@ -757,7 +766,9 @@ fun PermissionOnboardingScreen(
             item {
                 ThemeSetupCard(
                     currentMode = themeMode,
+                    currentAccentHex = accentColorHex,
                     onSelectMode = setupViewModel::setThemeMode,
+                    onSelectAccent = setupViewModel::setAccentColor,
                 )
             }
             item {
@@ -1652,9 +1663,13 @@ internal fun LocaleGrantManagementCard(
 @Composable
 private fun ThemeSetupCard(
     currentMode: ThemeMode,
+    currentAccentHex: String,
     onSelectMode: (ThemeMode) -> Unit,
+    onSelectAccent: (String) -> Unit,
 ) {
     var menuExpanded by rememberSaveable { mutableStateOf(false) }
+    var customHex by rememberSaveable(currentAccentHex) { mutableStateOf(currentAccentHex) }
+    val accentPresets = listOf("#B69CFF", "#9B7BFF", "#D0A4FF", "#E18BCE", "#805AD5")
     val offeredModes = ThemeMode.entries.filter {
         it != ThemeMode.Dynamic || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     }
@@ -1716,6 +1731,37 @@ private fun ThemeSetupCard(
                         )
                     }
                 }
+            }
+        }
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("Accent color", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                accentPresets.forEach { preset ->
+                    val swatch = Color(android.graphics.Color.parseColor(preset))
+                    Surface(
+                        modifier = Modifier.size(34.dp).clickable { customHex = preset; onSelectAccent(preset) },
+                        color = swatch,
+                        shape = RoundedCornerShape(50),
+                        border = BorderStroke(2.dp, if (currentAccentHex.equals(preset, true)) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant),
+                    ) {}
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = customHex,
+                    onValueChange = { customHex = it.take(7) },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Custom HEX") },
+                    singleLine = true,
+                    placeholder = { Text("#B69CFF") },
+                )
+                OutlinedButton(
+                    onClick = { runCatching { android.graphics.Color.parseColor(if (customHex.startsWith("#")) customHex else "#$customHex") }.onSuccess { onSelectAccent(customHex) } },
+                    enabled = runCatching { android.graphics.Color.parseColor(if (customHex.startsWith("#")) customHex else "#$customHex") }.isSuccess,
+                ) { Text("Apply") }
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
