@@ -57,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -409,18 +410,22 @@ private fun WidgetLivePreview(
     textColor: Color,
 ) {
     val colors = backgroundColor?.let { base ->
-        if (gradient) listOf(base, Color(AndroidColor.rgb(
-            (base.red * 255).toInt().coerceIn(0, 255) / 2,
-            (base.green * 255).toInt().coerceIn(0, 255) / 2,
-            (base.blue * 255).toInt().coerceIn(0, 255) / 2,
-        ))) else listOf(base)
-    } ?: listOf(MaterialTheme.colorScheme.surfaceVariant)
+        if (gradient) listOf(
+            base,
+            Color(
+                (base.red * 0.76f).coerceIn(0f, 1f),
+                (base.green * 0.76f).coerceIn(0f, 1f),
+                (base.blue * 0.76f).coerceIn(0f, 1f),
+                base.alpha,
+            ),
+        ) else listOf(base, base)
+    } ?: listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surfaceVariant)
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(188.dp)
             .background(
-                if (gradient) Brush.linearGradient(colors) else Brush.verticalGradient(colors),
+                Brush.linearGradient(colors),
                 RoundedCornerShape(24.dp),
             )
             .padding(12.dp),
