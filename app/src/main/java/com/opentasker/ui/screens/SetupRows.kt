@@ -94,6 +94,9 @@ internal fun buildPermissionItems(
     val usageAccess = probes.granted("usage access") { UsageAccess.hasUsageStatsAccess(context) }
     val notificationAccess = probes.granted("notification access") { hasNotificationListenerAccess(context) }
     val overlay = probes.granted("display over other apps") { Settings.canDrawOverlays(context) }
+    val installUnknownApps = probes.granted("install unknown apps") {
+        context.packageManager.canRequestPackageInstalls()
+    }
     val writeSettings = probes.granted("modify system settings") { Settings.System.canWrite(context) }
     val deviceAdmin = probes.granted("device admin") { LockDeviceAdminReceiver.isActive(context) }
     val dndAccess = probes.granted("Do Not Disturb access") { hasNotificationPolicyAccess(context) }
@@ -224,6 +227,22 @@ internal fun buildPermissionItems(
             requiredFor = context.getString(R.string.setup_overlay_access_required_for),
             section = SetupSection.NEEDED,
             requirements = setOf(SetupRequirement.OVERLAY),
+        ),
+        PermissionSetupItem(
+            title = context.getString(R.string.setup_install_unknown_apps_title),
+            body = context.getString(R.string.setup_install_unknown_apps_body),
+            granted = installUnknownApps == true,
+            unavailable = installUnknownApps == null,
+            actionLabel = openSettings,
+            action = PermissionAction.SettingsIntent(
+                Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:${context.packageName}"),
+                ),
+            ),
+            requiredFor = context.getString(R.string.setup_install_unknown_apps_required_for),
+            optional = true,
+            section = SetupSection.OPTIONAL,
         ),
         PermissionSetupItem(
             title = context.getString(R.string.setup_write_settings_title),
