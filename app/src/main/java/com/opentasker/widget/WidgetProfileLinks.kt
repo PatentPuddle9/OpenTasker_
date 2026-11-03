@@ -84,6 +84,7 @@ object WidgetProfileLinks {
                 iconColor = prefs.getInt(TaskWidgetProvider.keyIconColor(widgetId), WidgetStyle().iconColor),
                 backgroundColor = prefs.getInt(TaskWidgetProvider.keyBackgroundColor(widgetId), WidgetStyle().backgroundColor),
                 gradient = prefs.getBoolean(TaskWidgetProvider.keyGradient(widgetId), WidgetStyle().gradient),
+                shape = prefs.getString(TaskWidgetProvider.keyShape(widgetId), WidgetShapeCatalog.default.key) ?: WidgetShapeCatalog.default.key,
             )
             syncProfile(context, widgetId, decodedTask.value, style)
         }
