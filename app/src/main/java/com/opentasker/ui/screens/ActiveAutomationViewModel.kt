@@ -855,6 +855,14 @@ class ActiveAutomationViewModel(
                     throw CorruptRecordOverwriteException(issue)
                 }
                 val previous = previousEntity?.toDomain()
+                // Widget ownership is device-local and excluded from serialized profile bundles.
+                // Preserve it on normal saves and undo/redo so the system-owned profile cannot be
+                // detached from its widget by an editor round-trip.
+                val persistedProfile = if (previous?.widgetId != null) {
+                    reviewedProfile.copy(widgetId = previous.widgetId)
+                } else {
+                    reviewedProfile
+                }
                 if (
                     previous?.requiresRiskAcknowledgement == true &&
                     (reviewedProfile.enabled || !reviewedProfile.requiresRiskAcknowledgement)
@@ -869,7 +877,7 @@ class ActiveAutomationViewModel(
                         entityType = EditHistoryDao.TYPE_PROFILE,
                         entityId = profile.id,
                         previousJson = StorageJson.encodeToString(previous),
-                        nextJson = StorageJson.encodeToString(reviewedProfile),
+                        nextJson = StorageJson.encodeToString(persistedProfile),
                     )
                 }
                 if (previous != null && previous.contexts != profile.contexts) {
@@ -880,7 +888,7 @@ class ActiveAutomationViewModel(
                         )
                     }
                 }
-                db.profileDao().upsert(reviewedProfile.toEntity())
+                db.profileDao().upsert(persistedProfile.toEntity())
             }
             emitLintWarnings(reviewedProfile, lint)
         }
