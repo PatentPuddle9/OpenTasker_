@@ -236,10 +236,12 @@ object UpdateCheckProtocol {
                     ?.takeIf(Set<String>::isNotEmpty)
                 val publishedAt = release["published_at"]?.jsonPrimitive?.content
                     ?: release["created_at"]?.jsonPrimitive?.content
-                val inAppUpdates = when {
+                val declaredUpdateSupport = when {
                     body.contains("In-app updates: **not included**", ignoreCase = true) -> false
                     body.contains("In-app updates: **available**", ignoreCase = true) -> true
-                    else -> isAtLeastVersion(version, FIRST_IN_APP_UPDATE_VERSION)
+                    branch.equals(DEFAULT_SOURCE_BRANCH, ignoreCase = true) ||
+                        isBetaBuildBranch(branch) -> isAtLeastVersion(version, FIRST_IN_APP_UPDATE_VERSION)
+                    else -> null
                 }
 
                 BranchVersion(
@@ -252,7 +254,8 @@ object UpdateCheckProtocol {
                     apkSha256 = apk?.third,
                     sourceCommit = commit,
                     publishedAt = publishedAt,
-                    supportsInAppUpdates = inAppUpdates,
+                    supportsInAppUpdates = declaredUpdateSupport == true,
+                    updaterSupportKnown = declaredUpdateSupport != null,
                     supportedActionIds = supportedActionIds,
                 )
             }
