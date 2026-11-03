@@ -9,12 +9,8 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.opentasker.app.BuildConfig
-import com.opentasker.core.actions.HttpRequestAction
 import com.opentasker.core.storage.ScheduledWorkerId
 import com.opentasker.core.storage.recordingOutcome
-import com.opentasker.core.engine.ActionContext
-import com.opentasker.core.engine.ActionResult
-import com.opentasker.core.engine.VariableStore
 import com.opentasker.core.logging.AppLogger
 import java.util.concurrent.TimeUnit
 
@@ -36,31 +32,15 @@ class UpdateCheckWorker(
 
     private suspend fun runWork(): Result {
         if (!UpdateCheckAvailability.isAvailable()) return Result.success()
-        val settings = UpdateCheckSettings(applicationContext)
-        if (!settings.load().enabled) return Result.success()
+        if (!UpdateCheckSettings(applicationContext).load().enabled) return Result.success()
 
-        val variables = VariableStore()
-        val result = HttpRequestAction().run(
-            ActionContext(applicationContext, variables),
-            UpdateCheckProtocol.requestArguments(),
-        )
-        if (result !is ActionResult.Success) {
-            AppLogger.info(TAG, "Scheduled release check did not complete")
-            return Result.success()
-        }
-
-        val payload = variables.get(UpdateCheckProtocol.RESPONSE_VARIABLE)
-            ?: return Result.success()
-        when (val parsed = UpdateCheckProtocol.parseLatestRelease(payload, BuildConfig.VERSION_NAME)) {
-            UpdateCheckResult.NoUpdate,
-            is UpdateCheckResult.Available,
-            -> settings.record(parsed, System.currentTimeMillis())
-            is UpdateCheckResult.Invalid -> {
-                // Do not replace a previously valid result with untrusted/malformed response data.
-                AppLogger.warn(TAG, "Scheduled release check returned an invalid response")
+        return when (UpdateCheckRunner.checkAndRecord(applicationContext)) {
+            is UpdateCheckRunResult.Completed -> Result.success()
+            UpdateCheckRunResult.Failed -> {
+                AppLogger.info(TAG, "Scheduled release check did not complete")
+                Result.success()
             }
         }
-        return Result.success()
     }
 
     companion object {
