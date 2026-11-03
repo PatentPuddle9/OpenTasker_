@@ -460,7 +460,7 @@ fun ActiveAutomationUi(
         when (target) {
             is AutomationFlowTarget.Profile -> {
                 profiles.firstOrNull { it.id == target.profileId }?.let { profile ->
-                    screenOrdinal = OpenTaskerScreen.Profiles.ordinal
+                    screenOrdinal = OpenTaskerScreen.Actions.ordinal
                     openProfileDialog(profile)
                 } ?: run { opened = false }
             }
@@ -469,7 +469,7 @@ fun ActiveAutomationUi(
                 val profile = profiles.firstOrNull { it.id == target.profileId }
                 val contextSpec = profile?.contexts?.getOrNull(target.index)
                 if (profile != null && contextSpec != null) {
-                    screenOrdinal = OpenTaskerScreen.Profiles.ordinal
+                    screenOrdinal = OpenTaskerScreen.Actions.ordinal
                     openContextEdit(profile, contextSpec.type, target.index)
                 } else {
                     opened = false
@@ -488,7 +488,7 @@ fun ActiveAutomationUi(
                 val action = task?.actions?.getOrNull(target.index)
                 val metadata = action?.let { ActionMetadataRegistry.get(it.type) }
                 if (task != null && action != null && metadata != null) {
-                    screenOrdinal = OpenTaskerScreen.Tasks.ordinal
+                    screenOrdinal = OpenTaskerScreen.Actions.ordinal
                     openActionEdit(task, metadata, target.index)
                 } else {
                     opened = false
@@ -539,14 +539,14 @@ fun ActiveAutomationUi(
 
     var showMoreDestinations by rememberSaveable { mutableStateOf(false) }
     BackHandler(enabled = shouldNavigateBackToProfiles(screen)) {
-        screenOrdinal = OpenTaskerScreen.Profiles.ordinal
+        screenOrdinal = OpenTaskerScreen.Actions.ordinal
         showMoreDestinations = false
     }
     val headerDetail = when (screen) {
         // Counted over the same project-scoped lists the screens render, or the header disagreed
         // with the list under it whenever a project was selected.
-        OpenTaskerScreen.Profiles -> stringResource(R.string.header_profiles_detail, projectProfiles.count { it.enabled }, projectProfiles.size)
-        OpenTaskerScreen.Tasks -> stringResource(R.string.header_tasks_detail, projectTasks.sumOf { it.actions.size }, projectTasks.size)
+        OpenTaskerScreen.Actions -> stringResource(R.string.header_profiles_detail, projectProfiles.count { it.enabled }, projectProfiles.size)
+        OpenTaskerScreen.Shortcuts -> stringResource(R.string.header_tasks_detail, taskWidgetCount(context))
         OpenTaskerScreen.Vars -> stringResource(R.string.header_variables_detail, globalVariables.size)
         OpenTaskerScreen.Flow -> stringResource(R.string.header_flow_detail, projectProfiles.size, projectTasks.size)
         OpenTaskerScreen.Scenes -> stringResource(R.string.header_scenes_detail, scenes.sumOf { it.elements.size }, scenes.size)
@@ -571,7 +571,7 @@ fun ActiveAutomationUi(
                     onOpenSearch = { showGlobalSearchDialog = true },
                     showSearch = screen != OpenTaskerScreen.Settings,
                 )
-                if (screen in setOf(OpenTaskerScreen.Profiles, OpenTaskerScreen.Tasks, OpenTaskerScreen.Vars, OpenTaskerScreen.Scenes, OpenTaskerScreen.Flow)) {
+                if (screen in setOf(OpenTaskerScreen.Actions, OpenTaskerScreen.Vars, OpenTaskerScreen.Scenes, OpenTaskerScreen.Flow)) {
                     ProjectScopeBar(
                         projects = projects,
                         selectedProjectId = selectedProjectId,
@@ -586,7 +586,7 @@ fun ActiveAutomationUi(
         },
         floatingActionButton = {
             when (screen) {
-                OpenTaskerScreen.Profiles -> {
+                OpenTaskerScreen.Actions -> {
                     val createLabel = stringResource(if (projectTasks.isEmpty()) R.string.task_new else R.string.profile_new)
                     ExtendedFloatingActionButton(
                         onClick = {
@@ -609,13 +609,17 @@ fun ActiveAutomationUi(
                     )
                 }
 
-                OpenTaskerScreen.Tasks -> ExtendedFloatingActionButton(
-                    onClick = { showCreateTaskDialog = true },
+                OpenTaskerScreen.Shortcuts -> ExtendedFloatingActionButton(
+                    onClick = {
+                        if (!requestNewTaskWidget(context)) {
+                            scope.launch { snackbarHostState.showSnackbar("Your launcher couldn't create a home-screen widget.") }
+                        }
+                    },
                     shape = RoundedCornerShape(DesignSystem.Radii.lg),
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
-                    icon = { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.task_new)) },
-                    text = { Text(stringResource(R.string.task_new)) },
+                    icon = { Icon(Icons.Filled.Add, contentDescription = "Create new shortcut") },
+                    text = { Text("Create new") },
                 )
 
                 OpenTaskerScreen.Vars,
@@ -746,14 +750,14 @@ fun ActiveAutomationUi(
             }
             Box(Modifier.weight(1f).fillMaxHeight()) {
         when (screen) {
-            OpenTaskerScreen.Profiles -> ProfilesScreen(
+            OpenTaskerScreen.Actions -> ProfilesScreen(
                 profiles = projectProfiles,
                 tasks = projectTasks,
                 allTasks = tasks,
                 runLogs = runLogs,
                 storageDecodeIssues = storageDecodeIssues,
                 onCreateTaskFirst = {
-                    screenOrdinal = OpenTaskerScreen.Tasks.ordinal
+                    screenOrdinal = OpenTaskerScreen.Actions.ordinal
                     showCreateTaskDialog = true
                 },
                 onCreateProfile = { showCreateProfileDialog = true },
@@ -798,39 +802,13 @@ fun ActiveAutomationUi(
                 contentPadding = innerPadding, contentLoaded = contentLoaded, historyAvailability = historyAvailability,
             )
 
-            OpenTaskerScreen.Tasks -> TasksScreen(
-                tasks = projectTasks,
-                storageDecodeIssues = storageDecodeIssues,
-                onCreateTask = { showCreateTaskDialog = true },
-                onEditTask = { openTaskDialog(it) },
-                onUndoTaskEdit = { viewModel.undoLastTaskEdit(it.id) },
-                onRedoTaskEdit = { viewModel.redoLastTaskEdit(it.id) },
-                onDeleteTask = { openDeleteTask(it) }, onDuplicateTask = viewModel::duplicateTask,
-                onRunTask = { viewModel.runTaskNow(it) },
-                onPreflightTask = viewModel::previewTaskPreflight,
-                onPinTask = { viewModel.pinTaskShortcut(it) },
-                onAddAction = { openActionPicker(it) },
-                onEditAction = { task, index, action ->
-                    val metadata = ActionMetadataRegistry.get(action.type)
-                    if (metadata != null) {
-                        openActionEdit(task, metadata, index)
-                    } else {
-                        // Unknown/unsupported action types (e.g. from an import on a build that
-                        // lacks the action) have no editor; tell the user instead of dead-tapping.
-                        scope.launch {
-                            snackbarHostState.showSnackbar(unsupportedActionTypeMessage)
-                        }
+            OpenTaskerScreen.Shortcuts -> ShortcutsScreen(
+                contentPadding = innerPadding,
+                onCreateNew = {
+                    if (!requestNewTaskWidget(context)) {
+                        scope.launch { snackbarHostState.showSnackbar("Your launcher couldn't create a home-screen widget.") }
                     }
                 },
-                onDeleteAction = { task, index ->
-                    if (task.actions.getOrNull(index) != null) viewModel.removeTaskAction(task, index)
-                },
-                onMoveAction = { task, fromIndex, toIndex ->
-                    viewModel.moveTaskAction(task.id, fromIndex, toIndex)
-                },
-                onRunAction = { task, index -> viewModel.runActionNow(task, index) },
-                runBusy = runBusy,
-                contentPadding = innerPadding, contentLoaded = contentLoaded, historyAvailability = historyAvailability,
             )
 
             OpenTaskerScreen.Flow -> AutomationFlowScreen(
@@ -842,7 +820,7 @@ fun ActiveAutomationUi(
                 onAddContext = { profileId ->
                     val profile = profiles.firstOrNull { it.id == profileId }
                     if (profile != null) {
-                        screenOrdinal = OpenTaskerScreen.Profiles.ordinal
+                        screenOrdinal = OpenTaskerScreen.Actions.ordinal
                         openContextPicker(profile)
                     } else {
                         scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.ui_flow_target_missing)) }
@@ -851,7 +829,7 @@ fun ActiveAutomationUi(
                 onAddAction = { taskId ->
                     val task = tasks.firstOrNull { it.id == taskId }
                     if (task != null) {
-                        screenOrdinal = OpenTaskerScreen.Tasks.ordinal
+                        screenOrdinal = OpenTaskerScreen.Actions.ordinal
                         openActionPicker(task)
                     } else {
                         scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.ui_flow_target_missing)) }
@@ -1077,12 +1055,12 @@ fun ActiveAutomationUi(
                 selectedProjectId = result.projectId
                 when (result.kind) {
                     GlobalSearchResultKind.PROFILE -> profiles.firstOrNull { it.id == result.entityId }?.let {
-                        screenOrdinal = OpenTaskerScreen.Profiles.ordinal
+                        screenOrdinal = OpenTaskerScreen.Actions.ordinal
                         openProfileDialog(it)
                     }
 
                     GlobalSearchResultKind.TASK -> tasks.firstOrNull { it.id == result.entityId }?.let {
-                        screenOrdinal = OpenTaskerScreen.Tasks.ordinal
+                        screenOrdinal = OpenTaskerScreen.Actions.ordinal
                         openTaskDialog(it)
                     }
 
@@ -1091,7 +1069,7 @@ fun ActiveAutomationUi(
                         val action = result.actionIndex?.let { task?.actions?.getOrNull(it) }
                         val metadata = action?.let { ActionMetadataRegistry.get(it.type) }
                         if (task != null && metadata != null) {
-                            screenOrdinal = OpenTaskerScreen.Tasks.ordinal
+                            screenOrdinal = OpenTaskerScreen.Actions.ordinal
                             openActionEdit(task, metadata, result.actionIndex)
                         }
                     }
@@ -1202,7 +1180,7 @@ fun ActiveAutomationUi(
                 )
                 setupFocusRequirements = needed.map(SetupRequirement::name)
                 screenOrdinal = if (needed.isEmpty()) {
-                    OpenTaskerScreen.Profiles.ordinal
+                    OpenTaskerScreen.Actions.ordinal
                 } else {
                     OpenTaskerScreen.Setup.ordinal
                 }
