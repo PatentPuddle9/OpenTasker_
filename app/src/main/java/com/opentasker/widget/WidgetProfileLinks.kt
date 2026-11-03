@@ -95,7 +95,8 @@ object WidgetProfileLinks {
         val profileId = prefs.getLong(TaskWidgetProvider.keyProfileId(widgetId), -1L)
         val db = OpenTaskerApp_NoHilt.awaitDb()
         val dao = db.profileDao()
-        val entity = if (profileId > 0L) dao.getById(profileId) else dao.getByWidgetId(widgetId)
+        val entityById = if (profileId > 0L) dao.getById(profileId) else null
+        val entity = entityById?.takeIf { it.widgetId == widgetId } ?: dao.getByWidgetId(widgetId)
         if (entity != null && entity.widgetId == widgetId) {
             dao.delete(entity)
         }
