@@ -829,7 +829,7 @@ internal fun ProfileEditorDialog(
         },
         dismissButton = {
             Row {
-                if (profile != null && onSimulate != null) {
+                if (profile != null && !widgetOwned && onSimulate != null) {
                     // Simulate what is on screen, not what was last saved: passing the stored
                     // profile reported cooldown, priority, and limits that contradicted the
                     // fields the user was looking at.
