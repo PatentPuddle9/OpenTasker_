@@ -133,7 +133,7 @@ class UpdateCheckContractTest {
         assertTrue(setup.contains("In-app updating"))
         assertTrue(setup.contains("SysAdminDoc/OpenTasker"))
         assertTrue(setup.contains("fresh install"))
-        assertTrue(immutablePublisher.contains("opentasker-branch-build-$branch_hash-v$VERSION"))
+        assertTrue(immutablePublisher.contains("opentasker-branch-build-\\$branch_hash-v\\$VERSION"))
         assertTrue(immutablePublisher.contains("In-app updates: **"))
         assertTrue(immutablePublisher.contains("Refusing to replace it"))
     }
