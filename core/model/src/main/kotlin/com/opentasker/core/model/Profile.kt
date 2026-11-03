@@ -38,6 +38,8 @@ data class Profile(
     val overflowPolicy: ProfileOverflowPolicy = ProfileOverflowPolicy.LOG,
     /** Optional task to run when this profile's task fails without a lexical flow.catch. */
     val fallbackTaskId: Long? = null,
+    /** Monochrome symbol used to identify this profile in the Actions grid. */
+    val icon: String = "bolt",
 )
 
 @Serializable
