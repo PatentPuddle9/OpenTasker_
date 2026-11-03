@@ -89,7 +89,8 @@ class MainActivity : ComponentActivity() {
         
         setContent {
             val themeMode by ThemePreference.observe(this).collectAsState(initial = ThemeMode.Amoled)
-            OpenTaskerTheme(themeMode) {
+            val accentColorHex by ThemePreference.observeAccentColor(this).collectAsState(initial = ThemePreference.DEFAULT_ACCENT_HEX)
+            OpenTaskerTheme(themeMode, accentColorHex) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
