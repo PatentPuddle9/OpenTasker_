@@ -195,11 +195,13 @@ private fun loadShortcutWidgets(context: Context): List<ShortcutWidgetRow> {
                 TaskWidgetProvider.keyTaskName(widgetId),
                 "Choose a task",
             ) ?: "Choose a task",
-            icon = prefs.getString(
-                TaskWidgetProvider.keyIcon(widgetId),
-                WidgetIconCatalog.default.key,
-            ) ?: WidgetIconCatalog.default.key,
-        ).let(WidgetIconCatalog::resolve).key,
+            icon = WidgetIconCatalog.resolve(
+                prefs.getString(
+                    TaskWidgetProvider.keyIcon(widgetId),
+                    WidgetIconCatalog.default.key,
+                ),
+            ).key,
+        ),
         )
     }.sortedBy { it.taskName.lowercase() }
 }
