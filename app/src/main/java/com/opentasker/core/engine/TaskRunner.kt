@@ -175,11 +175,12 @@ class TaskRunner(
                 // Retrying blocks and foreach iterations depend on strict action ordering. Keep
                 // those scopes sequential even when an action's saved preference is turned off.
                 val mustWait = spec.waitForCompletion || tryStack.isNotEmpty() || loopStack.isNotEmpty()
-                if (mustWait) {
-                    val (result, trace) = runOne(actionIndex, spec)
+                val result: ActionResult? = if (mustWait) {
+                    val (actionResult, trace) = runOne(actionIndex, spec)
                     onStepCompleted?.invoke(actionIndex, stepLabel)
-                    results += result
+                    results += actionResult
                     traces += trace
+                    actionResult
                 } else {
                     val resultSlot = results.size
                     results += null
@@ -190,8 +191,9 @@ class TaskRunner(
                         outcome
                     }
                     pendingActions += Triple(resultSlot, actionIndex, pending)
+                    null
                 }
-                if (result !is ActionResult.Failure &&
+                if (result != null && result !is ActionResult.Failure &&
                     tryStack.any { frame ->
                         frame.phase == TryPhase.BODY && pc > frame.tryIndex && pc < frame.endIndex
                     }
