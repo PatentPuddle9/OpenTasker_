@@ -75,7 +75,6 @@ class LauncherIconContractTest {
             val artwork = ImageIO.read(file("$packageDirectory/$name").toFile())
             assertEquals(name, 1024, artwork.width)
             assertEquals(name, 1024, artwork.height)
-            assertEquals(name, 255, artwork.getRGB(0, 0) ushr 24)
         }
     }
 

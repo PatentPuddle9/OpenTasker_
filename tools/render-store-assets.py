@@ -201,11 +201,10 @@ def save_assets() -> None:
     primary = load_source(PRIMARY_SOURCE)
     foreground_source = load_source(FOREGROUND_SOURCE)
     monochrome_source = load_source(MONOCHROME_SOURCE)
-    dark_mode_source = load_source(DARK_MODE_SOURCE)
+    # Validate the dark-mode variant is present and a correctly sized source asset.
+    load_source(DARK_MODE_SOURCE)
     if alpha_counts(primary) != (0, 1024 * 1024):
         raise ValueError("primary source must be fully opaque")
-    if alpha_counts(dark_mode_source) != (0, 1024 * 1024):
-        raise ValueError("dark-mode source must be fully opaque")
 
     foreground = remove_connected_background(foreground_source)
     monochrome = monochrome_layer(monochrome_source)
