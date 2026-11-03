@@ -109,11 +109,6 @@ internal fun ProfilesScreen(
     onRedoProfileEdit: (Profile) -> Unit = {},
     onDeleteProfile: (Profile) -> Unit,
     onDuplicateProfile: (Profile) -> Unit = {},
-    onToggleProfile: (Profile, Boolean) -> Unit,
-    onAddContext: (Profile) -> Unit,
-    onEditContextLogic: (Profile) -> Unit,
-    onEditContext: (Profile, Int, ContextSpec) -> Unit,
-    onDeleteContext: (Profile, Int) -> Unit,
     contentPadding: PaddingValues,
     contentLoaded: Boolean = true,
     historyAvailability: EditHistoryAvailabilityState = EditHistoryAvailabilityState(),
@@ -266,11 +261,6 @@ internal fun ProfilesScreen(
                 canRedo = historyAvailability.canRedoProfile(profile.id),
                 onDelete = { onDeleteProfile(profile) },
                 onDuplicate = { onDuplicateProfile(profile) },
-                onToggle = { onToggleProfile(profile, it) },
-                onAddContext = { onAddContext(profile) },
-                onEditContextLogic = { onEditContextLogic(profile) },
-                onEditContext = { index, context -> onEditContext(profile, index, context) },
-                onDeleteContext = { index -> onDeleteContext(profile, index) },
                 onPreflight = { onPreflightProfile(profile) },
             )
         }
@@ -362,12 +352,7 @@ private fun ProfileCard(
     onRedo: () -> Unit,
     onDelete: () -> Unit,
     onDuplicate: () -> Unit,
-    onToggle: (Boolean) -> Unit,
     onPreflight: () -> Unit,
-    onAddContext: () -> Unit,
-    onEditContextLogic: () -> Unit,
-    onEditContext: (Int, ContextSpec) -> Unit,
-    onDeleteContext: (Int) -> Unit,
 ) {
     val widgetOwned = profile.widgetId != null
     val profileState = when {
@@ -375,7 +360,6 @@ private fun ProfileCard(
         profile.enabled -> stringResource(R.string.label_enabled)
         else -> stringResource(R.string.label_paused)
     }
-    val toggleDescription = stringResource(R.string.a11y_profile_status, profile.name)
     Card(
         onClick = onEdit,
         modifier = Modifier.fillMaxWidth(),
@@ -394,18 +378,24 @@ private fun ProfileCard(
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f),
                     shape = RoundedCornerShape(DesignSystem.Radii.md),
-                    modifier = Modifier.size(42.dp),
+                    modifier = Modifier.size(46.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            profile.icon.takeIf { icon -> WidgetIconCatalog.all.any { it.symbol == icon } } ?: WidgetIconCatalog.default.symbol,
+                            profile.icon.takeIf { icon -> WidgetIconCatalog.all.any { it.symbol == icon } }
+                                ?: WidgetIconCatalog.default.symbol,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             style = MaterialTheme.typography.titleLarge,
                         )
                     }
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(profile.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        profile.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                     Text(
                         stringResource(R.string.workspace_runs_task, enterTaskName),
                         style = MaterialTheme.typography.bodySmall,
@@ -414,64 +404,33 @@ private fun ProfileCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        profileState,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (profile.enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        stringResource(R.string.label_context_count, profile.contexts.size),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 if (widgetOwned) {
                     Text("Widget", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 } else {
-                    Switch(
-                        checked = profile.enabled,
-                        onCheckedChange = onToggle,
-                        modifier = Modifier.semantics {
-                            contentDescription = toggleDescription
-                            stateDescription = profileState
-                        },
-                    )
-                }
-            }
-            Text(
-                text = listOf(
-                    profileState,
-                    stringResource(R.string.label_context_count, profile.contexts.size),
-                ).joinToString(" • "),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (!widgetOwned && profile.contexts.isEmpty()) {
-                InlineNotice(
-                    title = stringResource(R.string.workspace_profile_cannot_match),
-                    body = stringResource(R.string.workspace_profile_cannot_match_body),
-                    color = MaterialTheme.colorScheme.error,
-                )
-            } else if (!widgetOwned) {
-                profile.contexts.forEachIndexed { index, context ->
-                    ContextRow(
-                        index = index,
-                        context = context,
-                        onEdit = { onEditContext(index, context) },
-                        onDelete = { onDeleteContext(index) },
-                    )
-                }
-            }
-            if (!widgetOwned) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    TextButton(onClick = onAddContext) { Text(stringResource(R.string.profile_add_context)) }
-                    if (profile.contexts.size >= 2) {
-                        TextButton(onClick = onEditContextLogic) { Text(stringResource(R.string.profile_edit_context_logic)) }
-                    }
                     ProfileActionsMenu(
                         contentDescription = stringResource(R.string.a11y_duplicate_profile, profile.name),
                         editDescription = stringResource(R.string.a11y_edit_profile, profile.name),
-                        canEditContextLogic = profile.contexts.size >= 2,
                         canUndo = canUndo,
                         canRedo = canRedo,
                         onEdit = onEdit,
-                        onAddContext = onAddContext,
-                        onEditContextLogic = onEditContextLogic,
                         onPreflight = onPreflight,
                         onDuplicate = onDuplicate,
                         onUndo = onUndo,
@@ -717,12 +676,9 @@ private fun TaskCard(
 private fun ProfileActionsMenu(
     contentDescription: String,
     editDescription: String,
-    canEditContextLogic: Boolean,
     canUndo: Boolean,
     canRedo: Boolean,
     onEdit: () -> Unit,
-    onAddContext: () -> Unit,
-    onEditContextLogic: () -> Unit,
     onPreflight: () -> Unit,
     onDuplicate: () -> Unit,
     onUndo: () -> Unit,
@@ -733,8 +689,6 @@ private fun ProfileActionsMenu(
         contentDescription = contentDescription,
         actions = listOf(
             ContextualMenuAction(R.string.action_edit, accessibilityLabel = editDescription, onClick = onEdit),
-            ContextualMenuAction(R.string.profile_add_context, onClick = onAddContext),
-            ContextualMenuAction(R.string.profile_edit_context_logic, enabled = canEditContextLogic, onClick = onEditContextLogic),
             ContextualMenuAction(R.string.action_preflight, onClick = onPreflight),
             ContextualMenuAction(R.string.action_duplicate, onClick = onDuplicate),
             ContextualMenuAction(R.string.action_undo, enabled = canUndo, onClick = onUndo),
