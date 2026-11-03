@@ -105,7 +105,8 @@ jobs:
           set -euo pipefail
           artifact_dir="$RUNNER_TEMP/opentasker-branch-artifact"
           mkdir -p "$artifact_dir"
-          gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" --name OpenTasker-debug-apk --dir "$artifact_dir"
+          artifact_name="OpenTasker-${BUILD_BRANCH}-debug-apk"
+          gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$artifact_name" --dir "$artifact_dir"
 
           mapfile -t apk_files < <(find "$artifact_dir" -type f -name '*.apk' -print)
           mapfile -t metadata_files < <(find "$artifact_dir" -type f -name 'build-info.txt' -print)
