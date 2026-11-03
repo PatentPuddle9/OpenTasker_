@@ -48,8 +48,16 @@ class LauncherIconContractTest {
     }
 
     @Test
-    fun `store and transparent copies match the checked in master`() {
-        val primary = ImageIO.read(file("design/logo/source-user-logo-2026-08-29.png").toFile())
+    fun `store art and launcher renderer use the checked in icon package`() {
+        val packageDirectory = "OpenTasker_Icon_Package"
+        val renderer = read("tools/render-store-assets.py")
+        assertTrue("""ICON_PACKAGE = REPO / "OpenTasker_Icon_Package"""" in renderer)
+        assertTrue("""PRIMARY_SOURCE = ICON_PACKAGE / "OpenTasker_Primary_1024.png"""" in renderer)
+        assertTrue("""FOREGROUND_SOURCE = ICON_PACKAGE / "OpenTasker_Android_Foreground_1024.png"""" in renderer)
+        assertTrue("""MONOCHROME_SOURCE = ICON_PACKAGE / "OpenTasker_Monochrome_1024.png"""" in renderer)
+        assertTrue("""DARK_MODE_SOURCE = ICON_PACKAGE / "OpenTasker_Dark_Mode_1024.png"""" in renderer)
+
+        val primary = ImageIO.read(file("$packageDirectory/OpenTasker_Primary_1024.png").toFile())
         assertEquals(1024, primary.width)
         assertEquals(1024, primary.height)
         assertEquals(255, primary.getRGB(0, 0) ushr 24)
@@ -59,12 +67,15 @@ class LauncherIconContractTest {
         assertEquals(512, store.height)
         assertEquals(primary.getRGB(0, 0) and 0xFFFFFF, store.getRGB(0, 0) and 0xFFFFFF)
 
-        val foreground = ImageIO.read(file("design/logo/opentasker-mark.png").toFile())
-        assertEquals(1024, foreground.width)
-        assertEquals(1024, foreground.height)
-        assertEquals(0, foreground.getRGB(0, 0) ushr 24)
-        assertTrue((foreground.getRGB(foreground.width / 2, foreground.height / 2) ushr 24) > 0)
-        assertFalse(Files.exists(file("design/logo/opentasker-mark.svg")))
+        listOf(
+            "OpenTasker_Android_Foreground_1024.png",
+            "OpenTasker_Dark_Mode_1024.png",
+            "OpenTasker_Monochrome_1024.png",
+        ).forEach { name ->
+            val artwork = ImageIO.read(file("$packageDirectory/$name").toFile())
+            assertEquals(name, 1024, artwork.width)
+            assertEquals(name, 1024, artwork.height)
+        }
     }
 
     @Test

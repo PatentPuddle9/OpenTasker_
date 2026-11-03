@@ -291,20 +291,20 @@ private fun VariableRow(
     Card(
         onClick = onEdit,
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f)),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shape = RoundedCornerShape(DesignSystem.Radii.md),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f)),
+        shape = RoundedCornerShape(DesignSystem.Radii.lg),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
-                modifier = Modifier.size(44.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.size(42.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 shape = RoundedCornerShape(DesignSystem.Radii.sm),
             ) {
                 Icon(
@@ -317,7 +317,7 @@ private fun VariableRow(
                         },
                     ),
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(11.dp),
+                    modifier = Modifier.padding(10.dp).size(22.dp),
                 )
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {

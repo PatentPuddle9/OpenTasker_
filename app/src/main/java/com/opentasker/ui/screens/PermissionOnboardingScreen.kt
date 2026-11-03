@@ -45,6 +45,8 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
@@ -261,6 +263,10 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
         .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemeMode.System)
 
+    val accentColorHex: StateFlow<String> = ThemePreference.observeAccentColor(context)
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemePreference.DEFAULT_ACCENT_HEX)
+
     private val _updateCheckState = MutableStateFlow(
         if (UpdateCheckAvailability.isAvailable()) UpdateCheckSettings(context).load() else UpdateCheckState(),
     )
@@ -324,8 +330,12 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
     }
 
     fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch(Dispatchers.IO) { ThemePreference.set(context, mode) }
+    }
+
+    fun setAccentColor(hex: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            ThemePreference.set(context, mode)
+            runCatching { ThemePreference.setAccentColor(context, hex) }
         }
     }
 
@@ -567,6 +577,7 @@ fun PermissionOnboardingScreen(
     val items = loadedItems.orEmpty()
     val directBootEnabled by setupViewModel.directBootEnabled.collectAsState()
     val themeMode by setupViewModel.themeMode.collectAsState()
+    val accentColorHex by setupViewModel.accentColorHex.collectAsState()
     val updateCheckState by setupViewModel.updateCheckState.collectAsState()
     val availableUpdateBranches by setupViewModel.availableUpdateBranches.collectAsState()
     val updateBranchesLoading by setupViewModel.updateBranchesLoading.collectAsState()
@@ -669,8 +680,8 @@ fun PermissionOnboardingScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(contentPadding),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(if (settingsOnly) 6.dp else 10.dp),
     ) {
         if (focusRequirements.isNotEmpty()) item {
             Card(
@@ -755,7 +766,9 @@ fun PermissionOnboardingScreen(
             item {
                 ThemeSetupCard(
                     currentMode = themeMode,
+                    currentAccentHex = accentColorHex,
                     onSelectMode = setupViewModel::setThemeMode,
+                    onSelectAccent = setupViewModel::setAccentColor,
                 )
             }
             item {
@@ -1650,9 +1663,13 @@ internal fun LocaleGrantManagementCard(
 @Composable
 private fun ThemeSetupCard(
     currentMode: ThemeMode,
+    currentAccentHex: String,
     onSelectMode: (ThemeMode) -> Unit,
+    onSelectAccent: (String) -> Unit,
 ) {
     var menuExpanded by rememberSaveable { mutableStateOf(false) }
+    var customHex by rememberSaveable(currentAccentHex) { mutableStateOf(currentAccentHex) }
+    val accentPresets = listOf("#B69CFF", "#9B7BFF", "#D0A4FF", "#E18BCE", "#805AD5")
     val offeredModes = ThemeMode.entries.filter {
         it != ThemeMode.Dynamic || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     }
@@ -1668,10 +1685,24 @@ private fun ThemeSetupCard(
     }
     Column(Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            Surface(
+                modifier = Modifier.size(46.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = RoundedCornerShape(DesignSystem.Radii.md),
+            ) {
+                Icon(
+                    Icons.Outlined.Palette,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(12.dp).size(22.dp),
+                )
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(stringResource(R.string.setup_theme_label), style = MaterialTheme.typography.titleSmall)
                 Text(modeLabels.getValue(currentMode), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
@@ -1700,6 +1731,37 @@ private fun ThemeSetupCard(
                         )
                     }
                 }
+            }
+        }
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("Accent color", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                accentPresets.forEach { preset ->
+                    val swatch = Color(android.graphics.Color.parseColor(preset))
+                    Surface(
+                        modifier = Modifier.size(34.dp).clickable { customHex = preset; onSelectAccent(preset) },
+                        color = swatch,
+                        shape = RoundedCornerShape(50),
+                        border = BorderStroke(2.dp, if (currentAccentHex.equals(preset, true)) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant),
+                    ) {}
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = customHex,
+                    onValueChange = { customHex = it.take(7) },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Custom HEX") },
+                    singleLine = true,
+                    placeholder = { Text("#B69CFF") },
+                )
+                OutlinedButton(
+                    onClick = { onSelectAccent(if (customHex.startsWith("#")) customHex else "#$customHex") },
+                    enabled = Regex("#?[0-9A-Fa-f]{6}").matches(customHex),
+                ) { Text("Apply") }
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
@@ -1750,10 +1812,22 @@ private fun DirectBootSetupCard(
                 .fillMaxWidth()
                 .toggleable(value = enabled, onValueChange = onEnabledChange, role = Role.Switch)
                 .semantics(mergeDescendants = true) { this.stateDescription = stateDescription }
-                .padding(horizontal = 8.dp, vertical = 12.dp),
+                .padding(horizontal = 8.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            Surface(
+                modifier = Modifier.size(46.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = RoundedCornerShape(DesignSystem.Radii.md),
+            ) {
+                Icon(
+                    Icons.Outlined.Security,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(12.dp).size(22.dp),
+                )
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(stringResource(R.string.setup_direct_boot_title), style = MaterialTheme.typography.titleSmall)
                 Text(stateDescription, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
@@ -2104,7 +2178,7 @@ private fun SettingsSectionLabel(label: String) {
         text = label,
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
+        modifier = Modifier.padding(top = 14.dp, bottom = 4.dp),
     )
 }
 

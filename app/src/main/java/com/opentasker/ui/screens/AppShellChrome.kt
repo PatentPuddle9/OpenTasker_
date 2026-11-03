@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.PlaylistPlay
@@ -95,11 +96,12 @@ internal fun shouldNavigateBackToProfiles(screen: OpenTaskerScreen): Boolean =
 @Composable
 internal fun OpenTaskerHeader(
     screen: OpenTaskerScreen,
-    detail: String,
+    detail: String?,
     onOpenSearch: () -> Unit,
+    showSearch: Boolean = true,
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = MaterialTheme.colorScheme.background,
         tonalElevation = 0.dp,
     ) {
         Column(
@@ -113,7 +115,7 @@ internal fun OpenTaskerHeader(
                     .padding(
                         start = DesignSystem.Screen.horizontalPadding,
                         end = DesignSystem.Screen.horizontalPadding,
-                        top = 12.dp,
+                        top = 10.dp,
                         bottom = 10.dp,
                     ),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -123,58 +125,58 @@ internal fun OpenTaskerHeader(
                     Text(
                         stringResource(screen.labelRes),
                         style = MaterialTheme.typography.headlineSmall.copy(
-                            fontSize = 28.sp,
-                            lineHeight = 33.sp,
+                            fontSize = 27.sp,
+                            lineHeight = 32.sp,
+                            letterSpacing = (-0.45).sp,
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    if (!detail.isNullOrBlank()) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                Modifier
+                                    .size(7.dp)
+                                    .background(
+                                        color = when (screen) {
+                                            OpenTaskerScreen.Diagnostics -> MaterialTheme.colorScheme.tertiary
+                                            OpenTaskerScreen.RunLog, OpenTaskerScreen.Inspector -> MaterialTheme.colorScheme.primary
+                                            else -> MaterialTheme.colorScheme.primary
+                                        },
+                                        shape = CircleShape,
+                                    ),
+                            )
+                            Text(
+                                text = detail,
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+                if (showSearch) {
+                    IconButton(
+                        onClick = onOpenSearch,
+                        modifier = Modifier.size(44.dp),
                     ) {
-                        Box(
-                            Modifier
-                                .size(7.dp)
-                                .background(
-                                    color = when (screen) {
-                                        OpenTaskerScreen.Diagnostics -> MaterialTheme.colorScheme.tertiary
-                                        OpenTaskerScreen.RunLog, OpenTaskerScreen.Inspector -> MaterialTheme.colorScheme.primary
-                                        else -> MaterialTheme.colorScheme.primary
-                                    },
-                                    shape = RoundedCornerShape(DesignSystem.Radii.xs),
-                                ),
-                        )
-                        Text(
-                            text = detail,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                        Icon(
+                            imageVector = Icons.Filled.Search,
+                            contentDescription = stringResource(R.string.global_search_content_description),
+                            tint = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 }
-                IconButton(onClick = onOpenSearch) {
-                    Icon(
-                        imageVector = Icons.Filled.Search,
-                        contentDescription = stringResource(R.string.global_search_content_description),
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-                Icon(
-                    imageVector = screen.icon(),
-                    contentDescription = stringResource(screen.labelRes),
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier
-                        .padding(12.dp)
-                        .size(24.dp),
-                )
             }
             Box(
                 Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant),
+                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)),
             )
         }
     }
@@ -199,19 +201,13 @@ internal fun OpenTaskerNavigationItem(
                 this.selected = selected
                 stateDescription = if (selected) selectedDescription else notSelectedDescription
             }
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+            .padding(horizontal = 3.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Box(
             modifier = Modifier
-                .size(width = 48.dp, height = 30.dp)
-                .then(
-                    if (selected) Modifier.background(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.13f),
-                        shape = RoundedCornerShape(DesignSystem.Radii.sm),
-                    ) else Modifier
-                ),
+                .size(width = 44.dp, height = 28.dp),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -221,10 +217,10 @@ internal fun OpenTaskerNavigationItem(
                 modifier = Modifier.size(22.dp),
             )
         }
-        Spacer(Modifier.height(2.dp))
+        Spacer(Modifier.height(3.dp))
         Text(
             label,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall,
             color = contentColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

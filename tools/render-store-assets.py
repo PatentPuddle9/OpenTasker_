@@ -16,12 +16,14 @@ MUTED = (157, 174, 199)
 
 REPO = Path(__file__).resolve().parent.parent
 RES = REPO / "app" / "src" / "main" / "res"
+ICON_PACKAGE = REPO / "OpenTasker_Icon_Package"
 DESIGN = REPO / "design" / "logo"
 EXPORTS = DESIGN / "exports"
 STORE = REPO / "fastlane" / "metadata" / "android" / "en-US" / "images"
-PRIMARY_SOURCE = DESIGN / "source-user-logo-2026-08-29.png"
-FOREGROUND_SOURCE = DESIGN / "source-android-foreground-2026-08.png"
-MONOCHROME_SOURCE = DESIGN / "source-monochrome-2026-08.png"
+PRIMARY_SOURCE = ICON_PACKAGE / "OpenTasker_Primary_1024.png"
+FOREGROUND_SOURCE = ICON_PACKAGE / "OpenTasker_Android_Foreground_1024.png"
+MONOCHROME_SOURCE = ICON_PACKAGE / "OpenTasker_Monochrome_1024.png"
+DARK_MODE_SOURCE = ICON_PACKAGE / "OpenTasker_Dark_Mode_1024.png"
 
 ADAPTIVE_DENSITIES = {
     "mdpi": 108,
@@ -199,6 +201,8 @@ def save_assets() -> None:
     primary = load_source(PRIMARY_SOURCE)
     foreground_source = load_source(FOREGROUND_SOURCE)
     monochrome_source = load_source(MONOCHROME_SOURCE)
+    # Validate the dark-mode variant is present and a correctly sized source asset.
+    load_source(DARK_MODE_SOURCE)
     if alpha_counts(primary) != (0, 1024 * 1024):
         raise ValueError("primary source must be fully opaque")
 
