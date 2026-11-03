@@ -92,7 +92,6 @@ internal fun ProfilesScreen(
     tasks: List<Task>,
     runLogs: List<RunLogEntry>,
     storageDecodeIssues: List<StorageDecodeIssue>,
-    onCreateTaskFirst: () -> Unit,
     onCreateProfile: () -> Unit,
     onBrowseTemplates: () -> Unit,
     onPreviewProfileShare: () -> Unit,
@@ -138,8 +137,8 @@ internal fun ProfilesScreen(
             tertiaryActionLabel = if (taskerImportBusy) stringResource(R.string.import_reading_xml) else stringResource(R.string.action_import_tasker_xml),
             onTertiaryAction = onImportTaskerXml,
             tertiaryActionEnabled = !taskerImportBusy,
-            quaternaryActionLabel = stringResource(R.string.action_create_blank_task),
-            onQuaternaryAction = onCreateTaskFirst,
+            quaternaryActionLabel = stringResource(R.string.action_create_blank_profile),
+            onQuaternaryAction = onCreateProfile,
             contentPadding = contentPadding,
         )
         return
