@@ -265,6 +265,10 @@
     <string name="catalog_action_bluetooth_toggle_description" formatted="false">Turn Bluetooth on or off</string>
     <string name="catalog_action_bluetooth_toggle_field_state_label" formatted="false">State</string>
     <string name="catalog_action_bluetooth_toggle_field_state_hint" formatted="false">on/off/toggle</string>
+    <string name="catalog_action_settings_read_field_var_label" formatted="false">Variable prefix</string>
+    <string name="catalog_action_settings_read_field_var_hint" formatted="false">Optional; defaults to the setting name</string>
+    <string name="catalog_action_brightness_read_name" formatted="false">Read Screen Brightness</string>
+    <string name="catalog_action_brightness_read_description" formatted="false">Read the current brightness level, percentage, and automatic or manual mode into variables</string>
     <string name="catalog_action_brightness_set_name" formatted="false">Set Brightness</string>
     <string name="catalog_action_brightness_set_description" formatted="false">Set screen brightness level</string>
     <string name="catalog_action_brightness_set_field_brightness_label" formatted="false">Brightness (0-255)</string>
@@ -285,6 +289,8 @@
     <string name="catalog_action_ime_set_description" formatted="false">Validate a keyboard and open the system picker</string>
     <string name="catalog_action_ime_set_field_ime_id_label" formatted="false">Keyboard ID or package</string>
     <string name="catalog_action_ime_set_field_ime_id_hint" formatted="false">Component ID from ime.info</string>
+    <string name="catalog_action_volume_read_name" formatted="false">Read Volume</string>
+    <string name="catalog_action_volume_read_description" formatted="false">Read a selected audio stream's current level, maximum, percentage, and muted state into variables</string>
     <string name="catalog_action_volume_set_name" formatted="false">Set Volume</string>
     <string name="catalog_action_volume_set_description" formatted="false">Adjust volume for a stream</string>
     <string name="catalog_action_volume_set_field_stream_label" formatted="false">Stream</string>
@@ -348,6 +354,8 @@
     <string name="catalog_action_ringer_set_description" formatted="false">Set device ringer mode</string>
     <string name="catalog_action_ringer_set_field_mode_label" formatted="false">Mode</string>
     <string name="catalog_action_ringer_set_field_mode_hint" formatted="false">normal/vibrate/silent</string>
+    <string name="catalog_action_torch_read_name" formatted="false">Read Flashlight State</string>
+    <string name="catalog_action_torch_read_description" formatted="false">Read whether the device flashlight is currently on or off into variables</string>
     <string name="catalog_action_torch_set_name" formatted="false">Toggle Torch</string>
     <string name="catalog_action_torch_set_description" formatted="false">Turn camera flashlight on or off</string>
     <string name="catalog_action_torch_set_field_state_label" formatted="false">State</string>
