@@ -25,13 +25,7 @@ class LauncherIconContractTest {
             assertTrue("@mipmap/ic_launcher_monochrome" in adaptive)
         }
 
-        val expected = mapOf(
-            "mipmap-mdpi" to 108,
-            "mipmap-hdpi" to 162,
-            "mipmap-xhdpi" to 216,
-            "mipmap-xxhdpi" to 324,
-            "mipmap-xxxhdpi" to 432,
-        )
+        val expected = mapOf("mipmap-xxxhdpi" to 432)
 
         expected.forEach { (directory, size) ->
             listOf("ic_launcher_foreground.png", "ic_launcher_monochrome.png").forEach { name ->
@@ -59,13 +53,18 @@ class LauncherIconContractTest {
         }
         assertTrue("#CB6CE6" in read("app/src/main/res/values/ic_launcher_background.xml"))
         assertTrue("#000000" in read("app/src/main/res/values-night/ic_launcher_background.xml"))
+        listOf("mdpi", "hdpi", "xhdpi", "xxhdpi").forEach { density ->
+            assertFalse(Files.exists(file("app/src/main/res/mipmap-$density/ic_launcher_foreground.png")))
+            assertFalse(Files.exists(file("app/src/main/res/mipmap-$density/ic_launcher_monochrome.png")))
+            assertFalse(Files.exists(file("app/src/main/res/mipmap-night-$density/ic_launcher_night_foreground.png")))
+        }
         assertFalse(Files.exists(file("app/src/main/res/mipmap-ldpi/ic_launcher.png")))
         assertFalse(Files.exists(file("app/src/main/res/mipmap/ic_launcher_foreground.png")))
     }
 
     @Test
     fun `store and transparent copies match the checked in master`() {
-        val primary = ImageIO.read(file("OpenTasker_Icon_Package/OpenTasker_Primary_1024.png").toFile())
+        val primary = ImageIO.read(file("design/logo/source-user-logo-2026-08-29.png").toFile())
         assertEquals(1024, primary.width)
         assertEquals(1024, primary.height)
         assertEquals(255, primary.getRGB(0, 0) ushr 24)
