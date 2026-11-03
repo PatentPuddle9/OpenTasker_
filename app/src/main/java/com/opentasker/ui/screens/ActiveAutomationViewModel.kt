@@ -465,6 +465,28 @@ class ActiveAutomationViewModel(
         )
     }
 
+    /**
+     * New Actions are profile-first, but the runner still executes a task record behind the scenes.
+     * Create that backing task silently and return it so the profile editor can own its setup.
+     */
+    fun createBackingTaskForProfile(
+        projectId: Long = DEFAULT_PROJECT_ID,
+        onCreated: (Task) -> Unit,
+    ) {
+        viewModelScope.launch {
+            runCatching {
+                val draft = Task(name = "New action", projectId = projectId)
+                val id = db.taskDao().insert(draft.toEntity())
+                draft.copy(id = id)
+            }.onSuccess { task ->
+                events.send(message(R.string.ui_message_task_created))
+                onCreated(task)
+            }.onFailure { error ->
+                events.send(errorMessage(error, R.string.ui_error_generic))
+            }
+        }
+    }
+
     fun duplicateTask(task: Task) {
         viewModelScope.launch {
             runCatching {
