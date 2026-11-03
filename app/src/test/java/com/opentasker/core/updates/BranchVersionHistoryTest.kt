@@ -5,7 +5,6 @@ import com.opentasker.core.model.Profile
 import com.opentasker.core.model.Task
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -25,8 +24,8 @@ class BranchVersionHistoryTest {
         )!!.single()
 
         assertEquals("0.2.125", version.version)
-        assertEquals(127L, version.versionCode)
-        assertEquals("a".repeat(64), version.apkSha256)
+        assertEquals(127L, version.versionCode ?: -1L)
+        assertEquals("a".repeat(64), version.apkSha256.orEmpty())
         assertTrue(version.canInstallInPlace)
         assertTrue(version.supportsInAppUpdates)
         assertTrue(version.isLatest)
