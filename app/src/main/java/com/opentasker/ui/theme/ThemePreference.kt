@@ -44,12 +44,23 @@ enum class ThemeMode {
 private val Context.themeDataStore: DataStore<Preferences> by preferencesDataStore(name = "theme_prefs")
 
 object ThemePreference {
+    const val DEFAULT_ACCENT_HEX = "#B69CFF"
     private val KEY = stringPreferencesKey("theme_mode")
+    private val ACCENT_KEY = stringPreferencesKey("accent_color_hex")
 
     fun observe(context: Context): Flow<ThemeMode> =
         context.themeDataStore.data.map { prefs ->
             ThemeMode.fromString(prefs[KEY])
         }
+
+    fun observeAccentColor(context: Context): Flow<String> =
+        context.themeDataStore.data.map { prefs -> prefs[ACCENT_KEY] ?: DEFAULT_ACCENT_HEX }
+
+    suspend fun setAccentColor(context: Context, hex: String) {
+        val normalized = hex.trim().let { if (it.startsWith("#")) it else "#$it" }
+        require(Regex("#[0-9A-Fa-f]{6}").matches(normalized)) { "Accent must be a six-digit HEX color" }
+        context.themeDataStore.edit { prefs -> prefs[ACCENT_KEY] = normalized.uppercase() }
+    }
 
     suspend fun set(context: Context, mode: ThemeMode) {
         context.themeDataStore.edit { prefs ->
