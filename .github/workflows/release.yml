@@ -70,8 +70,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          git fetch --no-tags --depth=1 origin "$BUILD_SHA"
-
           version_name="$(
             git show "$BUILD_SHA:app/build.gradle.kts" |
               sed -nE 's/^[[:space:]]*val appVersionName = "([^"]+)".*/\1/p' |
@@ -111,6 +109,7 @@ jobs:
           fi
 
           echo "description_path=$description_path" >> "$GITHUB_OUTPUT"
+
       - name: Download the APK artifact from that build
         id: artifact
         env:
