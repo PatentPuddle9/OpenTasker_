@@ -143,6 +143,8 @@ import com.opentasker.core.plugins.locale.LocaleGrantStore
 import com.opentasker.core.model.Profile
 import com.opentasker.core.model.Task
 import com.opentasker.core.updates.UpdateCheckAvailability
+import com.opentasker.core.updates.UpdateCheckRunResult
+import com.opentasker.core.updates.UpdateCheckRunner
 import com.opentasker.core.updates.UpdateCheckSettings
 import com.opentasker.core.updates.UpdateCheckState
 import com.opentasker.core.updates.UpdateCheckWorker
