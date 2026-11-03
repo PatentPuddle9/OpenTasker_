@@ -86,7 +86,6 @@ object WidgetIconCatalog {
         WidgetIconOption("◆", "Solid diamond"),
         WidgetIconOption("●", "Circle"),
         WidgetIconOption("○", "Circle outline"),
-        WidgetIconOption("■", "Square solid"),
         WidgetIconOption("□", "Square outline"),
         WidgetIconOption("▲", "Triangle"),
         WidgetIconOption("△", "Triangle outline"),
