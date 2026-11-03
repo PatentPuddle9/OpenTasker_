@@ -64,13 +64,6 @@ jobs:
           echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
           echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
 
-          mkdir -p app/build/outputs/apk/debug
-          {
-            printf 'versionName=%s\\n' "$version_name"
-            printf 'versionCode=%s\\n' "$version_code"
-            printf 'runNumber=%s\\n' "$run_number"
-          } > app/build/outputs/apk/debug/build-info.txt
-
           echo "This run will build OpenTasker v$version_name (Android versionCode $version_code)."
 
       - name: Set up Gradle
@@ -127,6 +120,17 @@ jobs:
             -PopenTaskerVersionName="$OPENTASKER_VERSION_NAME" \
             -PopenTaskerVersionCode="$OPENTASKER_VERSION_CODE" \
             :app:assembleDebug --stacktrace --dependency-verification=off
+
+      - name: Write build metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p app/build/outputs/apk/debug
+          {
+            printf 'versionName=%s\n' "$OPENTASKER_VERSION_NAME"
+            printf 'versionCode=%s\n' "$OPENTASKER_VERSION_CODE"
+            printf 'runNumber=%s\n' "$GITHUB_RUN_NUMBER"
+          } > app/build/outputs/apk/debug/build-info.txt
 
       - name: Upload APK and build metadata
         uses: actions/upload-artifact@v4
