@@ -2,49 +2,67 @@ package com.opentasker.widget
 
 import android.appwidget.AppWidgetManager
 import android.content.Intent
+import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.isSystemInDarkTheme
 import com.opentasker.app.R
 import com.opentasker.app.OpenTaskerApp_NoHilt
 import com.opentasker.core.model.Task
@@ -54,9 +72,9 @@ import com.opentasker.ui.theme.DesignSystem
 import com.opentasker.ui.theme.OpenTaskerTheme
 import com.opentasker.ui.theme.ThemeMode
 import com.opentasker.ui.theme.ThemePreference
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 
 class TaskWidgetConfigActivity : ComponentActivity() {
 
@@ -64,9 +82,6 @@ class TaskWidgetConfigActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Without this the window keeps Theme.OpenTasker's opaque black bars while the
-        // shared theme sets light status-bar icons, so a Light-theme user sees dark icons
-        // on black - invisible - on Android 8 through 14. MainActivity already does this.
         enableEdgeToEdge()
         setResult(RESULT_CANCELED)
 
@@ -80,8 +95,6 @@ class TaskWidgetConfigActivity : ComponentActivity() {
             return
         }
 
-        // Cold flow: the database is awaited when the flow is first collected, not while
-        // onCreate runs, so a startup still applying a staged restore cannot stall this window.
         val tasksFlow = flow { emitAll(OpenTaskerApp_NoHilt.awaitDb().taskDao().getAllAsFlow()) }
             .map { entities ->
                 val results = entities.map { it.toDomainDecodeResult() }
@@ -98,45 +111,57 @@ class TaskWidgetConfigActivity : ComponentActivity() {
                 ConfigScreen(
                     tasks = taskState.tasks,
                     storageDecodeIssues = taskState.storageDecodeIssues,
-                    onTaskSelected = ::onTaskPicked,
+                    onWidgetCreated = ::onWidgetCreated,
                 )
             }
         }
     }
 
-    private fun onTaskPicked(task: Task) {
+    private fun onWidgetCreated(task: Task, style: WidgetStyle) {
         val prefs = getSharedPreferences(TaskWidgetProvider.PREFS_NAME, MODE_PRIVATE)
         prefs.edit()
             .putLong(TaskWidgetProvider.keyTaskId(widgetId), task.id)
             .putString(TaskWidgetProvider.keyTaskName(widgetId), task.name)
+            .putString(TaskWidgetProvider.keyIcon(widgetId), style.icon)
+            .putInt(TaskWidgetProvider.keyIconColor(widgetId), style.iconColor)
+            .putInt(TaskWidgetProvider.keyBackgroundColor(widgetId), style.backgroundColor)
+            .putBoolean(TaskWidgetProvider.keyGradient(widgetId), style.gradient)
             .apply()
 
-        TaskWidgetProvider.updateWidget(
-            this,
-            AppWidgetManager.getInstance(this),
-            widgetId,
-        )
-
+        TaskWidgetProvider.updateWidget(this, AppWidgetManager.getInstance(this), widgetId)
         setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
         finish()
     }
 }
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun ConfigScreen(
     tasks: List<Task>,
     storageDecodeIssues: List<StorageDecodeIssue>,
-    onTaskSelected: (Task) -> Unit,
+    onWidgetCreated: (Task, WidgetStyle) -> Unit,
 ) {
+    var selectedTaskId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var selectedIcon by rememberSaveable { mutableStateOf(WidgetIconCatalog.default.symbol) }
+    var iconColorHex by rememberSaveable { mutableStateOf("#FFFFFF") }
+    var backgroundColorHex by rememberSaveable { mutableStateOf("#6542A0") }
+    var useGradient by rememberSaveable { mutableStateOf(true) }
+
+    val selectedTask = tasks.firstOrNull { it.id == selectedTaskId }
+    val iconColor = parseWidgetColor(iconColorHex)
+    val backgroundColor = parseWidgetColor(backgroundColorHex)
+    val previewTextColor = backgroundColor?.let { color ->
+        if (Color(color).luminance() > 0.48f) Color(0xFF211826) else Color.White
+    } ?: Color.White
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text(stringResource(R.string.widget_choose_task_title), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("Create a task widget", maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            stringResource(R.string.widget_choose_task_subtitle),
+                            "Choose a task, then make it look like your own app icon",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -144,9 +169,7 @@ private fun ConfigScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
             )
         },
     ) { padding ->
@@ -156,9 +179,7 @@ private fun ConfigScreen(
                 color = MaterialTheme.colorScheme.background,
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(28.dp),
+                    modifier = Modifier.fillMaxSize().padding(28.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
@@ -177,11 +198,7 @@ private fun ConfigScreen(
                         }
                     }
                     Spacer(Modifier.size(20.dp))
-                    Text(
-                        stringResource(R.string.widget_empty_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        textAlign = TextAlign.Center,
-                    )
+                    Text(stringResource(R.string.widget_empty_title), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
                     Text(
                         stringResource(R.string.widget_empty_body),
                         style = MaterialTheme.typography.bodyMedium,
@@ -191,71 +208,244 @@ private fun ConfigScreen(
                 }
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(DesignSystem.Screen.horizontalPadding),
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = DesignSystem.Screen.horizontalPadding)
+                    .padding(bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(DesignSystem.Screen.cardGap),
             ) {
-                if (storageDecodeIssues.isNotEmpty()) {
-                    item {
-                        StorageDecodeWarningCard(storageDecodeIssues)
-                    }
-                }
-                item {
-                    WidgetConfigHeader(taskCount = tasks.size)
-                }
-                items(tasks, key = { it.id }) { task ->
+                if (storageDecodeIssues.isNotEmpty()) StorageDecodeWarningCard(storageDecodeIssues)
+                WidgetConfigHeader(taskCount = tasks.size)
+
+                Text("1. Choose what this widget runs", style = MaterialTheme.typography.titleMedium)
+                tasks.forEach { task ->
+                    val selected = task.id == selectedTaskId
                     Card(
-                        onClick = { onTaskSelected(task) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 72.dp),
+                        onClick = { selectedTaskId = task.id },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 68.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.58f),
+                            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.56f)
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.58f),
                         ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.46f)),
+                        border = BorderStroke(
+                            if (selected) 2.dp else 1.dp,
+                            if (selected) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.46f),
+                        ),
                         shape = RoundedCornerShape(14.dp),
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
                                 Icons.Filled.CheckCircle,
-                                contentDescription = stringResource(R.string.widget_selectable_task),
-                                tint = MaterialTheme.colorScheme.primary,
+                                contentDescription = null,
+                                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(24.dp),
                             )
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(
-                                    task.name,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+                                Text(task.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(
                                     pluralStringResource(R.plurals.widget_action_count, task.actions.size, task.actions.size),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
-                            Spacer(Modifier.width(12.dp))
+                            if (selected) Text("Selected", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+
+                if (selectedTask != null) {
+                    Spacer(Modifier.height(2.dp))
+                    Text("2. Pick an icon", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Choose from 90+ tintable symbols. The icon color is fully customizable.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        WidgetIconCatalog.all.forEach { option ->
+                            val isSelected = selectedIcon == option.symbol
+                            Surface(
+                                modifier = Modifier.size(46.dp).clickable { selectedIcon = option.symbol },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f),
+                                border = BorderStroke(
+                                    if (isSelected) 2.dp else 1.dp,
+                                    if (isSelected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+                                ),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        option.symbol,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Text("Selected: ${WidgetIconCatalog.all.firstOrNull { it.symbol == selectedIcon }?.label ?: "Icon"}")
+
+                    Text("3. Choose icon color", style = MaterialTheme.typography.titleMedium)
+                    WidgetColorEditor(
+                        value = iconColorHex,
+                        onValueChange = { iconColorHex = it },
+                        presets = listOf("#FFFFFF", "#111111", "#FF453A", "#FF9F0A", "#FFD60A", "#30D158", "#32ADE6", "#0A84FF", "#BF5AF2", "#FF2D55"),
+                    )
+
+                    Text("4. Choose background color", style = MaterialTheme.typography.titleMedium)
+                    WidgetColorEditor(
+                        value = backgroundColorHex,
+                        onValueChange = { backgroundColorHex = it },
+                        presets = listOf("#6542A0", "#1D4ED8", "#0F766E", "#B45309", "#BE123C", "#334155", "#111827", "#F3F4F6", "#FDE68A", "#D1FAE5"),
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text("Gradient background", style = MaterialTheme.typography.titleSmall)
                             Text(
-                                stringResource(R.string.widget_assign),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary,
+                                "Blend your background color into a darker shade.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+                        Switch(checked = useGradient, onCheckedChange = { useGradient = it })
+                    }
+
+                    Text("Live preview", style = MaterialTheme.typography.titleMedium)
+                    WidgetLivePreview(
+                        taskName = selectedTask.name,
+                        icon = selectedIcon,
+                        iconColor = iconColor?.let(::Color),
+                        backgroundColor = backgroundColor?.let(::Color),
+                        gradient = useGradient,
+                        textColor = previewTextColor,
+                    )
+
+                    Button(
+                        onClick = {
+                            val selectedIconColor = iconColor ?: return@Button
+                            val selectedBackgroundColor = backgroundColor ?: return@Button
+                            onWidgetCreated(
+                                selectedTask,
+                                WidgetStyle(
+                                    icon = selectedIcon,
+                                    iconColor = selectedIconColor,
+                                    backgroundColor = selectedBackgroundColor,
+                                    gradient = useGradient,
+                                ),
+                            )
+                        },
+                        enabled = iconColor != null && backgroundColor != null,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Add widget to home screen")
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun WidgetColorEditor(
+    value: String,
+    onValueChange: (String) -> Unit,
+    presets: List<String>,
+) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(9.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp),
+    ) {
+        presets.forEach { preset ->
+            val presetColor = parseWidgetColor(preset)?.let(::Color) ?: Color.Transparent
+            Surface(
+                modifier = Modifier.size(30.dp).clickable { onValueChange(preset) },
+                color = presetColor,
+                shape = CircleShape,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.55f)),
+            ) {}
+        }
+    }
+    OutlinedTextField(
+        value = value,
+        onValueChange = { onValueChange(it.take(7)) },
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text("HEX color") },
+        placeholder = { Text("#6542A0") },
+        singleLine = true,
+        isError = parseWidgetColor(value) == null,
+        supportingText = {
+            Text(if (parseWidgetColor(value) == null) "Enter a valid 6-digit HEX color." else "Example: #6542A0")
+        },
+    )
+}
+
+@Composable
+private fun WidgetLivePreview(
+    taskName: String,
+    icon: String,
+    iconColor: Color?,
+    backgroundColor: Color?,
+    gradient: Boolean,
+    textColor: Color,
+) {
+    val colors = backgroundColor?.let { base ->
+        if (gradient) listOf(base, Color(AndroidColor.rgb(
+            (base.red * 255).toInt().coerceIn(0, 255) / 2,
+            (base.green * 255).toInt().coerceIn(0, 255) / 2,
+            (base.blue * 255).toInt().coerceIn(0, 255) / 2,
+        ))) else listOf(base)
+    } ?: listOf(MaterialTheme.colorScheme.surfaceVariant)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(188.dp)
+            .background(
+                if (gradient) Brush.linearGradient(colors) else Brush.verticalGradient(colors),
+                RoundedCornerShape(24.dp),
+            )
+            .padding(12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(icon, color = iconColor ?: MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.displaySmall)
+            Text(
+                taskName,
+                color = textColor,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                textAlign = TextAlign.Center,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text("Tap to run", color = textColor.copy(alpha = 0.82f), style = MaterialTheme.typography.labelSmall)
+        }
+    }
+}
+
+private fun parseWidgetColor(value: String): Int? {
+    val normalized = value.trim().removePrefix("#")
+    if (!Regex("^[0-9a-fA-F]{6}$").matches(normalized)) return null
+    return runCatching { AndroidColor.parseColor("#$normalized") }.getOrNull()
 }
 
 private data class WidgetTaskState(
@@ -274,7 +464,7 @@ private fun WidgetConfigHeader(taskCount: Int) {
         shape = RoundedCornerShape(DesignSystem.Radii.xxl),
     ) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(stringResource(R.string.widget_action_title), style = MaterialTheme.typography.headlineSmall)
+            Text("Make OpenTasker look like an app on your home screen", style = MaterialTheme.typography.headlineSmall)
             Text(
                 pluralStringResource(R.plurals.widget_saved_task_count, taskCount, taskCount),
                 style = MaterialTheme.typography.bodyMedium,
