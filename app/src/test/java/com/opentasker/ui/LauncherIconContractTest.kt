@@ -41,15 +41,30 @@ class LauncherIconContractTest {
                 assertEquals(0, image.getRGB(0, 0) ushr 24)
                 assertTrue((image.getRGB(size / 2, size / 2) ushr 24) > 0)
             }
+            val nightForeground = ImageIO.read(
+                file("app/src/main/res/mipmap-night-$directory/ic_launcher_night_foreground.png").toFile(),
+            )
+            assertEquals(size, nightForeground.width)
+            assertEquals(size, nightForeground.height)
+            assertEquals(0, nightForeground.getRGB(0, 0) ushr 24)
+            assertTrue((nightForeground.getRGB(size / 2, size / 2) ushr 24) > 0)
             assertFalse(Files.exists(file("app/src/main/res/$directory/ic_launcher.png")))
         }
+
+        listOf("ic_launcher.xml", "ic_launcher_round.xml").forEach { name ->
+            val night = read("app/src/main/res/mipmap-night-anydpi-v26/$name")
+            assertTrue("@mipmap/ic_launcher_night_foreground" in night)
+            assertTrue("@mipmap/ic_launcher_monochrome" in night)
+        }
+        assertTrue("#CB6CE6" in read("app/src/main/res/values/ic_launcher_background.xml"))
+        assertTrue("#000000" in read("app/src/main/res/values-night/ic_launcher_background.xml"))
         assertFalse(Files.exists(file("app/src/main/res/mipmap-ldpi/ic_launcher.png")))
         assertFalse(Files.exists(file("app/src/main/res/mipmap/ic_launcher_foreground.png")))
     }
 
     @Test
     fun `store and transparent copies match the checked in master`() {
-        val primary = ImageIO.read(file("design/logo/source-user-logo-2026-08-29.png").toFile())
+        val primary = ImageIO.read(file("OpenTasker_Icon_Package/OpenTasker_Primary_1024.png").toFile())
         assertEquals(1024, primary.width)
         assertEquals(1024, primary.height)
         assertEquals(255, primary.getRGB(0, 0) ushr 24)
