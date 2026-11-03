@@ -14,6 +14,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.Call
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
