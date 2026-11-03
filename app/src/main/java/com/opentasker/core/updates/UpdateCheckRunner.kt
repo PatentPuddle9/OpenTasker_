@@ -85,18 +85,17 @@ object UpdateCheckRunner {
                     version.copy(compatibilityKnown = true)
                 } else {
                     val commit = version.sourceCommit
-                    if (commit == null) {
+                    // New releases carry a bounded action-catalogue snapshot in their notes.
+                    // Older releases predate that marker, so fall back to the exact source commit.
+                    val supported = version.supportedActionIds
+                        ?: commit?.let { actionCatalogCache[it] ?: fetchActionCatalog(appContext, it) }
+                    if (supported == null) {
                         version.copy(compatibilityKnown = false)
                     } else {
-                        val supported = actionCatalogCache[commit] ?: fetchActionCatalog(appContext, commit)
-                        if (supported == null) {
-                            version.copy(compatibilityKnown = false)
-                        } else {
-                            version.copy(
-                                compatibilityKnown = true,
-                                missingActionIds = (usedActionIds - supported).sorted(),
-                            )
-                        }
+                        version.copy(
+                            compatibilityKnown = true,
+                            missingActionIds = (usedActionIds - supported).sorted(),
+                        )
                     }
                 }
             }
