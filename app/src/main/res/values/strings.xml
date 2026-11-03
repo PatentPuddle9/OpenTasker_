@@ -45,8 +45,8 @@
     <string name="locale_condition_operator_contains">contains</string>
     <string name="locale_condition_operator_starts_with">starts with</string>
     <string name="locale_condition_operator_ends_with">ends with</string>
-    <string name="nav_profiles">Profiles</string>
-    <string name="nav_tasks">Tasks</string>
+    <string name="nav_actions">Actions</string>
+    <string name="nav_shortcuts">Shortcuts</string>
     <string name="nav_run_log">Run Log</string>
     <string name="nav_setup">Setup</string>
     <string name="nav_settings">Settings</string>
@@ -1438,7 +1438,7 @@
     <!-- Secondary-surface localization -->
     <string name="nav_more">More</string>
     <string name="header_profiles_detail">%1$d enabled • %2$d total</string>
-    <string name="header_tasks_detail">%1$d actions • %2$d tasks</string>
+    <string name="header_tasks_detail">%1$d shortcuts</string>
     <string name="header_variables_detail">%1$d global variables</string>
     <string name="header_flow_detail">%1$d profiles • %2$d tasks</string>
     <string name="header_scenes_detail">%1$d elements • %2$d scenes</string>
