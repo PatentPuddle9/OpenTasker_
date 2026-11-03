@@ -274,6 +274,25 @@ object UpdateCheckProtocol {
         return current >= required
     }
 
+    fun releasePageHasMore(payload: String): Boolean? {
+        if (payload.toByteArray(Charsets.UTF_8).size > MAX_VERSION_RESPONSE_BYTES) return null
+        return runCatching {
+            (json.parseToJsonElement(payload) as JsonArray).size >= VERSION_PAGE_SIZE
+        }.getOrNull()
+    }
+
+    fun orderBranchVersions(versions: Collection<BranchVersion>, branch: String): List<BranchVersion> =
+        versions
+            .groupBy(BranchVersion::version)
+            .map { (_, duplicates) ->
+                duplicates.firstOrNull { it.tag != branchChannelTag(branch) } ?: duplicates.first()
+            }
+            .sortedWith(
+                compareByDescending<BranchVersion> { it.versionCode ?: -1L }
+                    .thenByDescending { it.publishedAt.orEmpty() },
+            )
+            .mapIndexed { index, version -> version.copy(isLatest = index == 0) }
+
     /** Parses a GitHub branches API page while retaining its raw pagination boundary. */
     fun parseBranchPage(payload: String): BranchPage? {
         if (payload.toByteArray(Charsets.UTF_8).size > MAX_BRANCHES_RESPONSE_BYTES) return null
