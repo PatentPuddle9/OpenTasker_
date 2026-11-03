@@ -18,7 +18,7 @@ class BranchVersionHistoryTest {
                 title = "OpenTasker v0.2.125",
                 assetName = "OpenTasker-v0.2.125-debug.apk",
                 assetUrl = "https://github.com/PatentPuddle9/OpenTasker_/releases/download/v0.2.125/OpenTasker-v0.2.125-debug.apk",
-                body = "Version code: **127**\nIn-app updates: **available**",
+                body = "Version code: **127**\nIn-app updates: **available**\nAction catalog: `wifi.toggle,notify.show,flow.if`",
             ),
             "Experimental",
         )!!.single()
@@ -28,6 +28,8 @@ class BranchVersionHistoryTest {
         assertEquals("a".repeat(64), version.apkSha256.orEmpty())
         assertTrue(version.canInstallInPlace)
         assertTrue(version.supportsInAppUpdates)
+        assertTrue(version.updaterSupportKnown)
+        assertEquals(setOf("wifi.toggle", "notify.show", "flow.if"), version.supportedActionIds)
         assertTrue(version.isLatest)
     }
 
@@ -61,6 +63,7 @@ class BranchVersionHistoryTest {
         )!!.single()
         assertEquals("0.2.130", custom.version)
         assertFalse(custom.supportsInAppUpdates)
+        assertTrue(custom.updaterSupportKnown)
         assertTrue(UpdateCheckProtocol.parseBranchVersions(
             releaseJson(
                 tag = tag,
@@ -130,6 +133,24 @@ class BranchVersionHistoryTest {
             supportsInAppUpdates = false,
         )
         assertFalse(explicitlyUnsupported.supportsInAppUpdates)
+    }
+
+    @Test
+    fun historicalCustomBranchWithoutUpdaterMarkerIsExplicitlyUnverified() {
+        val branch = "feature/old"
+        val version = UpdateCheckProtocol.parseBranchVersions(
+            releaseJson(
+                tag = UpdateCheckProtocol.branchChannelTag(branch),
+                title = "OpenTasker branch update [feature/old] v0.2.124",
+                assetName = UpdateCheckProtocol.branchAssetName(branch),
+                assetUrl = UpdateCheckProtocol.branchApkUrl(branch),
+                body = "Android versionCode: **126**",
+            ),
+            branch,
+        )!!.single()
+
+        assertFalse(version.updaterSupportKnown)
+        assertFalse(version.supportsInAppUpdates)
     }
 
     @Test
