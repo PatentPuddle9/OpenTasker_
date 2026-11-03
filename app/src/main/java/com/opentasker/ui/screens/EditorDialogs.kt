@@ -77,6 +77,8 @@ import com.opentasker.core.model.ActionSpec
 import com.opentasker.core.model.AutomationMode
 import com.opentasker.core.model.CollisionMode
 import com.opentasker.core.model.ContextSpec
+import com.opentasker.core.model.ContextExpressionNode
+import com.opentasker.core.model.ContextType
 import com.opentasker.core.model.Profile
 import com.opentasker.core.model.ProfileLifetime
 import com.opentasker.core.model.ProfileOverflowPolicy
@@ -383,7 +385,7 @@ internal fun ProfileEditorDialog(
     profile: Profile?,
     tasks: List<Task>,
     onDismiss: () -> Unit,
-    onSave: (String, Boolean, Long, Long?, Int, Int, Int, AutomationMode, String?, ProfileLifetime, Long?, Int?, Int?, ProfileOverflowPolicy, Long?, String) -> Unit,
+    onSave: (String, Boolean, Long, Long?, Int, Int, Int, AutomationMode, String?, ProfileLifetime, Long?, Int?, Int?, ProfileOverflowPolicy, Long?, String, List<ContextSpec>, ContextExpressionNode?) -> Unit,
     onSimulate: ((Profile) -> Unit)? = null,
     onAddContext: () -> Unit = {},
     onEditContextLogic: () -> Unit = {},
@@ -434,6 +436,12 @@ internal fun ProfileEditorDialog(
         mutableStateOf((profile?.overflowPolicy ?: ProfileOverflowPolicy.LOG).name)
     }
     var fallbackTaskId by rememberSaveable(profile?.id) { mutableStateOf(profile?.fallbackTaskId) }
+    var draftContexts by remember(profile?.id) { mutableStateOf(profile?.contexts.orEmpty()) }
+    var draftContextExpression by remember(profile?.id) { mutableStateOf(profile?.contextExpression) }
+    var draftTriggerPickerOpen by rememberSaveable(profile?.id) { mutableStateOf(false) }
+    var draftContextTypeName by rememberSaveable(profile?.id) { mutableStateOf<String?>(null) }
+    var draftContextIndex by rememberSaveable(profile?.id) { mutableStateOf<Int?>(null) }
+    var draftContextLogicOpen by rememberSaveable(profile?.id) { mutableStateOf(false) }
     val parsedCooldown = cooldown.toIntOrNull()
     val parsedPriority = priority.toIntOrNull()
     val parsedGracePeriod = gracePeriod.toIntOrNull()
@@ -473,6 +481,26 @@ internal fun ProfileEditorDialog(
     val importedReviewRequired = profile?.requiresRiskAcknowledgement == true
     val onLabel = stringResource(R.string.label_on)
     val offLabel = stringResource(R.string.label_off)
+    val draftContextProfile = Profile(
+        name = name.trim().ifBlank { "New profile" },
+        enterTaskId = enterTaskId,
+        contexts = draftContexts,
+        contextExpression = draftContextExpression,
+    )
+    val draftContextEditState = if (profile == null) {
+        draftContextTypeName?.let { typeName ->
+            runCatching { ContextType.valueOf(typeName) }.getOrNull()?.let { type ->
+                ContextEditState(
+                    profile = draftContextProfile,
+                    type = type,
+                    index = draftContextIndex,
+                    existing = draftContextIndex?.let(draftContexts::getOrNull),
+                )
+            }
+        }
+    } else {
+        null
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -582,21 +610,36 @@ internal fun ProfileEditorDialog(
                         )
                     }
     
-                if (!widgetOwned && profile != null) {
+                if (!widgetOwned) {
+                    val triggerContexts = profile?.contexts ?: draftContexts
                     Text("Trigger conditions", style = MaterialTheme.typography.titleMedium)
-                    if (profile.contexts.isEmpty()) {
+                    if (triggerContexts.isEmpty()) {
                         Text(
-                            "This profile has no trigger conditions yet. Add one to decide when it should run.",
+                            "No trigger conditions yet. Add one to decide when this profile should run.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     } else {
-                        profile.contexts.forEachIndexed { index, context ->
+                        triggerContexts.forEachIndexed { index, context ->
                             ContextRow(
                                 index = index,
                                 context = context,
-                                onEdit = { onEditContext(index, context) },
-                                onDelete = { onDeleteContext(index) },
+                                onEdit = {
+                                    if (profile == null) {
+                                        draftContextTypeName = context.type.name
+                                        draftContextIndex = index
+                                    } else {
+                                        onEditContext(index, context)
+                                    }
+                                },
+                                onDelete = {
+                                    if (profile == null) {
+                                        draftContexts = draftContexts.filterIndexed { itemIndex, _ -> itemIndex != index }
+                                        draftContextExpression = draftContextExpression?.removeLeaf(index)
+                                    } else {
+                                        onDeleteContext(index)
+                                    }
+                                },
                             )
                         }
                     }
@@ -605,13 +648,22 @@ internal fun ProfileEditorDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        OutlinedButton(onClick = onAddContext, modifier = Modifier.weight(1f)) {
+                        OutlinedButton(
+                            onClick = {
+                                if (profile == null) draftTriggerPickerOpen = true else onAddContext()
+                            },
+                            modifier = Modifier.weight(1f),
+                        ) {
                             Icon(Icons.Filled.Add, contentDescription = null)
                             Spacer(Modifier.width(6.dp))
                             Text("Add trigger")
                         }
-                        if (profile.contexts.size >= 2) {
-                            TextButton(onClick = onEditContextLogic) { Text("Logic") }
+                        if (triggerContexts.size >= 2) {
+                            TextButton(
+                                onClick = {
+                                    if (profile == null) draftContextLogicOpen = true else onEditContextLogic()
+                                },
+                            ) { Text("Logic") }
                         }
                     }
                 }
@@ -863,6 +915,8 @@ internal fun ProfileEditorDialog(
                         overflowPolicy,
                         fallbackTaskId,
                         selectedIcon,
+                        if (profile == null) draftContexts else profile.contexts,
+                        if (profile == null) draftContextExpression else profile.contextExpression,
                     )
                 },
             ) {
@@ -906,6 +960,53 @@ internal fun ProfileEditorDialog(
             }
         },
     )
+
+    if (profile == null && draftTriggerPickerOpen) {
+        ContextTypePickerDialog(
+            onDismiss = { draftTriggerPickerOpen = false },
+            onSelect = { type ->
+                draftTriggerPickerOpen = false
+                draftContextTypeName = type.name
+                draftContextIndex = null
+            },
+        )
+    }
+
+    draftContextEditState?.let { state ->
+        ContextConfigDialog(
+            state = state,
+            onDismiss = {
+                draftContextTypeName = null
+                draftContextIndex = null
+            },
+            onSave = { context ->
+                val index = draftContextIndex
+                draftContexts = if (index == null) {
+                    draftContexts + context
+                } else {
+                    draftContexts.mapIndexed { itemIndex, existing ->
+                        if (itemIndex == index) context else existing
+                    }
+                }
+                if (index == null) {
+                    draftContextExpression = draftContextExpression?.appendLeaf(draftContexts.lastIndex)
+                }
+                draftContextTypeName = null
+                draftContextIndex = null
+            },
+        )
+    }
+
+    if (profile == null && draftContextLogicOpen) {
+        ContextGroupingDialog(
+            profile = draftContextProfile,
+            onDismiss = { draftContextLogicOpen = false },
+            onSave = { expression ->
+                draftContextExpression = expression
+                draftContextLogicOpen = false
+            },
+        )
+    }
 }
 
 @Composable
