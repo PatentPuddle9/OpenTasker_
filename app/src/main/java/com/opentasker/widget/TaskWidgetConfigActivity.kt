@@ -394,7 +394,7 @@ private fun ConfigScreen(
                         enabled = iconColor != null && backgroundColor != null,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Add widget to home screen")
+                        Text(if (initialTaskId == null) "Add widget to home screen" else "Save shortcut changes")
                     }
                 }
             }
