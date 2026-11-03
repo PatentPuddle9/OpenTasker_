@@ -83,7 +83,8 @@ class QuickSettingsTileConfigActivity : ComponentActivity() {
         setContent {
             val themeMode by ThemePreference.observe(this).collectAsState(initial = ThemeMode.System)
             val tasks by tasksFlow.collectAsState(initial = emptyList())
-            OpenTaskerTheme(themeMode) {
+            val accentColorHex by ThemePreference.observeAccentColor(this).collectAsState(initial = ThemePreference.DEFAULT_ACCENT_HEX)
+            OpenTaskerTheme(themeMode, accentColorHex) {
                 TileConfigScreen(
                     slot = slot,
                     initial = initial,
