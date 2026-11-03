@@ -112,18 +112,33 @@ object UpdateCheckProtocol {
             )
             .toList()
 
-    /** Parses one GitHub branches API page and intentionally removes master. */
-    fun parseBranchesResponse(payload: String): List<String>? {
+    data class BranchPage(
+        val branches: List<String>,
+        /** Based on raw GitHub entries, before filtering master or duplicate names. */
+        val hasMore: Boolean,
+    )
+
+    /** Parses a GitHub branches API page while retaining its raw pagination boundary. */
+    fun parseBranchPage(payload: String): BranchPage? {
         if (payload.toByteArray(Charsets.UTF_8).size > MAX_BRANCHES_RESPONSE_BYTES) return null
         return runCatching {
-            (json.parseToJsonElement(payload) as JsonArray)
+            val entries = json.parseToJsonElement(payload) as JsonArray
+            val branches = entries
                 .mapNotNull { item ->
                     val name = item.jsonObject["name"]?.jsonPrimitive?.content?.trim()
                     name?.takeIf(::isSelectableBranch)
                 }
                 .let(::sortBranches)
+            BranchPage(
+                branches = branches,
+                hasMore = entries.size >= BRANCH_PAGE_SIZE,
+            )
         }.getOrNull()
     }
+
+    /** Compatibility helper for callers that only need the filtered names. */
+    fun parseBranchesResponse(payload: String): List<String>? =
+        parseBranchPage(payload)?.branches
 
     /** Parses the selected branch's rolling prerelease channel and its single pinned APK asset. */
     fun parseBranchRelease(

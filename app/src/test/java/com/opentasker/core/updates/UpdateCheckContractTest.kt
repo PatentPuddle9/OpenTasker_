@@ -23,6 +23,8 @@ class UpdateCheckContractTest {
         assertTrue(worker.contains("UpdateCheckRunner.checkAndRecord(applicationContext, settings.selectedBranch)"))
         assertTrue(runner.contains("UpdateCheckProtocol.requestArguments(branch)"))
         assertTrue(runner.contains("fetchAvailableBranches"))
+        assertTrue(runner.contains("parseBranchPage(payload)"))
+        assertTrue(runner.contains("if (!page.hasMore)"))
         assertTrue(settings.contains("KEY_SELECTED_BRANCH"))
         assertTrue(settings.contains("setSelectedBranch(branch)"))
         assertTrue(worker.contains("UpdateCheckAvailability.isAvailable()"))
