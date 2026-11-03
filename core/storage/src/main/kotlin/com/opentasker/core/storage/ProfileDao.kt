@@ -40,6 +40,7 @@ data class ProfileEntity(
     @androidx.room.ColumnInfo(defaultValue = "NULL") val burstLimit: Int? = null,
     @androidx.room.ColumnInfo(defaultValue = "'LOG'") val overflowPolicy: String = ProfileOverflowPolicy.LOG.name,
     @androidx.room.ColumnInfo(defaultValue = "NULL") val fallbackTaskId: Long? = null,
+    @androidx.room.ColumnInfo(defaultValue = "'bolt'") val icon: String = "bolt",
 ) {
     fun toDomain(): Profile = toDomainDecodeResult().requireDecoded()
 
@@ -106,6 +107,7 @@ data class ProfileEntity(
                 burstLimit = burstLimit,
                 overflowPolicy = profileOverflowPolicy,
                 fallbackTaskId = fallbackTaskId,
+                icon = icon,
             ),
         )
     }
@@ -136,6 +138,7 @@ fun Profile.toEntity() = ProfileEntity(
     burstLimit,
     overflowPolicy.name,
     fallbackTaskId,
+    icon,
 )
 
 @kotlinx.serialization.Serializable
