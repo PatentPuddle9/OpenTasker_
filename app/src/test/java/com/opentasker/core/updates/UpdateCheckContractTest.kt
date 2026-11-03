@@ -16,9 +16,12 @@ class UpdateCheckContractTest {
     @Test
     fun workerIsPeriodicAndFroidGatedWithoutAnArtifactInstallPath() {
         val worker = read("app/src/main/java/com/opentasker/core/updates/UpdateCheckWorker.kt")
+        val runner = read("app/src/main/java/com/opentasker/core/updates/UpdateCheckRunner.kt")
         val settings = read("app/src/main/java/com/opentasker/core/updates/UpdateCheckSettings.kt")
         assertTrue(worker.contains("class UpdateCheckWorker"))
         assertTrue(worker.contains("PeriodicWorkRequestBuilder<UpdateCheckWorker>"))
+        assertTrue(worker.contains("UpdateCheckRunner.checkAndRecord(applicationContext)"))
+        assertTrue(runner.contains("UpdateCheckProtocol.requestArguments()"))
         assertTrue(worker.contains("UpdateCheckAvailability.isAvailable()"))
         assertTrue(worker.contains("FDROID_DISTRIBUTION = \"fdroid\""))
         assertTrue(worker.contains("cancelUniqueWork"))
@@ -34,6 +37,10 @@ class UpdateCheckContractTest {
         val application = read("app/src/main/java/com/opentasker/app/OpenTaskerApp_NoHilt.kt")
         assertTrue(setup.contains("UpdateCheckAvailability.isAvailable()"))
         assertTrue(setup.contains("UpdateCheckSetupCard"))
+        assertTrue(setup.contains("fun checkForUpdatesNow()"))
+        assertTrue(setup.contains("onCheckNow = setupViewModel::checkForUpdatesNow"))
+        assertTrue(setup.contains("setup_update_check_now"))
+        assertTrue(setup.contains("setup_update_status_failed"))
         assertTrue(application.contains("UpdateCheckWorker.enqueueIfEnabled(this)"))
     }
 
