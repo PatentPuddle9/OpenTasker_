@@ -290,7 +290,7 @@
     <string name="catalog_action_ime_set_field_ime_id_label" formatted="false">Keyboard ID or package</string>
     <string name="catalog_action_ime_set_field_ime_id_hint" formatted="false">Component ID from ime.info</string>
     <string name="catalog_action_volume_read_name" formatted="false">Read Volume</string>
-    <string name="catalog_action_volume_read_description" formatted="false">Read a selected audio stream current level, maximum, percentage, and muted state into variables</string>
+    <string name="catalog_action_volume_read_description" formatted="false">Read the current level, maximum, percentage, and mute state for a selected audio stream</string>
     <string name="catalog_action_volume_set_name" formatted="false">Set Volume</string>
     <string name="catalog_action_volume_set_description" formatted="false">Adjust volume for a stream</string>
     <string name="catalog_action_volume_set_field_stream_label" formatted="false">Stream</string>
