@@ -41,6 +41,7 @@ data class ProfileEntity(
     @androidx.room.ColumnInfo(defaultValue = "'LOG'") val overflowPolicy: String = ProfileOverflowPolicy.LOG.name,
     @androidx.room.ColumnInfo(defaultValue = "NULL") val fallbackTaskId: Long? = null,
     @androidx.room.ColumnInfo(defaultValue = "'bolt'") val icon: String = "bolt",
+    val widgetId: Int? = null,
 ) {
     fun toDomain(): Profile = toDomainDecodeResult().requireDecoded()
 
@@ -108,6 +109,7 @@ data class ProfileEntity(
                 overflowPolicy = profileOverflowPolicy,
                 fallbackTaskId = fallbackTaskId,
                 icon = icon,
+                widgetId = widgetId,
             ),
         )
     }
@@ -139,6 +141,7 @@ fun Profile.toEntity() = ProfileEntity(
     overflowPolicy.name,
     fallbackTaskId,
     icon,
+    widgetId,
 )
 
 @kotlinx.serialization.Serializable
@@ -154,6 +157,7 @@ interface ProfileDao {
     @Update suspend fun update(p: ProfileEntity)
     @Delete suspend fun delete(p: ProfileEntity)
     @Query("SELECT * FROM profiles WHERE id = :id") suspend fun getById(id: Long): ProfileEntity?
+    @Query("SELECT * FROM profiles WHERE widgetId = :widgetId LIMIT 1") suspend fun getByWidgetId(widgetId: Int): ProfileEntity?
     @Query("SELECT * FROM profiles") suspend fun getAll(): List<ProfileEntity>
 
     /**
