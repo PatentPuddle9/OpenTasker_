@@ -116,6 +116,7 @@ class TaskWidgetConfigActivity : ComponentActivity() {
             iconColor = prefs.getInt(TaskWidgetProvider.keyIconColor(widgetId), WidgetStyle().iconColor),
             backgroundColor = prefs.getInt(TaskWidgetProvider.keyBackgroundColor(widgetId), WidgetStyle().backgroundColor),
             gradient = prefs.getBoolean(TaskWidgetProvider.keyGradient(widgetId), WidgetStyle().gradient),
+            shape = prefs.getString(TaskWidgetProvider.keyShape(widgetId), WidgetShapeCatalog.default.key) ?: WidgetShapeCatalog.default.key,
         )
 
         setContent {
@@ -148,6 +149,7 @@ class TaskWidgetConfigActivity : ComponentActivity() {
                     .putInt(TaskWidgetProvider.keyIconColor(widgetId), style.iconColor)
                     .putInt(TaskWidgetProvider.keyBackgroundColor(widgetId), style.backgroundColor)
                     .putBoolean(TaskWidgetProvider.keyGradient(widgetId), style.gradient)
+                    .putString(TaskWidgetProvider.keyShape(widgetId), style.shape)
                     .apply()
 
                 TaskWidgetProvider.updateWidget(this@TaskWidgetConfigActivity, AppWidgetManager.getInstance(this@TaskWidgetConfigActivity), widgetId)
@@ -180,6 +182,7 @@ private fun ConfigScreen(
     var iconColorHex by rememberSaveable { mutableStateOf(initialStyle.iconColor.toHexColor()) }
     var backgroundColorHex by rememberSaveable { mutableStateOf(initialStyle.backgroundColor.toHexColor()) }
     var useGradient by rememberSaveable { mutableStateOf(initialStyle.gradient) }
+    var selectedShape by rememberSaveable { mutableStateOf(initialStyle.shape) }
 
     val selectedTask = tasks.firstOrNull { it.id == selectedTaskId }
     val iconColor = parseWidgetColor(iconColorHex)
@@ -347,7 +350,24 @@ private fun ConfigScreen(
                         presets = listOf("#FFFFFF", "#111111", "#FF453A", "#FF9F0A", "#FFD60A", "#30D158", "#32ADE6", "#0A84FF", "#BF5AF2", "#FF2D55"),
                     )
 
-                    Text("4. Choose background color", style = MaterialTheme.typography.titleMedium)
+                    Text("4. Choose app icon shape", style = MaterialTheme.typography.titleMedium)
+                    Text("Pick the silhouette used by the widget on your home screen.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        WidgetShapeCatalog.all.forEach { option ->
+                            val selected = selectedShape == option.key
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { selectedShape = option.key }) {
+                                Surface(
+                                    modifier = Modifier.size(48.dp),
+                                    shape = widgetPreviewShape(option.key),
+                                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                    border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
+                                ) { Box(contentAlignment = Alignment.Center) { Icon(painter = painterResource(WidgetIconCatalog.resolve(selectedIcon).drawableRes), contentDescription = null, tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(22.dp)) } }
+                                Text(option.label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                            }
+                        }
+                    }
+
+                    Text("5. Choose background color", style = MaterialTheme.typography.titleMedium)
                     WidgetColorEditor(
                         value = backgroundColorHex,
                         onValueChange = { backgroundColorHex = it },
@@ -377,6 +397,7 @@ private fun ConfigScreen(
                         backgroundColor = backgroundColor?.let { Color(it) },
                         gradient = useGradient,
                         textColor = previewTextColor,
+                        shape = selectedShape,
                     )
 
                     Button(
@@ -390,6 +411,7 @@ private fun ConfigScreen(
                                     iconColor = selectedIconColor,
                                     backgroundColor = selectedBackgroundColor,
                                     gradient = useGradient,
+                                    shape = selectedShape,
                                 ),
                             )
                         },
@@ -441,6 +463,22 @@ private fun WidgetColorEditor(
 }
 
 @Composable
+private fun widgetPreviewShape(key: String): androidx.compose.ui.graphics.Shape = when (key) {
+    "circle" -> CircleShape
+    "square" -> RoundedCornerShape(0.dp)
+    "rounded_square" -> RoundedCornerShape(18.dp)
+    "teardrop" -> androidx.compose.foundation.shape.GenericShape { size, _ ->
+        moveTo(size.width * 0.5f, 0f)
+        cubicTo(size.width * 0.92f, 0f, size.width, size.height * 0.3f, size.width, size.height * 0.5f)
+        cubicTo(size.width, size.height * 0.8f, size.width * 0.78f, size.height, size.width * 0.5f, size.height)
+        cubicTo(size.width * 0.22f, size.height, 0f, size.height * 0.8f, 0f, size.height * 0.5f)
+        cubicTo(0f, size.height * 0.3f, size.width * 0.08f, 0f, size.width * 0.5f, 0f)
+        close()
+    }
+    else -> RoundedCornerShape(28.dp)
+}
+
+@Composable
 private fun WidgetLivePreview(
     taskName: String,
     icon: String,
@@ -448,47 +486,41 @@ private fun WidgetLivePreview(
     backgroundColor: Color?,
     gradient: Boolean,
     textColor: Color,
+    shape: String,
 ) {
-    val colors = backgroundColor?.let { base ->
-        if (gradient) listOf(
-            base,
-            Color(
-                (base.red * 0.76f).coerceIn(0f, 1f),
-                (base.green * 0.76f).coerceIn(0f, 1f),
-                (base.blue * 0.76f).coerceIn(0f, 1f),
-                base.alpha,
-            ),
-        ) else listOf(base, base)
-    } ?: listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surfaceVariant)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(188.dp)
-            .background(
-                Brush.linearGradient(colors),
-                RoundedCornerShape(24.dp),
-            )
-            .padding(12.dp),
-        contentAlignment = Alignment.Center,
+    val base = backgroundColor ?: MaterialTheme.colorScheme.surfaceVariant
+    val end = if (gradient) Color(
+        (base.red * 0.76f).coerceIn(0f, 1f),
+        (base.green * 0.76f).coerceIn(0f, 1f),
+        (base.blue * 0.76f).coerceIn(0f, 1f),
+        base.alpha,
+    ) else base
+    Column(
+        modifier = Modifier.fillMaxWidth().height(188.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(
+            modifier = Modifier.size(104.dp).background(Brush.linearGradient(listOf(base, end)), widgetPreviewShape(shape)),
+            contentAlignment = Alignment.Center,
+        ) {
             Icon(
                 painter = painterResource(WidgetIconCatalog.resolve(icon).drawableRes),
                 contentDescription = null,
                 tint = iconColor ?: MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(52.dp),
             )
-            Text(
-                taskName,
-                color = textColor,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                textAlign = TextAlign.Center,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text("Tap to run", color = textColor.copy(alpha = 0.82f), style = MaterialTheme.typography.labelSmall)
         }
+        Text(
+            taskName,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            textAlign = TextAlign.Center,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 7.dp),
+        )
     }
 }
 
