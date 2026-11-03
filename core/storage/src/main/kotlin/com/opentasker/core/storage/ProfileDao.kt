@@ -41,7 +41,7 @@ data class ProfileEntity(
     @androidx.room.ColumnInfo(defaultValue = "'LOG'") val overflowPolicy: String = ProfileOverflowPolicy.LOG.name,
     @androidx.room.ColumnInfo(defaultValue = "NULL") val fallbackTaskId: Long? = null,
     @androidx.room.ColumnInfo(defaultValue = "'bolt'") val icon: String = "bolt",
-    val widgetId: Int? = null,
+    @androidx.room.ColumnInfo(defaultValue = "NULL") val widgetId: Int? = null,
 ) {
     fun toDomain(): Profile = toDomainDecodeResult().requireDecoded()
 
@@ -69,6 +69,8 @@ data class ProfileEntity(
                         profileGroup,
                         requiresRiskAcknowledgement,
                         projectId,
+                        icon = icon,
+                        widgetId = widgetId,
                     ),
                     issue = StorageDecodeIssue(
                         recordType = StorageRecordType.PROFILE,
