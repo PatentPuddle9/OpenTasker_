@@ -169,6 +169,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           BUILD_RUN_ID: ${{ steps.build.outputs.run_id }}
+          BUILD_RUN_NUMBER: ${{ steps.build.outputs.run_number }}
           BUILD_SHA: ${{ steps.build.outputs.head_sha }}
           VERSION: ${{ steps.artifact.outputs.version }}
         shell: bash
@@ -248,7 +249,7 @@ jobs:
             printf '\n\n---\n\n'
             printf 'Version code: **%s**\n\n' "$VERSION_CODE"
             printf 'APK: **%s**\n\n' "$ASSET_NAME"
-            printf 'Built by [successful build.yml run #%s](%s) from commit `%s`.\n\n' "$BUILD_RUN_ID" "$run_url" "$BUILD_SHA"
+            printf 'Built by [successful build.yml run #%s](%s) from commit `%s`.\n\n' "$BUILD_RUN_NUMBER" "$run_url" "$BUILD_SHA"
             printf '%s\n' '**Install note:** This is a debug-signed APK. It can update an existing OpenTasker installation signed with the same persistent debug key. An installation signed with a different key must be uninstalled first.'
             printf '\n\n%s\n' "$marker"
           } > "$notes_file"
@@ -259,4 +260,4 @@ jobs:
             --target "$BUILD_SHA" \
             --notes-file "$notes_file"
 
-          echo "Created brand-new release $TAG from build run #$BUILD_RUN_ID."
+          echo "Created brand-new release $TAG from build run #$BUILD_RUN_NUMBER."
