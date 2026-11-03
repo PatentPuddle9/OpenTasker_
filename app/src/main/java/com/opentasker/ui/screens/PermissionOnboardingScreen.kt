@@ -149,6 +149,8 @@ import com.opentasker.core.plugins.locale.LocaleGrantStore
 import com.opentasker.core.model.Profile
 import com.opentasker.core.model.Task
 import com.opentasker.core.updates.UpdateCheckAvailability
+import com.opentasker.core.updates.BranchVersion
+import com.opentasker.core.updates.collectEnabledProfileActionIds
 import com.opentasker.core.updates.UpdateCheckRunResult
 import com.opentasker.core.updates.UpdateCheckRunner
 import com.opentasker.core.updates.UpdateCheckSettings
@@ -289,6 +291,17 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
     private val _updateCheckFailed = MutableStateFlow(false)
     val updateCheckFailed: StateFlow<Boolean> = _updateCheckFailed.asStateFlow()
 
+    private val _branchVersions = MutableStateFlow<List<BranchVersion>>(emptyList())
+    val branchVersions: StateFlow<List<BranchVersion>> = _branchVersions.asStateFlow()
+
+    private val _branchVersionsLoading = MutableStateFlow(false)
+    val branchVersionsLoading: StateFlow<Boolean> = _branchVersionsLoading.asStateFlow()
+
+    private val _branchVersionsFailed = MutableStateFlow(false)
+    val branchVersionsFailed: StateFlow<Boolean> = _branchVersionsFailed.asStateFlow()
+
+    private var branchVersionsRequestGeneration = 0
+
     private val _updateDownloadInProgress = MutableStateFlow(false)
     val updateDownloadInProgress: StateFlow<Boolean> = _updateDownloadInProgress.asStateFlow()
 
@@ -391,6 +404,70 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
                 _updateBranchesFailed.value = true
             } finally {
                 _updateBranchesLoading.value = false
+            }
+        }
+    }
+
+    fun refreshBranchVersions(branch: String, usedActionIds: Set<String>) {
+        if (!UpdateCheckAvailability.isAvailable() || !UpdateCheckProtocol.isSelectableBranch(branch)) return
+        val generation = ++branchVersionsRequestGeneration
+        _branchVersionsLoading.value = true
+        _branchVersionsFailed.value = false
+        _branchVersions.value = emptyList()
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val versions = UpdateCheckRunner.fetchAvailableVersions(context, branch, usedActionIds)
+                if (generation != branchVersionsRequestGeneration) return@launch
+                if (versions == null) {
+                    _branchVersionsFailed.value = true
+                } else {
+                    _branchVersions.value = versions
+                }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                AppLogger.warn("UpdateCheck", "Could not refresh version history: ${error.message ?: "unknown error"}")
+                if (generation == branchVersionsRequestGeneration) _branchVersionsFailed.value = true
+            } finally {
+                if (generation == branchVersionsRequestGeneration) _branchVersionsLoading.value = false
+            }
+        }
+    }
+
+    fun downloadBranchVersion(version: BranchVersion, onDownloaded: (File) -> Unit) {
+        if (!UpdateCheckAvailability.isAvailable() || _updateDownloadInProgress.value) return
+        val sourceBranch = _updateCheckState.value.selectedBranch
+        val apkUrl = version.apkUrl ?: return
+        val size = version.apkSizeBytes ?: return
+        val digest = version.apkSha256 ?: return
+        val versionCode = version.versionCode ?: return
+        if (versionCode <= BuildConfig.VERSION_CODE) return
+        _updateDownloadInProgress.value = true
+        _updateDownloadProgress.value = 0
+        _updateInstallFailed.value = false
+        viewModelScope.launch {
+            try {
+                val file = UpdateApkDownloader.download(
+                    context = context,
+                    version = version.version,
+                    sourceBranch = sourceBranch,
+                    apkUrl = apkUrl,
+                    expectedSizeBytes = size,
+                    expectedSha256 = digest,
+                    expectedVersionCode = versionCode,
+                    onProgress = { downloaded, total ->
+                        _updateDownloadProgress.value =
+                            ((downloaded * 100L) / total.coerceAtLeast(1L)).toInt().coerceIn(0, 100)
+                    },
+                )
+                onDownloaded(file)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                AppLogger.warn("UpdateCheck", "Could not download selected version: ${error.message ?: "unknown error"}")
+                _updateInstallFailed.value = true
+            } finally {
+                _updateDownloadInProgress.value = false
             }
         }
     }
