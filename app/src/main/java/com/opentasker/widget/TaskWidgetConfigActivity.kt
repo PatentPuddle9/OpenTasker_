@@ -10,7 +10,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -342,7 +341,6 @@ private fun ConfigScreen(
                         icon = selectedIcon,
                         iconColor = iconColor?.let(::Color),
                         backgroundColor = backgroundColor?.let(::Color),
-                        gradient = useGradient,
                         textColor = previewTextColor,
                     )
 
@@ -412,7 +410,6 @@ private fun WidgetLivePreview(
     icon: String,
     iconColor: Color?,
     backgroundColor: Color?,
-    gradient: Boolean,
     textColor: Color,
 ) {
     val colors = backgroundColor?.let { base ->
