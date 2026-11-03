@@ -24,11 +24,11 @@ class ThemeResourceColorParityTest {
         mapOf(
             "widget_background" to "LightSurface",
             "widget_border" to "LightOutline",
-            "widget_primary" to "LightCyan",
+            "widget_primary" to "LightPurple",
             "widget_text_primary" to "LightText",
             "widget_text_secondary" to "LightSubtext",
             "window_background" to "LightBase",
-            "notification_accent" to "BrandCyan",
+            "notification_accent" to "BrandPurple",
         ),
     )
 
@@ -38,7 +38,7 @@ class ThemeResourceColorParityTest {
         mapOf(
             "widget_background" to "WorkshopNavy",
             "widget_border" to "WorkshopOutline",
-            "widget_primary" to "BrandCyan",
+            "widget_primary" to "BrandPurple",
             "widget_text_primary" to "Text",
             "widget_text_secondary" to "TextSecondary",
             "window_background" to "Black",
