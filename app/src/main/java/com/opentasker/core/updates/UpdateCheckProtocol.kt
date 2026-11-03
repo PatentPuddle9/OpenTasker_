@@ -218,7 +218,13 @@ object UpdateCheckProtocol {
                 }
                 val apk = apkAssets.singleOrNull()
                 val targetCommit = release["target_commitish"]?.jsonPrimitive?.content?.trim()
-                val commit = targetCommit?.takeIf { it.matches(Regex("^[0-9a-fA-F]{40}$")) }
+                // Release target_commitish can be a branch head unrelated to the APK if an old
+                // workflow updated the branch between packaging and publishing. Prefer the exact
+                // commit recorded by the successful build in the release notes.
+                val bodyCommit = Regex("""(?:Source commit:|from commit )`([0-9a-fA-F]{40})`""")
+                    .find(body)?.groupValues?.get(1)
+                val commit = bodyCommit
+                    ?: targetCommit?.takeIf { it.matches(Regex("^[0-9a-fA-F]{40}$")) }
                 val versionCode = Regex("""(?:Version code|Android versionCode):?\s*\*\*(\d+)\*\*""")
                     .find(body)?.groupValues?.get(1)?.toLongOrNull()
                 val publishedAt = release["published_at"]?.jsonPrimitive?.content
