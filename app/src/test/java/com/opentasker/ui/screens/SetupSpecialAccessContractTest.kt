@@ -38,7 +38,7 @@ class SetupSpecialAccessContractTest {
 
         assertTrue(rows.contains("context.packageManager.canRequestPackageInstalls()"))
         assertTrue(rows.contains("Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES"))
-        assertTrue(rows.contains("Uri.parse(\"package:\\${context.packageName}\")"))
+        assertTrue(rows.contains("Uri.parse(\"package:\${context.packageName}\")"))
         assertTrue(rows.contains("section = SetupSection.OPTIONAL"))
         assertTrue(manifest.contains("android.permission.REQUEST_INSTALL_PACKAGES"))
         assertTrue(strings.contains("""name="setup_install_unknown_apps_title">Install unknown apps"""))
