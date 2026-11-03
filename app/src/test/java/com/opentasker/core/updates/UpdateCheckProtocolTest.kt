@@ -15,7 +15,7 @@ class UpdateCheckProtocolTest {
         assertEquals(
             UpdateCheckResult.Available(
                 version = "0.2.85",
-                url = "https://github.com/SysAdminDoc/OpenTasker/releases/tag/v0.2.85",
+                url = "https://github.com/PatentPuddle9/OpenTasker_/releases/tag/v0.2.85",
             ),
             result,
         )
