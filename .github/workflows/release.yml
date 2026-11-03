@@ -237,6 +237,20 @@ jobs:
             title="OpenTasker $TAG"
             release_channel="Experimental"
           fi
+          catalog_path="app/src/main/java/com/opentasker/core/actions/ActionCatalog.kt"
+          if [[ ! -f "$catalog_path" ]]; then
+            echo "::error::The build source has no action catalogue to publish."
+            exit 1
+          fi
+          supported_actions="$(grep -oE 'define(Engine)?\("[^"]+"' "$catalog_path" |
+            sed -E 's/.*\("([^"]+)".*/\1/' |
+            sort -u |
+            paste -sd, -)"
+          if [[ -z "$supported_actions" ]]; then
+            echo "::error::Could not extract the supported action catalogue."
+            exit 1
+          fi
+
           run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID"
           marker="<!-- opentasker-build-run-id:$BUILD_RUN_ID -->"
           notes_file="$RUNNER_TEMP/release-notes.md"
@@ -269,7 +283,8 @@ jobs:
             printf 'Release channel: **%s**\n\n' "$release_channel"
             printf 'Version code: **%s**\n\n' "$VERSION_CODE"
             printf 'APK: **%s**\n\n' "$ASSET_NAME"
-            printf 'In-app updates: **available**\\n\\n'
+            printf 'In-app updates: **available**\n\n'
+            printf 'Action catalog: `%s`\n\n' "$supported_actions"
             printf 'Built by [successful build.yml run #%s](%s) from commit `%s`.\n\n' "$BUILD_RUN_NUMBER" "$run_url" "$BUILD_SHA"
             printf '%s\n' '**Install note:** This is a debug-signed APK. It can update an existing OpenTasker installation signed with the same persistent debug key. An installation signed with a different key must be uninstalled first.'
             printf '\n\n%s\n' "$marker"
