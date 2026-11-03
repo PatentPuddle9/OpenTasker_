@@ -41,14 +41,24 @@ object UpdateApkDownloader {
         apkUrl: String,
         expectedSizeBytes: Long,
         expectedSha256: String,
+        expectedVersionCode: Long? = null,
         onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit = { _, _ -> },
     ): File = withContext(Dispatchers.IO) {
         require(version.matches(Regex("^\\d+\\.\\d+\\.\\d+$"))) { "Update version is invalid." }
         require(UpdateCheckProtocol.isSelectableBranch(sourceBranch)) {
             "The master branch cannot be used as an update source."
         }
-        require(apkUrl == UpdateCheckProtocol.branchApkUrl(sourceBranch)) {
-            "APK URL does not match the selected branch update channel."
+        val releaseAssetUrl = apkUrl.toHttpUrlOrNull()
+        require(
+            releaseAssetUrl != null &&
+                releaseAssetUrl.isHttps &&
+                releaseAssetUrl.host == "github.com" &&
+                releaseAssetUrl.encodedPath.startsWith("/PatentPuddle9/OpenTasker_/releases/download/") &&
+                releaseAssetUrl.encodedPath.count { it == '/' } >= 6 &&
+                releaseAssetUrl.query == null &&
+                releaseAssetUrl.fragment == null
+        ) {
+            "APK URL is not a release asset from the OpenTasker fork."
         }
         require(expectedSizeBytes > 0L && expectedSizeBytes <= UpdateCheckProtocol.MAX_APK_BYTES) {
             "APK size is outside the allowed limit."
@@ -81,7 +91,10 @@ object UpdateApkDownloader {
                 ?.filter { it.name.endsWith(".part") }
                 ?.forEach { it.delete() }
 
-            val fileName = UpdateCheckProtocol.branchAssetName(sourceBranch)
+            val fileName = releaseAssetUrl!!.encodedPath.substringAfterLast('/')
+            require(fileName.matches(Regex("^[A-Za-z0-9._-]{1,160}\\.apk$"))) {
+                "Release APK filename is invalid."
+            }
             val temporaryFile = File(updateDirectory, "$fileName.part")
             val apkFile = File(updateDirectory, fileName)
             val digest = MessageDigest.getInstance("SHA-256")
@@ -123,6 +136,9 @@ object UpdateApkDownloader {
                     throw IOException("Downloaded APK version does not match the release.")
                 }
                 val archiveVersionCode = archive.versionCodeLongCompat()
+                if (expectedVersionCode != null && archiveVersionCode != expectedVersionCode) {
+                    throw IOException("Downloaded APK version code does not match the selected release.")
+                }
                 val installed = context.packageManager.getPackageInfo(context.packageName, 0)
                 if (archiveVersionCode <= installed.versionCodeLongCompat()) {
                     throw IOException("The downloaded APK is not newer than this installation.")
