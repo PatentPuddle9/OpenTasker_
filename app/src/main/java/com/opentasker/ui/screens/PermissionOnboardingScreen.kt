@@ -259,6 +259,12 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
     )
     val updateCheckState: StateFlow<UpdateCheckState> = _updateCheckState.asStateFlow()
 
+    private val _updateCheckInProgress = MutableStateFlow(false)
+    val updateCheckInProgress: StateFlow<Boolean> = _updateCheckInProgress.asStateFlow()
+
+    private val _updateCheckFailed = MutableStateFlow(false)
+    val updateCheckFailed: StateFlow<Boolean> = _updateCheckFailed.asStateFlow()
+
     private val _associations = MutableStateFlow<List<CompanionAssociation>>(emptyList())
     val associations: StateFlow<List<CompanionAssociation>> = _associations.asStateFlow()
 
@@ -303,6 +309,31 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
             settings.setEnabled(enabled)
             UpdateCheckWorker.sync(context)
             _updateCheckState.value = settings.load()
+        }
+    }
+
+    fun checkForUpdatesNow() {
+        if (!UpdateCheckAvailability.isAvailable() || _updateCheckInProgress.value) return
+        _updateCheckInProgress.value = true
+        _updateCheckFailed.value = false
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                when (UpdateCheckRunner.checkAndRecord(context)) {
+                    is UpdateCheckRunResult.Completed -> {
+                        _updateCheckState.value = UpdateCheckSettings(context).load()
+                    }
+                    UpdateCheckRunResult.Failed -> {
+                        _updateCheckFailed.value = true
+                    }
+                }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                AppLogger.warn("UpdateCheck", "Manual release check failed: ${error.message ?: "unknown error"}")
+                _updateCheckFailed.value = true
+            } finally {
+                _updateCheckInProgress.value = false
+            }
         }
     }
 
@@ -428,6 +459,8 @@ fun PermissionOnboardingScreen(
     val directBootEnabled by setupViewModel.directBootEnabled.collectAsState()
     val themeMode by setupViewModel.themeMode.collectAsState()
     val updateCheckState by setupViewModel.updateCheckState.collectAsState()
+    val updateCheckInProgress by setupViewModel.updateCheckInProgress.collectAsState()
+    val updateCheckFailed by setupViewModel.updateCheckFailed.collectAsState()
     val associations by setupViewModel.associations.collectAsState()
     val pushToken by setupViewModel.pushToken.collectAsState()
     val pushRegistration by setupViewModel.pushRegistration.collectAsState()
@@ -542,7 +575,10 @@ fun PermissionOnboardingScreen(
                 item {
                     UpdateCheckSetupCard(
                         state = updateCheckState,
+                        checking = updateCheckInProgress,
+                        checkFailed = updateCheckFailed,
                         onEnabledChange = setupViewModel::setUpdateChecksEnabled,
+                        onCheckNow = setupViewModel::checkForUpdatesNow,
                         onOpenRelease = { url ->
                             openSettingsIntent(context, Intent(Intent.ACTION_VIEW, Uri.parse(url)), onMessage)
                         },
@@ -824,14 +860,24 @@ private fun AboutCard(onOpenLink: (String) -> Unit) {
 @Composable
 private fun UpdateCheckSetupCard(
     state: UpdateCheckState,
+    checking: Boolean,
+    checkFailed: Boolean,
     onEnabledChange: (Boolean) -> Unit,
+    onCheckNow: () -> Unit,
     onOpenRelease: (String) -> Unit,
 ) {
     val stateText = when {
-        !state.enabled -> stringResource(R.string.setup_update_status_off)
+        checking -> stringResource(R.string.setup_update_status_checking)
+        checkFailed -> stringResource(R.string.setup_update_status_failed)
         state.newerVersion != null -> stringResource(R.string.setup_update_status_available, state.newerVersion)
         state.lastCheckedAtMs != null -> stringResource(R.string.setup_update_status_current)
+        !state.enabled -> stringResource(R.string.setup_update_status_off)
         else -> stringResource(R.string.setup_update_status_pending)
+    }
+    val stateColor = when {
+        checkFailed -> MaterialTheme.colorScheme.error
+        state.newerVersion != null -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.tertiary
     }
     val toggleDescription = stringResource(
         if (state.enabled) R.string.setup_update_enabled else R.string.setup_update_disabled,
@@ -851,14 +897,39 @@ private fun UpdateCheckSetupCard(
                 Text(
                     stateText,
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (state.newerVersion != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
+                    color = stateColor,
                 )
             }
             Switch(checked = state.enabled, onCheckedChange = null)
         }
-        if (state.newerVersion != null && state.releaseUrl != null) {
-            TextButton(onClick = { onOpenRelease(state.releaseUrl) }, modifier = Modifier.align(Alignment.End)) {
-                Text(stringResource(R.string.setup_update_open_release))
+        if (checking) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(
+                enabled = !checking,
+                onClick = onCheckNow,
+            ) {
+                Text(
+                    stringResource(
+                        if (checking) R.string.setup_update_checking else R.string.setup_update_check_now,
+                    ),
+                )
+            }
+            if (state.newerVersion != null && state.releaseUrl != null) {
+                TextButton(onClick = { onOpenRelease(state.releaseUrl) }) {
+                    Text(stringResource(R.string.setup_update_open_release))
+                }
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
