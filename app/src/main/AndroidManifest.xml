@@ -413,6 +413,7 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="com.opentasker.action.NOTIFICATION_BUTTON" />
+                <action android:name="com.opentasker.action.DISMISS_NOTIFICATION" />
             </intent-filter>
         </receiver>
 
