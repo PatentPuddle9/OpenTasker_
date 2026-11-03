@@ -18,6 +18,7 @@ data class BranchVersion(
     val sourceCommit: String?,
     val publishedAt: String?,
     val supportsInAppUpdates: Boolean,
+    val updaterSupportKnown: Boolean = false,
     val supportedActionIds: Set<String>? = null,
     val missingActionIds: List<String> = emptyList(),
     val compatibilityKnown: Boolean = false,
