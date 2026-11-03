@@ -232,6 +232,22 @@ private fun output(
 internal fun declaredActionOutputs(actionId: String): List<ActionOutputDefinition> = when (actionId) {
     "var.set" -> listOf(output("value", ActionValueType.ANY, nameArgumentKeys = listOf("name"), basePath = true))
     "var.persist" -> listOf(output("value", ActionValueType.ANY, nameArgumentKeys = listOf("global_name", "name"), scope = ActionOutputScope.GLOBAL))
+    "brightness.read" -> listOf(
+        output("level", ActionValueType.NUMBER, nameArgumentKeys = listOf("var"), defaultName = "brightness"),
+        output("percent", ActionValueType.NUMBER, nameArgumentKeys = listOf("var"), defaultName = "brightness", suffix = "_percent"),
+        output("mode", ActionValueType.TEXT, nameArgumentKeys = listOf("var"), defaultName = "brightness", suffix = "_mode"),
+        output("automatic", ActionValueType.BOOLEAN, nameArgumentKeys = listOf("var"), defaultName = "brightness", suffix = "_automatic"),
+    )
+    "volume.read" -> listOf(
+        output("level", ActionValueType.NUMBER, nameArgumentKeys = listOf("var"), defaultName = "volume"),
+        output("max", ActionValueType.NUMBER, nameArgumentKeys = listOf("var"), defaultName = "volume", suffix = "_max"),
+        output("percent", ActionValueType.NUMBER, nameArgumentKeys = listOf("var"), defaultName = "volume", suffix = "_percent"),
+        output("muted", ActionValueType.BOOLEAN, nameArgumentKeys = listOf("var"), defaultName = "volume", suffix = "_muted"),
+    )
+    "torch.read" -> listOf(
+        output("enabled", ActionValueType.BOOLEAN, nameArgumentKeys = listOf("var"), defaultName = "flashlight"),
+        output("state", ActionValueType.TEXT, nameArgumentKeys = listOf("var"), defaultName = "flashlight", suffix = "_state"),
+    )
     "data.read" -> listOf(
         output("value", ActionValueType.TEXT, nameArgumentKeys = listOf("var", "variable"), defaultName = "data"),
         output("array", ActionValueType.ARRAY, nameArgumentKeys = listOf("var", "variable"), defaultName = "data"),
