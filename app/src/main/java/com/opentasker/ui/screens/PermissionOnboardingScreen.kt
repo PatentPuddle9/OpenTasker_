@@ -1175,6 +1175,11 @@ private fun UpdateCheckSetupCard(
     branchesFailed: Boolean,
     onBranchSelected: (String) -> Unit,
     onRefreshBranches: () -> Unit,
+    versions: List<BranchVersion>,
+    versionsLoading: Boolean,
+    versionsFailed: Boolean,
+    onRefreshVersions: () -> Unit,
+    onInstallVersion: (BranchVersion) -> Unit,
     checking: Boolean,
     checkFailed: Boolean,
     downloading: Boolean,
@@ -1184,7 +1189,12 @@ private fun UpdateCheckSetupCard(
     onCheckNow: () -> Unit,
     onInstallUpdate: () -> Unit,
 ) {
+    val context = LocalContext.current
     var branchMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    var versionHistoryExpanded by rememberSaveable { mutableStateOf(false) }
+    var selectedVersionTag by rememberSaveable(state.selectedBranch) { mutableStateOf<String?>(null) }
+    val selectedVersion = versions.firstOrNull { it.tag == selectedVersionTag } ?: versions.firstOrNull()
+    val installedVersionCode = BuildConfig.VERSION_CODE.toLong()
     val showNonDefaultBranchWarning =
         UpdateCheckProtocol.requiresNonDefaultBranchWarning(state.selectedBranch)
     val branchWarningColor = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) {
@@ -1375,6 +1385,203 @@ private fun UpdateCheckSetupCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = DesignSystem.Spacing.xs),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            TextButton(
+                enabled = !checking && !downloading,
+                onClick = { versionHistoryExpanded = !versionHistoryExpanded },
+            ) {
+                Text(if (versionHistoryExpanded) "Hide version history" else "Choose a version")
+                Icon(
+                    if (versionHistoryExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = null,
+                )
+            }
+            if (versionsLoading) {
+                Text("Loading versions…", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                Text("${versions.size} available", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (versionHistoryExpanded) {
+            if (versionsFailed) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Couldn't load versions or verify their compatibility.",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    TextButton(onClick = onRefreshVersions) { Text("Retry") }
+                }
+            } else if (versions.isEmpty() && !versionsLoading) {
+                Text(
+                    "No published APK versions were found for this branch yet.",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = DesignSystem.Spacing.sm),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp),
+                    verticalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.xs),
+                ) {
+                    items(versions, key = { it.tag }) { version ->
+                        val selected = version.tag == selectedVersion?.tag
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedVersionTag = version.tag },
+                            shape = MaterialTheme.shapes.medium,
+                            color = if (selected) {
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.56f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f)
+                            },
+                            border = BorderStroke(
+                                1.dp,
+                                if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+                            ),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        "v${version.version}",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    Text(
+                                        version.versionCode?.let { "Android versionCode $it" } ?: "Version code not published",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                if (version.isLatest) {
+                                    Icon(
+                                        Icons.Filled.CheckCircle,
+                                        contentDescription = "Latest version on this branch",
+                                        tint = Color(0xFF219653),
+                                    )
+                                }
+                                if (!version.supportsInAppUpdates || version.missingActionIds.isNotEmpty()) {
+                                    Icon(
+                                        Icons.Filled.Error,
+                                        contentDescription = "Version warning",
+                                        tint = MaterialTheme.colorScheme.error,
+                                    )
+                                } else if (!version.compatibilityKnown) {
+                                    Icon(
+                                        Icons.Filled.Info,
+                                        contentDescription = "Compatibility not verified",
+                                        tint = branchWarningColor,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                selectedVersion?.let { version ->
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = DesignSystem.Spacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.sm),
+                    ) {
+                        if (version.missingActionIds.isNotEmpty()) {
+                            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Icon(Icons.Filled.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        "This version is missing actions used by enabled profiles.",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                    Text(
+                                        version.missingActionIds.joinToString(),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            }
+                        } else if (!version.compatibilityKnown) {
+                            Text(
+                                "Action compatibility couldn't be verified for this release. Treat it as unverified before installing.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = branchWarningColor,
+                            )
+                        }
+                        if (!version.supportsInAppUpdates) {
+                            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Icon(Icons.Filled.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                Text(
+                                    "This version doesn't include in-app updating. It won't be able to check for or install later versions itself.",
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        }
+                        when {
+                            version.versionCode == null -> {
+                                Text(
+                                    "This release didn't publish an Android version code, so OpenTasker can't verify an in-place update.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                TextButton(onClick = {
+                                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(version.releaseUrl))) }
+                                }) { Text("Open release page") }
+                            }
+                            version.versionCode < installedVersionCode -> {
+                                Text(
+                                    "This is older than the installed version. Android blocks downgrades over an installed app. Download the APK first, back up your automations, uninstall OpenTasker, then install the downloaded APK from Downloads. Uninstalling clears local app data.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                                OutlinedButton(
+                                    enabled = version.apkUrl != null,
+                                    onClick = {
+                                        val url = version.apkUrl ?: version.releaseUrl
+                                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) { Text("Download older APK for a fresh install") }
+                            }
+                            version.versionCode == installedVersionCode -> {
+                                Text(
+                                    "This version is already installed.",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                )
+                            }
+                            version.canInstallInPlace -> {
+                                Button(
+                                    enabled = !checking && !downloading,
+                                    onClick = { onInstallVersion(version) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) { Text("Download and install selected version") }
+                            }
+                            else -> {
+                                TextButton(
+                                    onClick = {
+                                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(version.releaseUrl))) }
+                                    },
+                                ) { Text("Open release page") }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         if (branchesFailed) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
@@ -1427,6 +1634,42 @@ private fun UpdateCheckSetupCard(
                             else R.string.setup_update_install,
                         ),
                     )
+                }
+            }
+        }
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = DesignSystem.Spacing.sm),
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.28f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.45f)),
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(Icons.Filled.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        "Original OpenTasker project",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Text(
+                        "This is the upstream project, separate from this fork. Its APK is signed independently. To return to this fork's current version later, you'll need a fresh install. Back up first: uninstalling either app removes its local data.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(
+                        onClick = {
+                            runCatching {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/SysAdminDoc/OpenTasker")),
+                                )
+                            }
+                        },
+                        modifier = Modifier.align(Alignment.End),
+                    ) { Text("Open original repository") }
                 }
             }
         }
