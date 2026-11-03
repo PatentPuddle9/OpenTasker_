@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.PlaylistPlay
@@ -99,7 +100,7 @@ internal fun OpenTaskerHeader(
     onOpenSearch: () -> Unit,
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = MaterialTheme.colorScheme.background,
         tonalElevation = 0.dp,
     ) {
         Column(
@@ -113,8 +114,8 @@ internal fun OpenTaskerHeader(
                     .padding(
                         start = DesignSystem.Screen.horizontalPadding,
                         end = DesignSystem.Screen.horizontalPadding,
-                        top = 12.dp,
-                        bottom = 10.dp,
+                        top = 14.dp,
+                        bottom = 12.dp,
                     ),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -123,8 +124,9 @@ internal fun OpenTaskerHeader(
                     Text(
                         stringResource(screen.labelRes),
                         style = MaterialTheme.typography.headlineSmall.copy(
-                            fontSize = 28.sp,
-                            lineHeight = 33.sp,
+                            fontSize = 30.sp,
+                            lineHeight = 36.sp,
+                            letterSpacing = (-0.35).sp,
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -142,7 +144,7 @@ internal fun OpenTaskerHeader(
                                         OpenTaskerScreen.RunLog, OpenTaskerScreen.Inspector -> MaterialTheme.colorScheme.primary
                                         else -> MaterialTheme.colorScheme.primary
                                     },
-                                    shape = RoundedCornerShape(DesignSystem.Radii.xs),
+                                    shape = CircleShape,
                                 ),
                         )
                         Text(
@@ -154,27 +156,24 @@ internal fun OpenTaskerHeader(
                         )
                     }
                 }
-                IconButton(onClick = onOpenSearch) {
+                IconButton(
+                    onClick = onOpenSearch,
+                    modifier = Modifier
+                        .size(42.dp)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
+                ) {
                     Icon(
                         imageVector = Icons.Filled.Search,
                         contentDescription = stringResource(R.string.global_search_content_description),
                         tint = MaterialTheme.colorScheme.onSurface,
                     )
                 }
-                Icon(
-                    imageVector = screen.icon(),
-                    contentDescription = stringResource(screen.labelRes),
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier
-                        .padding(12.dp)
-                        .size(24.dp),
-                )
             }
             Box(
                 Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant),
+                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.58f)),
             )
         }
     }
@@ -193,23 +192,23 @@ internal fun OpenTaskerNavigationItem(
     val notSelectedDescription = stringResource(R.string.a11y_not_selected)
     Column(
         modifier = modifier
-            .heightIn(min = 56.dp)
+            .heightIn(min = 60.dp)
             .clickable(role = Role.Tab, onClick = onClick)
             .semantics(mergeDescendants = true) {
                 this.selected = selected
                 stateDescription = if (selected) selectedDescription else notSelectedDescription
             }
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+            .padding(horizontal = 4.dp, vertical = 5.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Box(
             modifier = Modifier
-                .size(width = 48.dp, height = 30.dp)
+                .size(width = 50.dp, height = 32.dp)
                 .then(
                     if (selected) Modifier.background(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.13f),
-                        shape = RoundedCornerShape(DesignSystem.Radii.sm),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.17f),
+                        shape = RoundedCornerShape(percent = 50),
                     ) else Modifier
                 ),
             contentAlignment = Alignment.Center,
@@ -221,10 +220,10 @@ internal fun OpenTaskerNavigationItem(
                 modifier = Modifier.size(22.dp),
             )
         }
-        Spacer(Modifier.height(2.dp))
+        Spacer(Modifier.height(3.dp))
         Text(
             label,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall,
             color = contentColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
