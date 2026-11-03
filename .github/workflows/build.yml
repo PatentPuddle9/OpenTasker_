@@ -1,6 +1,9 @@
 name: Build OpenTasker APK
 
 on:
+  push:
+    branches:
+      - BETA
   workflow_dispatch:
 
 jobs:

@@ -21,35 +21,33 @@ class LauncherIconContractTest {
         listOf("ic_launcher.xml", "ic_launcher_round.xml").forEach { name ->
             val adaptive = read("app/src/main/res/mipmap-anydpi-v26/$name")
             assertTrue("@color/ic_launcher_background" in adaptive)
-            assertTrue("@mipmap/ic_launcher_foreground" in adaptive)
-            assertTrue("@mipmap/ic_launcher_monochrome" in adaptive)
+            assertTrue("@drawable/opentasker_launcher_foreground" in adaptive)
+            assertTrue("@drawable/opentasker_launcher_monochrome" in adaptive)
         }
 
-        val expected = mapOf("mipmap-xxxhdpi" to 432)
-
-        expected.forEach { (directory, size) ->
-            listOf("ic_launcher_foreground.png", "ic_launcher_monochrome.png").forEach { name ->
-                val image = ImageIO.read(file("app/src/main/res/$directory/$name").toFile())
-                assertEquals(size, image.width)
-                assertEquals(size, image.height)
-                assertEquals(0, image.getRGB(0, 0) ushr 24)
-                assertTrue((image.getRGB(size / 2, size / 2) ushr 24) > 0)
-            }
-            val density = directory.removePrefix("mipmap-")
-            val nightForeground = ImageIO.read(
-                file("app/src/main/res/mipmap-night-$density/ic_launcher_night_foreground.png").toFile(),
-            )
-            assertEquals(size, nightForeground.width)
-            assertEquals(size, nightForeground.height)
-            assertEquals(0, nightForeground.getRGB(0, 0) ushr 24)
-            assertTrue((nightForeground.getRGB(size / 2, size / 2) ushr 24) > 0)
-            assertFalse(Files.exists(file("app/src/main/res/$directory/ic_launcher.png")))
+        val vectorDrawables = mapOf(
+            "opentasker_launcher_foreground.xml" to "#000000",
+            "opentasker_launcher_monochrome.xml" to "#FFFFFF",
+            "opentasker_launcher_night_foreground.xml" to "#CB6CE6",
+        )
+        vectorDrawables.forEach { (name, color) ->
+            val vector = read("app/src/main/res/drawable/$name")
+            assertTrue("android:width=\"108dp\"" in vector)
+            assertTrue("android:height=\"108dp\"" in vector)
+            assertTrue("android:fillColor=\"$color\"" in vector)
+            assertTrue("android:fillType=\"evenOdd\"" in vector)
+            assertTrue("android:pathData=\"M" in vector)
+        }
+        listOf("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi").forEach { density ->
+            assertFalse(Files.exists(file("app/src/main/res/mipmap-$density/ic_launcher_foreground.png")))
+            assertFalse(Files.exists(file("app/src/main/res/mipmap-$density/ic_launcher_monochrome.png")))
+            assertFalse(Files.exists(file("app/src/main/res/mipmap-night-$density/ic_launcher_night_foreground.png")))
         }
 
         listOf("ic_launcher.xml", "ic_launcher_round.xml").forEach { name ->
             val night = read("app/src/main/res/mipmap-night-anydpi-v26/$name")
-            assertTrue("@mipmap/ic_launcher_night_foreground" in night)
-            assertTrue("@mipmap/ic_launcher_monochrome" in night)
+            assertTrue("@drawable/opentasker_launcher_night_foreground" in night)
+            assertTrue("@drawable/opentasker_launcher_monochrome" in night)
         }
         assertTrue("#CB6CE6" in read("app/src/main/res/values/ic_launcher_background.xml"))
         assertTrue("#000000" in read("app/src/main/res/values-night/ic_launcher_background.xml"))
