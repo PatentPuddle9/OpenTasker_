@@ -136,6 +136,7 @@ import com.opentasker.core.contexts.NfcTagWriteSession
 import com.opentasker.core.contexts.contextConfigSummary
 import com.opentasker.core.engine.executeAndLogTask
 import com.opentasker.widget.TaskShortcutHelper
+import com.opentasker.widget.requestNewTaskWidget
 import com.opentasker.core.flow.AutomationFlowTarget
 import com.opentasker.core.location.LocationDwellStateStore
 import com.opentasker.core.model.ActionSpec
