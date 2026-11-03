@@ -18,6 +18,7 @@ import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
 import com.opentasker.core.engine.ActionContext
 import com.opentasker.core.engine.ActionResult
+import com.opentasker.core.model.VariableNamePolicy
 import com.opentasker.core.contexts.QuickSettingsTileStore
 import com.opentasker.core.contexts.requestRefresh
 import com.opentasker.core.platform.AndroidAudioHardening
@@ -157,6 +158,95 @@ class VolumeAction : DeclaredAction(ActionCatalog.require("volume.set")) {
             ActionResult.Failure("volume change blocked by DND policy: ${ex.message}", ex)
         }
     }
+}
+
+/**
+ * Read the current system brightness setting into variables.
+ * The mode output distinguishes the stored slider level from automatic brightness mode.
+ */
+class BrightnessReadAction : DeclaredAction(ActionCatalog.require("brightness.read")) {
+
+    override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
+        val varName = readSystemStatusVariable(args, "brightness")
+            ?: return ActionResult.Failure("invalid variable name")
+        return try {
+            val resolver = ctx.app.contentResolver
+            val level = Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS, 0).coerceIn(0, 255)
+            val mode = Settings.System.getInt(
+                resolver,
+                Settings.System.SCREEN_BRIGHTNESS_MODE,
+                Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL,
+            )
+            val automatic = mode == Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC
+            val percent = (level * 100 + 127) / 255
+            ctx.variables.set(varName, level.toString())
+            ctx.variables.set("${varName}_percent", percent.toString())
+            ctx.variables.set("${varName}_mode", if (automatic) "automatic" else "manual")
+            ctx.variables.set("${varName}_automatic", automatic.toString())
+            ctx.logger("Brightness read: $level ($percent%, ${if (automatic) "automatic" else "manual"})")
+            ActionResult.Success
+        } catch (error: Exception) {
+            ActionResult.Failure("could not read screen brightness: ${error.message ?: "unknown error"}", error)
+        }
+    }
+}
+
+/**
+ * Read one Android audio stream's current volume, maximum, percentage, and muted state.
+ */
+class VolumeReadAction : DeclaredAction(ActionCatalog.require("volume.read")) {
+
+    override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
+        val streamName = args["stream"]?.trim()?.ifBlank { "music" } ?: "music"
+        val stream = streamType(streamName) ?: return ActionResult.Failure("invalid stream: $streamName")
+        val varName = readSystemStatusVariable(args, "volume")
+            ?: return ActionResult.Failure("invalid variable name")
+        val audioManager = ctx.app.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            ?: return ActionResult.Failure("audio service not available")
+
+        return try {
+            val level = audioManager.getStreamVolume(stream)
+            val maximum = audioManager.getStreamMaxVolume(stream)
+            val percent = if (maximum <= 0) 0 else (level * 100 + maximum / 2) / maximum
+            val muted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                audioManager.isStreamMute(stream)
+            } else {
+                level == 0
+            }
+            ctx.variables.set(varName, level.toString())
+            ctx.variables.set("${varName}_max", maximum.toString())
+            ctx.variables.set("${varName}_percent", percent.toString())
+            ctx.variables.set("${varName}_muted", muted.toString())
+            ctx.logger("Volume read (${streamName.lowercase()}): $level/$maximum")
+            ActionResult.Success
+        } catch (error: Exception) {
+            ActionResult.Failure("could not read volume: ${error.message ?: "unknown error"}", error)
+        }
+    }
+}
+
+/** Read whether the device camera flashlight is currently enabled. */
+class TorchReadAction : DeclaredAction(ActionCatalog.require("torch.read")) {
+
+    override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
+        val varName = readSystemStatusVariable(args, "flashlight")
+            ?: return ActionResult.Failure("invalid variable name")
+        val cameraManager = ctx.app.getSystemService(CameraManager::class.java)
+            ?: return ActionResult.Failure("camera service not available")
+        val cameraId = findTorchCameraId(cameraManager)
+            ?: return ActionResult.Failure("no camera with flash found")
+        val enabled = awaitTorchState(cameraManager, cameraId)
+            ?: return ActionResult.Failure("flashlight state is unavailable (the camera may be busy)")
+        ctx.variables.set(varName, enabled.toString())
+        ctx.variables.set("${varName}_state", if (enabled) "on" else "off")
+        ctx.logger("Flashlight read: ${if (enabled) "on" else "off"}")
+        return ActionResult.Success
+    }
+}
+
+private fun readSystemStatusVariable(args: Map<String, String>, defaultName: String): String? {
+    val rawName = args["var"]?.trim()?.takeIf { it.isNotEmpty() } ?: defaultName
+    return VariableNamePolicy.normalize(rawName)
 }
 
 /**
