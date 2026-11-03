@@ -832,7 +832,7 @@ internal fun DuplicateMenu(
 }
 
 @Composable
-private fun ActionRow(
+internal fun ActionRow(
     index: Int,
     action: ActionSpec,
     canMoveUp: Boolean,
