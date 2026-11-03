@@ -363,24 +363,20 @@ class DatabaseMigrationInstrumentedTest {
 
     @Test
     fun appDatabaseAddsProfileIconsAndWidgetOwnershipToExistingProfiles() {
-        appDatabaseHelper.createDatabase(APP_DATABASE_NAME, 15).apply {
-            execSQL(
-                """
-                INSERT INTO profiles (
-                    id, name, enabled, enterTaskId, exitTaskId, cooldownSec, contextsJson,
-                    automationMode, profileGroup, requiresRiskAcknowledgement, projectId, priority,
-                    gracePeriodSec, lifetime, expiresAtMs, lifetimeConsumed, maxActiveExecutions,
-                    burstLimit, overflowPolicy, fallbackTaskId
-                ) VALUES (
-                    9, 'Existing profile', 0, 22, NULL, 0, '[]', 'SINGLE', NULL, 0, 1, 0,
-                    0, 'NEVER', NULL, 0, NULL, NULL, 'LOG', NULL
-                )
-                """.trimIndent(),
-            )
-            close()
-        }
-
         val migrated = appDatabaseHelper.createDatabase(APP_DATABASE_NAME, 15)
+        migrated.execSQL(
+            """
+            INSERT INTO profiles (
+                id, name, enabled, enterTaskId, exitTaskId, cooldownSec, contextsJson,
+                automationMode, profileGroup, requiresRiskAcknowledgement, projectId, priority,
+                gracePeriodSec, lifetime, expiresAtMs, lifetimeConsumed, maxActiveExecutions,
+                burstLimit, overflowPolicy, fallbackTaskId
+            ) VALUES (
+                9, 'Existing profile', 0, 22, NULL, 0, '[]', 'SINGLE', NULL, 0, 1, 0,
+                0, 'NEVER', NULL, 0, NULL, NULL, 'LOG', NULL
+            )
+            """.trimIndent(),
+        )
         DatabaseMigrations.MIGRATION_15_16.migrate(migrated)
         DatabaseMigrations.MIGRATION_16_17.migrate(migrated)
 
