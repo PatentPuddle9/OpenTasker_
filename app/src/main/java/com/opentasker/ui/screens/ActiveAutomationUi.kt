@@ -266,9 +266,9 @@ fun ActiveAutomationUi(
     val projectVariables = remember(globalVariables, selectedProjectId) { globalVariables.filter { selectedProjectId == null || it.projectId == selectedProjectId } }
     val screen = OpenTaskerScreen.entries.getOrElse(screenOrdinal) { OpenTaskerScreen.Actions }
     var taskDialogId by rememberSaveable { mutableLongStateOf(NO_DIALOG_ENTITY_ID) }
-    var showCreateTaskDialog by rememberSaveable { mutableStateOf(false) }
     var profileDialogId by rememberSaveable { mutableLongStateOf(NO_DIALOG_ENTITY_ID) }
     var showCreateProfileDialog by rememberSaveable { mutableStateOf(false) }
+    var pendingProfileTask by remember { mutableStateOf<Task?>(null) }
     var showTemplateDialog by rememberSaveable { mutableStateOf(false) }
     var showBundleTextImportDialog by rememberSaveable { mutableStateOf(false) }
     var bundleTextImportDraft by rememberSaveable { mutableStateOf("") }
@@ -548,6 +548,19 @@ fun ActiveAutomationUi(
         screenOrdinal = OpenTaskerScreen.Actions.ordinal
         showMoreDestinations = false
     }
+    val startNewProfile = {
+        when {
+            pendingProfileTask != null -> showCreateProfileDialog = true
+            projectTasks.isNotEmpty() -> showCreateProfileDialog = true
+            else -> viewModel.createBackingTaskForProfile(
+                selectedProjectId ?: com.opentasker.core.model.DEFAULT_PROJECT_ID,
+            ) { task ->
+                pendingProfileTask = task
+                showCreateProfileDialog = true
+            }
+        }
+    }
+
     val headerDetail = when (screen) {
         // Counted over the same project-scoped lists the screens render, or the header disagreed
         // with the list under it whenever a project was selected.
@@ -593,15 +606,9 @@ fun ActiveAutomationUi(
         floatingActionButton = {
             when (screen) {
                 OpenTaskerScreen.Actions -> {
-                    val createLabel = stringResource(if (projectTasks.isEmpty()) R.string.task_new else R.string.profile_new)
+                    val createLabel = stringResource(R.string.profile_new)
                     ExtendedFloatingActionButton(
-                        onClick = {
-                            if (projectTasks.isEmpty()) {
-                                showCreateTaskDialog = true
-                            } else {
-                                showCreateProfileDialog = true
-                            }
-                        },
+                        onClick = startNewProfile,
                         shape = RoundedCornerShape(DesignSystem.Radii.lg),
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -762,11 +769,7 @@ fun ActiveAutomationUi(
                 allTasks = tasks,
                 runLogs = runLogs,
                 storageDecodeIssues = storageDecodeIssues,
-                onCreateTaskFirst = {
-                    screenOrdinal = OpenTaskerScreen.Actions.ordinal
-                    showCreateTaskDialog = true
-                },
-                onCreateProfile = { showCreateProfileDialog = true },
+                onCreateProfile = startNewProfile,
                 onBrowseTemplates = {
                     showTemplateDialog = true
                     if (!onboardingCompleted) onboardingTemplateFlow = true
@@ -1077,18 +1080,6 @@ fun ActiveAutomationUi(
         )
     }
 
-    if (showCreateTaskDialog) {
-        TaskEditorDialog(
-            existingTaskNames = tasks.map { it.name },
-            task = null,
-            onDismiss = { showCreateTaskDialog = false },
-            onSave = { name, priority, collisionMode ->
-                val projectId = selectedProjectId ?: com.opentasker.core.model.DEFAULT_PROJECT_ID
-                viewModel.createTask(name, priority, collisionMode, projectId) { showCreateTaskDialog = false }
-            },
-        )
-    }
-
     taskDialog?.let { task ->
         TaskEditorDialog(
             existingTaskNames = tasks.map { it.name },
@@ -1109,10 +1100,13 @@ fun ActiveAutomationUi(
     if (showCreateProfileDialog) {
         ProfileEditorDialog(
             profile = null,
-            tasks = projectTasks,
+            tasks = (projectTasks + listOfNotNull(pendingProfileTask)).distinctBy { it.id },
             onDismiss = { showCreateProfileDialog = false },
             onSave = { name, enabled, enterTaskId, exitTaskId, cooldown, priority, gracePeriod, automationMode, group, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon ->
-                viewModel.createProfile(name, enabled, enterTaskId, exitTaskId, cooldown, automationMode, group, selectedProjectId ?: com.opentasker.core.model.DEFAULT_PROJECT_ID, priority, gracePeriod, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon) { showCreateProfileDialog = false }
+                viewModel.createProfile(name, enabled, enterTaskId, exitTaskId, cooldown, automationMode, group, pendingProfileTask?.projectId ?: (selectedProjectId ?: com.opentasker.core.model.DEFAULT_PROJECT_ID), priority, gracePeriod, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon) {
+                    pendingProfileTask = null
+                    showCreateProfileDialog = false
+                }
             },
             onEditTask = ::openTaskDialog,
             onAddAction = ::openActionPicker,
