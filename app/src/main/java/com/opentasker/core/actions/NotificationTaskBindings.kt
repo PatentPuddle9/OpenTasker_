@@ -58,6 +58,7 @@ object NotificationTaskBindings {
         val idKey = taskIdKey(buttonIndex)
         if (idKey in args) {
             val rawId = args[idKey].orEmpty().trim()
+            if (rawId.isEmpty()) return null
             val taskId = rawId.toLongOrNull()
             return if (taskId != null && taskId > 0) {
                 NotificationTaskReference.Id(taskId)
@@ -72,7 +73,7 @@ object NotificationTaskBindings {
         return if (taskName.isNotEmpty()) {
             NotificationTaskReference.LegacyName(taskName)
         } else {
-            NotificationTaskReference.Invalid(taskName)
+            null
         }
     }
 
