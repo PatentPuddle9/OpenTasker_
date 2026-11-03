@@ -14,11 +14,11 @@ import com.opentasker.core.storage.recordingOutcome
 import com.opentasker.core.logging.AppLogger
 import java.util.concurrent.TimeUnit
 
-/** Build-gated availability for the public-release check. F-Droid supplies its own updates. */
+/** The downloadable APK channel is only the standard distribution; stores update their own builds. */
 object UpdateCheckAvailability {
-    const val FDROID_DISTRIBUTION = "fdroid"
+    const val STANDARD_DISTRIBUTION = "standard"
 
-    fun isAvailable(): Boolean = BuildConfig.DISTRIBUTION != FDROID_DISTRIBUTION
+    fun isAvailable(): Boolean = BuildConfig.DISTRIBUTION == STANDARD_DISTRIBUTION
 }
 
 /** Performs one bounded release-feed request; it never downloads or installs an artifact. */

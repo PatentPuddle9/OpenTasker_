@@ -6,7 +6,7 @@ import org.junit.Test
 
 class UpdateCheckProtocolTest {
     @Test
-    fun stableNewerReleaseIsReportedWithCanonicalLink() {
+    fun stableNewerReleaseIsReportedWithVerifiedApkAsset() {
         val result = UpdateCheckProtocol.parseLatestRelease(
             release(tag = "v0.2.85"),
             currentVersion = "0.2.84",
@@ -16,6 +16,9 @@ class UpdateCheckProtocolTest {
             UpdateCheckResult.Available(
                 version = "0.2.85",
                 url = "https://github.com/PatentPuddle9/OpenTasker_/releases/tag/v0.2.85",
+                apkUrl = "https://github.com/PatentPuddle9/OpenTasker_/releases/download/v0.2.85/OpenTasker-v0.2.85-debug.apk",
+                apkSizeBytes = 4_096L,
+                apkSha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             ),
             result,
         )
@@ -62,6 +65,32 @@ class UpdateCheckProtocolTest {
     }
 
     @Test
+    fun missingOrUntrustedApkAssetNeverCreatesAnInstallableUpdate() {
+        val withoutAssets = """
+            {
+              "tag_name": "v0.2.85",
+              "html_url": "https://github.com/PatentPuddle9/OpenTasker_/releases/tag/v0.2.85",
+              "draft": false,
+              "prerelease": false,
+              "assets": []
+            }
+        """.trimIndent()
+        assertTrue(UpdateCheckProtocol.parseLatestRelease(withoutAssets, "0.2.84") is UpdateCheckResult.Invalid)
+
+        val invalidDigest = release("v0.2.85").replace(
+            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "sha256:bad",
+        )
+        assertTrue(UpdateCheckProtocol.parseLatestRelease(invalidDigest, "0.2.84") is UpdateCheckResult.Invalid)
+
+        val invalidAssetUrl = release("v0.2.85").replace(
+            "https://github.com/PatentPuddle9/OpenTasker_/releases/download/v0.2.85/OpenTasker-v0.2.85-debug.apk",
+            "https://example.com/OpenTasker.apk",
+        )
+        assertTrue(UpdateCheckProtocol.parseLatestRelease(invalidAssetUrl, "0.2.84") is UpdateCheckResult.Invalid)
+    }
+
+    @Test
     fun requestTargetsTheConfiguredForkReleaseFeed() {
         val request = UpdateCheckProtocol.requestArguments()
         assertEquals(
@@ -96,7 +125,16 @@ class UpdateCheckProtocolTest {
           "tag_name": "$tag",
           "html_url": "$url",
           "draft": $draft,
-          "prerelease": $prerelease
+          "prerelease": $prerelease,
+          "assets": [
+            {
+              "name": "OpenTasker-$tag-debug.apk",
+              "content_type": "application/vnd.android.package-archive",
+              "browser_download_url": "https://github.com/PatentPuddle9/OpenTasker_/releases/download/$tag/OpenTasker-$tag-debug.apk",
+              "size": 4096,
+              "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
         }
     """.trimIndent()
 }

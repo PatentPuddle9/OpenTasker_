@@ -14,7 +14,7 @@ class UpdateCheckContractTest {
         .normalize()
 
     @Test
-    fun workerIsPeriodicAndFroidGatedWithoutAnArtifactInstallPath() {
+    fun workerIsPeriodicAndStandardDistributionGated() {
         val worker = read("app/src/main/java/com/opentasker/core/updates/UpdateCheckWorker.kt")
         val runner = read("app/src/main/java/com/opentasker/core/updates/UpdateCheckRunner.kt")
         val settings = read("app/src/main/java/com/opentasker/core/updates/UpdateCheckSettings.kt")
@@ -23,7 +23,7 @@ class UpdateCheckContractTest {
         assertTrue(worker.contains("UpdateCheckRunner.checkAndRecord(applicationContext)"))
         assertTrue(runner.contains("UpdateCheckProtocol.requestArguments()"))
         assertTrue(worker.contains("UpdateCheckAvailability.isAvailable()"))
-        assertTrue(worker.contains("FDROID_DISTRIBUTION = \"fdroid\""))
+        assertTrue(worker.contains("STANDARD_DISTRIBUTION = \"standard\""))
         assertTrue(worker.contains("cancelUniqueWork"))
         assertFalse(worker.contains("DownloadManager"))
         assertFalse(worker.contains("PackageInstaller"))
@@ -42,6 +42,30 @@ class UpdateCheckContractTest {
         assertTrue(setup.contains("setup_update_check_now"))
         assertTrue(setup.contains("setup_update_status_failed"))
         assertTrue(application.contains("UpdateCheckWorker.enqueueIfEnabled(this)"))
+        assertFalse(setup.contains("onOpenRelease"))
+        assertTrue(setup.contains("FileProvider.getUriForFile"))
+        assertTrue(setup.contains("Intent.ACTION_INSTALL_PACKAGE"))
+        assertTrue(setup.contains("canRequestPackageInstalls()"))
+    }
+
+    @Test
+    fun downloadedApkIsPinnedToReleaseDigestAndVerifiedBeforeInstallerLaunch() {
+        val protocol = read("app/src/main/java/com/opentasker/core/updates/UpdateCheckProtocol.kt")
+        val downloader = read("app/src/main/java/com/opentasker/core/updates/UpdateApkDownloader.kt")
+        val manifest = read("app/src/main/AndroidManifest.xml")
+        val paths = read("app/src/main/res/xml/update_file_paths.xml")
+
+        assertTrue(protocol.contains("browser_download_url"))
+        assertTrue(protocol.contains("asset[\"digest\"]"))
+        assertTrue(protocol.contains("APK_ASSET_SUFFIX = \"-debug.apk\""))
+        assertTrue(downloader.contains("MessageDigest.getInstance(\"SHA-256\")"))
+        assertTrue(downloader.contains("getPackageArchiveInfo"))
+        assertTrue(downloader.contains("archive.versionName != version"))
+        assertTrue(downloader.contains("archiveVersionCode <= installed.versionCodeLongCompat()"))
+        assertTrue(manifest.contains("androidx.core.content.FileProvider"))
+        assertTrue(manifest.contains("\${applicationId}.fileprovider"))
+        assertTrue(manifest.contains("@xml/update_file_paths"))
+        assertTrue(paths.contains("update-apks/"))
     }
 
     private fun read(path: String): String = repoRoot.resolve(path).readText()

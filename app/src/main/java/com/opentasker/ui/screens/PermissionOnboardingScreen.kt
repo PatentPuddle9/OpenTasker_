@@ -93,6 +93,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
@@ -148,6 +149,8 @@ import com.opentasker.core.updates.UpdateCheckRunner
 import com.opentasker.core.updates.UpdateCheckSettings
 import com.opentasker.core.updates.UpdateCheckState
 import com.opentasker.core.updates.UpdateCheckWorker
+import com.opentasker.core.updates.UpdateApkDownloader
+import java.io.File
 import com.opentasker.ui.utils.expandCollapseToggle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -267,6 +270,15 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
     private val _updateCheckFailed = MutableStateFlow(false)
     val updateCheckFailed: StateFlow<Boolean> = _updateCheckFailed.asStateFlow()
 
+    private val _updateDownloadInProgress = MutableStateFlow(false)
+    val updateDownloadInProgress: StateFlow<Boolean> = _updateDownloadInProgress.asStateFlow()
+
+    private val _updateDownloadProgress = MutableStateFlow(0)
+    val updateDownloadProgress: StateFlow<Int> = _updateDownloadProgress.asStateFlow()
+
+    private val _updateInstallFailed = MutableStateFlow(false)
+    val updateInstallFailed: StateFlow<Boolean> = _updateInstallFailed.asStateFlow()
+
     private val _associations = MutableStateFlow<List<CompanionAssociation>>(emptyList())
     val associations: StateFlow<List<CompanionAssociation>> = _associations.asStateFlow()
 
@@ -314,8 +326,43 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
         }
     }
 
+    fun downloadAvailableUpdate(onDownloaded: (File) -> Unit) {
+        if (!UpdateCheckAvailability.isAvailable() || _updateDownloadInProgress.value) return
+        val update = _updateCheckState.value
+        val version = update.newerVersion ?: return
+        val apkUrl = update.apkUrl ?: return
+        val apkSizeBytes = update.apkSizeBytes ?: return
+        val apkSha256 = update.apkSha256 ?: return
+        _updateDownloadInProgress.value = true
+        _updateDownloadProgress.value = 0
+        _updateInstallFailed.value = false
+        viewModelScope.launch {
+            try {
+                val file = UpdateApkDownloader.download(
+                    context = context,
+                    version = version,
+                    apkUrl = apkUrl,
+                    expectedSizeBytes = apkSizeBytes,
+                    expectedSha256 = apkSha256,
+                    onProgress = { downloaded, total ->
+                        _updateDownloadProgress.value =
+                            ((downloaded * 100L) / total.coerceAtLeast(1L)).toInt().coerceIn(0, 100)
+                    },
+                )
+                onDownloaded(file)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                AppLogger.warn("UpdateCheck", "Could not download update: " + (error.message ?: "unknown error"))
+                _updateInstallFailed.value = true
+            } finally {
+                _updateDownloadInProgress.value = false
+            }
+        }
+    }
+
     fun checkForUpdatesNow() {
-        if (!UpdateCheckAvailability.isAvailable() || _updateCheckInProgress.value) return
+        if (!UpdateCheckAvailability.isAvailable() || _updateCheckInProgress.value || _updateDownloadInProgress.value) return
         _updateCheckInProgress.value = true
         _updateCheckFailed.value = false
         viewModelScope.launch(Dispatchers.IO) {
@@ -463,6 +510,9 @@ fun PermissionOnboardingScreen(
     val updateCheckState by setupViewModel.updateCheckState.collectAsState()
     val updateCheckInProgress by setupViewModel.updateCheckInProgress.collectAsState()
     val updateCheckFailed by setupViewModel.updateCheckFailed.collectAsState()
+    val updateDownloadInProgress by setupViewModel.updateDownloadInProgress.collectAsState()
+    val updateDownloadProgress by setupViewModel.updateDownloadProgress.collectAsState()
+    val updateInstallFailed by setupViewModel.updateInstallFailed.collectAsState()
     val associations by setupViewModel.associations.collectAsState()
     val pushToken by setupViewModel.pushToken.collectAsState()
     val pushRegistration by setupViewModel.pushRegistration.collectAsState()
@@ -593,10 +643,43 @@ fun PermissionOnboardingScreen(
                         state = updateCheckState,
                         checking = updateCheckInProgress,
                         checkFailed = updateCheckFailed,
+                        downloading = updateDownloadInProgress,
+                        downloadProgress = updateDownloadProgress,
+                        installFailed = updateInstallFailed,
                         onEnabledChange = setupViewModel::setUpdateChecksEnabled,
                         onCheckNow = setupViewModel::checkForUpdatesNow,
-                        onOpenRelease = { url ->
-                            openSettingsIntent(context, Intent(Intent.ACTION_VIEW, Uri.parse(url)), onMessage)
+                        onInstallUpdate = {
+                            if (!context.packageManager.canRequestPackageInstalls()) {
+                                onMessage(context.getString(R.string.setup_update_install_permission_prompt))
+                                try {
+                                    context.startActivity(
+                                        Intent(
+                                            Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                            Uri.parse("package:" + context.packageName),
+                                        ),
+                                    )
+                                } catch (error: Exception) {
+                                    onMessage(context.getString(R.string.setup_update_install_failed))
+                                }
+                            } else {
+                                setupViewModel.downloadAvailableUpdate { apkFile ->
+                                    try {
+                                        val uri = FileProvider.getUriForFile(
+                                            context,
+                                            BuildConfig.APPLICATION_ID + ".fileprovider",
+                                            apkFile,
+                                        )
+                                        val installIntent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+                                            setDataAndType(uri, "application/vnd.android.package-archive")
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(installIntent)
+                                    } catch (error: Exception) {
+                                        AppLogger.warn("UpdateCheck", "Could not open Android package installer", error)
+                                        onMessage(context.getString(R.string.setup_update_install_failed))
+                                    }
+                                }
+                            }
                         },
                     )
                 }
@@ -878,12 +961,17 @@ private fun UpdateCheckSetupCard(
     state: UpdateCheckState,
     checking: Boolean,
     checkFailed: Boolean,
+    downloading: Boolean,
+    downloadProgress: Int,
+    installFailed: Boolean,
     onEnabledChange: (Boolean) -> Unit,
     onCheckNow: () -> Unit,
-    onOpenRelease: (String) -> Unit,
+    onInstallUpdate: () -> Unit,
 ) {
     val stateText = when {
         checking -> stringResource(R.string.setup_update_status_checking)
+        downloading -> stringResource(R.string.setup_update_status_downloading, downloadProgress)
+        installFailed -> stringResource(R.string.setup_update_status_install_failed)
         checkFailed -> stringResource(R.string.setup_update_status_failed)
         state.newerVersion != null -> stringResource(R.string.setup_update_status_available, state.newerVersion)
         state.lastCheckedAtMs != null -> stringResource(R.string.setup_update_status_current)
@@ -891,7 +979,7 @@ private fun UpdateCheckSetupCard(
         else -> stringResource(R.string.setup_update_status_pending)
     }
     val stateColor = when {
-        checkFailed -> MaterialTheme.colorScheme.error
+        checkFailed || installFailed -> MaterialTheme.colorScheme.error
         state.newerVersion != null -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.tertiary
     }
@@ -918,7 +1006,13 @@ private fun UpdateCheckSetupCard(
             }
             Switch(checked = state.enabled, onCheckedChange = null)
         }
-        if (checking) {
+        Text(
+            stringResource(R.string.setup_update_body),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (checking || downloading) {
             LinearProgressIndicator(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -933,7 +1027,7 @@ private fun UpdateCheckSetupCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TextButton(
-                enabled = !checking,
+                enabled = !checking && !downloading,
                 onClick = onCheckNow,
             ) {
                 Text(
@@ -942,9 +1036,17 @@ private fun UpdateCheckSetupCard(
                     ),
                 )
             }
-            if (state.newerVersion != null && state.releaseUrl != null) {
-                TextButton(onClick = { onOpenRelease(state.releaseUrl) }) {
-                    Text(stringResource(R.string.setup_update_open_release))
+            if (state.canInstallUpdate) {
+                TextButton(
+                    enabled = !checking && !downloading,
+                    onClick = onInstallUpdate,
+                ) {
+                    Text(
+                        stringResource(
+                            if (downloading) R.string.setup_update_downloading
+                            else R.string.setup_update_install,
+                        ),
+                    )
                 }
             }
         }

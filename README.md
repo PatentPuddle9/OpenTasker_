@@ -174,7 +174,7 @@ Untrusted imports are preflighted before object/DOM allocation. OpenTasker and M
 ### Distribution
 
 - F-Droid readiness profile with dependency-policy and metadata verification
-- Non-F-Droid builds can opt into a daily HTTPS-only GitHub release check from Setup. It sends no identifying data, stores only a newer-release link, and never downloads or installs updates; F-Droid builds omit this check because F-Droid supplies their updates.
+- Standard builds can opt into a daily HTTPS-only GitHub release check from Setup. When a newer release is available, Setup downloads the matching APK, verifies GitHub's SHA-256 digest and the package/version metadata, then opens Android's installer for the user's confirmation. Play and F-Droid builds use their store update channels.
 - Play distribution profile with SMS/phone-state manifest policy gate
 - Local release verification scripts for F-Droid metadata, readiness, and APK payload comparison
 - Environment-driven release signing kept outside the repository; the F-Droid distribution builds unsigned because F-Droid signs what it builds
