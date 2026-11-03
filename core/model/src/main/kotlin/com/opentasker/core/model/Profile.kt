@@ -40,6 +40,8 @@ data class Profile(
     val fallbackTaskId: Long? = null,
     /** Monochrome symbol used to identify this profile in the Actions grid. */
     val icon: String = "bolt",
+    /** Android home-screen widget ID when this profile is owned by a widget. */
+    val widgetId: Int? = null,
 )
 
 @Serializable
