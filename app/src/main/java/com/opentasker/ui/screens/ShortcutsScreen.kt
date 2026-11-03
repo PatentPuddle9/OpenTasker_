@@ -127,11 +127,6 @@ internal fun ShortcutsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Button(onClick = onCreateNew) {
-                    Icon(Icons.Filled.Add, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Create new")
-                }
             }
         }
         items(shortcuts, key = { it.widgetId }) { shortcut ->
