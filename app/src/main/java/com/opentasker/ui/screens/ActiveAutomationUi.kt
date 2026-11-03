@@ -137,6 +137,7 @@ import com.opentasker.core.contexts.contextConfigSummary
 import com.opentasker.core.engine.executeAndLogTask
 import com.opentasker.widget.TaskShortcutHelper
 import com.opentasker.widget.requestNewTaskWidget
+import com.opentasker.widget.WidgetProfileLinks
 import com.opentasker.core.flow.AutomationFlowTarget
 import com.opentasker.core.location.LocationDwellStateStore
 import com.opentasker.core.model.ActionSpec
@@ -217,6 +218,11 @@ fun ActiveAutomationUi(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current.applicationContext
+    LaunchedEffect(db) {
+        withContext(Dispatchers.IO) {
+            runCatching { WidgetProfileLinks.syncExistingProfiles(context, db) }
+        }
+    }
     val blueprintCatalogStore = remember(context) { BlueprintCatalogStore(context) }
     val availableBlueprints = remember(blueprintCatalogStore) { blueprintCatalogStore.available() }
     val useNavigationRail = usesNavigationRail(LocalConfiguration.current.screenWidthDp, LocalConfiguration.current.fontScale)
