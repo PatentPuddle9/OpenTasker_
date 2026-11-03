@@ -32,6 +32,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 refreshCachedNames(appContext, appWidgetIds)
+                runCatching { WidgetProfileLinks.syncExistingProfiles(appContext, OpenTaskerApp_NoHilt.db) }
                 for (widgetId in appWidgetIds) {
                     updateWidget(appContext, appWidgetManager, widgetId)
                 }
