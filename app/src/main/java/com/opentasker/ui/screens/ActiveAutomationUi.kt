@@ -545,7 +545,7 @@ fun ActiveAutomationUi(
     }
 
     var showMoreDestinations by rememberSaveable { mutableStateOf(false) }
-    BackHandler(enabled = shouldNavigateBackToProfiles(screen)) {
+    BackHandler(enabled = shouldNavigateBackToActions(screen)) {
         screenOrdinal = OpenTaskerScreen.Actions.ordinal
         showMoreDestinations = false
     }
