@@ -46,6 +46,10 @@ object UpdateCheckProtocol {
             branch.none { it == '\n' || it == '\r' || it == '\u0000' } &&
             !branch.equals("master", ignoreCase = true)
 
+    /** True when the selected source is a feature branch instead of the main Experimental branch. */
+    fun requiresNonDefaultBranchWarning(branch: String): Boolean =
+        branch != DEFAULT_SOURCE_BRANCH
+
     /** Stable, collision-resistant release-channel tag for the exact branch name. */
     fun branchChannelTag(branch: String): String {
         require(isSelectableBranch(branch)) { "The master branch cannot be used as an update source." }

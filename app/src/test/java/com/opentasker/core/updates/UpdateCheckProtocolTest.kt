@@ -120,6 +120,13 @@ class UpdateCheckProtocolTest {
     }
 
     @Test
+    fun onlyNonDefaultBranchesRequireTheExperimentalBranchWarning() {
+        assertTrue(!UpdateCheckProtocol.requiresNonDefaultBranchWarning("Experimental"))
+        assertTrue(UpdateCheckProtocol.requiresNonDefaultBranchWarning("UI-overhaul-experiment"))
+        assertTrue(UpdateCheckProtocol.requiresNonDefaultBranchWarning("experimental"))
+    }
+
+    @Test
     fun selectedBranchGetsItsOwnVerifiedPrereleaseAndAsset() {
         val branch = "UI-overhaul-experiment"
         val payload = branchRelease(branch, "0.2.120")
