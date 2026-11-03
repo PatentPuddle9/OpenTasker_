@@ -381,7 +381,7 @@ internal fun ProfileEditorDialog(
     profile: Profile?,
     tasks: List<Task>,
     onDismiss: () -> Unit,
-    onSave: (String, Boolean, Long, Long?, Int, Int, Int, AutomationMode, String?, ProfileLifetime, Long?, Int?, Int?, ProfileOverflowPolicy, Long?) -> Unit,
+    onSave: (String, Boolean, Long, Long?, Int, Int, Int, AutomationMode, String?, ProfileLifetime, Long?, Int?, Int?, ProfileOverflowPolicy, Long?, String) -> Unit,
     onSimulate: ((Profile) -> Unit)? = null,
     onEditTask: (Task) -> Unit = {},
     onAddAction: (Task) -> Unit = {},
