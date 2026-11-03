@@ -163,11 +163,11 @@ jobs:
 
           {
             cat "$DESCRIPTION_PATH"
-            printf '\\n\\n---\\n\\n'
-            printf 'APK: **%s**\\n\\n' "$ASSET_NAME"
-            printf 'Built by [successful build.yml run #%s](%s) from commit `%s`.\\n\\n' "$BUILD_RUN_ID" "$run_url" "$BUILD_SHA"
-            printf '%s\\n\\n' '**Install note:** This is a debug APK. The build workflow generates a fresh debug signing key for each run, so Android may require uninstalling an earlier OpenTasker build before installing this APK.'
-            printf '%s\\n' "$marker"
+            printf '\n\n---\n\n'
+            printf 'APK: **%s**\n\n' "$ASSET_NAME"
+            printf 'Built by [successful build.yml run #%s](%s) from commit \`%s\`.\n\n' "$BUILD_RUN_ID" "$run_url" "$BUILD_SHA"
+            printf '%s\n\n' '**Install note:** This is a debug APK. The build workflow generates a fresh debug signing key for each run, so Android may require uninstalling an earlier OpenTasker build before installing this APK.'
+            printf '%s\n' "$marker"
           } > "$notes_file"
 
           if gh release view "$TAG" \
