@@ -84,7 +84,7 @@ class UpdateCheckContractTest {
         assertTrue(workflow.contains("gh release upload"))
         assertTrue(workflow.contains("--clobber"))
         assertTrue(workflow.contains("sha256sum"))
-        assertTrue(workflow.contains("OpenTasker-branch-$branch_hash-debug.apk"))
+        assertTrue(workflow.contains("OpenTasker-branch-\$" + "branch_hash-debug.apk"))
     }
 
     private fun read(path: String): String = repoRoot.resolve(path).readText()
