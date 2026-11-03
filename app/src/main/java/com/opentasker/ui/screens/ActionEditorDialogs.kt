@@ -105,6 +105,7 @@ internal fun filterActionPickerItems(
 }
 
 internal const val ACTION_CONTINUE_ON_ERROR_TAG = "action_continue_on_error"
+internal const val ACTION_WAIT_FOR_FINISH_TAG = "action_wait_for_finish"
 internal const val ACTION_VARIABLE_PICKER_TAG = "action_variable_picker"
 
 @Composable
@@ -311,6 +312,9 @@ internal fun ActionConfigDialog(
     var continueOnError by rememberSaveable(state.existing?.id, state.metadata.id) {
         mutableStateOf(state.existing?.continueOnError ?: false)
     }
+    var waitForCompletion by rememberSaveable(state.existing?.id, state.metadata.id) {
+        mutableStateOf(state.existing?.waitForCompletion ?: true)
+    }
     var values by rememberSaveable(state.existing?.id, state.metadata.id) {
         mutableStateOf(
             state.metadata.fields.associate { field ->
@@ -451,6 +455,38 @@ internal fun ActionConfigDialog(
                         onSelect = { option -> condition = insertVariableChip(condition, option) },
                     )
                     Spacer(Modifier.height(12.dp))
+                    val waitStateDescription = stringResource(
+                        if (waitForCompletion) R.string.label_on else R.string.label_off,
+                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),
+                        shape = RoundedCornerShape(DesignSystem.Radii.lg),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(ACTION_WAIT_FOR_FINISH_TAG)
+                            .toggleable(
+                                value = waitForCompletion,
+                                role = Role.Switch,
+                                onValueChange = { waitForCompletion = it },
+                            )
+                            .semantics { stateDescription = waitStateDescription },
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Wait for this action to finish", style = MaterialTheme.typography.labelLarge)
+                                Text(
+                                    "When turned off, the next action may start while this one is still running.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Switch(checked = waitForCompletion, onCheckedChange = null)
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
                     val continueStateDescription = stringResource(
                         if (continueOnError) R.string.label_on else R.string.label_off,
                     )
@@ -523,6 +559,7 @@ internal fun ActionConfigDialog(
                             ),
                             continueOnError = continueOnError,
                             condition = condition.trim().ifBlank { null },
+                            waitForCompletion = waitForCompletion,
                         )
                     )
                 },
