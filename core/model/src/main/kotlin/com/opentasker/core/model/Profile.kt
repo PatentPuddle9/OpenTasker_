@@ -40,7 +40,7 @@ data class Profile(
     /** Optional task to run when this profile's task fails without a lexical flow.catch. */
     val fallbackTaskId: Long? = null,
     /** Monochrome symbol used to identify this profile in the Actions grid. */
-    val icon: String = "⚡︎,
+    val icon: String = "⚡︎",
     /** Android home-screen widget ID when this profile is owned by a widget. */
     @Transient val widgetId: Int? = null,
 )
