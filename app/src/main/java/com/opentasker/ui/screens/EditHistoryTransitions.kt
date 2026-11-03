@@ -81,10 +81,11 @@ internal class EditHistoryTransitions(
                     }
                     EditHistoryDao.TYPE_PROFILE -> {
                         val current = db.profileDao().getById(entityId) ?: return@withTransaction null
+                        if (current.widgetId != null) return@withTransaction null
                         val currentProfile = current.toDomainDecodeResult().also { result ->
                             result.issue?.let { issue -> throw CorruptRecordOverwriteException(issue) }
                         }.value
-                        db.profileDao().delete(current)
+                        if (db.profileDao().deleteRegularProfile(entityId) != 1) return@withTransaction null
                         LocaleConditionGrantStore(appContext).apply {
                             revokeAllForBinding(LocaleConditionGrantStore.profileKey(entityId))
                             currentProfile.contexts.indices.forEach { index ->
@@ -201,10 +202,11 @@ internal class EditHistoryTransitions(
                     }
                     EditHistoryDao.TYPE_PROFILE -> {
                         val current = db.profileDao().getById(entityId) ?: return@withTransaction null
+                        if (current.widgetId != null) return@withTransaction null
                         val currentProfile = current.toDomainDecodeResult().also { result ->
                             result.issue?.let { issue -> throw CorruptRecordOverwriteException(issue) }
                         }.value
-                        db.profileDao().delete(current)
+                        if (db.profileDao().deleteRegularProfile(entityId) != 1) return@withTransaction null
                         locationDwellStateStore.clearProfile(entityId)
                         history.markUndone(snapshot.id, snapshot.nextJson)
                         return@withTransaction AutomationSemanticDiff.compareProfile(currentProfile, null)
@@ -256,7 +258,12 @@ internal class EditHistoryTransitions(
                 } else {
                     current.contextsJson
                 }
-                val target = EditHistorySnapshotDecoder.profile(targetJson, entityId)
+                val decodedTarget = EditHistorySnapshotDecoder.profile(targetJson, entityId)
+                val target = if (current.widgetId != null) {
+                    decodedTarget.copy(widgetId = current.widgetId)
+                } else {
+                    decodedTarget
+                }
                 writeSettingsGuard.requireWriteSettingsIfEnabled(target)
                 val diff = currentDecoded.issue?.let { SemanticDiffDocument() }
                     ?: AutomationSemanticDiff.compareProfile(currentDecoded.value, target)?.let(::documentOf)
