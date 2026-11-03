@@ -256,7 +256,7 @@ object UpdateCheckProtocol {
         val branchHash = branchChannelTag(branch).removePrefix(CHANNEL_TAG_PREFIX)
         val version = when {
             tag == branchChannelTag(branch) ->
-                Regex("""\\bv(\\d+\\.\\d+\\.\\d+)$""").find(title)?.groupValues?.get(1)
+                Regex("""\bv(\d+\.\d+\.\d+)$""").find(title)?.groupValues?.get(1)
             branch.equals(DEFAULT_SOURCE_BRANCH, ignoreCase = true) && tag.matches(Regex("^v\\d+\\.\\d+\\.\\d+$")) ->
                 tag.removePrefix("v")
             isBetaBuildBranch(branch) && tag.matches(Regex("^beta-v\\d+\\.\\d+\\.\\d+$")) ->
