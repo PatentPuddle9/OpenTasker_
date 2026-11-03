@@ -4,9 +4,11 @@ import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.graphics.Color as AndroidColor
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -72,6 +74,9 @@ import com.opentasker.ui.theme.ThemePreference
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class TaskWidgetConfigActivity : ComponentActivity() {
 
@@ -101,6 +106,16 @@ class TaskWidgetConfigActivity : ComponentActivity() {
                 )
             }
 
+        val prefs = getSharedPreferences(TaskWidgetProvider.PREFS_NAME, MODE_PRIVATE)
+        val initialTaskId = prefs.getLong(TaskWidgetProvider.keyTaskId(widgetId), -1L).takeIf { it > 0L }
+        val initialStyle = WidgetStyle(
+            icon = prefs.getString(TaskWidgetProvider.keyIcon(widgetId), WidgetIconCatalog.default.symbol)
+                ?: WidgetIconCatalog.default.symbol,
+            iconColor = prefs.getInt(TaskWidgetProvider.keyIconColor(widgetId), WidgetStyle().iconColor),
+            backgroundColor = prefs.getInt(TaskWidgetProvider.keyBackgroundColor(widgetId), WidgetStyle().backgroundColor),
+            gradient = prefs.getBoolean(TaskWidgetProvider.keyGradient(widgetId), WidgetStyle().gradient),
+        )
+
         setContent {
             val themeMode by ThemePreference.observe(this).collectAsState(initial = ThemeMode.System)
             OpenTaskerTheme(themeMode) {
@@ -108,6 +123,8 @@ class TaskWidgetConfigActivity : ComponentActivity() {
                 ConfigScreen(
                     tasks = taskState.tasks,
                     storageDecodeIssues = taskState.storageDecodeIssues,
+                    initialTaskId = initialTaskId,
+                    initialStyle = initialStyle,
                     onWidgetCreated = ::onWidgetCreated,
                 )
             }
@@ -115,34 +132,52 @@ class TaskWidgetConfigActivity : ComponentActivity() {
     }
 
     private fun onWidgetCreated(task: Task, style: WidgetStyle) {
-        val prefs = getSharedPreferences(TaskWidgetProvider.PREFS_NAME, MODE_PRIVATE)
-        prefs.edit()
-            .putLong(TaskWidgetProvider.keyTaskId(widgetId), task.id)
-            .putString(TaskWidgetProvider.keyTaskName(widgetId), task.name)
-            .putString(TaskWidgetProvider.keyIcon(widgetId), style.icon)
-            .putInt(TaskWidgetProvider.keyIconColor(widgetId), style.iconColor)
-            .putInt(TaskWidgetProvider.keyBackgroundColor(widgetId), style.backgroundColor)
-            .putBoolean(TaskWidgetProvider.keyGradient(widgetId), style.gradient)
-            .apply()
+        lifecycleScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    WidgetProfileLinks.syncProfile(this@TaskWidgetConfigActivity, widgetId, task, style)
+                }
+            }.onSuccess {
+                val prefs = getSharedPreferences(TaskWidgetProvider.PREFS_NAME, MODE_PRIVATE)
+                prefs.edit()
+                    .putLong(TaskWidgetProvider.keyTaskId(widgetId), task.id)
+                    .putString(TaskWidgetProvider.keyTaskName(widgetId), task.name)
+                    .putString(TaskWidgetProvider.keyIcon(widgetId), style.icon)
+                    .putInt(TaskWidgetProvider.keyIconColor(widgetId), style.iconColor)
+                    .putInt(TaskWidgetProvider.keyBackgroundColor(widgetId), style.backgroundColor)
+                    .putBoolean(TaskWidgetProvider.keyGradient(widgetId), style.gradient)
+                    .apply()
 
-        TaskWidgetProvider.updateWidget(this, AppWidgetManager.getInstance(this), widgetId)
-        setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
-        finish()
+                TaskWidgetProvider.updateWidget(this@TaskWidgetConfigActivity, AppWidgetManager.getInstance(this@TaskWidgetConfigActivity), widgetId)
+                setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
+                finish()
+            }.onFailure { error ->
+                Toast.makeText(
+                    this@TaskWidgetConfigActivity,
+                    "Couldn't save widget profile: ${error.message ?: "Unknown error"}",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
     }
 }
+
+private fun Int.toHexColor(): String = String.format(java.util.Locale.ROOT, "#%06X", 0xFFFFFF and this)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun ConfigScreen(
     tasks: List<Task>,
     storageDecodeIssues: List<StorageDecodeIssue>,
+    initialTaskId: Long?,
+    initialStyle: WidgetStyle,
     onWidgetCreated: (Task, WidgetStyle) -> Unit,
 ) {
-    var selectedTaskId by rememberSaveable { mutableStateOf<Long?>(null) }
-    var selectedIcon by rememberSaveable { mutableStateOf(WidgetIconCatalog.default.symbol) }
-    var iconColorHex by rememberSaveable { mutableStateOf("#FFFFFF") }
-    var backgroundColorHex by rememberSaveable { mutableStateOf("#6542A0") }
-    var useGradient by rememberSaveable { mutableStateOf(true) }
+    var selectedTaskId by rememberSaveable { mutableStateOf(initialTaskId) }
+    var selectedIcon by rememberSaveable { mutableStateOf(initialStyle.icon) }
+    var iconColorHex by rememberSaveable { mutableStateOf(initialStyle.iconColor.toHexColor()) }
+    var backgroundColorHex by rememberSaveable { mutableStateOf(initialStyle.backgroundColor.toHexColor()) }
+    var useGradient by rememberSaveable { mutableStateOf(initialStyle.gradient) }
 
     val selectedTask = tasks.firstOrNull { it.id == selectedTaskId }
     val iconColor = parseWidgetColor(iconColorHex)
@@ -156,7 +191,7 @@ private fun ConfigScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Create a task widget", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(if (initialTaskId == null) "Create a task widget" else "Edit widget", maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             "Choose a task, then make it look like your own app icon",
                             style = MaterialTheme.typography.labelMedium,
