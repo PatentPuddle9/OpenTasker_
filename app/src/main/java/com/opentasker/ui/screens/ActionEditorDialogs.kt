@@ -455,6 +455,7 @@ internal fun ActionConfigDialog(
                         onSelect = { option -> condition = insertVariableChip(condition, option) },
                     )
                     Spacer(Modifier.height(12.dp))
+                    if (!FlowControl.isControl(state.metadata.id)) {
                     val waitStateDescription = stringResource(
                         if (waitForCompletion) R.string.label_on else R.string.label_off,
                     )
@@ -478,7 +479,7 @@ internal fun ActionConfigDialog(
                             Column(Modifier.weight(1f)) {
                                 Text("Wait for this action to finish", style = MaterialTheme.typography.labelLarge)
                                 Text(
-                                    "When turned off, the next action may start while this one is still running.",
+                                    "When turned off, the next action may start while this one is still running. Try/retry and foreach blocks remain sequential.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -487,6 +488,7 @@ internal fun ActionConfigDialog(
                         }
                     }
                     Spacer(Modifier.height(8.dp))
+                    }
                     val continueStateDescription = stringResource(
                         if (continueOnError) R.string.label_on else R.string.label_off,
                     )
