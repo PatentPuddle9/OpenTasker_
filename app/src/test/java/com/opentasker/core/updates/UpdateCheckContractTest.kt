@@ -87,6 +87,9 @@ class UpdateCheckContractTest {
         assertTrue(workflow.contains("asset_name=" + "\"" + "OpenTasker-Beta-v" + "$" + "version_name-debug.apk" + "\""))
         assertTrue(workflow.contains("title=" + "\"" + "OpenTasker Beta v" + "$" + "VERSION" + "\""))
         assertTrue(workflow.contains("release_flags+=(--prerelease)"))
+        val workflow = read(".github/workflows/release.yml")
+        assertTrue(workflow.contains("Action catalog:"))
+        assertTrue(workflow.contains("In-app updates: **available**"))
         assertTrue(workflow.contains("release_channel=" + "\"" + "Experimental" + "\""))
         assertTrue(workflow.contains("title=" + "\"" + "OpenTasker " + "$" + "TAG" + "\""))
     }
@@ -133,8 +136,9 @@ class UpdateCheckContractTest {
         assertTrue(setup.contains("In-app updating"))
         assertTrue(setup.contains("SysAdminDoc/OpenTasker"))
         assertTrue(setup.contains("fresh install"))
-        assertTrue(immutablePublisher.contains("opentasker-branch-build-\\$branch_hash-v\\$VERSION"))
+        assertTrue(immutablePublisher.contains("opentasker-branch-build-\$branch_hash-v\$VERSION"))
         assertTrue(immutablePublisher.contains("In-app updates: **"))
+        assertTrue(immutablePublisher.contains("Action catalog:"))
         assertTrue(immutablePublisher.contains("Refusing to replace it"))
     }
 
