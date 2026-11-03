@@ -6,7 +6,6 @@ on:
 permissions:
   actions: read
   contents: write
-  copilot-requests: write
 
 concurrency:
   group: publish-latest-opentasker-build
@@ -37,13 +36,12 @@ jobs:
             --workflow build.yml \
             --branch Experimental \
             --status success \
-            --limit 2 \
+            --limit 1 \
             --json databaseId,headSha,headBranch,createdAt)"
 
           run_id="$(jq -r '.[0].databaseId // empty' <<< "$run_json")"
           head_sha="$(jq -r '.[0].headSha // empty' <<< "$run_json")"
           head_branch="$(jq -r '.[0].headBranch // empty' <<< "$run_json")"
-          previous_sha="$(jq -r '.[1].headSha // empty' <<< "$run_json")"
 
           if [[ -z "$run_id" || -z "$head_sha" ]]; then
             echo "No successful build.yml run was found on Experimental." >&2
@@ -57,17 +55,12 @@ jobs:
 
           echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
           echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
-          echo "previous_sha=$previous_sha" >> "$GITHUB_OUTPUT"
           echo "Selected build run #$run_id at $head_sha"
-          if [[ -n "$previous_sha" ]]; then
-            echo "Previous successful build commit: $previous_sha"
-          fi
 
-      - name: Read app version and prepare comparison commit
+      - name: Read app version from the selected build commit
         id: version
         env:
           BUILD_SHA: ${{ steps.build.outputs.head_sha }}
-          PREVIOUS_BUILD_SHA: ${{ steps.build.outputs.previous_sha }}
         shell: bash
         run: |
           set -euo pipefail
@@ -85,88 +78,9 @@ jobs:
             exit 1
           fi
 
-          base_sha="$PREVIOUS_BUILD_SHA"
-          if [[ -z "$base_sha" || "$base_sha" == "$BUILD_SHA" ]]; then
-            base_sha="$(git show -s --format=%P "$BUILD_SHA" | awk '{print $1}')"
-          fi
-
-          if [[ -n "$base_sha" ]]; then
-            git fetch --no-tags --depth=1 origin "$base_sha"
-          fi
-
           echo "version=$version_name" >> "$GITHUB_OUTPUT"
           echo "tag=v$version_name" >> "$GITHUB_OUTPUT"
           echo "asset_name=OpenTasker-v$version_name-debug.apk" >> "$GITHUB_OUTPUT"
-          echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
-
-      - name: Generate release description with GitHub Copilot
-        id: description
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          BUILD_SHA: ${{ steps.build.outputs.head_sha }}
-          BASE_SHA: ${{ steps.version.outputs.base_sha }}
-          VERSION: ${{ steps.version.outputs.version }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          notes_file="$RUNNER_TEMP/ai-release-description.md"
-          fallback_file="$RUNNER_TEMP/github-release-notes.md"
-          prompt_file="$RUNNER_TEMP/copilot-prompt.txt"
-
-          cat > "$prompt_file" <<'PROMPT'
-          Write the public-facing release description for this OpenTasker Android app release.
-
-          Inspect the Git history and source changes between BASE_SHA and BUILD_SHA. Use git log and git diff to understand what actually changed. Focus on user-visible features, improvements, and fixes. Group related changes into a short, readable Markdown description with a brief opening sentence and concise bullet points.
-
-          Accuracy rules:
-          - Only describe changes supported by the actual commits or source diff.
-          - Do not invent features, claim tests passed, or describe unfinished work as shipped.
-          - Avoid internal implementation details unless they matter to users.
-          - Do not mention Copilot or that the text was AI-generated.
-          - Keep it around 100-180 words.
-          - Output only the release description in Markdown, with no preamble or commentary.
-          PROMPT
-
-          prompt="$(cat "$prompt_file")
-          Version: $VERSION
-          Comparison base commit: ${BASE_SHA:-none}
-          Release build commit: $BUILD_SHA
-
-          When BASE_SHA is available, compare BASE_SHA..BUILD_SHA. Otherwise, summarize BUILD_SHA itself."
-
-          copilot_ok=false
-          if npm install --global @github/copilot >/dev/null 2>&1; then
-            if copilot -p "$prompt" -s \
-              --allow-tool='shell(git:*)' \
-              --no-ask-user > "$notes_file" 2>"$RUNNER_TEMP/copilot-stderr.log"; then
-              if [[ -s "$notes_file" ]] && [[ "$(wc -c < "$notes_file")" -le 20000 ]]; then
-                copilot_ok=true
-                echo "Copilot generated the release description."
-              fi
-            fi
-          fi
-
-          if [[ "$copilot_ok" != true ]]; then
-            echo "::warning::Copilot release description was unavailable; using GitHub-generated release notes instead."
-            gh api --method POST \
-              "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
-              -f tag_name="v$VERSION" \
-              -f target_commitish="$BUILD_SHA" \
-              --jq .body > "$fallback_file"
-
-            if [[ ! -s "$fallback_file" ]]; then
-              echo "GitHub did not return release notes and Copilot was unavailable." >&2
-              exit 1
-            fi
-            cp "$fallback_file" "$notes_file"
-          fi
-
-          {
-            printf 'description_source=%s\n' "$([[ "$copilot_ok" == true ]] && echo copilot || echo github)"
-          } >> "$GITHUB_OUTPUT"
-
-          echo "description_path=$notes_file" >> "$GITHUB_OUTPUT"
 
       - name: Download the APK artifact from that build
         id: artifact
@@ -208,8 +122,6 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
           ASSET_NAME: ${{ steps.version.outputs.asset_name }}
           APK_PATH: ${{ steps.artifact.outputs.apk_path }}
-          DESCRIPTION_PATH: ${{ steps.description.outputs.description_path }}
-          DESCRIPTION_SOURCE: ${{ steps.description.outputs.description_source }}
         shell: bash
         run: |
           set -euo pipefail
@@ -221,12 +133,9 @@ jobs:
           release_json="$RUNNER_TEMP/existing-release.json"
 
           {
-            cat "$DESCRIPTION_PATH"
-            printf '\n\n---\n\n'
-            printf 'APK: **%s**\n\n' "$ASSET_NAME"
-            printf 'Built by [successful build.yml run #%s](%s) from commit `%s`.\n\n' "$BUILD_RUN_ID" "$run_url" "$BUILD_SHA"
-            printf '%s\n\n' '**Install note:** This is a debug APK. The build workflow generates a fresh debug signing key for each run, so Android may require uninstalling an earlier OpenTasker build before installing this APK.'
-            printf '<!-- description-source:%s -->\n' "$DESCRIPTION_SOURCE"
+            printf 'Automated debug APK from [successful build.yml run #%s](%s).\n\n' "$BUILD_RUN_ID" "$run_url"
+            printf 'Build commit: `%s`\n\n' "$BUILD_SHA"
+            printf '%s\n\n' '**This is a debug APK, not a production-signed release build.** The build workflow generates a fresh debug signing key on each run, so Android may require uninstalling an earlier OpenTasker build before installing this APK.'
             printf '%s\n' "$marker"
           } > "$notes_file"
 
