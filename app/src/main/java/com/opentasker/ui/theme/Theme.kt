@@ -308,7 +308,9 @@ fun OpenTaskerTheme(
         else -> Light
     }
     val accent = runCatching { Color(android.graphics.Color.parseColor(accentColorHex)) }.getOrDefault(BrandPurple)
-    val adjustedColors = colors.withOpenTaskerAccent(accent)
+    // High-contrast mode keeps its explicit accessibility palette; all other modes derive a
+    // coordinated set of tones from the single user-selected accent.
+    val adjustedColors = if (highContrast) colors else colors.withOpenTaskerAccent(accent, darkTheme)
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -341,14 +343,89 @@ fun selectedContainerColor(): Color =
         .compositeOver(MaterialTheme.colorScheme.surface)
 
 
-/** Applies the user's accent consistently to Material You's primary and tertiary roles. */
-private fun androidx.compose.material3.ColorScheme.withOpenTaskerAccent(accent: Color) = copy(
-    primary = accent,
-    onPrimary = if (accent.luminance() > 0.55f) Color(0xFF211536) else Color.White,
-    primaryContainer = accent.copy(alpha = 0.28f).compositeOver(surface),
-    onPrimaryContainer = if (accent.luminance() > 0.55f) Color(0xFF211536) else accent,
-    tertiary = accent,
-    onTertiary = if (accent.luminance() > 0.55f) Color(0xFF211536) else Color.White,
-    tertiaryContainer = accent.copy(alpha = 0.20f).compositeOver(surface),
-    onTertiaryContainer = if (accent.luminance() > 0.55f) Color(0xFF211536) else accent,
+private val AccentInk = Color(0xFF211536)
+
+private data class AccentHsl(
+    val hue: Float,
+    val saturation: Float,
+    val lightness: Float,
 )
+
+private fun Color.toAccentHsl(): AccentHsl {
+    val max = maxOf(red, green, blue)
+    val min = minOf(red, green, blue)
+    val delta = max - min
+    val lightness = (max + min) / 2f
+    if (delta == 0f) return AccentHsl(0f, 0f, lightness)
+
+    val saturation = delta / (1f - kotlin.math.abs(2f * lightness - 1f))
+    val hue = when (max) {
+        red -> 60f * (((green - blue) / delta) % 6f)
+        green -> 60f * (((blue - red) / delta) + 2f)
+        else -> 60f * (((red - green) / delta) + 4f)
+    }.let { if (it < 0f) it + 360f else it }
+    return AccentHsl(hue, saturation.coerceIn(0f, 1f), lightness)
+}
+
+private fun accentColorAt(hue: Float, saturation: Float, lightness: Float): Color {
+    val safeHue = ((hue % 360f) + 360f) % 360f
+    val safeSaturation = saturation.coerceIn(0f, 1f)
+    val safeLightness = lightness.coerceIn(0f, 1f)
+    val chroma = (1f - kotlin.math.abs(2f * safeLightness - 1f)) * safeSaturation
+    val hueSector = safeHue / 60f
+    val secondary = chroma * (1f - kotlin.math.abs((hueSector % 2f) - 1f))
+    val (r, g, b) = when {
+        hueSector < 1f -> Triple(chroma, secondary, 0f)
+        hueSector < 2f -> Triple(secondary, chroma, 0f)
+        hueSector < 3f -> Triple(0f, chroma, secondary)
+        hueSector < 4f -> Triple(0f, secondary, chroma)
+        hueSector < 5f -> Triple(secondary, 0f, chroma)
+        else -> Triple(chroma, 0f, secondary)
+    }
+    val offset = safeLightness - chroma / 2f
+    return Color(r + offset, g + offset, b + offset)
+}
+
+private fun Color.bestContentColor(): Color {
+    fun contrast(first: Color, second: Color): Float {
+        val lighter = maxOf(first.luminance(), second.luminance())
+        val darker = minOf(first.luminance(), second.luminance())
+        return (lighter + 0.05f) / (darker + 0.05f)
+    }
+    return if (contrast(this, Color.White) >= contrast(this, AccentInk)) Color.White else AccentInk
+}
+
+/**
+ * Derives Material's accent roles from one selected colour. The hue is retained while saturation
+ * and lightness are adjusted for each role and for the active light/dark surface, so users never
+ * have to configure separate shades themselves.
+ */
+private fun androidx.compose.material3.ColorScheme.withOpenTaskerAccent(
+    accent: Color,
+    darkTheme: Boolean,
+) = run {
+    val base = accent.toAccentHsl()
+    fun tone(saturationScale: Float, lightness: Float) = accentColorAt(
+        hue = base.hue,
+        saturation = base.saturation * saturationScale,
+        lightness = lightness,
+    )
+
+    val primary = tone(1f, if (darkTheme) 0.78f else 0.40f)
+    val primaryContainer = tone(0.72f, if (darkTheme) 0.34f else 0.92f)
+    val onPrimaryContainer = tone(0.65f, if (darkTheme) 0.94f else 0.22f)
+    val tertiary = tone(0.82f, if (darkTheme) 0.84f else 0.46f)
+    val tertiaryContainer = tone(0.62f, if (darkTheme) 0.39f else 0.90f)
+    val onTertiaryContainer = tone(0.60f, if (darkTheme) 0.95f else 0.22f)
+
+    copy(
+        primary = primary,
+        onPrimary = primary.bestContentColor(),
+        primaryContainer = primaryContainer,
+        onPrimaryContainer = onPrimaryContainer.bestContentColor(),
+        tertiary = tertiary,
+        onTertiary = tertiary.bestContentColor(),
+        tertiaryContainer = tertiaryContainer,
+        onTertiaryContainer = onTertiaryContainer.bestContentColor(),
+    )
+}
