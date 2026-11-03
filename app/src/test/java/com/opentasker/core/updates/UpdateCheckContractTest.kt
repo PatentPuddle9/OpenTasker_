@@ -79,6 +79,20 @@ class UpdateCheckContractTest {
     }
 
     @Test
+    fun betaReleaseWorkflowPublishesClearlyLabeledPrereleasesFromBetaBuilds() {
+        val workflow = read(".github/workflows/release.yml")
+        assertTrue(workflow.contains("branches:\\n      - BETA"))
+        assertTrue(workflow.contains("ref: BETA"))
+        assertTrue(workflow.contains("--branch BETA"))
+        assertTrue(workflow.contains("if [[ \\"$build_branch\\" != \\"BETA\\" ]]; then"))
+        assertTrue(workflow.contains("tag=\\"beta-v$version_name\\""))
+        assertTrue(workflow.contains("asset_name=\\"OpenTasker-Beta-v$version_name-debug.apk\\""))
+        assertTrue(workflow.contains("title=\\"OpenTasker Beta v$VERSION\\""))
+        assertTrue(workflow.contains("--prerelease"))
+        assertTrue(workflow.contains("Release channel: **Beta**"))
+    }
+
+    @Test
     fun downloadedApkIsPinnedToReleaseDigestAndVerifiedBeforeInstallerLaunch() {
         val protocol = read("app/src/main/java/com/opentasker/core/updates/UpdateCheckProtocol.kt")
         val downloader = read("app/src/main/java/com/opentasker/core/updates/UpdateApkDownloader.kt")
