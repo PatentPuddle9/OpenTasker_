@@ -1,6 +1,7 @@
 package com.opentasker.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -391,6 +392,7 @@ internal fun ProfileEditorDialog(
     onRunAction: (Task, Int) -> Unit = { _, _ -> },
     runBusy: Boolean = false,
 ) {
+    val widgetOwned = profile?.widgetId != null
     val initialTaskId = profile?.enterTaskId ?: tasks.firstOrNull()?.id ?: 0L
     var name by rememberSaveable(profile?.id) { mutableStateOf(profile?.name.orEmpty()) }
     // New profiles start disabled, matching templates and imports and the "Leave off until
@@ -474,7 +476,7 @@ internal fun ProfileEditorDialog(
         // These forms carry many fields, and discarding them has no undo because nothing was
         // saved yet.
         properties = DialogProperties(dismissOnClickOutside = false),
-        title = { Text(if (profile == null) stringResource(R.string.dialog_create_profile) else stringResource(R.string.dialog_edit_profile)) },
+        title = { Text(if (profile == null) stringResource(R.string.dialog_create_profile) else if (widgetOwned) "Edit shortcut task" else stringResource(R.string.dialog_edit_profile)) },
         text = {
             Column(
                 modifier = Modifier
@@ -482,91 +484,104 @@ internal fun ProfileEditorDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.md),
             ) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.profile_name_label)) },
-                    placeholder = { Text(stringResource(R.string.profile_name_hint)) },
-                    supportingText = { Text(stringResource(R.string.profile_name_helper)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = group,
-                    onValueChange = { group = it },
-                    label = { Text(stringResource(R.string.profile_group_label)) },
-                    placeholder = { Text(stringResource(R.string.profile_group_hint)) },
-                    supportingText = { Text(stringResource(R.string.profile_group_helper)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text("Profile icon", style = MaterialTheme.typography.labelLarge)
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    WidgetIconCatalog.all.forEach { option ->
-                        val selected = option.symbol == selectedIcon
-                        Surface(
-                            modifier = Modifier.size(40.dp).clickable { selectedIcon = option.symbol },
-                            shape = RoundedCornerShape(10.dp),
-                            color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                            border = BorderStroke(
-                                if (selected) 2.dp else 1.dp,
-                                if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                            ),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(option.symbol, style = MaterialTheme.typography.titleLarge)
+                if (!widgetOwned) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text(stringResource(R.string.profile_name_label)) },
+                        placeholder = { Text(stringResource(R.string.profile_name_hint)) },
+                        supportingText = { Text(stringResource(R.string.profile_name_helper)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = group,
+                        onValueChange = { group = it },
+                        label = { Text(stringResource(R.string.profile_group_label)) },
+                        placeholder = { Text(stringResource(R.string.profile_group_hint)) },
+                        supportingText = { Text(stringResource(R.string.profile_group_helper)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text("Profile icon", style = MaterialTheme.typography.labelLarge)
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        WidgetIconCatalog.all.forEach { option ->
+                            val selected = option.symbol == selectedIcon
+                            Surface(
+                                modifier = Modifier.size(40.dp).clickable { selectedIcon = option.symbol },
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                                border = BorderStroke(
+                                    if (selected) 2.dp else 1.dp,
+                                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                                ),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(option.symbol, style = MaterialTheme.typography.titleLarge)
+                                }
                             }
                         }
                     }
-                }
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),
-                    shape = RoundedCornerShape(DesignSystem.Radii.lg),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .toggleable(
-                            value = enabled,
-                            enabled = !importedReviewRequired,
-                            role = Role.Switch,
-                            onValueChange = { enabled = it },
-                        )
-                        .semantics {
-                            stateDescription = if (enabled) onLabel else offLabel
-                        },
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.profile_enable_after_save), style = MaterialTheme.typography.labelLarge)
-                            Text(
-                                stringResource(
-                                    if (importedReviewRequired) {
-                                        R.string.imported_profile_editor_helper
-                                    } else {
-                                        R.string.profile_enable_after_save_helper
-                                    },
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),
+                        shape = RoundedCornerShape(DesignSystem.Radii.lg),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .toggleable(
+                                value = enabled,
+                                enabled = !importedReviewRequired,
+                                role = Role.Switch,
+                                onValueChange = { enabled = it },
                             )
+                            .semantics {
+                                stateDescription = if (enabled) onLabel else offLabel
+                            },
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(stringResource(R.string.profile_enable_after_save), style = MaterialTheme.typography.labelLarge)
+                                Text(
+                                    stringResource(
+                                        if (importedReviewRequired) {
+                                            R.string.imported_profile_editor_helper
+                                        } else {
+                                            R.string.profile_enable_after_save_helper
+                                        },
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Switch(checked = enabled, onCheckedChange = null, enabled = !importedReviewRequired)
                         }
-                        Switch(checked = enabled, onCheckedChange = null, enabled = !importedReviewRequired)
                     }
-                }
-                Text(stringResource(R.string.profile_enter_task), style = MaterialTheme.typography.labelLarge)
-                tasks.forEach { task ->
-                    SelectableOption(
-                        title = task.name,
-                        body = stringResource(R.string.label_action_count, task.actions.size),
-                        selected = task.id == enterTaskId,
-                        onClick = { enterTaskId = task.id },
+                    Text(stringResource(R.string.profile_enter_task), style = MaterialTheme.typography.labelLarge)
+                    tasks.forEach { task ->
+                        SelectableOption(
+                            title = task.name,
+                            body = stringResource(R.string.label_action_count, task.actions.size),
+                            selected = task.id == enterTaskId,
+                            onClick = { enterTaskId = task.id },
+                        )
+                    }
+    
+                } else {
+                    Text(
+                        "This profile is managed by a home-screen widget. Edit the task actions below; widget appearance is managed in Shortcuts.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        "Widget task: ${selectedTask?.name ?: "Missing task"}",
+                        style = MaterialTheme.typography.titleMedium,
                     )
                 }
                 selectedTask?.let { task ->
@@ -617,168 +632,171 @@ internal fun ProfileEditorDialog(
                         }
                     }
                 }
-                TaskActionFieldInput(
-                    label = stringResource(R.string.profile_exit_task),
-                    hint = stringResource(R.string.profile_exit_task_helper),
-                    value = exitTaskId?.toString().orEmpty(),
-                    tasks = tasks,
-                    onChange = { exitTaskId = it.toLongOrNull() },
-                )
-                TaskActionFieldInput(
-                    label = stringResource(R.string.profile_fallback_task),
-                    hint = stringResource(R.string.profile_fallback_task_helper),
-                    value = fallbackTaskId?.toString().orEmpty(),
-                    tasks = tasks,
-                    onChange = { fallbackTaskId = it.toLongOrNull() },
-                )
-                OutlinedTextField(
-                    value = cooldown,
-                    onValueChange = { cooldown = it.filter(Char::isDigit).take(5) },
-                    label = { Text(stringResource(R.string.profile_cooldown_label)) },
-                    supportingText = {
-                        Text(
-                            if (cooldown.isNotBlank() && parsedCooldown == null) {
-                                stringResource(R.string.profile_cooldown_invalid)
-                            } else {
-                                stringResource(R.string.profile_cooldown_helper)
-                            }
-                        )
-                    },
-                    isError = cooldown.isNotBlank() && parsedCooldown == null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = priority,
-                    onValueChange = { priority = signedIntegerInput(it, maxDigits = 3) },
-                    label = { Text(stringResource(R.string.profile_priority_label)) },
-                    supportingText = {
-                        Text(
-                            if (priorityInvalid) {
-                                stringResource(R.string.profile_priority_invalid)
-                            } else {
-                                stringResource(R.string.profile_priority_helper)
-                            },
-                        )
-                    },
-                    isError = priorityInvalid,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = gracePeriod,
-                    onValueChange = { gracePeriod = it.filter(Char::isDigit).take(4) },
-                    label = { Text(stringResource(R.string.profile_grace_period_label)) },
-                    supportingText = {
-                        Text(
-                            if (gracePeriodInvalid) {
-                                stringResource(R.string.profile_grace_period_invalid)
-                            } else {
-                                stringResource(R.string.profile_grace_period_helper)
-                            },
-                        )
-                    },
-                    isError = gracePeriodInvalid,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = maxActiveExecutions,
-                    onValueChange = { maxActiveExecutions = it.filter(Char::isDigit).take(2) },
-                    label = { Text(stringResource(R.string.profile_max_active_label)) },
-                    placeholder = { Text(stringResource(R.string.profile_concurrency_inherit_hint)) },
-                    supportingText = {
-                        Text(
-                            if (maxActiveExecutions.isNotBlank() &&
-                                (parsedMaxActiveExecutions == null ||
-                                    parsedMaxActiveExecutions !in InputValidation.MIN_PROFILE_MAX_ACTIVE..InputValidation.MAX_PROFILE_MAX_ACTIVE)
-                            ) {
-                                stringResource(R.string.profile_max_active_invalid)
-                            } else {
-                                stringResource(R.string.profile_max_active_helper)
-                            },
-                        )
-                    },
-                    isError = maxActiveExecutions.isNotBlank() &&
-                        (parsedMaxActiveExecutions == null ||
-                            parsedMaxActiveExecutions !in InputValidation.MIN_PROFILE_MAX_ACTIVE..InputValidation.MAX_PROFILE_MAX_ACTIVE),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = burstLimit,
-                    onValueChange = { burstLimit = it.filter(Char::isDigit).take(2) },
-                    label = { Text(stringResource(R.string.profile_burst_limit_label)) },
-                    placeholder = { Text(stringResource(R.string.profile_concurrency_inherit_hint)) },
-                    supportingText = {
-                        Text(
-                            if (burstLimit.isNotBlank() &&
-                                (parsedBurstLimit == null ||
-                                    parsedBurstLimit !in InputValidation.MIN_PROFILE_BURST_LIMIT..InputValidation.MAX_PROFILE_BURST_LIMIT)
-                            ) {
-                                stringResource(R.string.profile_burst_limit_invalid)
-                            } else {
-                                stringResource(R.string.profile_burst_limit_helper)
-                            },
-                        )
-                    },
-                    isError = burstLimit.isNotBlank() &&
-                        (parsedBurstLimit == null ||
-                            parsedBurstLimit !in InputValidation.MIN_PROFILE_BURST_LIMIT..InputValidation.MAX_PROFILE_BURST_LIMIT),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text(stringResource(R.string.profile_overflow_policy_label), style = MaterialTheme.typography.labelLarge)
-                ProfileOverflowPolicy.entries.forEach { option ->
-                    SelectableOption(
-                        title = profileOverflowPolicyTitle(option),
-                        body = profileOverflowPolicyDescription(option),
-                        selected = option == overflowPolicy,
-                        onClick = { overflowPolicyName = option.name },
+                if (!widgetOwned) {
+                    TaskActionFieldInput(
+                        label = stringResource(R.string.profile_exit_task),
+                        hint = stringResource(R.string.profile_exit_task_helper),
+                        value = exitTaskId?.toString().orEmpty(),
+                        tasks = tasks,
+                        onChange = { exitTaskId = it.toLongOrNull() },
                     )
-                }
-                Text(stringResource(R.string.profile_lifetime_label), style = MaterialTheme.typography.labelLarge)
-                ProfileLifetime.entries.forEach { option ->
-                    SelectableOption(
-                        title = profileLifetimeTitle(option),
-                        body = profileLifetimeDescription(option),
-                        selected = option == lifetime,
-                        onClick = { lifetimeName = option.name },
+                    TaskActionFieldInput(
+                        label = stringResource(R.string.profile_fallback_task),
+                        hint = stringResource(R.string.profile_fallback_task_helper),
+                        value = fallbackTaskId?.toString().orEmpty(),
+                        tasks = tasks,
+                        onChange = { fallbackTaskId = it.toLongOrNull() },
                     )
-                }
-                if (lifetime == ProfileLifetime.UNTIL_DATE) {
                     OutlinedTextField(
-                        value = expiryDate,
-                        onValueChange = { expiryDate = it.take(10) },
-                        label = { Text(stringResource(R.string.profile_expiry_date_label)) },
-                        placeholder = { Text(stringResource(R.string.profile_expiry_date_hint)) },
+                        value = cooldown,
+                        onValueChange = { cooldown = it.filter(Char::isDigit).take(5) },
+                        label = { Text(stringResource(R.string.profile_cooldown_label)) },
                         supportingText = {
                             Text(
-                                if (expiryDate.isNotBlank() && parsedExpiryDate == null) {
-                                    stringResource(R.string.profile_expiry_date_invalid)
+                                if (cooldown.isNotBlank() && parsedCooldown == null) {
+                                    stringResource(R.string.profile_cooldown_invalid)
                                 } else {
-                                    stringResource(R.string.profile_expiry_date_helper)
-                                },
+                                    stringResource(R.string.profile_cooldown_helper)
+                                }
                             )
                         },
-                        isError = expiryDate.isNotBlank() && parsedExpiryDate == null,
+                        isError = cooldown.isNotBlank() && parsedCooldown == null,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                }
-                Text(stringResource(R.string.profile_retrigger_label), style = MaterialTheme.typography.labelLarge)
-                AutomationMode.entries.forEach { mode ->
-                    SelectableOption(
-                        title = stringResource(automationModeTitleRes(mode)),
-                        body = automationModeDescription(mode),
-                        selected = mode == automationMode,
-                        onClick = { automationMode = mode },
+                    OutlinedTextField(
+                        value = priority,
+                        onValueChange = { priority = signedIntegerInput(it, maxDigits = 3) },
+                        label = { Text(stringResource(R.string.profile_priority_label)) },
+                        supportingText = {
+                            Text(
+                                if (priorityInvalid) {
+                                    stringResource(R.string.profile_priority_invalid)
+                                } else {
+                                    stringResource(R.string.profile_priority_helper)
+                                },
+                            )
+                        },
+                        isError = priorityInvalid,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
                     )
+                    OutlinedTextField(
+                        value = gracePeriod,
+                        onValueChange = { gracePeriod = it.filter(Char::isDigit).take(4) },
+                        label = { Text(stringResource(R.string.profile_grace_period_label)) },
+                        supportingText = {
+                            Text(
+                                if (gracePeriodInvalid) {
+                                    stringResource(R.string.profile_grace_period_invalid)
+                                } else {
+                                    stringResource(R.string.profile_grace_period_helper)
+                                },
+                            )
+                        },
+                        isError = gracePeriodInvalid,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = maxActiveExecutions,
+                        onValueChange = { maxActiveExecutions = it.filter(Char::isDigit).take(2) },
+                        label = { Text(stringResource(R.string.profile_max_active_label)) },
+                        placeholder = { Text(stringResource(R.string.profile_concurrency_inherit_hint)) },
+                        supportingText = {
+                            Text(
+                                if (maxActiveExecutions.isNotBlank() &&
+                                    (parsedMaxActiveExecutions == null ||
+                                        parsedMaxActiveExecutions !in InputValidation.MIN_PROFILE_MAX_ACTIVE..InputValidation.MAX_PROFILE_MAX_ACTIVE)
+                                ) {
+                                    stringResource(R.string.profile_max_active_invalid)
+                                } else {
+                                    stringResource(R.string.profile_max_active_helper)
+                                },
+                            )
+                        },
+                        isError = maxActiveExecutions.isNotBlank() &&
+                            (parsedMaxActiveExecutions == null ||
+                                parsedMaxActiveExecutions !in InputValidation.MIN_PROFILE_MAX_ACTIVE..InputValidation.MAX_PROFILE_MAX_ACTIVE),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = burstLimit,
+                        onValueChange = { burstLimit = it.filter(Char::isDigit).take(2) },
+                        label = { Text(stringResource(R.string.profile_burst_limit_label)) },
+                        placeholder = { Text(stringResource(R.string.profile_concurrency_inherit_hint)) },
+                        supportingText = {
+                            Text(
+                                if (burstLimit.isNotBlank() &&
+                                    (parsedBurstLimit == null ||
+                                        parsedBurstLimit !in InputValidation.MIN_PROFILE_BURST_LIMIT..InputValidation.MAX_PROFILE_BURST_LIMIT)
+                                ) {
+                                    stringResource(R.string.profile_burst_limit_invalid)
+                                } else {
+                                    stringResource(R.string.profile_burst_limit_helper)
+                                },
+                            )
+                        },
+                        isError = burstLimit.isNotBlank() &&
+                            (parsedBurstLimit == null ||
+                                parsedBurstLimit !in InputValidation.MIN_PROFILE_BURST_LIMIT..InputValidation.MAX_PROFILE_BURST_LIMIT),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(stringResource(R.string.profile_overflow_policy_label), style = MaterialTheme.typography.labelLarge)
+                    ProfileOverflowPolicy.entries.forEach { option ->
+                        SelectableOption(
+                            title = profileOverflowPolicyTitle(option),
+                            body = profileOverflowPolicyDescription(option),
+                            selected = option == overflowPolicy,
+                            onClick = { overflowPolicyName = option.name },
+                        )
+                    }
+                    Text(stringResource(R.string.profile_lifetime_label), style = MaterialTheme.typography.labelLarge)
+                    ProfileLifetime.entries.forEach { option ->
+                        SelectableOption(
+                            title = profileLifetimeTitle(option),
+                            body = profileLifetimeDescription(option),
+                            selected = option == lifetime,
+                            onClick = { lifetimeName = option.name },
+                        )
+                    }
+                    if (lifetime == ProfileLifetime.UNTIL_DATE) {
+                        OutlinedTextField(
+                            value = expiryDate,
+                            onValueChange = { expiryDate = it.take(10) },
+                            label = { Text(stringResource(R.string.profile_expiry_date_label)) },
+                            placeholder = { Text(stringResource(R.string.profile_expiry_date_hint)) },
+                            supportingText = {
+                                Text(
+                                    if (expiryDate.isNotBlank() && parsedExpiryDate == null) {
+                                        stringResource(R.string.profile_expiry_date_invalid)
+                                    } else {
+                                        stringResource(R.string.profile_expiry_date_helper)
+                                    },
+                                )
+                            },
+                            isError = expiryDate.isNotBlank() && parsedExpiryDate == null,
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    Text(stringResource(R.string.profile_retrigger_label), style = MaterialTheme.typography.labelLarge)
+                    AutomationMode.entries.forEach { mode ->
+                        SelectableOption(
+                            title = stringResource(automationModeTitleRes(mode)),
+                            body = automationModeDescription(mode),
+                            selected = mode == automationMode,
+                            onClick = { automationMode = mode },
+                        )
+                    }
+    
                 }
             }
         },
