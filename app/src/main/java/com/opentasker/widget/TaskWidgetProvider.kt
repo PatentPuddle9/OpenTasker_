@@ -42,6 +42,17 @@ class TaskWidgetProvider : AppWidgetProvider() {
     }
 
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        val pending = goAsync()
+        val appContext = context.applicationContext
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                for (widgetId in appWidgetIds) {
+                    runCatching { WidgetProfileLinks.deleteProfile(appContext, widgetId) }
+                }
+            } finally {
+                pending.finish()
+            }
+        }
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val editor = prefs.edit()
         for (id in appWidgetIds) {
@@ -64,6 +75,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
         fun keyIconColor(widgetId: Int) = "widget_${widgetId}_icon_color"
         fun keyBackgroundColor(widgetId: Int) = "widget_${widgetId}_background_color"
         fun keyGradient(widgetId: Int) = "widget_${widgetId}_gradient"
+        fun keyProfileId(widgetId: Int) = "widget_${widgetId}_profile_id"
 
         /**
          * Asks every task widget to re-read its label. Call after a task rename or delete: nothing
