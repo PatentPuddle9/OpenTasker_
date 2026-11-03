@@ -90,7 +90,7 @@ internal fun OpenTaskerScreen.icon(): ImageVector = when (this) {
     OpenTaskerScreen.Settings -> Icons.Outlined.Tune
 }
 
-internal fun shouldNavigateBackToProfiles(screen: OpenTaskerScreen): Boolean =
+internal fun shouldNavigateBackToActions(screen: OpenTaskerScreen): Boolean =
     screen != OpenTaskerScreen.Actions
 
 @Composable
