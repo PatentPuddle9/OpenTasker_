@@ -788,24 +788,6 @@ fun ActiveAutomationUi(
                 onUndoProfileEdit = { viewModel.undoLastProfileEdit(it.id) },
                 onRedoProfileEdit = { viewModel.redoLastProfileEdit(it.id) },
                 onDeleteProfile = { openDeleteProfile(it) }, onDuplicateProfile = viewModel::duplicateProfile,
-                onToggleProfile = { profile, enabled ->
-                    if (enabled && profile.requiresRiskAcknowledgement) {
-                        importedProfileReviewId = profile.id
-                    } else {
-                        viewModel.updateProfile(
-                            profile.copy(enabled = enabled),
-                            if (enabled) R.string.ui_message_profile_enabled else R.string.ui_message_profile_disabled,
-                        )
-                    }
-                },
-                onAddContext = { openContextPicker(it) },
-                onEditContextLogic = { contextLogicProfileId = it.id },
-                onEditContext = { profile, index, context ->
-                    openContextEdit(profile, context.type, index)
-                },
-                onDeleteContext = { profile, index ->
-                    if (profile.contexts.getOrNull(index) != null) viewModel.removeProfileContext(profile, index)
-                },
                 contentPadding = innerPadding, contentLoaded = contentLoaded, historyAvailability = historyAvailability,
             )
 
@@ -1220,6 +1202,14 @@ fun ActiveAutomationUi(
                 )
             },
             onSimulate = { editedProfile -> openSimulation(editedProfile) },
+            onAddContext = { openContextPicker(profile) },
+            onEditContextLogic = { contextLogicProfileId = profile.id },
+            onEditContext = { index, context ->
+                openContextEdit(profile, context.type, index)
+            },
+            onDeleteContext = { index ->
+                if (profile.contexts.getOrNull(index) != null) viewModel.removeProfileContext(profile, index)
+            },
             onEditTask = ::openTaskDialog,
             onAddAction = ::openActionPicker,
             onEditAction = { task, index, action ->
