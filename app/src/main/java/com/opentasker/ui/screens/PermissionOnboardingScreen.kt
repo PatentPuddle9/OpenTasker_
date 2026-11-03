@@ -663,6 +663,9 @@ fun PermissionOnboardingScreen(
     val updateBranchesFailed by setupViewModel.updateBranchesFailed.collectAsState()
     val updateCheckInProgress by setupViewModel.updateCheckInProgress.collectAsState()
     val updateCheckFailed by setupViewModel.updateCheckFailed.collectAsState()
+    val branchVersions by setupViewModel.branchVersions.collectAsState()
+    val branchVersionsLoading by setupViewModel.branchVersionsLoading.collectAsState()
+    val branchVersionsFailed by setupViewModel.branchVersionsFailed.collectAsState()
     val updateDownloadInProgress by setupViewModel.updateDownloadInProgress.collectAsState()
     val updateDownloadProgress by setupViewModel.updateDownloadProgress.collectAsState()
     val updateInstallFailed by setupViewModel.updateInstallFailed.collectAsState()
@@ -700,6 +703,15 @@ fun PermissionOnboardingScreen(
         }
         pendingPermission = null
         setupViewModel.refresh()
+    }
+
+    val usedActionIds = remember(profiles, tasks, globalFallbackTaskId) {
+        collectEnabledProfileActionIds(profiles, tasks, globalFallbackTaskId)
+    }
+    LaunchedEffect(settingsOnly, updateCheckState.selectedBranch, usedActionIds) {
+        if (settingsOnly && UpdateCheckAvailability.isAvailable()) {
+            setupViewModel.refreshBranchVersions(updateCheckState.selectedBranch, usedActionIds)
+        }
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -799,6 +811,45 @@ fun PermissionOnboardingScreen(
                         branchesFailed = updateBranchesFailed,
                         onBranchSelected = setupViewModel::setUpdateSourceBranch,
                         onRefreshBranches = setupViewModel::refreshUpdateBranches,
+                        versions = branchVersions,
+                        versionsLoading = branchVersionsLoading,
+                        versionsFailed = branchVersionsFailed,
+                        onRefreshVersions = {
+                            setupViewModel.refreshBranchVersions(updateCheckState.selectedBranch, usedActionIds)
+                        },
+                        onInstallVersion = { version ->
+                            if (!context.packageManager.canRequestPackageInstalls()) {
+                                onMessage(context.getString(R.string.setup_update_install_permission_prompt))
+                                try {
+                                    context.startActivity(
+                                        Intent(
+                                            Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                            Uri.parse("package:" + context.packageName),
+                                        ),
+                                    )
+                                } catch (error: Exception) {
+                                    onMessage(context.getString(R.string.setup_update_install_failed))
+                                }
+                            } else {
+                                setupViewModel.downloadBranchVersion(version) { apkFile ->
+                                    try {
+                                        val uri = FileProvider.getUriForFile(
+                                            context,
+                                            BuildConfig.APPLICATION_ID + ".fileprovider",
+                                            apkFile,
+                                        )
+                                        val installIntent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+                                            setDataAndType(uri, "application/vnd.android.package-archive")
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(installIntent)
+                                    } catch (error: Exception) {
+                                        AppLogger.warn("UpdateCheck", "Could not open Android package installer", error)
+                                        onMessage(context.getString(R.string.setup_update_install_failed))
+                                    }
+                                }
+                            }
+                        },
                         checking = updateCheckInProgress,
                         checkFailed = updateCheckFailed,
                         downloading = updateDownloadInProgress,
