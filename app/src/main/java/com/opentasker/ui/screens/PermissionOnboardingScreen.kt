@@ -1759,8 +1759,8 @@ private fun ThemeSetupCard(
                     placeholder = { Text("#B69CFF") },
                 )
                 OutlinedButton(
-                    onClick = { runCatching { android.graphics.Color.parseColor(if (customHex.startsWith("#")) customHex else "#$customHex") }.onSuccess { onSelectAccent(customHex) } },
-                    enabled = runCatching { android.graphics.Color.parseColor(if (customHex.startsWith("#")) customHex else "#$customHex") }.isSuccess,
+                    onClick = { onSelectAccent(if (customHex.startsWith("#")) customHex else "#$customHex") },
+                    enabled = Regex("#?[0-9A-Fa-f]{6}").matches(customHex),
                 ) { Text("Apply") }
             }
         }
