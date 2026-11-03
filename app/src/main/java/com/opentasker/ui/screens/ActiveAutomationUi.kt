@@ -567,8 +567,9 @@ fun ActiveAutomationUi(
             Column {
                 OpenTaskerHeader(
                     screen = screen,
-                    detail = headerDetail,
+                    detail = headerDetail.takeUnless { screen == OpenTaskerScreen.Settings },
                     onOpenSearch = { showGlobalSearchDialog = true },
+                    showSearch = screen != OpenTaskerScreen.Settings,
                 )
                 if (screen in setOf(OpenTaskerScreen.Profiles, OpenTaskerScreen.Tasks, OpenTaskerScreen.Vars, OpenTaskerScreen.Scenes, OpenTaskerScreen.Flow)) {
                     ProjectScopeBar(

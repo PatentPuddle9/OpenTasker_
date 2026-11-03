@@ -96,8 +96,9 @@ internal fun shouldNavigateBackToProfiles(screen: OpenTaskerScreen): Boolean =
 @Composable
 internal fun OpenTaskerHeader(
     screen: OpenTaskerScreen,
-    detail: String,
+    detail: String?,
     onOpenSearch: () -> Unit,
+    showSearch: Boolean = true,
 ) {
     Surface(
         color = MaterialTheme.colorScheme.background,
@@ -131,40 +132,44 @@ internal fun OpenTaskerHeader(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(
-                            Modifier
-                                .size(7.dp)
-                                .background(
-                                    color = when (screen) {
-                                        OpenTaskerScreen.Diagnostics -> MaterialTheme.colorScheme.tertiary
-                                        OpenTaskerScreen.RunLog, OpenTaskerScreen.Inspector -> MaterialTheme.colorScheme.primary
-                                        else -> MaterialTheme.colorScheme.primary
-                                    },
-                                    shape = CircleShape,
-                                ),
-                        )
-                        Text(
-                            text = detail,
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                    if (!detail.isNullOrBlank()) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                Modifier
+                                    .size(7.dp)
+                                    .background(
+                                        color = when (screen) {
+                                            OpenTaskerScreen.Diagnostics -> MaterialTheme.colorScheme.tertiary
+                                            OpenTaskerScreen.RunLog, OpenTaskerScreen.Inspector -> MaterialTheme.colorScheme.primary
+                                            else -> MaterialTheme.colorScheme.primary
+                                        },
+                                        shape = CircleShape,
+                                    ),
+                            )
+                            Text(
+                                text = detail,
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
-                IconButton(
-                    onClick = onOpenSearch,
-                    modifier = Modifier.size(44.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Search,
-                        contentDescription = stringResource(R.string.global_search_content_description),
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
+                if (showSearch) {
+                    IconButton(
+                        onClick = onOpenSearch,
+                        modifier = Modifier.size(44.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Search,
+                            contentDescription = stringResource(R.string.global_search_content_description),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
                 }
             }
             Box(
