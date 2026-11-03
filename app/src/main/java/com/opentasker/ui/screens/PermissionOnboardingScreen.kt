@@ -266,7 +266,7 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
     )
     val updateCheckState: StateFlow<UpdateCheckState> = _updateCheckState.asStateFlow()
 
-    private val _availableUpdateBranches = MutableStateFlow(listOf(UpdateCheckProtocol.DEFAULT_SOURCE_BRANCH))
+    private val _availableUpdateBranches = MutableStateFlow(listOf(BuildConfig.UPDATE_SOURCE_BRANCH))
     val availableUpdateBranches: StateFlow<List<String>> = _availableUpdateBranches.asStateFlow()
 
     private val _updateBranchesLoading = MutableStateFlow(false)
@@ -366,7 +366,10 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
                 val settings = UpdateCheckSettings(context)
                 val selectedBranch = settings.load().selectedBranch
                 if (selectedBranch !in branches) {
-                    settings.setSelectedBranch(branches.first())
+                    val fallbackBranch = BuildConfig.UPDATE_SOURCE_BRANCH
+                        .takeIf { it in branches }
+                        ?: branches.first()
+                    settings.setSelectedBranch(fallbackBranch)
                 }
                 _updateCheckState.value = settings.load()
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
@@ -1079,7 +1082,35 @@ private fun UpdateCheckSetupCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(stringResource(R.string.setup_update_title), style = MaterialTheme.typography.titleSmall)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.sm),
+                ) {
+                    Text(
+                        stringResource(R.string.setup_update_title),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    if (BuildConfig.IS_BETA) {
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = branchWarningColor.copy(alpha = 0.14f),
+                            contentColor = branchWarningColor,
+                            border = BorderStroke(
+                                1.dp,
+                                branchWarningColor.copy(alpha = DesignSystem.Opacity.subtleBorder),
+                            ),
+                        ) {
+                            Text(
+                                stringResource(R.string.setup_update_beta_badge),
+                                modifier = Modifier.padding(
+                                    horizontal = DesignSystem.Spacing.sm,
+                                    vertical = 2.dp,
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                    }
+                }
                 Text(
                     stateText,
                     style = MaterialTheme.typography.labelMedium,

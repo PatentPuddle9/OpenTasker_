@@ -2,10 +2,11 @@ package com.opentasker.core.updates
 
 import android.content.Context
 import androidx.core.content.edit
+import com.opentasker.app.BuildConfig
 
 data class UpdateCheckState(
     val enabled: Boolean = false,
-    val selectedBranch: String = UpdateCheckProtocol.DEFAULT_SOURCE_BRANCH,
+    val selectedBranch: String = BuildConfig.UPDATE_SOURCE_BRANCH,
     val newerVersion: String? = null,
     val releaseUrl: String? = null,
     val apkUrl: String? = null,
@@ -28,7 +29,7 @@ class UpdateCheckSettings(context: Context) {
     fun load(): UpdateCheckState {
         val selectedBranch = preferences.getString(KEY_SELECTED_BRANCH, null)
             ?.takeIf(UpdateCheckProtocol::isSelectableBranch)
-            ?: UpdateCheckProtocol.DEFAULT_SOURCE_BRANCH
+            ?: BuildConfig.UPDATE_SOURCE_BRANCH
         val checkedBranch = preferences.getString(KEY_CHECKED_BRANCH, null)
         val branchMatches = checkedBranch == selectedBranch
         val url = preferences.getString(KEY_RELEASE_URL, null)?.takeIf(String::isNotBlank)
@@ -64,7 +65,7 @@ class UpdateCheckSettings(context: Context) {
         }
         val previous = preferences.getString(
             KEY_SELECTED_BRANCH,
-            UpdateCheckProtocol.DEFAULT_SOURCE_BRANCH,
+            BuildConfig.UPDATE_SOURCE_BRANCH,
         )
         preferences.edit {
             putString(KEY_SELECTED_BRANCH, branch)

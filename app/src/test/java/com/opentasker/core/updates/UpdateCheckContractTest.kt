@@ -58,6 +58,24 @@ class UpdateCheckContractTest {
     }
 
     @Test
+    fun installedBuildIdentifiesItsBranchAndDefaultsUpdatesToThatChannel() {
+        val gradle = read("app/build.gradle.kts")
+        val workflow = read(".github/workflows/build.yml")
+        val settings = read("app/src/main/java/com/opentasker/core/updates/UpdateCheckSettings.kt")
+        val runner = read("app/src/main/java/com/opentasker/core/updates/UpdateCheckRunner.kt")
+        val setup = read("app/src/main/java/com/opentasker/ui/screens/PermissionOnboardingScreen.kt")
+        assertTrue(gradle.contains("openTaskerBuildBranch"))
+        assertTrue(gradle.contains("UI-overhaul-experiment"))
+        assertTrue(gradle.contains("buildConfigField(\"Boolean\", \"IS_BETA\", appIsBetaBuild.toString())"))
+        assertTrue(gradle.contains("buildConfigField(\"String\", \"UPDATE_SOURCE_BRANCH\""))
+        assertTrue(workflow.contains("-PopenTaskerBuildBranch=\"\$GITHUB_REF_NAME\""))
+        assertTrue(settings.contains("BuildConfig.UPDATE_SOURCE_BRANCH"))
+        assertTrue(runner.contains("branch: String = BuildConfig.UPDATE_SOURCE_BRANCH"))
+        assertTrue(setup.contains("BuildConfig.IS_BETA"))
+        assertTrue(setup.contains("setup_update_beta_badge"))
+    }
+
+    @Test
     fun downloadedApkIsPinnedToReleaseDigestAndVerifiedBeforeInstallerLaunch() {
         val protocol = read("app/src/main/java/com/opentasker/core/updates/UpdateCheckProtocol.kt")
         val downloader = read("app/src/main/java/com/opentasker/core/updates/UpdateApkDownloader.kt")

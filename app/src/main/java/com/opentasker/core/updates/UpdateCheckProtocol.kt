@@ -20,6 +20,18 @@ object UpdateCheckProtocol {
     const val RELEASE_DOWNLOAD_URL_PREFIX =
         "https://github.com/PatentPuddle9/OpenTasker_/releases/download/"
     const val DEFAULT_SOURCE_BRANCH = "Experimental"
+    const val BETA_SOURCE_BRANCH = "BETA"
+    const val LEGACY_BETA_SOURCE_BRANCH = "UI-overhaul-experiment"
+
+    /** Maps the former beta branch name to the current BETA branch. */
+    fun normalizeBuildSourceBranch(branch: String): String = when {
+        branch.equals(BETA_SOURCE_BRANCH, ignoreCase = true) -> BETA_SOURCE_BRANCH
+        branch.equals(LEGACY_BETA_SOURCE_BRANCH, ignoreCase = true) -> BETA_SOURCE_BRANCH
+        else -> branch
+    }
+
+    fun isBetaBuildBranch(branch: String): Boolean =
+        normalizeBuildSourceBranch(branch) == BETA_SOURCE_BRANCH
     const val RESPONSE_VARIABLE = "update_check_body"
     const val STATUS_VARIABLE = "update_check_http_status"
     const val BRANCHES_RESPONSE_VARIABLE = "update_check_branches"
