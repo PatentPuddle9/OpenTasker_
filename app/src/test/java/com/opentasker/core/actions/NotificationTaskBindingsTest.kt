@@ -23,6 +23,17 @@ class NotificationTaskBindingsTest {
     }
 
     @Test
+    fun explicitlyEmptyTaskFieldBecomesDismissButton() {
+        val plan = NotificationTaskBindings.planButton(
+            mapOf("button1_label" to "Cancel", "button1_task_id" to ""),
+            buttonIndex = 1,
+            candidates = emptyList(),
+        )
+
+        assertEquals(NotificationButtonPlan.Dismiss(1, "Cancel"), plan)
+    }
+
+    @Test
     fun emptyTaskAndEmptyLabelLeaveButtonSlotUnused() {
         val plan = NotificationTaskBindings.planButton(
             emptyMap(),
