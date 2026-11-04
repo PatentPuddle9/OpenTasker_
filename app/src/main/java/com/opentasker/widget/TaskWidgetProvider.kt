@@ -25,8 +25,8 @@ class TaskWidgetProvider : AppWidgetProvider() {
         for (widgetId in appWidgetIds) {
             updateWidget(context, appWidgetManager, widgetId)
         }
-        // Re-read the selected Action name and migrate older widgets away from task IDs and
-        // widget-owned shadow profiles. goAsync keeps the receiver alive for the database work.
+        // Keep the visible label aligned with the widget-owned Action and migrate widgets made
+        // before each widget had its own protected Action.
         val pending = goAsync()
         val appContext = context.applicationContext
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
@@ -48,7 +48,6 @@ class TaskWidgetProvider : AppWidgetProvider() {
         newOptions: Bundle,
     ) {
         super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
-        // Re-select the compact or expanded RemoteViews layout whenever the launcher resizes it.
         updateWidget(context, appWidgetManager, appWidgetId)
     }
 
@@ -64,6 +63,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
                 pending.finish()
             }
         }
+
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val editor = prefs.edit()
         for (id in appWidgetIds) {
@@ -75,6 +75,8 @@ class TaskWidgetProvider : AppWidgetProvider() {
             editor.remove(keyBackgroundColor(id))
             editor.remove(keyGradient(id))
             editor.remove(keyShape(id))
+            editor.remove(keyRemoved(id))
+            editor.remove(keyProfileId(id))
         }
         editor.apply()
     }
@@ -83,9 +85,9 @@ class TaskWidgetProvider : AppWidgetProvider() {
         const val PREFS_NAME = "opentasker_widget_prefs"
         private const val EXPANDED_LAYOUT_MIN_SIZE_DP = 110
 
-        /** Legacy-only key used to migrate widgets saved by versions that stored Task IDs. */
+        /** Old-version key retained only so installed widgets can be migrated. */
         fun keyTaskId(widgetId: Int) = "widget_${widgetId}_task_id"
-        /** Stored name cache; the backing key is kept for upgrade compatibility. */
+        /** Backing key name retained for existing installations. */
         fun keyActionName(widgetId: Int) = "widget_${widgetId}_task_name"
         fun keyTaskName(widgetId: Int) = keyActionName(widgetId)
         fun keyActionProfileId(widgetId: Int) = "widget_${widgetId}_action_profile_id"
@@ -95,12 +97,10 @@ class TaskWidgetProvider : AppWidgetProvider() {
         fun keyGradient(widgetId: Int) = "widget_${widgetId}_gradient"
         fun keyShape(widgetId: Int) = "widget_${widgetId}_shape"
         fun keyProfileId(widgetId: Int) = "widget_${widgetId}_profile_id"
+        fun keyRemoved(widgetId: Int) = "widget_${widgetId}_removed_from_shortcuts"
 
-        /**
-         * Asks every Action widget to re-read its label after an Action rename or deletion.
-         */
         fun requestRefresh(context: Context) {
-            val manager = AppWidgetManager.getInstance(context) ?: return
+            val manager = AppWidgetManager.getInstance(context)
             val ids = manager.getAppWidgetIds(ComponentName(context, TaskWidgetProvider::class.java))
             if (ids.isEmpty()) return
             context.sendBroadcast(
@@ -121,34 +121,56 @@ class TaskWidgetProvider : AppWidgetProvider() {
             }
 
             for (widgetId in appWidgetIds) {
-                // Remove the shadow Profile created by older widget builds. A widget now points
-                // straight at the user's original top-level Action instead of owning a duplicate.
-                runCatching { WidgetProfileLinks.deleteProfile(context, widgetId) }
+                if (prefs.getBoolean(keyRemoved(widgetId), false)) continue
+
+                // Delete only the pre-migration shadow row. This deliberately does not delete
+                // any backing sequence because older shadows could share a user's Action data.
+                runCatching { WidgetProfileLinks.deleteLegacyShadowProfile(context, widgetId) }
 
                 val storedProfileId = prefs.getLong(keyActionProfileId(widgetId), -1L)
-                val selectedAction = decodedProfiles.firstOrNull {
-                    it.id == storedProfileId && it.widgetId == null && it.enterTaskId > 0L
+                val widgetAction = decodedProfiles.firstOrNull {
+                    it.id == storedProfileId && it.widgetId == widgetId && it.enterTaskId > 0L
                 }
-
-                if (selectedAction != null) {
-                    editor.putString(keyActionName(widgetId), selectedAction.name)
+                if (widgetAction != null) {
+                    editor.putString(keyActionName(widgetId), widgetAction.name)
                     editor.remove(keyTaskId(widgetId))
                     continue
                 }
 
-                // One-time migration for widgets created before they stored an Action/Profile ID.
-                // Only migrate when the old execution ID maps unambiguously to a visible Action.
+                // Upgrade widgets that previously pointed at a user's shared Action. The new
+                // widget receives its own copy of the Action's steps and its own protected Profile.
+                val directAction = decodedProfiles.firstOrNull {
+                    it.id == storedProfileId && it.widgetId == null && it.enterTaskId > 0L
+                }
                 val legacyTaskId = prefs.getLong(keyTaskId(widgetId), -1L)
                 val legacyName = prefs.getString(keyActionName(widgetId), null)
-                val candidates = decodedProfiles.filter {
-                    it.widgetId == null && it.enterTaskId == legacyTaskId && it.enterTaskId > 0L
+                val legacyCandidates = decodedProfiles.filter {
+                    it.widgetId == null && it.enterTaskId == legacyTaskId && legacyTaskId > 0L
                 }
-                val migratedAction = candidates.firstOrNull { it.name == legacyName }
-                    ?: candidates.singleOrNull()
+                val sourceAction = directAction
+                    ?: legacyCandidates.firstOrNull { it.name == legacyName }
+                    ?: legacyCandidates.singleOrNull()
 
-                if (migratedAction != null) {
-                    editor.putLong(keyActionProfileId(widgetId), migratedAction.id)
-                    editor.putString(keyActionName(widgetId), migratedAction.name)
+                if (sourceAction != null) {
+                    val style = WidgetStyle(
+                        icon = prefs.getString(keyIcon(widgetId), WidgetIconCatalog.default.key)
+                            ?: WidgetIconCatalog.default.key,
+                        iconColor = prefs.getInt(keyIconColor(widgetId), WidgetStyle().iconColor),
+                        backgroundColor = prefs.getInt(keyBackgroundColor(widgetId), WidgetStyle().backgroundColor),
+                        gradient = prefs.getBoolean(keyGradient(widgetId), WidgetStyle().gradient),
+                        shape = prefs.getString(keyShape(widgetId), WidgetShapeCatalog.default.key)
+                            ?: WidgetShapeCatalog.default.key,
+                    )
+                    val ownedId = WidgetProfileLinks.createOrUpdateAction(
+                        context = context,
+                        widgetId = widgetId,
+                        name = sourceAction.name,
+                        style = style,
+                        sourceProfileId = sourceAction.id,
+                    )
+                    val owned = db.profileDao().getById(ownedId)?.toDomainDecodeResult()?.value
+                    editor.putLong(keyActionProfileId(widgetId), ownedId)
+                    editor.putString(keyActionName(widgetId), owned?.name ?: sourceAction.name)
                 } else {
                     editor.remove(keyActionProfileId(widgetId))
                     editor.putString(keyActionName(widgetId), context.getString(R.string.widget_task_missing))
@@ -160,8 +182,13 @@ class TaskWidgetProvider : AppWidgetProvider() {
 
         fun updateWidget(context: Context, manager: AppWidgetManager, widgetId: Int) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val removedFromShortcuts = prefs.getBoolean(keyRemoved(widgetId), false)
             val actionProfileId = prefs.getLong(keyActionProfileId(widgetId), -1L)
-            val defaultActionName = context.getString(R.string.app_name)
+            val defaultActionName = if (removedFromShortcuts) {
+                context.getString(R.string.widget_removed_from_shortcuts)
+            } else {
+                context.getString(R.string.app_name)
+            }
             val actionName = prefs.getString(keyActionName(widgetId), defaultActionName) ?: defaultActionName
 
             val icon = WidgetIconCatalog.resolve(
@@ -175,8 +202,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
             val options = manager.getAppWidgetOptions(widgetId)
             val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
             val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
-            val isCompact = minWidth < EXPANDED_LAYOUT_MIN_SIZE_DP ||
-                minHeight < EXPANDED_LAYOUT_MIN_SIZE_DP
+            val isCompact = minWidth < EXPANDED_LAYOUT_MIN_SIZE_DP || minHeight < EXPANDED_LAYOUT_MIN_SIZE_DP
             val layoutRes = if (isCompact) R.layout.widget_task_compact else R.layout.widget_task
             val views = RemoteViews(context.packageName, layoutRes)
             views.setImageViewBitmap(
@@ -189,27 +215,27 @@ class TaskWidgetProvider : AppWidgetProvider() {
             views.setTextColor(R.id.widget_task_name, WidgetBackgroundRenderer.contrastingTextColor(backgroundColor))
             views.setTextColor(R.id.widget_tap_to_run, WidgetBackgroundRenderer.contrastingTextColor(backgroundColor))
 
-            val target = if (actionProfileId > 0L) {
-                Intent(context, TaskRunActivity::class.java).apply {
+            val target = when {
+                removedFromShortcuts -> null
+                actionProfileId > 0L -> Intent(context, TaskRunActivity::class.java).apply {
                     putExtra(TaskRunActivity.EXTRA_PROFILE_ID, actionProfileId)
                     putExtra(TaskRunActivity.EXTRA_SOURCE, TaskRunActivity.SOURCE_WIDGET)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 }
-            } else {
-                // No Action bound: send the tap to configuration rather than leaving a dead widget.
-                Intent(context, TaskWidgetConfigActivity::class.java).apply {
+                else -> Intent(context, TaskWidgetConfigActivity::class.java).apply {
                     putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 }
             }
-            val pendingIntent = PendingIntent.getActivity(
-                context,
-                widgetId,
-                target,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            )
+            val pendingIntent = target?.let {
+                PendingIntent.getActivity(
+                    context,
+                    widgetId,
+                    it,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+            }
             views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
-
             manager.updateAppWidget(widgetId, views)
         }
     }
