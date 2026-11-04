@@ -26,7 +26,10 @@ class TaskWidgetConfigPolishSourceTest {
         val config = sourceRoot.resolve("com/opentasker/widget/TaskWidgetConfigActivity.kt").readText()
         val ownership = sourceRoot.resolve("com/opentasker/widget/WidgetProfileLinks.kt").readText()
         val selectors = modelSourceRoot.resolve("com/opentasker/core/model/ActionExecutionBinding.kt").readText()
+        val actionList = sourceRoot.resolve("com/opentasker/ui/screens/ActiveAutomationLists.kt").readText()
 
+        assertTrue("Widget-owned Actions should not show the normal delete/duplicate menu", actionList.contains("if (widgetOwned)"))
+        assertTrue("Widget-owned Actions should be labeled as widgets", actionList.contains("Text(\"Widget\""))
         assertTrue("Widget setup should explain that it creates an owned Action", config.contains("Every widget gets its own protected Action"))
         assertTrue("Widget setup should save an Action automatically", config.contains("WidgetProfileLinks.createOrUpdateAction"))
         assertTrue("Each widget Action should be tagged with its owning widget ID", ownership.contains("widgetId = widgetId"))
