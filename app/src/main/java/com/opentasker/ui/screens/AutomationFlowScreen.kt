@@ -228,7 +228,7 @@ private fun FlowGraphCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .semantics { contentDescription = graph.accessibilitySummary() },
+            .semantics { contentDescription = graph.title },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.20f)),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shape = RoundedCornerShape(com.opentasker.ui.theme.DesignSystem.Radii.md),
@@ -264,39 +264,6 @@ private fun FlowGraphCard(
             FlowInlineCommand(label = stringResource(R.string.profile_add_context), onClick = { onAddContext(graph.profileId) })
 
             FlowNodeView(profileNode, onNodeTargetSelected)
-            if (graph.warnings.isNotEmpty()) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    graph.warnings.forEach { warning ->
-                        Text(
-                            warning,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                }
-            }
-            if (graph.lintFindings.isNotEmpty()) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    graph.lintFindings.forEach { finding ->
-                        Text(
-                            stringResource(
-                                R.string.automation_lint_finding,
-                                finding.title,
-                                finding.detail,
-                                finding.suggestedFix,
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (finding.severity == AutomationLintSeverity.BLOCKING) {
-                                MaterialTheme.colorScheme.error
-                            } else {
-                                MaterialTheme.colorScheme.secondary
-                            },
-                        )
-                    }
-                }
-            }
         }
     }
 }
