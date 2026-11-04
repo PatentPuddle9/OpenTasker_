@@ -210,10 +210,8 @@ fun ActiveAutomationUi(
     val tasks by viewModel.tasks.collectAsState(); val invariants by viewModel.invariants.collectAsState()
     val scenes by viewModel.scenes.collectAsState()
     val projects by viewModel.projects.collectAsState()
-    val runLogs by viewModel.runLog.runLogs.collectAsState()
     val runLogPage by viewModel.runLog.runLogPage.collectAsState()
     val runLogFilters by viewModel.runLog.runLogFilters.collectAsState()
-    val runLogTaskOptions by viewModel.runLog.runLogTaskOptions.collectAsState()
     val activeExecutions by viewModel.activeExecutions.collectAsState()
     val globalVariables by viewModel.globalVariables.collectAsState()
     val runLogRetentionPolicy by viewModel.runLog.runLogRetentionPolicy.collectAsState()
@@ -755,7 +753,6 @@ fun ActiveAutomationUi(
                 profiles = projectProfiles,
                 tasks = projectTasks,
                 allTasks = tasks,
-                runLogs = runLogs,
                 storageDecodeIssues = storageDecodeIssues,
                 onCreateProfile = startNewProfile,
                 onBrowseTemplates = {

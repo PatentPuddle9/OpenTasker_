@@ -10,14 +10,12 @@ import com.opentasker.core.storage.AppDatabase
 import com.opentasker.core.storage.RunLogQuery
 import com.opentasker.core.storage.RunLogRetentionPolicy
 import com.opentasker.core.storage.RunLogRetentionSettings
-import com.opentasker.core.storage.RunLogTaskOption
 import com.opentasker.core.storage.applyRetention
 import com.opentasker.core.storage.loadPage
 import com.opentasker.core.storage.minimumTimestamp
 import com.opentasker.core.storage.normalized
 import com.opentasker.core.storage.openSnapshot
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -29,7 +27,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -48,22 +45,11 @@ internal class RunLogController(
 ) {
     private val runLogRetentionSettings = RunLogRetentionSettings(appContext)
 
-    val runLogs: StateFlow<ImmutableList<RunLogEntry>> = db.runLogDao()
-        .getRecentFlow()
-        .map { entities -> entities.map { it.toDomain() }.toImmutableList() }
-        .flowOn(Dispatchers.Default)
-        .stateIn(scope, SharingStarted.WhileSubscribed(5_000), persistentListOf())
-
     private val _runLogFilters = MutableStateFlow(RunLogFilterState())
     val runLogFilters: StateFlow<RunLogFilterState> = _runLogFilters.asStateFlow()
 
     private val _runLogPage = MutableStateFlow(RunLogPageUiState())
     val runLogPage: StateFlow<RunLogPageUiState> = _runLogPage.asStateFlow()
-
-    val runLogTaskOptions: StateFlow<ImmutableList<RunLogTaskOption>> = db.runLogDao()
-        .getTaskOptionsFlow()
-        .map { it.toImmutableList() }
-        .stateIn(scope, SharingStarted.WhileSubscribed(5_000), persistentListOf())
 
     private var runLogPageJob: Job? = null
     private var runLogQueryDebounceJob: Job? = null

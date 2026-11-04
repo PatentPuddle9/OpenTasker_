@@ -67,7 +67,6 @@ import com.opentasker.core.engine.SingleActionRun
 import com.opentasker.core.model.ActionSpec
 import com.opentasker.core.model.ContextSpec
 import com.opentasker.core.model.Profile
-import com.opentasker.core.model.RunLogEntry
 import com.opentasker.core.model.Task
 import com.opentasker.core.storage.StorageDecodeIssue
 import com.opentasker.ui.theme.DesignSystem
@@ -77,7 +76,6 @@ import com.opentasker.widget.WidgetIconCatalog
 internal fun ProfilesScreen(
     profiles: List<Profile>,
     tasks: List<Task>,
-    runLogs: List<RunLogEntry>,
     storageDecodeIssues: List<StorageDecodeIssue>,
     onCreateProfile: () -> Unit,
     onBrowseTemplates: () -> Unit,
