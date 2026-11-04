@@ -269,6 +269,7 @@ fun ActiveAutomationUi(
     var profileDialogId by rememberSaveable { mutableLongStateOf(NO_DIALOG_ENTITY_ID) }
     var showCreateProfileDialog by rememberSaveable { mutableStateOf(false) }
     var pendingProfileTask by remember { mutableStateOf<Task?>(null) }
+    var pendingFallbackTask by remember { mutableStateOf<Task?>(null) }
     var showTemplateDialog by rememberSaveable { mutableStateOf(false) }
     var showBundleTextImportDialog by rememberSaveable { mutableStateOf(false) }
     var bundleTextImportDraft by rememberSaveable { mutableStateOf("") }
@@ -549,10 +550,13 @@ fun ActiveAutomationUi(
         showMoreDestinations = false
     }
     val startNewProfile = {
-        when {
-            pendingProfileTask != null -> showCreateProfileDialog = true
-            projectTasks.isNotEmpty() -> showCreateProfileDialog = true
-            else -> viewModel.createBackingTaskForProfile(
+        if (pendingProfileTask != null) {
+            showCreateProfileDialog = true
+        } else {
+            pendingFallbackTask = null
+            // Every Action owns its own backing execution record. Reusing the first task in the
+            // project would make unrelated Actions edit and run the same action list.
+            viewModel.createBackingTaskForProfile(
                 selectedProjectId ?: com.opentasker.core.model.DEFAULT_PROJECT_ID,
             ) { task ->
                 pendingProfileTask = task
@@ -1100,15 +1104,24 @@ fun ActiveAutomationUi(
     if (showCreateProfileDialog) {
         ProfileEditorDialog(
             profile = null,
-            tasks = (projectTasks + listOfNotNull(pendingProfileTask)).distinctBy { it.id },
+            tasks = listOfNotNull(pendingProfileTask, pendingFallbackTask).distinctBy { it.id },
             onDismiss = { showCreateProfileDialog = false },
-            onSave = { name, enabled, enterTaskId, exitTaskId, cooldown, priority, gracePeriod, automationMode, group, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon, contexts, contextExpression ->
-                viewModel.createProfile(name, enabled, enterTaskId, exitTaskId, cooldown, automationMode, group, pendingProfileTask?.projectId ?: (selectedProjectId ?: com.opentasker.core.model.DEFAULT_PROJECT_ID), priority, gracePeriod, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon, contexts, contextExpression) {
+            onSave = { name, enabled, enterTaskId, _, cooldown, priority, gracePeriod, automationMode, group, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon, contexts, contextExpression ->
+                viewModel.createProfile(name, enabled, enterTaskId, null, cooldown, automationMode, group, pendingProfileTask?.projectId ?: (selectedProjectId ?: com.opentasker.core.model.DEFAULT_PROJECT_ID), priority, gracePeriod, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon, contexts, contextExpression) {
                     pendingProfileTask = null
+                    pendingFallbackTask = null
                     showCreateProfileDialog = false
                 }
             },
-            onEditTask = ::openTaskDialog,
+            onCreateFallbackAction = { onCreated ->
+                viewModel.createBackingTaskForProfile(
+                    pendingProfileTask?.projectId ?: (selectedProjectId ?: com.opentasker.core.model.DEFAULT_PROJECT_ID),
+                ) { task ->
+                    pendingFallbackTask = task
+                    onCreated(task.id)
+                    openActionPicker(task)
+                }
+            },
             onAddAction = ::openActionPicker,
             onEditAction = { task, index, action ->
                 ActionMetadataRegistry.get(action.type)?.let { openActionEdit(task, it, index) }
@@ -1174,14 +1187,16 @@ fun ActiveAutomationUi(
     profileDialog?.let { profile ->
         ProfileEditorDialog(
             profile = profile,
-            tasks = remember(profile, projectTasks, tasks) { profileEditorTasks(profile, projectTasks, tasks) },
+            tasks = remember(profile, projectTasks, tasks, pendingFallbackTask) {
+                (profileEditorTasks(profile, projectTasks, tasks) + listOfNotNull(pendingFallbackTask)).distinctBy { it.id }
+            },
             onDismiss = { clearProfileDialog() },
-            onSave = { name, enabled, enterTaskId, exitTaskId, cooldown, priority, gracePeriod, automationMode, group, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon, contexts, contextExpression ->
+            onSave = { name, enabled, enterTaskId, _, cooldown, priority, gracePeriod, automationMode, group, lifetime, expiresAtMs, maxActiveExecutions, burstLimit, overflowPolicy, fallbackTaskId, icon, contexts, contextExpression ->
                 viewModel.updateProfile(profile.copy(
                         name = name.trim(),
                         enabled = enabled,
                         enterTaskId = enterTaskId,
-                        exitTaskId = exitTaskId,
+                        exitTaskId = null,
                         cooldownSec = cooldown.coerceAtLeast(0),
                         automationMode = automationMode,
                         group = group,
@@ -1193,7 +1208,7 @@ fun ActiveAutomationUi(
                         contexts = contexts,
                         contextExpression = contextExpression,
                     ),
-                    onSaved = { clearProfileDialog() },
+                    onSaved = { pendingFallbackTask = null; clearProfileDialog() },
                 )
             },
             onSimulate = { editedProfile -> openSimulation(editedProfile) },
@@ -1205,7 +1220,6 @@ fun ActiveAutomationUi(
             onDeleteContext = { index ->
                 if (profile.contexts.getOrNull(index) != null) viewModel.removeProfileContext(profile, index)
             },
-            onEditTask = ::openTaskDialog,
             onAddAction = ::openActionPicker,
             onEditAction = { task, index, action ->
                 ActionMetadataRegistry.get(action.type)?.let { openActionEdit(task, it, index) }
@@ -1214,6 +1228,13 @@ fun ActiveAutomationUi(
             onDeleteAction = { task, index -> viewModel.removeTaskAction(task, index) },
             onMoveAction = { task, from, to -> viewModel.moveTaskAction(task.id, from, to) },
             onRunAction = { task, index -> viewModel.runActionNow(task, index) },
+            onCreateFallbackAction = { onCreated ->
+                viewModel.createBackingTaskForProfile(profile.projectId) { task ->
+                    pendingFallbackTask = task
+                    onCreated(task.id)
+                    openActionPicker(task)
+                }
+            },
             runBusy = runBusy,
         )
     }
