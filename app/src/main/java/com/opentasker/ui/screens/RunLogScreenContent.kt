@@ -105,6 +105,7 @@ internal fun RunLogScreenContent(
     failed: Boolean = false,
     filters: RunLogFilterState = RunLogFilterState(),
     taskOptions: List<Pair<Long, String>> = runLogTaskOptions(logs, tasks),
+    actionNamesById: Map<Long, String> = emptyMap(),
     onFiltersChange: (RunLogFilterState) -> Unit = {},
     onLoadMore: () -> Unit = {},
     onRefresh: () -> Unit = {},
@@ -642,7 +643,7 @@ private fun RunLogCard(
                     )
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(entry.taskName, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(actionNamesById[entry.taskId] ?: entry.taskName, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(time, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     sourceText?.let { source ->
                         Text(
@@ -1059,7 +1060,7 @@ private fun ActiveExecutionsCard(
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            execution.taskName,
+                            actionNamesById[execution.taskId] ?: execution.taskName,
                             style = MaterialTheme.typography.bodyMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
