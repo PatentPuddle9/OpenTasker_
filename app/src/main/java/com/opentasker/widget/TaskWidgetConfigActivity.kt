@@ -66,10 +66,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.opentasker.app.R
 import com.opentasker.app.OpenTaskerApp_NoHilt
-import com.opentasker.core.model.ActionExecutionBinding
 import com.opentasker.core.model.Profile
-import com.opentasker.core.model.Task
-import com.opentasker.core.model.resolveActionExecutionBindings
+import com.opentasker.core.model.selectableActionProfiles
 import com.opentasker.core.storage.StorageDecodeIssue
 import com.opentasker.ui.screens.StorageDecodeWarningCard
 import com.opentasker.ui.theme.DesignSystem
@@ -79,7 +77,6 @@ import com.opentasker.ui.theme.ThemePreference
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -106,21 +103,19 @@ class TaskWidgetConfigActivity : ComponentActivity() {
         val actionsFlow = flow {
             val db = OpenTaskerApp_NoHilt.awaitDb()
             emitAll(
-                combine(db.profileDao().getAllAsFlow(), db.taskDao().getAllAsFlow()) { profileEntities, taskEntities ->
+                db.profileDao().getAllAsFlow().map { profileEntities ->
                     val profileResults = profileEntities.map { it.toDomainDecodeResult() }
-                    val taskResults = taskEntities.map { it.toDomainDecodeResult() }
-                    val actions = profileResults.mapNotNull { it.value.takeIf { _ -> it.issue == null } }
-                    val executions = taskResults.mapNotNull { it.value.takeIf { _ -> it.issue == null } }
+                    val profiles = profileResults.mapNotNull { it.value.takeIf { _ -> it.issue == null } }
                     WidgetActionState(
-                        actions = resolveActionExecutionBindings(actions, executions),
-                        storageDecodeIssues = profileResults.mapNotNull { it.issue } + taskResults.mapNotNull { it.issue },
+                        actions = selectableActionProfiles(profiles),
+                        storageDecodeIssues = profileResults.mapNotNull { it.issue },
                     )
                 },
             )
         }
 
         val prefs = getSharedPreferences(TaskWidgetProvider.PREFS_NAME, MODE_PRIVATE)
-        val initialTaskId = prefs.getLong(TaskWidgetProvider.keyTaskId(widgetId), -1L).takeIf { it > 0L }
+        val initialProfileId = prefs.getLong(TaskWidgetProvider.keyActionProfileId(widgetId), -1L).takeIf { it > 0L }
         val initialStyle = WidgetStyle(
             icon = prefs.getString(TaskWidgetProvider.keyIcon(widgetId), WidgetIconCatalog.default.key)
                 ?: WidgetIconCatalog.default.key,
@@ -137,7 +132,7 @@ class TaskWidgetConfigActivity : ComponentActivity() {
                 ConfigScreen(
                     actions = actionState.actions,
                     storageDecodeIssues = actionState.storageDecodeIssues,
-                    initialTaskId = initialTaskId,
+                    initialProfileId = initialProfileId,
                     initialStyle = initialStyle,
                     onWidgetCreated = ::onWidgetCreated,
                 )
@@ -145,17 +140,20 @@ class TaskWidgetConfigActivity : ComponentActivity() {
         }
     }
 
-    private fun onWidgetCreated(binding: ActionExecutionBinding, style: WidgetStyle) {
+    private fun onWidgetCreated(action: Profile, style: WidgetStyle) {
         lifecycleScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    WidgetProfileLinks.syncProfile(this@TaskWidgetConfigActivity, widgetId, binding.execution, style, action = binding.action)
+                    // Remove the duplicate profile created by older widget versions. New widgets
+                    // reference the user's existing Action directly and never create a profile.
+                    WidgetProfileLinks.deleteProfile(this@TaskWidgetConfigActivity, widgetId)
                 }
             }.onSuccess {
                 val prefs = getSharedPreferences(TaskWidgetProvider.PREFS_NAME, MODE_PRIVATE)
                 prefs.edit()
-                    .putLong(TaskWidgetProvider.keyTaskId(widgetId), binding.execution.id)
-                    .putString(TaskWidgetProvider.keyTaskName(widgetId), binding.action.name)
+                    .putLong(TaskWidgetProvider.keyActionProfileId(widgetId), action.id)
+                    .remove(TaskWidgetProvider.keyTaskId(widgetId))
+                    .putString(TaskWidgetProvider.keyTaskName(widgetId), action.name)
                     .putString(TaskWidgetProvider.keyIcon(widgetId), style.icon)
                     .putInt(TaskWidgetProvider.keyIconColor(widgetId), style.iconColor)
                     .putInt(TaskWidgetProvider.keyBackgroundColor(widgetId), style.backgroundColor)
@@ -169,7 +167,7 @@ class TaskWidgetConfigActivity : ComponentActivity() {
             }.onFailure { error ->
                 Toast.makeText(
                     this@TaskWidgetConfigActivity,
-                    "Couldn't save widget profile: ${error.message ?: "Unknown error"}",
+                    "Couldn't save widget Action: ${error.message ?: "Unknown error"}",
                     Toast.LENGTH_LONG,
                 ).show()
             }
@@ -182,20 +180,20 @@ private fun Int.toHexColor(): String = String.format(java.util.Locale.ROOT, "#%0
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun ConfigScreen(
-    actions: List<ActionExecutionBinding>,
+    actions: List<Profile>,
     storageDecodeIssues: List<StorageDecodeIssue>,
-    initialTaskId: Long?,
+    initialProfileId: Long?,
     initialStyle: WidgetStyle,
-    onWidgetCreated: (ActionExecutionBinding, WidgetStyle) -> Unit,
+    onWidgetCreated: (Profile, WidgetStyle) -> Unit,
 ) {
-    var selectedExecutionId by rememberSaveable { mutableStateOf(initialTaskId) }
+    var selectedProfileId by rememberSaveable { mutableStateOf(initialProfileId) }
     var selectedIcon by rememberSaveable { mutableStateOf(WidgetIconCatalog.resolve(initialStyle.icon).key) }
     var iconColorHex by rememberSaveable { mutableStateOf(initialStyle.iconColor.toHexColor()) }
     var backgroundColorHex by rememberSaveable { mutableStateOf(initialStyle.backgroundColor.toHexColor()) }
     var useGradient by rememberSaveable { mutableStateOf(initialStyle.gradient) }
     var selectedShape by rememberSaveable { mutableStateOf(initialStyle.shape) }
 
-    val selectedAction = actions.firstOrNull { it.execution.id == selectedExecutionId }
+    val selectedAction = actions.firstOrNull { it.id == selectedProfileId }
     val iconColor = parseWidgetColor(iconColorHex)
     val backgroundColor = parseWidgetColor(backgroundColorHex)
     val previewTextColor = backgroundColor?.let { color ->
@@ -269,10 +267,10 @@ private fun ConfigScreen(
                 WidgetConfigHeader(actionCount = actions.size)
 
                 Text("1. Choose an Action", style = MaterialTheme.typography.titleMedium)
-                actions.forEach { binding ->
-                    val selected = binding.execution.id == selectedExecutionId
+                actions.forEach { action ->
+                    val selected = action.id == selectedProfileId
                     Card(
-                        onClick = { selectedExecutionId = binding.execution.id },
+                        onClick = { selectedProfileId = action.id },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 68.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.56f)
@@ -297,7 +295,7 @@ private fun ConfigScreen(
                             )
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(binding.action.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(action.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(
                                     stringResource(R.string.widget_action_available),
                                     style = MaterialTheme.typography.bodySmall,
@@ -402,7 +400,7 @@ private fun ConfigScreen(
 
                     Text("Live preview", style = MaterialTheme.typography.titleMedium)
                     WidgetLivePreview(
-                        taskName = selectedAction.action.name,
+                        actionName = selectedAction.name,
                         icon = selectedIcon,
                         iconColor = iconColor?.let { Color(it) },
                         backgroundColor = backgroundColor?.let { Color(it) },
@@ -429,7 +427,7 @@ private fun ConfigScreen(
                         enabled = iconColor != null && backgroundColor != null,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(if (initialTaskId == null) "Add widget to home screen" else "Save shortcut changes")
+                        Text(if (initialProfileId == null) "Add widget to home screen" else "Save shortcut changes")
                     }
                 }
             }
@@ -542,7 +540,7 @@ private fun parseWidgetColor(value: String): Int? {
 }
 
 private data class WidgetActionState(
-    val actions: List<ActionExecutionBinding> = emptyList(),
+    val actions: List<Profile> = emptyList(),
     val storageDecodeIssues: List<StorageDecodeIssue> = emptyList(),
 )
 
