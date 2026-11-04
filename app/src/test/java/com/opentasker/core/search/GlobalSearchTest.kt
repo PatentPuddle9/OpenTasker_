@@ -1,6 +1,8 @@
 package com.opentasker.core.search
 
+import com.opentasker.core.model.ActionExecutionBinding
 import com.opentasker.core.model.ActionSpec
+import com.opentasker.core.model.resolveActionExecutionBindings
 import com.opentasker.core.model.Profile
 import com.opentasker.core.model.Scene
 import com.opentasker.core.model.SceneElement
@@ -81,4 +83,27 @@ class GlobalSearchTest {
 
         assertTrue(results.isEmpty())
     }
+    @Test
+    fun actionBindingResolverHidesWidgetOwnedAndMissingExecutionRecords() {
+        val zulu = Profile(id = 1, name = "Zulu", enterTaskId = 10)
+        val alpha = Profile(id = 2, name = "Alpha", enterTaskId = 20)
+        val missing = Profile(id = 3, name = "Missing", enterTaskId = 30)
+        val widgetOwned = Profile(id = 4, name = "Widget", enterTaskId = 40, widgetId = 7)
+        val executions = listOf(
+            Task(id = 10, name = "internal zulu"),
+            Task(id = 20, name = "internal alpha"),
+            Task(id = 40, name = "internal widget"),
+        )
+
+        val resolved = resolveActionExecutionBindings(
+            actions = listOf(zulu, missing, widgetOwned, alpha),
+            executionRecords = executions,
+        )
+
+        assertEquals(listOf("Alpha", "Zulu"), resolved.map { it.action.name })
+        assertEquals(listOf(20L, 10L), resolved.map { it.execution.id })
+        assertTrue(resolved.none { it.action.widgetId != null })
+        assertTrue(resolved.none { it.action.name == "Missing" })
+    }
+
 }
