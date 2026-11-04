@@ -266,6 +266,7 @@ fun ActiveAutomationUi(
     val actionProfiles = remember(profiles) { profiles.filter { it.widgetId == null } }
     val projectProfiles = remember(actionProfiles, selectedProjectId) { actionProfiles.filter { selectedProjectId == null || it.projectId == selectedProjectId } }
     val actionBindings = remember(profiles, tasks) { resolveActionExecutionBindings(profiles, tasks) }
+    val actionNamesByExecutionId = remember(actionBindings) { actionBindings.associate { it.execution.id to it.action.name } }
     val projectScenes = remember(scenes, selectedProjectId) { scenes.filter { selectedProjectId == null || it.projectId == selectedProjectId } }
     val projectVariables = remember(globalVariables, selectedProjectId) { globalVariables.filter { selectedProjectId == null || it.projectId == selectedProjectId } }
     val screen = OpenTaskerScreen.entries.getOrElse(screenOrdinal) { OpenTaskerScreen.Actions }
@@ -879,13 +880,14 @@ fun ActiveAutomationUi(
 
             OpenTaskerScreen.RunLog -> RunLogScreenContent(
                 logs = runLogPage.entries,
-                tasks = tasks,
+                tasks = emptyList(),
                 totalCount = runLogPage.totalCount,
                 hasMore = runLogPage.hasMore,
                 loading = runLogPage.loading,
                 failed = runLogPage.failed,
                 filters = runLogFilters,
-                taskOptions = runLogTaskOptions.map { it.taskId to it.taskName },
+                taskOptions = actionBindings.map { it.execution.id to it.action.name },
+                actionNamesById = actionNamesByExecutionId,
                 onFiltersChange = viewModel.runLog::updateRunLogFilters,
                 onLoadMore = viewModel.runLog::loadNextRunLogPage,
                 onRefresh = viewModel.runLog::refreshRunLogPage,
