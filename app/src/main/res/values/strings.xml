@@ -16,7 +16,7 @@
     <string name="qs_tile_saved">Quick Settings tile saved.</string>
     <string name="qs_tile_default_label">Task tile %1$d</string>
     <string name="permission_automation_label">Control OpenTasker automations</string>
-    <string name="permission_automation_description">Allows same-signer integrations to run OpenTasker tasks, toggle profiles, and query automation status through documented intents.</string>
+    <string name="permission_automation_description">Allows same-signer integrations to run OpenTasker tasks, toggle actions, and query automation status through documented intents.</string>
     <string name="error_prefix">Error: %1$s</string>
     <string name="success_prefix">Success: %1$s</string>
     <string name="widget_task_description">Run an OpenTasker task with one tap</string>
@@ -26,12 +26,12 @@
     <!-- Navigation -->
     <string name="locale_select_task_title">Select task for Locale plugin</string>
     <string name="locale_condition_edit_title">Select OpenTasker condition</string>
-    <string name="locale_condition_profiles">Profile state</string>
-    <string name="locale_condition_profile_active">Profile is currently active</string>
-    <string name="locale_condition_no_profiles">No profiles are available.</string>
+    <string name="locale_condition_profiles">Action state</string>
+    <string name="locale_condition_profile_active">Action is currently active</string>
+    <string name="locale_condition_no_profiles">No actions are available.</string>
     <string name="locale_condition_contexts">Context state</string>
     <string name="locale_condition_context_satisfied">Context is currently satisfied</string>
-    <string name="locale_condition_no_contexts">No profile contexts are available.</string>
+    <string name="locale_condition_no_contexts">No action contexts are available.</string>
     <string name="locale_condition_variables">Variable comparison</string>
     <string name="locale_condition_variable_help">Secret variables are omitted. Choose a non-secret variable, then enter the comparison value.</string>
     <string name="locale_condition_variable_choose">Choose this variable</string>
@@ -47,7 +47,7 @@
     <string name="locale_condition_operator_ends_with">ends with</string>
     <string name="nav_actions">Actions</string>
     <string name="nav_shortcuts">Shortcuts</string>
-    <string name="widget_profile_owned">This profile is managed by its home-screen widget. Remove the widget to delete it.</string>
+    <string name="widget_profile_owned">This action is managed by its home-screen widget. Remove the widget to delete it.</string>
     <string name="nav_run_log">Run Log</string>
     <string name="nav_setup">Setup</string>
     <string name="nav_settings">Settings</string>
@@ -58,12 +58,12 @@
     <string name="nav_diagnostics">Diagnostics</string>
     <string name="global_search_content_description">Search all automations</string>
     <string name="global_search_title">Search OpenTasker</string>
-    <string name="global_search_label">Search profiles, tasks, actions, variables, and scenes</string>
+    <string name="global_search_label">Search actions, tasks, actions, variables, and scenes</string>
     <string name="global_search_hint">Try a name, action type, or variable reference</string>
     <string name="global_search_clear">Clear global search</string>
     <string name="global_search_prompt">Type to search across every project.</string>
-    <string name="global_search_no_results">No matching profiles, tasks, actions, variables, or scenes.</string>
-    <string name="global_search_result_profile">Profile</string>
+    <string name="global_search_no_results">No matching actions, tasks, actions, variables, or scenes.</string>
+    <string name="global_search_result_profile">Action</string>
     <string name="global_search_result_task">Task</string>
     <string name="global_search_result_action">Action</string>
     <string name="global_search_result_variable">Variable</string>
@@ -85,7 +85,7 @@
     <string name="transfer_stage_plan">Working out what changes</string>
     <string name="transfer_stage_write">Saving</string>
     <string name="action_save">Save</string>
-    <string name="action_run_alone">Run this action</string>
+    <string name="action_run_alone">Test</string>
     <string name="action_delete">Delete</string>
     <string name="action_dismiss">Dismiss</string>
     <string name="action_import">Import</string>
@@ -189,8 +189,8 @@
     <!-- Dialog titles -->
     <string name="dialog_create_task">Create Task</string>
     <string name="dialog_edit_task">Edit Task</string>
-    <string name="dialog_create_profile">Create Profile</string>
-    <string name="dialog_edit_profile">Edit Profile</string>
+    <string name="dialog_create_profile">Create Action</string>
+    <string name="dialog_edit_profile">Edit Action</string>
     <string name="dialog_add_action">Add action</string>
     <string name="dialog_add_context">Add context</string>
     <string name="action_picker_search_label">Search actions</string>
@@ -208,31 +208,33 @@
     <string name="dialog_profile_share_review">Review community share</string>
 
     <!-- Profile editor -->
-    <string name="profile_name_label">Profile name</string>
+    <string name="profile_name_label">Action name</string>
     <string name="profile_name_hint">Weekday work mode</string>
-    <string name="profile_name_helper">Profiles read best when named after the situation they detect.</string>
+    <string name="profile_name_helper">Actions read best when named after the situation they detect.</string>
     <string name="profile_group_label">Group</string>
     <string name="profile_group_hint">Work, Home, Travel</string>
-    <string name="profile_group_helper">Optional. Groups profiles in the list for easier browsing.</string>
+    <string name="profile_group_helper">Optional. Groups actions in the list for easier browsing.</string>
     <string name="profile_enable_after_save">Enable after saving</string>
     <string name="profile_enter_task">Enter task</string>
     <string name="profile_exit_task">Exit task</string>
-    <string name="profile_exit_task_helper">Optional cleanup task to run when this profile stops matching.</string>
-    <string name="profile_fallback_task">Profile fallback task</string>
-    <string name="profile_fallback_task_helper">Optional task to run when the profile task fails without a flow.catch.</string>
+    <string name="profile_exit_task_helper">Optional cleanup task to run when this action stops matching.</string>
+    <string name="profile_fallback_task">Action fallback task</string>
+    <string name="profile_fallback_task_helper">Optional action to run when this action fails without a flow.catch.</string>
+    <string name="profile_fallback_action_add">Add fallback action</string>
+    <string name="profile_fallback_action_replace">Replace missing fallback action</string>
     <string name="profile_cooldown_label">Cooldown seconds</string>
     <string name="profile_cooldown_helper">Minimum seconds between triggers. Default is 0 (no cooldown).</string>
-    <string name="profile_priority_label">Profile priority</string>
-    <string name="profile_priority_helper">Higher priority wins when enabled profiles match at the same time. Equal priorities use the lower profile ID.</string>
+    <string name="profile_priority_label">Action priority</string>
+    <string name="profile_priority_helper">Higher priority wins when enabled actions match at the same time. Equal priorities use the lower action ID.</string>
     <string name="profile_priority_invalid">Enter a whole number from -100 to 100.</string>
     <string name="profile_grace_period_label">Activation grace seconds</string>
     <string name="profile_grace_period_helper">Require the contexts to stay matched or unmatched for this long before changing state. Default is 0.</string>
     <string name="profile_grace_period_invalid">Enter a whole number from 0 to 3600.</string>
     <string name="profile_max_active_label">Active execution limit</string>
-    <string name="profile_max_active_helper">How many runs of this profile may be in flight at once, from 1 to 8. Leave blank to use the built-in default.</string>
+    <string name="profile_max_active_helper">How many runs of this action may be in flight at once, from 1 to 8. Leave blank to use the built-in default.</string>
     <string name="profile_max_active_invalid">Enter a whole number from 1 to 8, or leave blank.</string>
     <string name="profile_burst_limit_label">Limit rapid repeats</string>
-    <string name="profile_burst_limit_helper">How many times this profile may start in quick succession, from 1 to 32. Leave blank to use the built-in default.</string>
+    <string name="profile_burst_limit_helper">How many times this action may start in quick succession, from 1 to 32. Leave blank to use the built-in default.</string>
     <string name="profile_burst_limit_invalid">Enter a whole number from 1 to 32, or leave blank.</string>
     <string name="profile_concurrency_inherit_hint">Inherited default</string>
     <string name="profile_overflow_policy_label">When the limit is reached</string>
@@ -240,28 +242,28 @@
     <string name="profile_overflow_log_body">Record rejected runs in the Run Log so they can be replayed after capacity returns.</string>
     <string name="profile_overflow_silent_title">Skip silently</string>
     <string name="profile_overflow_silent_body">Skip rejected runs without creating a Run Log entry.</string>
-    <string name="profile_lifetime_label">Profile lifetime</string>
+    <string name="profile_lifetime_label">Action lifetime</string>
     <string name="profile_lifetime_never_title">Always available</string>
-    <string name="profile_lifetime_never_body">The profile remains eligible until you disable or edit it.</string>
+    <string name="profile_lifetime_never_body">The action remains eligible until you disable or edit it.</string>
     <string name="profile_lifetime_date_title">Until a date</string>
     <string name="profile_lifetime_date_body">Stop matching after the selected calendar date ends.</string>
     <string name="profile_lifetime_once_title">Run once</string>
-    <string name="profile_lifetime_once_body">Disable the profile after its first accepted activation.</string>
+    <string name="profile_lifetime_once_body">Disable the action after its first accepted activation.</string>
     <string name="automation_mode_single_title">Ignore while running</string>
     <string name="automation_mode_restart_title">Cancel and restart</string>
     <string name="automation_mode_queued_title">Run again in order</string>
     <string name="automation_mode_parallel_title">Allow overlap</string>
     <string name="profile_expiry_date_label">Expiry date</string>
     <string name="profile_expiry_date_hint">YYYY-MM-DD</string>
-    <string name="profile_expiry_date_helper">Use the local calendar date. The profile remains available through that day.</string>
+    <string name="profile_expiry_date_helper">Use the local calendar date. The action remains available through that day.</string>
     <string name="profile_expiry_date_invalid">Enter a valid date as YYYY-MM-DD.</string>
-    <string name="profile_lifecycle_one_shot_consumed">This one-shot profile has already run.</string>
-    <string name="profile_lifecycle_missing_expiry">This profile has no valid expiry date.</string>
-    <string name="profile_lifecycle_expired">This profile expired on %1$s.</string>
-    <string name="profile_lifecycle_suppressed_by_priority">Suppressed by higher-priority profile \'%1$s\'.</string>
+    <string name="profile_lifecycle_one_shot_consumed">This one-shot action has already run.</string>
+    <string name="profile_lifecycle_missing_expiry">This action has no valid expiry date.</string>
+    <string name="profile_lifecycle_expired">This action expired on %1$s.</string>
+    <string name="profile_lifecycle_suppressed_by_priority">Suppressed by higher-priority action \'%1$s\'.</string>
     <string name="profile_retrigger_label">Re-trigger behavior</string>
-    <string name="profile_new">New profile</string>
-    <string name="profile_delete">Delete Profile</string>
+    <string name="profile_new">New action</string>
+    <string name="profile_delete">Delete Action</string>
     <string name="profile_add_context">Add Context</string>
     <string name="profile_edit_context_logic">Edit context logic</string>
     <string name="profile_simulate_trigger">Simulate trigger</string>
@@ -279,7 +281,7 @@
     <string name="collision_mode_abort_existing_title">Abort existing</string>
     <string name="collision_mode_abort_existing_body">Cancel the active run, then start the new request.</string>
     <string name="collision_mode_run_both_title">Run both</string>
-    <string name="collision_mode_run_both_body">Allow this task to overlap across profiles and manual or external requests.</string>
+    <string name="collision_mode_run_both_body">Allow this task to overlap across actions and manual or external requests.</string>
     <string name="collision_mode_wait_title">Wait</string>
     <string name="collision_mode_wait_body">Queue each request and run one at a time in arrival order.</string>
     <string name="task_new">New task</string>
@@ -344,13 +346,13 @@
     <string name="setup_item_already_ready">%1$s is already ready.</string>
     <string name="setup_theme_helper_full">Choose the display mode used across navigation, setup, and runtime review surfaces.</string>
     <string name="setup_direct_boot_title">Pre-unlock time triggers</string>
-    <string name="setup_direct_boot_body">Optional and off by default. When it is on, the only thing OpenTasker starts before you first unlock the phone is its own once-a-minute clock, and it remembers a single tick in storage the lock screen can reach. Your profiles, tasks, saved data, secrets, and every other kind of trigger wait until you unlock.</string>
+    <string name="setup_direct_boot_body">Optional and off by default. When it is on, the only thing OpenTasker starts before you first unlock the phone is its own once-a-minute clock, and it remembers a single tick in storage the lock screen can reach. Your actions, tasks, saved data, secrets, and every other kind of trigger wait until you unlock.</string>
     <string name="setup_direct_boot_enabled">On: one clock tick may be remembered before you unlock.</string>
     <string name="setup_direct_boot_disabled">Disabled: all triggers wait until unlock.</string>
     <string name="setup_backup_helper_full">Create a local database backup, export a copy, or keep encrypted snapshots in a folder you control. Secret variable values remain device-bound and must be re-entered after a transfer.</string>
     <string name="setup_backup_working">Working…</string>
     <string name="setup_backup_restore_body">Restart OpenTasker to apply the staged restore before the database opens.</string>
-    <string name="setup_backup_restore_summary">%1$s · schema v%2$d · %3$d profiles, %4$d tasks, %5$d scenes. Restart OpenTasker to apply it.</string>
+    <string name="setup_backup_restore_summary">%1$s · schema v%2$d · %3$d actions, %4$d tasks, %5$d scenes. Restart OpenTasker to apply it.</string>
     <string name="setup_backup_restore_unreadable">The staged restore can no longer be read (%1$s). Cancel it so the next start is not blocked.</string>
     <string name="setup_backup_restore_cancel">Cancel staged restore</string>
     <string name="setup_backup_rollback_kept">The database from before your restore on %1$s is still here if you need to go back to it.</string>
@@ -375,12 +377,12 @@
     <string name="setup_snapshots_passphrase_save">Save and use folder</string>
     <string name="setup_snapshots_destination_save_failed">The snapshot folder grant or recovery passphrase could not be saved.</string>
     <string name="setup_global_fallback_title">Global failure fallback</string>
-    <string name="setup_global_fallback_body">When a task fails without a flow.catch or profile fallback, run this task once with the structured FLOW_ERROR_JSON payload.</string>
+    <string name="setup_global_fallback_body">When a task fails without a flow.catch or action fallback, run this task once with the structured FLOW_ERROR_JSON payload.</string>
     <string name="setup_global_fallback_label">Global fallback task</string>
     <string name="setup_global_fallback_hint">Optional final recovery task</string>
     <string name="restore_review_title">Review restore</string>
     <string name="restore_review_summary">%1$s · %2$s · schema v%3$d</string>
-    <string name="restore_review_counts">%1$d profiles · %2$d tasks · %3$d scenes · %4$d variables · %5$d run log entries</string>
+    <string name="restore_review_counts">%1$d actions · %2$d tasks · %3$d scenes · %4$d variables · %5$d run log entries</string>
     <string name="restore_review_incompatible">The schema version of this database is outside the range this build can open.</string>
     <string name="restore_review_replaces">This replaces a restore already staged: %1$s (schema v%2$d). Staging discards it.</string>
     <string name="restore_review_body">Nothing has been staged yet. Staging queues this database to replace the live one at the next start; the current database is snapshotted first.</string>
@@ -541,12 +543,12 @@
     <string name="setup_oem_guide_unavailable">No app can open the guidance page: %1$s</string>
 
     <!-- Empty states -->
-    <string name="empty_profiles_title">No profiles yet</string>
-    <string name="empty_profiles_body">Profiles combine triggers with tasks to automate your device.</string>
+    <string name="empty_profiles_title">No actions yet</string>
+    <string name="empty_profiles_body">Actions combine triggers with the steps they run to automate your device.</string>
     <string name="empty_tasks_title">No tasks yet</string>
     <string name="empty_tasks_body">Tasks contain the actions your automations will execute.</string>
     <string name="empty_run_log_title">No run log entries</string>
-    <string name="empty_run_log_body">Entries appear here after profiles trigger task execution.</string>
+    <string name="empty_run_log_body">Entries appear here after actions trigger task execution.</string>
     <string name="empty_variables_title">No global variables yet</string>
     <string name="empty_variables_body">Store values your tasks can reuse. Tasks can set them too, and anything they save shows up here.</string>
     <string name="empty_variables_create">New variable</string>
@@ -559,7 +561,7 @@
     <string name="empty_variables_search_body">Clear search to review all saved variables.</string>
     <string name="empty_scenes_title">No scenes yet</string>
     <string name="empty_scenes_body">Create an overlay panel to display status or controls on top of other apps.</string>
-    <string name="empty_profiles_inspector">No profiles</string>
+    <string name="empty_profiles_inspector">No actions</string>
     <string name="empty_run_log_search_title">No matching runs</string>
     <string name="empty_run_log_search_body">Adjust the status filter or search query to find entries.</string>
 
@@ -624,7 +626,7 @@
     <string name="content_description_info">Information</string>
     <string name="import_power_review">Requested automation powers</string>
     <string name="import_power_task">Task %1$s: %2$s</string>
-    <string name="import_power_profiles">Profiles: %1$s</string>
+    <string name="import_power_profiles">Actions: %1$s</string>
     <string name="import_power_no_profile">not directly linked</string>
     <string name="import_power_chain">Potential data transfer: %1$s → %2$s</string>
     <string name="automation_power_data_access">data access</string>
@@ -638,11 +640,11 @@
     <string name="imported_profile_data_chain_title">Potential data transfer</string>
     <string name="imported_profile_feedback_title">Feedback loop risk</string>
     <string name="imported_profile_feedback_body">This static task cycle can retrigger itself: %1$s</string>
-    <string name="imported_profile_blocked_title">Cannot enable this profile</string>
+    <string name="imported_profile_blocked_title">Cannot enable this action</string>
     <string name="imported_profile_blocked_body">Resolve missing task references and remove unsupported or unknown actions first: %1$s</string>
     <string name="imported_profile_acknowledgement">I reviewed these tasks and understand the requested powers.</string>
     <string name="imported_profile_acknowledge_enable">Acknowledge and enable</string>
-    <string name="imported_profile_editor_helper">Imported profiles must be reviewed from the profile list before their first enable.</string>
+    <string name="imported_profile_editor_helper">Imported actions must be reviewed from the action list before their first enable.</string>
     <string name="imported_profile_review_required">Review required</string>
     <string name="imported_profile_missing_task_reference">missing task #%1$d</string>
     <string name="imported_profile_no_tasks">No resolvable tasks.</string>
@@ -664,26 +666,26 @@
     <string name="automation_lint_repeated_triggering_detail">%1$s has a state context without a cooldown, dwell, or explicit idempotency guard.</string>
     <string name="automation_lint_repeated_triggering_fix">Add a cooldown, a dwell requirement, or an explicit guard condition to the enter task.</string>
     <string name="automation_lint_priority_conflict_title">Priority conflict</string>
-    <string name="automation_lint_priority_conflict_detail">%1$s and %2$s can both write %3$s while their profile priorities are %4$d and %5$d.</string>
+    <string name="automation_lint_priority_conflict_detail">%1$s and %2$s can both write %3$s while their action priorities are %4$d and %5$d.</string>
     <string name="automation_lint_priority_conflict_equal_fix">Raise one task priority or make the contexts mutually exclusive.</string>
     <string name="automation_lint_priority_conflict_ordered_fix">Confirm that the higher-priority task should win, or make the contexts mutually exclusive.</string>
-    <string name="automation_lint_inter_profile_loop_title">Inter-profile loop</string>
-    <string name="automation_lint_inter_profile_loop_detail">Profiles form a direct task cycle: %1$s.</string>
+    <string name="automation_lint_inter_profile_loop_title">Inter-action loop</string>
+    <string name="automation_lint_inter_profile_loop_detail">Actions form a direct task cycle: %1$s.</string>
     <string name="automation_lint_inter_profile_loop_fix">Remove one task.run edge or add an explicit state guard so the chain cannot retrigger itself.</string>
-    <string name="automation_lint_shadowed_rule_title">Shadowed profile</string>
+    <string name="automation_lint_shadowed_rule_title">Shadowed action</string>
     <string name="automation_lint_shadowed_rule_detail">%1$s can be active with %2$s, which writes %3$s at priority %4$d versus %5$d.</string>
-    <string name="automation_lint_shadowed_rule_fix">Make the contexts mutually exclusive, or confirm that the lower-priority profile should remain available.</string>
-    <string name="automation_lint_unreachable_rule_title">Unreachable profile</string>
+    <string name="automation_lint_shadowed_rule_fix">Make the contexts mutually exclusive, or confirm that the lower-priority action should remain available.</string>
+    <string name="automation_lint_unreachable_rule_title">Unreachable action</string>
     <string name="automation_lint_unreachable_rule_detail">%1$s cannot run: %2$s.</string>
-    <string name="automation_lint_unreachable_rule_fix">Restore the referenced task or adjust the context and lifetime constraints so the profile can run.</string>
+    <string name="automation_lint_unreachable_rule_fix">Restore the referenced task or adjust the context and lifetime constraints so the action can run.</string>
     <string name="automation_lint_action_revert_pair_title">Action/revert pair</string>
     <string name="automation_lint_action_revert_pair_detail">%1$s writes %2$s in both its enter and exit tasks.</string>
     <string name="automation_lint_action_revert_pair_fix">Verify that the exit task restores the intended previous state instead of repeating the enter action.</string>
     <string name="automation_lint_invariant_violation_title">A watched setting could be changed</string>
     <string name="automation_lint_invariant_violation_detail">Your rule %1$s (%2$s) watches a setting that %3$s may change by writing %4$s.</string>
-    <string name="automation_lint_invariant_violation_fix">Turn that profile off or narrow when it runs. If the change is deliberate, edit the rule instead.</string>
+    <string name="automation_lint_invariant_violation_fix">Turn that action off or narrow when it runs. If the change is deliberate, edit the rule instead.</string>
     <string name="automation_invariant_panel_title">Settings to warn about</string>
-    <string name="automation_invariant_panel_body">Name the device settings you do not expect your automations to change. Nothing is blocked. OpenTasker checks the rules and warns you when an enabled profile looks like it would change one.</string>
+    <string name="automation_invariant_panel_body">Name the device settings you do not expect your automations to change. Nothing is blocked. OpenTasker checks the rules and warns you when an enabled action looks like it would change one.</string>
     <string name="automation_invariant_empty">No settings are being watched yet.</string>
     <string name="automation_invariant_add">Watch a setting</string>
     <string name="automation_invariant_edit">Edit watched setting</string>
@@ -693,7 +695,7 @@
     <string name="automation_invariant_forbidden_write">Warn if this changes: %1$s</string>
     <string name="automation_invariant_add_title">Watch a device setting</string>
     <string name="automation_invariant_edit_title">Edit a watched device setting</string>
-    <string name="automation_invariant_editor_body">While the condition below holds, a profile that changes the chosen setting is reported as a problem. The change still happens; this only warns you.</string>
+    <string name="automation_invariant_editor_body">While the condition below holds, a action that changes the chosen setting is reported as a problem. The change still happens; this only warns you.</string>
     <string name="automation_invariant_name_label">Name this rule</string>
     <string name="automation_invariant_guard_key_label">Condition: device state</string>
     <string name="automation_invariant_operator_value">Operator: %1$s</string>
@@ -720,26 +722,26 @@
 
     <!-- Inspector -->
     <string name="inspector_sources_title">Context sources</string>
-    <string name="inspector_match_title">Profile match state</string>
-    <string name="inspector_body">Live source values and profile match explanations for debugging automation state.</string>
+    <string name="inspector_match_title">Action match state</string>
+    <string name="inspector_body">Live source values and action match explanations for debugging automation state.</string>
     <string name="inspector_refresh">Refresh Status</string>
     <string name="inspector_last_update">Last update</string>
     <string name="inspector_no_value">No value observed yet</string>
     <string name="inspector_no_contexts">No contexts</string>
-    <string name="inspector_no_contexts_body">This profile cannot match because it has no context entries configured.</string>
+    <string name="inspector_no_contexts_body">This action cannot match because it has no context entries configured.</string>
     <string name="inspector_simulate_trigger">Simulate trigger</string>
     <string name="inspector_lint_title">Automation lint findings</string>
     <string name="inspector_lint_count">%1$d finding(s)</string>
-    <string name="inspector_profile_selector">Profile</string>
-    <string name="inspector_profile_selector_content_description">Choose profile</string>
+    <string name="inspector_profile_selector">Action</string>
+    <string name="inspector_profile_selector_content_description">Choose action</string>
     <string name="inspector_profile_policy">Priority %1$d · Grace %2$ds · Lifetime: %3$s</string>
     <string name="inspector_profile_concurrency">Running at once %1$s · Rapid starts %2$s · Over the limit: %3$s</string>
     <string name="profile_concurrency_default">default</string>
     <string name="inspector_profile_expiry">Expires after %1$s</string>
-    <string name="inspector_profile_suppressed_title">Profile suppressed</string>
+    <string name="inspector_profile_suppressed_title">Action suppressed</string>
 
     <!-- Import -->
-    <string name="import_disabled_notice">Imported profiles will be created disabled for review.</string>
+    <string name="import_disabled_notice">Imported actions will be created disabled for review.</string>
     <string name="import_schema_info">Schema %1$d</string>
     <string name="import_schema_app">Schema %1$d · exported by app %2$s</string>
     <string name="import_incompatible">Cannot import</string>
@@ -760,12 +762,12 @@
     <string name="import_import_json">Import JSON</string>
     <string name="import_paste_json_action">Paste / scan</string>
     <string name="import_paste_json_title">Paste or scan an import</string>
-    <string name="import_paste_json_body">Paste an OpenTasker bundle or a Tasker XML task or profile here, or use a QR scanner that types the decoded text. Whichever it is opens the same review, and nothing is written until you confirm it.</string>
+    <string name="import_paste_json_body">Paste an OpenTasker bundle or a Tasker XML task or action here, or use a QR scanner that types the decoded text. Whichever it is opens the same review, and nothing is written until you confirm it.</string>
     <string name="import_paste_json_hint">OpenTasker JSON or Tasker XML</string>
     <string name="import_paste_json_review">Review import</string>
     <string name="import_opentasker_bundle">OpenTasker bundle</string>
     <string name="import_count_tasks">Tasks</string>
-    <string name="import_count_profiles">Profiles</string>
+    <string name="import_count_profiles">Actions</string>
     <string name="import_count_variables">Variables</string>
     <string name="import_count_scenes">Scenes</string>
     <string name="import_count_blueprints">Templates</string>
@@ -781,7 +783,7 @@
     <string name="import_variable_replace_secret">Replace value; keep secret</string>
     <string name="import_variable_selected">Selected: %1$s</string>
     <string name="import_count_src_tasks">Source tasks</string>
-    <string name="import_count_src_profiles">Source profiles</string>
+    <string name="import_count_src_profiles">Source actions</string>
     <string name="import_mapped">mapped</string>
     <string name="import_unsupported">unsupported</string>
     <string name="profile_share_unverified_notice">This is an unverified local draft. Review the manifest and import plan before anything is written to OpenTasker.</string>
@@ -822,13 +824,13 @@
     <string name="app_picker_icon_description">%1$s app icon</string>
 
     <!-- Workspace -->
-    <string name="workspace_review_readiness">Review readiness before enabling profiles. Tap Setup for permission details.</string>
+    <string name="workspace_review_readiness">Review readiness before enabling actions. Tap Setup for permission details.</string>
     <string name="workspace_task_library_body">Build reusable action sequences for your automations.</string>
     <string name="workspace_templates">Templates</string>
 
     <!-- Flow -->
     <string name="flow_empty_title">No automation flow</string>
-    <string name="flow_empty_body">Create profiles and tasks to see their connections here.</string>
+    <string name="flow_empty_body">Create actions and tasks to see their connections here.</string>
 
     <!-- Localization extraction batch -->
     <string name="action_retry">Retry</string>
@@ -838,7 +840,7 @@
     <string name="action_add_element">Add Element</string>
     <string name="action_remove_element">Remove Element</string>
     <string name="action_create_blank_task">Create Blank Task</string>
-    <string name="action_create_blank_profile">Create Blank Profile</string>
+    <string name="action_create_blank_profile">Create Blank Action</string>
     <string name="action_browse_templates">Browse Templates</string>
     <string name="action_add_context_short">Add Context</string>
     <string name="action_add_action_short">Add Action</string>
@@ -860,7 +862,7 @@
     <string name="permission_denied_settings">Permission denied repeatedly. Use app settings to grant it.</string>
     <string name="permission_denied_settings_body">Android will no longer show the request dialog; use app settings to recover access.</string>
 
-    <string name="label_profiles">Profiles</string>
+    <string name="label_profiles">Actions</string>
     <string name="label_contexts">Contexts</string>
     <string name="label_actions">Actions</string>
     <string name="label_tasks">Tasks</string>
@@ -893,11 +895,11 @@
     <string name="a11y_option_not_selected">%1$s not selected</string>
     <string name="a11y_expanded">Expanded</string>
     <string name="a11y_collapsed">Collapsed</string>
-    <string name="a11y_profile_status">%1$s profile status</string>
-    <string name="a11y_edit_profile">Edit profile %1$s</string>
-    <string name="a11y_add_context_to_profile">Add context to profile %1$s</string>
-    <string name="a11y_delete_profile">Delete profile %1$s</string>
-    <string name="a11y_duplicate_profile">More actions for profile %1$s</string>
+    <string name="a11y_profile_status">%1$s action status</string>
+    <string name="a11y_edit_profile">Edit action %1$s</string>
+    <string name="a11y_add_context_to_profile">Add context to action %1$s</string>
+    <string name="a11y_delete_profile">Delete action %1$s</string>
+    <string name="a11y_duplicate_profile">More actions for action %1$s</string>
     <string name="a11y_edit_task">Edit task %1$s</string>
     <string name="a11y_add_action_to_task">Add action to task %1$s</string>
     <string name="a11y_run_task">Run task %1$s</string>
@@ -930,7 +932,7 @@
     <string name="label_action_count">%1$d action(s)</string>
     <string name="label_cooldown_seconds">%1$ds cooldown</string>
     <string name="label_priority_short">Priority %1$d</string>
-    <string name="label_profile_priority">Profile priority %1$d</string>
+    <string name="label_profile_priority">Action priority %1$d</string>
     <string name="label_profile_grace_seconds">%1$ds grace</string>
     <string name="label_profile_active_limit">Active ≤ %1$d</string>
     <string name="label_profile_burst_limit">Max %1$d rapid starts</string>
@@ -939,7 +941,7 @@
     <string name="label_more_count">%1$d more</string>
 
     <string name="dialog_remove_element">Remove element?</string>
-    <string name="dialog_delete_profile">Delete profile?</string>
+    <string name="dialog_delete_profile">Delete action?</string>
     <string name="dialog_delete_task">Delete task?</string>
     <string name="dialog_delete_scene">Delete scene?</string>
     <string name="dialog_remove_action">Remove action?</string>
@@ -959,18 +961,18 @@
     <string name="context_field_event_extra_value_label">Extra value</string>
     <string name="context_field_event_extra_value_hint">Optional. Fire only when that extra contains this text</string>
     <string name="context_preset_broadcast_received">Received broadcast</string>
-    <string name="context_broadcast_platform_action_note">This looks like a system action. Apps cannot send those, so a profile on one may never fire. OpenTasker has purpose-built triggers for the common system events.</string>
+    <string name="context_broadcast_platform_action_note">This looks like a system action. Apps cannot send those, so a action on one may never fire. OpenTasker has purpose-built triggers for the common system events.</string>
     <string name="context_broadcast_sender_unavailable_note">Android 13 and older never report who sent a broadcast, so this filter will not match anything on this device.</string>
     <string name="context_broadcast_sender_optin_note">Android names the sender only when the sending app opts in to sharing its identity. Most apps do not, and neither does adb. A broadcast whose sender is unknown is refused by this filter, so leave it blank unless you know your sender shares its identity.</string>
     <string name="inspector_broadcast_listening">Listening for %1$d broadcast action(s): %2$s</string>
-    <string name="inspector_broadcast_idle">No enabled profile is waiting for a broadcast.</string>
+    <string name="inspector_broadcast_idle">No enabled action is waiting for a broadcast.</string>
     <string name="context_sms_received_android_17_note">On Android 17+, standard SMS messages containing OTPs may be withheld for up to three hours for non-default-SMS apps. Connected-device and other exempt apps can receive them sooner; use SMS Retriever or User Consent when OTP timing matters.</string>
     <string name="context_sms_received_unavailable_note">The SMS/MMS trigger is omitted from Play builds. Use a standard or F-Droid build for this event.</string>
 
     <string name="empty_first_automation_title">Build your first automation</string>
     <string name="empty_first_automation_body">Start from a guided template for the fastest path, import existing work, or create a blank task when you know the exact steps.</string>
-    <string name="empty_first_profile_title">Create your first profile</string>
-    <string name="empty_first_profile_body">Profiles decide when a task runs. Use a template for the fastest path, import existing workflows, or connect a blank profile to your task.</string>
+    <string name="empty_first_profile_title">Create your first action</string>
+    <string name="empty_first_profile_body">Actions decide when to run. Use a template for the fastest path, import existing workflows, or start with a blank action.</string>
     <string name="empty_tasks_create_body">Tasks are ordered action lists. Create a task, then add actions from the catalog.</string>
     <string name="empty_scene_elements">No elements</string>
 
@@ -1003,42 +1005,42 @@
 
     <string name="import_reading_bundle">Reading Bundle...</string>
 
-    <string name="workspace_review_readiness_templates">Review readiness before enabling profiles. Templates stay disabled until you approve them.</string>
-    <string name="workspace_task_library_ready_body">Build reusable action sequences, then attach them to profiles when the order and permissions are ready.</string>
-    <string name="workspace_templates_body">Start from a ready-made profile. You fill in the parts it asks for, read what it will be allowed to do, and it stays off until you turn it on.</string>
+    <string name="workspace_review_readiness_templates">Review readiness before enabling actions. Templates stay disabled until you approve them.</string>
+    <string name="workspace_task_library_ready_body">Build reusable action sequences, then use them when the order and permissions are ready.</string>
+    <string name="workspace_templates_body">Start from a ready-made action. You fill in the parts it asks for, read what it will be allowed to do, and it stays off until you turn it on.</string>
     <string name="workspace_recent_failure">Recent failure</string>
     <string name="workspace_review_run_log_details">Review the run log for details.</string>
     <string name="workspace_stored_data_review">Stored data needs review</string>
     <string name="workspace_stored_data_review_body">OpenTasker blocked affected records from execution and editing. %1$s%2$s. Restore a database backup before continuing; the raw stored data remains untouched.</string>
     <string name="workspace_runs_task">Runs: %1$s</string>
     <string name="workspace_missing_task">Missing task #%1$d</string>
-    <string name="workspace_profile_cannot_match">Profile cannot match yet</string>
-    <string name="workspace_profile_cannot_match_body">Add at least one context before relying on this profile.</string>
+    <string name="workspace_profile_cannot_match">Action cannot match yet</string>
+    <string name="workspace_profile_cannot_match_body">Add at least one trigger before relying on this action.</string>
     <string name="workspace_task_priority">Priority %1$d - %2$s</string>
     <string name="workspace_task_has_no_actions">Task has no actions</string>
-    <string name="workspace_task_has_no_actions_body">Add at least one action before attaching this task to an enabled profile.</string>
+    <string name="workspace_task_has_no_actions_body">Add at least one action before attaching this task to an enabled action.</string>
     <string name="workspace_no_arguments">No arguments</string>
     <string name="action_parameter_summary">%1$s with %2$s</string>
     <string name="action_summary_default_parameters">the configured values</string>
-    <string name="workspace_no_matching_profiles">No matching profiles</string>
+    <string name="workspace_no_matching_profiles">No matching actions</string>
     <string name="workspace_no_matching_profiles_body">Clear search or switch groups to see more automations.</string>
     <string name="workspace_no_matching_tasks">No matching tasks</string>
     <string name="workspace_no_matching_tasks_body">Clear search to return to the full task library.</string>
-    <string name="workspace_search_profiles">Search profiles...</string>
+    <string name="workspace_search_profiles">Search actions...</string>
     <string name="workspace_actions_content_description">Workspace tools</string>
     <string name="workspace_search_tasks">Search tasks...</string>
 
     <string name="flow_empty_content_description">Flow view empty</string>
-    <string name="flow_empty_profile_graph_title">No profile graph yet</string>
-    <string name="flow_empty_profile_graph_body">Create or import a profile to generate a readable automation graph with contexts, tasks, actions, and missing references.</string>
-    <string name="flow_waiting_for_profile">Waiting for profile</string>
+    <string name="flow_empty_profile_graph_title">No action graph yet</string>
+    <string name="flow_empty_profile_graph_body">Create or import a action to generate a readable automation graph with contexts, tasks, actions, and missing references.</string>
+    <string name="flow_waiting_for_profile">Waiting for action</string>
     <string name="flow_overview_title">Flow overview</string>
-    <string name="flow_overview_body">Profile graph generated from your saved profiles and tasks.</string>
+    <string name="flow_overview_body">Action graph generated from your saved actions and tasks.</string>
     <string name="flow_context_action_summary">%1$d context(s) - %2$d action(s)</string>
     <string name="flow_all_context_rules">all context rules</string>
     <string name="flow_add_content_description">Add</string>
     <string name="flow_lane_contexts">Contexts</string>
-    <string name="flow_lane_profile">Profile</string>
+    <string name="flow_lane_profile">Action</string>
     <string name="flow_lane_enter">Enter</string>
     <string name="flow_lane_exit">Exit</string>
     <string name="flow_enter">enter</string>
@@ -1063,8 +1065,8 @@
         <item quantity="other">%1$d changes</item>
     </plurals>
     <plurals name="semantic_diff_summary_profiles">
-        <item quantity="one">%1$d profile</item>
-        <item quantity="other">%1$d profiles</item>
+        <item quantity="one">%1$d action</item>
+        <item quantity="other">%1$d actions</item>
     </plurals>
     <plurals name="semantic_diff_summary_tasks">
         <item quantity="one">%1$d task</item>
@@ -1090,12 +1092,12 @@
     <string name="semantic_diff_after_value">After: %1$s</string>
     <string name="semantic_diff_before_value">Before: %1$s</string>
     <string name="semantic_diff_before_after">%1$s → %2$s</string>
-    <string name="semantic_diff_entity_profile">Profile</string>
+    <string name="semantic_diff_entity_profile">Action</string>
     <string name="semantic_diff_entity_task">Task</string>
     <string name="semantic_diff_entity_scene">Scene</string>
     <string name="semantic_diff_entity_variable">Variable</string>
     <string name="semantic_diff_path_task">Task</string>
-    <string name="semantic_diff_path_profile">Profile</string>
+    <string name="semantic_diff_path_profile">Action</string>
     <string name="semantic_diff_path_scene">Scene</string>
     <string name="semantic_diff_path_variable">Variable</string>
     <string name="semantic_diff_path_name">Name</string>
@@ -1156,7 +1158,7 @@
     <string name="flow_node_accessibility">%1$s</string>
     <string name="flow_outputs_accessibility">Outputs: %1$s</string>
     <string name="flow_profile_detail">%1$s - Mode %2$s - Cooldown %3$ds</string>
-    <string name="flow_warning_no_contexts">Profile has no contexts.</string>
+    <string name="flow_warning_no_contexts">Action has no contexts.</string>
     <string name="flow_edge_match">must match</string>
     <string name="flow_edge_not_match">must not match</string>
     <string name="flow_missing_task_title">Missing %1$s task</string>
@@ -1183,7 +1185,7 @@
     <string name="ui_disabled_label">%1$s disabled</string>
 
     <string name="status_planned">Planned</string>
-    <string name="template_disabled_review">Profiles created from templates start disabled so you can review permissions, actions, and contexts before enabling.</string>
+    <string name="template_disabled_review">Actions created from templates start disabled so you can review permissions, actions, and contexts before enabling.</string>
     <string name="blueprint_input_type_text">Text</string>
     <string name="blueprint_input_type_app">App package</string>
     <string name="blueprint_input_type_wifi_ssid">Wi-Fi network name</string>
@@ -1212,7 +1214,7 @@
     <string name="automation_mode_parallel">allow overlap</string>
     <string name="action_remove_action">Remove Action</string>
     <string name="action_remove_context">Remove Context</string>
-    <string name="delete_profile_body">This removes &quot;%1$s&quot; and its contexts. The linked task remains available; you can restore the profile from the snackbar.</string>
+    <string name="delete_profile_body">This removes &quot;%1$s&quot; and its contexts. The linked task remains available; you can restore the action from the snackbar.</string>
     <string name="delete_task_body">This removes &quot;%1$s&quot; and its %2$d action(s). You can restore it from the snackbar.</string>
     <string name="delete_scene_body">This removes &quot;%1$s&quot; and its %2$d element(s). You can restore it from the snackbar.</string>
     <string name="delete_action_body">This removes step %1$d from &quot;%2$s&quot;. Remaining actions keep their order.</string>
@@ -1221,10 +1223,10 @@
 
     <string name="delete_task_references_title">Task is still in use</string>
     <string name="delete_task_references_body">&quot;%1$s&quot; is referenced by %2$d other automation(s). Choose what happens to those references before it is deleted.</string>
-    <string name="delete_task_references_required">A profile runs this task on activation and cannot be left without one, so these references must be reassigned.</string>
+    <string name="delete_task_references_required">A action runs this task on activation and cannot be left without one, so these references must be reassigned.</string>
     <string name="delete_task_references_option_reassign">Reassign them to another task</string>
     <string name="delete_task_references_option_clear">Clear the references</string>
-    <string name="delete_task_references_clear_hint">Profile exit tasks, scene gestures, and notification buttons that pointed here are removed.</string>
+    <string name="delete_task_references_clear_hint">Action exit tasks, scene gestures, and notification buttons that pointed here are removed.</string>
     <string name="delete_task_references_pick_replacement">Replacement task</string>
     <string name="delete_task_references_no_replacement">No other task is available to reassign to.</string>
     <string name="delete_task_references_confirm">Delete and apply</string>
@@ -1294,11 +1296,11 @@
     <string name="admission_reason_circuit_open">Execution circuit is open for %1$d more seconds.</string>
     <string name="admission_reason_trip_reason">Trip reason: %1$s</string>
     <string name="admission_reason_global_active">The app-wide limit on runs at once is full (%1$s running).</string>
-    <string name="admission_reason_profile_active">This profile is already running as many times as it may (%1$s).</string>
+    <string name="admission_reason_profile_active">This action is already running as many times as it may (%1$s).</string>
     <string name="admission_reason_global_burst">Too many runs started at once, app-wide.</string>
-    <string name="admission_reason_profile_burst">Too many runs of this profile started at once.</string>
-    <string name="admission_reason_global_and_profile_burst">Too many runs started at once, both app-wide and for this profile.</string>
-    <string name="admission_reason_counts">Running now: %1$d of %2$s app-wide, %3$d of %4$s for this profile. Started at once: %5$d of %6$s app-wide, %7$d of %8$s for this profile.</string>
+    <string name="admission_reason_profile_burst">Too many runs of this action started at once.</string>
+    <string name="admission_reason_global_and_profile_burst">Too many runs started at once, both app-wide and for this action.</string>
+    <string name="admission_reason_counts">Running now: %1$d of %2$s app-wide, %3$d of %4$s for this action. Started at once: %5$d of %6$s app-wide, %7$d of %8$s for this action.</string>
     <string name="admission_reason_preview_available">There is room to run right now (preview only).</string>
     <string name="diagnostics_service">Automation service</string>
     <string name="diagnostics_service_running">Running</string>
@@ -1442,7 +1444,7 @@
     <string name="header_tasks_detail">%1$d actions • %2$d tasks</string>
     <string name="header_shortcuts_detail">%1$d shortcuts</string>
     <string name="header_variables_detail">%1$d global variables</string>
-    <string name="header_flow_detail">%1$d profiles • %2$d tasks</string>
+    <string name="header_flow_detail">%1$d actions • %2$d tasks</string>
     <string name="header_scenes_detail">%1$d elements • %2$d scenes</string>
     <string name="header_inspector_detail">Live context health</string>
     <string name="header_setup_detail">Permission and reliability checks</string>
@@ -1507,7 +1509,7 @@
     <string name="ui_error_run_logs_load">Run logs could not be loaded</string>
     <string name="ui_error_run_logs_more">More run logs could not be loaded</string>
     <string name="ui_error_run_log_export">Run log export failed</string>
-    <string name="synthetic_trigger_cooldown_clear">No cooldown is currently blocking this profile.</string>
+    <string name="synthetic_trigger_cooldown_clear">No cooldown is currently blocking this action.</string>
     <plurals name="synthetic_trigger_cooldown_remaining">
         <item quantity="one">Cooldown has %1$d second remaining.</item>
         <item quantity="other">Cooldown has %1$d seconds remaining.</item>
@@ -1530,7 +1532,7 @@
     <string name="ui_error_document_unreadable">Couldn\'t open the selected %1$s.</string>
     <string name="ui_error_document_too_large">The selected %1$s is larger than %2$d MB.</string>
     <string name="ui_error_write_settings_required">This automation needs Modify system settings. Open Setup, grant it, then try again.</string>
-    <string name="run_log_source_profile">Profile</string>
+    <string name="run_log_source_profile">Action</string>
     <string name="run_log_source_external_intent">External intent</string>
     <string name="run_log_source_quick_settings_tile">Quick Settings tile</string>
     <string name="run_log_source_manual_run">Manual run</string>
@@ -1561,8 +1563,8 @@
     <string name="ui_message_task_created">Task created</string>
     <string name="ui_message_task_duplicated">Task duplicated</string>
     <string name="ui_message_task_updated">Task updated</string>
-    <string name="ui_message_profile_enabled">Profile enabled</string>
-    <string name="ui_message_profile_disabled">Profile disabled</string>
+    <string name="ui_message_profile_enabled">Action enabled</string>
+    <string name="ui_message_profile_disabled">Action disabled</string>
     <string name="ui_message_action_moved">Action moved</string>
     <string name="ui_message_action_added">Action added</string>
     <string name="ui_message_action_updated">Action updated</string>
@@ -1581,16 +1583,16 @@
     <string name="ui_message_scene_duplicated">Scene duplicated</string>
     <string name="ui_message_scene_updated">Scene updated</string>
     <string name="ui_message_scene_deleted">Scene deleted</string>
-    <string name="ui_message_profile_created">Profile created</string>
-    <string name="ui_message_profile_duplicated">Profile duplicated as a disabled copy</string>
-    <string name="ui_message_profile_updated">Profile updated</string>
+    <string name="ui_message_profile_created">Action created</string>
+    <string name="ui_message_profile_duplicated">Action duplicated as a disabled copy</string>
+    <string name="ui_message_profile_updated">Action updated</string>
     <plurals name="ui_profile_lint_warnings">
-        <item quantity="one">Profile saved with %1$d lint warning; review Automation lint in Context Inspector.</item>
-        <item quantity="other">Profile saved with %1$d lint warnings; review Automation lint in Context Inspector.</item>
+        <item quantity="one">Action saved with %1$d lint warning; review Automation lint in Context Inspector.</item>
+        <item quantity="other">Action saved with %1$d lint warnings; review Automation lint in Context Inspector.</item>
     </plurals>
-    <string name="ui_message_profile_deleted">Profile deleted</string>
-    <string name="ui_message_profile_reviewed">Imported profile reviewed and enabled</string>
-    <string name="ui_message_template_installed">Template installed as a disabled profile</string>
+    <string name="ui_message_profile_deleted">Action deleted</string>
+    <string name="ui_message_profile_reviewed">Imported action reviewed and enabled</string>
+    <string name="ui_message_template_installed">Template installed as a disabled action</string>
     <string name="ui_task_still_used">Task is still used by %1$d automation(s). Reassign or clear those references first.</string>
     <string name="ui_message_tasker_xml_ready">Tasker XML ready for review</string>
     <string name="ui_message_automation_import_ready">Automation import ready for review</string>
@@ -1608,7 +1610,7 @@
     <string name="ui_message_snapshots_enabled">Automatic snapshots on: up to %1$d kept for %2$d days</string>
     <string name="ui_message_snapshots_disabled">Automatic snapshots off</string>
     <string name="ui_message_snapshot_destination_saved">Snapshot destination saved</string>
-    <string name="ui_message_tasker_xml_exported">Tasker XML exported: %1$d profiles, %2$d tasks, %3$d actions skipped</string>
+    <string name="ui_message_tasker_xml_exported">Tasker XML exported: %1$d actions, %2$d tasks, %3$d actions skipped</string>
     <string name="ui_message_restore_staged">Restore staged. Restart OpenTasker to apply it.</string>
     <string name="ui_message_restore_cancelled">Staged restore cancelled</string>
     <string name="ui_message_no_staged_restore">There is no staged restore to cancel</string>
@@ -1620,11 +1622,11 @@
     <string name="ui_run_status_skipped">skipped</string>
     <string name="ui_run_status_succeeded">succeeded</string>
     <string name="ui_run_status_failed">failed</string>
-    <string name="ui_message_import_summary">Imported %1$d task(s), %2$d profile(s), %3$d warning(s)</string>
-    <string name="ui_message_tasker_imported">Imported %1$d task(s), %2$d disabled profile(s)</string>
-    <string name="ui_message_export_summary">Exported %1$d task(s), %2$d profile(s), %3$d variable(s), %4$d scene(s)</string>
-    <string name="ui_message_bundle_exported">Exported %1$d task(s), %2$d profile(s), %3$d scene(s)</string>
-    <string name="ui_message_bundle_imported">Imported %1$d task(s), %2$d disabled profile(s), %3$d scene(s)</string>
+    <string name="ui_message_import_summary">Imported %1$d task(s), %2$d action(s), %3$d warning(s)</string>
+    <string name="ui_message_tasker_imported">Imported %1$d task(s), %2$d disabled action(s)</string>
+    <string name="ui_message_export_summary">Exported %1$d task(s), %2$d action(s), %3$d variable(s), %4$d scene(s)</string>
+    <string name="ui_message_bundle_exported">Exported %1$d task(s), %2$d action(s), %3$d scene(s)</string>
+    <string name="ui_message_bundle_imported">Imported %1$d task(s), %2$d disabled action(s), %3$d scene(s)</string>
     <!--
         Plural forms, not a stem plus a suffix passed from code. "Exported %1$d run log entr%2$s"
         with "y"/"ies" supplied by Kotlin cannot be translated into any language, and the retention
@@ -1674,9 +1676,9 @@
     <string name="inspector_no_match">No match</string>
     <string name="inspector_latest_value">Latest value</string>
     <string name="inspector_warning">Warning</string>
-    <string name="inspector_causal_loop_title">Causal profile loop stopped</string>
-    <string name="inspector_causal_loop_body">The engine stopped this profile chain: %1$s. See Run Log and Diagnostics for the parent execution.</string>
-    <string name="inspector_no_profiles_body">Create a profile before reviewing match explanations.</string>
+    <string name="inspector_causal_loop_title">Causal action loop stopped</string>
+    <string name="inspector_causal_loop_body">The engine stopped this action chain: %1$s. See Run Log and Diagnostics for the parent execution.</string>
+    <string name="inspector_no_profiles_body">Create a action before reviewing match explanations.</string>
     <string name="inspector_ready">Ready</string>
     <string name="inspector_attention">%1$d attention</string>
     <string name="inspector_last_update_value">%1$s %2$s</string>
@@ -1772,7 +1774,7 @@
     <string name="setup_push_copy">Copy legacy bridge token</string>
     <string name="setup_push_copied">Legacy bridge token copied.</string>
     <string name="setup_companion_title">Companion device presence</string>
-    <string name="setup_companion_body">Associate a nearby Bluetooth device with Android’s low-power companion service. Profiles can match event=companion_presence with state=present or absent.</string>
+    <string name="setup_companion_body">Associate a nearby Bluetooth device with Android’s low-power companion service. Actions can match event=companion_presence with state=present or absent.</string>
     <string name="setup_companion_empty">No companion devices are associated.</string>
     <string name="setup_companion_associate">Associate a device</string>
     <string name="setup_companion_revoke">Revoke</string>
@@ -1817,7 +1819,7 @@
     <string name="synthetic_trigger_title">Trigger simulation</string>
     <string name="synthetic_trigger_loading">Preparing the simulation…</string>
     <string name="synthetic_trigger_notice">Preview only: pinned events are matched in memory. No task, side effect, or production run-log row will be created.</string>
-    <string name="synthetic_trigger_profile_match">Profile predicate</string>
+    <string name="synthetic_trigger_profile_match">Action predicate</string>
     <string name="synthetic_trigger_passed">Would match</string>
     <string name="synthetic_trigger_blocked">Blocked</string>
     <string name="synthetic_trigger_cooldown">Cooldown</string>
@@ -1841,7 +1843,7 @@
     <string name="projects_move_up">Move project up</string>
     <string name="projects_move_down">Move project down</string>
     <string name="projects_delete_title">Delete project %1$s?</string>
-    <string name="projects_delete_body">All tasks, profiles, scenes, and variables will be reassigned to the selected project. Variable name conflicts must be resolved first.</string>
+    <string name="projects_delete_body">All tasks, actions, scenes, and variables will be reassigned to the selected project. Variable name conflicts must be resolved first.</string>
     <string name="projects_choose_destination">Choose destination project</string>
     <string name="action_rename">Rename</string>
     <string name="action_done">Done</string>
