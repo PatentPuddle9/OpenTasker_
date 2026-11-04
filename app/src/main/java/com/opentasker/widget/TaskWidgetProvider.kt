@@ -212,6 +212,12 @@ class TaskWidgetProvider : AppWidgetProvider() {
             views.setImageViewResource(R.id.widget_icon, icon.drawableRes)
             views.setInt(R.id.widget_icon, "setColorFilter", iconColor)
             views.setTextViewText(R.id.widget_task_name, actionName)
+            if (removedFromShortcuts) {
+                views.setTextViewText(
+                    R.id.widget_tap_to_run,
+                    context.getString(R.string.widget_removed_from_shortcuts_subtitle),
+                )
+            }
             views.setTextColor(R.id.widget_task_name, WidgetBackgroundRenderer.contrastingTextColor(backgroundColor))
             views.setTextColor(R.id.widget_tap_to_run, WidgetBackgroundRenderer.contrastingTextColor(backgroundColor))
 
