@@ -782,10 +782,10 @@ fun ActiveAutomationUi(
                 onPreflightProfile = viewModel::previewProfilePreflight,
                 onRunProfile = { profile ->
                     val actionTask = tasks.firstOrNull { it.id == profile.enterTaskId }
-                    if (actionTask != null) {
+                    if (actionTask != null && actionTask.actions.isNotEmpty()) {
                         viewModel.runTaskNow(actionTask.copy(name = profile.name))
                     } else {
-                        scope.launch { snackbarHostState.showSnackbar("This action has no executable steps yet.") }
+                        scope.launch { snackbarHostState.showSnackbar("Add at least one action step before testing this action.") }
                     }
                 },
                 runBusy = runBusy,
