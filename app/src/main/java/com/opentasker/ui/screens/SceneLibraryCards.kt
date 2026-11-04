@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.opentasker.app.R
+import com.opentasker.core.model.ActionExecutionBinding
 import com.opentasker.core.model.Scene
 import com.opentasker.core.model.SceneElement
 import com.opentasker.core.model.SceneElementType
@@ -150,6 +151,7 @@ internal fun SceneOverviewCard(
 internal fun SceneCard(
     scene: Scene,
     tasks: List<Task>,
+    actions: List<ActionExecutionBinding>,
     onAddElement: () -> Unit,
     onEditElement: (Int, SceneElement) -> Unit,
     onDeleteElement: (Int, SceneElement) -> Unit,
@@ -162,7 +164,7 @@ internal fun SceneCard(
     onDuplicate: () -> Unit,
     onShowOverlay: () -> Unit = {},
 ) {
-    val taskNames = remember(tasks) { tasks.associate { it.id to it.name } }
+    val actionNames = remember(actions) { actions.associate { it.execution.id to it.action.name } }
     val issues = remember(scene, tasks) { SceneValidator.validate(scene, tasks) }
     // Key the selection on the element identity list, not just scene.id: when an element is added
     // or deleted the indices shift, so surviving indices would point at the wrong elements and a
@@ -282,7 +284,7 @@ internal fun SceneCard(
                         SceneElementRow(
                             scene = scene,
                             element = element,
-                            taskNames = taskNames,
+                            actionNames = actionNames,
                             onNudge = { deltaX, deltaY ->
                                 onUpdateScene(
                                     SceneEditorMutations.replaceElement(
@@ -325,7 +327,7 @@ private fun SceneElement.nudgedWithin(scene: Scene, deltaX: Int, deltaY: Int): S
 private fun SceneElementRow(
     scene: Scene,
     element: SceneElement,
-    taskNames: Map<Long, String>,
+    actionNames: Map<Long, String>,
     onNudge: (Int, Int) -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -363,7 +365,7 @@ private fun SceneElementRow(
                         element.tapTaskId?.let {
                             stringResource(
                                 R.string.scenes_binding_tap,
-                                taskNames[it] ?: stringResource(R.string.scenes_missing_task_id, it),
+                                actionNames[it] ?: stringResource(R.string.scenes_missing_action),
                             )
                         },
                         element.longPressTaskId?.let {
