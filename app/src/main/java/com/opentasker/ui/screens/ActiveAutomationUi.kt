@@ -809,10 +809,10 @@ fun ActiveAutomationUi(
                                 android.appwidget.AppWidgetManager.getInstance(context),
                                 widgetId,
                             )
+                            onComplete(true)
                             snackbarHostState.showSnackbar(
                                 "Widget Action deleted. Remove the leftover widget icon from your home screen.",
                             )
-                            onComplete(true)
                         }.onFailure { error ->
                             snackbarHostState.showSnackbar(
                                 "Couldn't delete widget Action: ${error.message ?: "Unknown error"}",
