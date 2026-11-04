@@ -128,10 +128,15 @@ class TaskWidgetProvider : AppWidgetProvider() {
                 runCatching { WidgetProfileLinks.deleteLegacyShadowProfile(context, widgetId) }
 
                 val storedProfileId = prefs.getLong(keyActionProfileId(widgetId), -1L)
+                // Recover an already-created widget Action even if its preference ID was not
+                // persisted (for example, if Android restarted the process during first setup).
                 val widgetAction = decodedProfiles.firstOrNull {
                     it.id == storedProfileId && it.widgetId == widgetId && it.enterTaskId > 0L
+                } ?: decodedProfiles.firstOrNull {
+                    it.widgetId == widgetId && it.enterTaskId > 0L
                 }
                 if (widgetAction != null) {
+                    editor.putLong(keyActionProfileId(widgetId), widgetAction.id)
                     editor.putString(keyActionName(widgetId), widgetAction.name)
                     editor.remove(keyTaskId(widgetId))
                     continue
@@ -139,6 +144,9 @@ class TaskWidgetProvider : AppWidgetProvider() {
 
                 // Upgrade widgets that previously pointed at a user's shared Action. The new
                 // widget receives its own copy of the Action's steps and its own protected Profile.
+                // For a brand-new widget, sourceAction is null: still create its empty private
+                // Action now, during the provider's first update, rather than waiting for Save
+                // in the configuration screen.
                 val directAction = decodedProfiles.firstOrNull {
                     it.id == storedProfileId && it.widgetId == null && it.enterTaskId > 0L
                 }
@@ -150,31 +158,29 @@ class TaskWidgetProvider : AppWidgetProvider() {
                 val sourceAction = directAction
                     ?: legacyCandidates.firstOrNull { it.name == legacyName }
                     ?: legacyCandidates.singleOrNull()
-
-                if (sourceAction != null) {
-                    val style = WidgetStyle(
-                        icon = prefs.getString(keyIcon(widgetId), WidgetIconCatalog.default.key)
-                            ?: WidgetIconCatalog.default.key,
-                        iconColor = prefs.getInt(keyIconColor(widgetId), WidgetStyle().iconColor),
-                        backgroundColor = prefs.getInt(keyBackgroundColor(widgetId), WidgetStyle().backgroundColor),
-                        gradient = prefs.getBoolean(keyGradient(widgetId), WidgetStyle().gradient),
-                        shape = prefs.getString(keyShape(widgetId), WidgetShapeCatalog.default.key)
-                            ?: WidgetShapeCatalog.default.key,
-                    )
-                    val ownedId = WidgetProfileLinks.createOrUpdateAction(
-                        context = context,
-                        widgetId = widgetId,
-                        name = sourceAction.name,
-                        style = style,
-                        sourceProfileId = sourceAction.id,
-                    )
-                    val owned = db.profileDao().getById(ownedId)?.toDomainDecodeResult()?.value
-                    editor.putLong(keyActionProfileId(widgetId), ownedId)
-                    editor.putString(keyActionName(widgetId), owned?.name ?: sourceAction.name)
-                } else {
-                    editor.remove(keyActionProfileId(widgetId))
-                    editor.putString(keyActionName(widgetId), context.getString(R.string.widget_task_missing))
-                }
+                val style = WidgetStyle(
+                    icon = prefs.getString(keyIcon(widgetId), WidgetIconCatalog.default.key)
+                        ?: WidgetIconCatalog.default.key,
+                    iconColor = prefs.getInt(keyIconColor(widgetId), WidgetStyle().iconColor),
+                    backgroundColor = prefs.getInt(keyBackgroundColor(widgetId), WidgetStyle().backgroundColor),
+                    gradient = prefs.getBoolean(keyGradient(widgetId), WidgetStyle().gradient),
+                    shape = prefs.getString(keyShape(widgetId), WidgetShapeCatalog.default.key)
+                        ?: WidgetShapeCatalog.default.key,
+                )
+                val actionName = sourceAction?.name
+                    ?: legacyName?.takeIf { it.isNotBlank() && legacyTaskId > 0L }
+                    ?: "Widget $widgetId"
+                val ownedId = WidgetProfileLinks.createOrUpdateAction(
+                    context = context,
+                    widgetId = widgetId,
+                    name = actionName,
+                    style = style,
+                    sourceProfileId = sourceAction?.id,
+                    sourceExecutionId = legacyTaskId.takeIf { sourceAction == null && it > 0L },
+                )
+                val owned = db.profileDao().getById(ownedId)?.toDomainDecodeResult()?.value
+                editor.putLong(keyActionProfileId(widgetId), ownedId)
+                editor.putString(keyActionName(widgetId), owned?.name ?: actionName)
                 editor.remove(keyTaskId(widgetId))
             }
             editor.apply()
