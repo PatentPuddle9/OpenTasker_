@@ -192,7 +192,7 @@ private fun loadShortcutWidgets(context: Context): List<ShortcutWidgetRow> {
         ShortcutWidgetRow(
             widgetId = widgetId,
             actionName = prefs.getString(
-                TaskWidgetProvider.keyTaskName(widgetId),
+                TaskWidgetProvider.keyActionName(widgetId),
                 "Choose an Action",
             ) ?: "Choose an Action",
             icon = WidgetIconCatalog.resolve(
