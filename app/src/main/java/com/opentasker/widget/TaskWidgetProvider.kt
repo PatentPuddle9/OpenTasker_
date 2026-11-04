@@ -116,10 +116,21 @@ class TaskWidgetProvider : AppWidgetProvider() {
             for (widgetId in appWidgetIds) {
                 val taskId = prefs.getLong(keyTaskId(widgetId), -1L)
                 if (taskId < 0) continue
-                val name = runCatching { dao.getById(taskId) }.getOrNull()
+                val actionName = runCatching {
+                    OpenTaskerApp_NoHilt.db.profileDao().getAll()
+                        .asSequence()
+                        .mapNotNull { entity ->
+                            val decoded = entity.toDomainDecodeResult()
+                            decoded.value.takeIf { decoded.issue == null }
+                        }
+                        .firstOrNull { it.widgetId == null && it.enterTaskId == taskId }
+                        ?.name
+                }.getOrNull()
+                val executionName = runCatching { dao.getById(taskId) }.getOrNull()
                     ?.toDomainDecodeResult()
                     ?.value
                     ?.name
+                val name = actionName ?: executionName
                 if (name == null) {
                     // The task is gone. Drop the id so the widget stops offering a run that can
                     // only fail, and label it so the tap target explains itself.
