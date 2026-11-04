@@ -4,9 +4,9 @@
     <string name="qs_tile_subtitle_default">Tap to run Action</string>
     <string name="qs_tile_config_title">Configure Quick Settings tile</string>
     <string name="qs_tile_config_subtitle">Choose the Action this tile runs, and how it looks. This is tile %1$d.</string>
-    <string name="qs_tile_choose_task">Task</string>
+    <string name="qs_tile_choose_task">Action</string>
     <string name="qs_tile_choose_action">Choose an Action</string>
-    <string name="qs_tile_task_id">Task ID %1$d</string>
+    <string name="qs_tile_task_id">Action ID %1$d</string>
     <string name="qs_tile_no_actions">Create an Action first. A tile needs one to run.</string>
     <string name="qs_tile_label">Label</string>
     <string name="qs_tile_label_hint">Shown in Quick Settings</string>
@@ -25,7 +25,7 @@
     <string name="widget_task_missing">Action unavailable. Tap to choose another.</string>
 
     <!-- Navigation -->
-    <string name="locale_select_task_title">Select task for Locale plugin</string>
+    <string name="locale_select_task_title">Select Action for Locale plugin</string>
     <string name="locale_condition_edit_title">Select OpenTasker condition</string>
     <string name="locale_condition_profiles">Action state</string>
     <string name="locale_condition_profile_active">Action is currently active</string>
@@ -1391,7 +1391,7 @@
     <string name="action_field_error_above_maximum">Must be at most %1$s.</string>
     <string name="action_field_error_invalid_option">Choose one of the available options.</string>
     <string name="action_field_error_invalid_boolean">Choose on or off.</string>
-    <string name="action_field_error_invalid_task">Choose an existing task.</string>
+    <string name="action_field_error_invalid_task">Choose an existing Action.</string>
     <string name="action_field_error_invalid_app">Enter or choose a valid app package.</string>
     <string name="action_field_error_invalid_time">Use a 24-hour time such as 07:30.</string>
     <string name="action_field_error_invalid_component">Use an activity name such as com.example.app.PlayerActivity, or end it with * to match a group.</string>
@@ -1789,10 +1789,10 @@
     <string name="setup_companion_removed">Removed %1$s. Use Associate a device to add it back.</string>
     <string name="setup_companion_remove_failed">Couldn\'t remove %1$s.</string>
     <string name="setup_locale_grants_title">Locale execution grants</string>
-    <string name="setup_locale_grants_body">These grants let Locale-compatible hosts fire one selected task. Revoke a grant to block future fires without deleting the task.</string>
+    <string name="setup_locale_grants_body">These grants let Locale-compatible hosts run one selected Action. Revoke a grant to block future runs without deleting the Action.</string>
     <string name="setup_locale_grants_empty">No Locale execution grants are issued.</string>
-    <string name="setup_locale_grant_unknown_task">Deleted or unavailable task (ID %1$d)</string>
-    <string name="setup_locale_grant_task_id">Task ID %1$d</string>
+    <string name="setup_locale_grant_unknown_task">Deleted or unavailable Action (ID %1$d)</string>
+    <string name="setup_locale_grant_task_id">Action ID %1$d</string>
     <string name="setup_locale_grant_revoke">Revoke</string>
     <string name="setup_locale_grant_revoked">Revoked the grant for %1$s</string>
     <string name="action_preflight">Preflight</string>
