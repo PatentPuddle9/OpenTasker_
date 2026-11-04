@@ -155,7 +155,7 @@ class TaskWidgetConfigActivity : ComponentActivity() {
                 prefs.edit()
                     .putLong(TaskWidgetProvider.keyActionProfileId(widgetId), action.id)
                     .remove(TaskWidgetProvider.keyTaskId(widgetId))
-                    .putString(TaskWidgetProvider.keyTaskName(widgetId), action.name)
+                    .putString(TaskWidgetProvider.keyActionName(widgetId), action.name)
                     .putString(TaskWidgetProvider.keyIcon(widgetId), style.icon)
                     .putInt(TaskWidgetProvider.keyIconColor(widgetId), style.iconColor)
                     .putInt(TaskWidgetProvider.keyBackgroundColor(widgetId), style.backgroundColor)
