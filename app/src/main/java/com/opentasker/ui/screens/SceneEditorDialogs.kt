@@ -45,7 +45,7 @@ import com.opentasker.app.R
 import com.opentasker.core.model.Scene
 import com.opentasker.core.model.SceneElement
 import com.opentasker.core.model.SceneElementType
-import com.opentasker.core.model.Task
+import com.opentasker.core.model.ActionExecutionBinding
 import com.opentasker.core.scenes.SceneElementConfigResolver
 import com.opentasker.core.scenes.SceneElementConfigValidator
 import com.opentasker.core.scenes.SceneElementDrafts
@@ -127,7 +127,7 @@ internal fun SceneElementDeleteDialog(
 @Composable
 internal fun SceneElementEditorDialog(
     state: SceneElementEditorState,
-    tasks: List<Task>,
+    actions: List<ActionExecutionBinding>,
     onDismiss: () -> Unit,
     onSave: (SceneElement) -> Unit,
 ) {
@@ -351,15 +351,15 @@ internal fun SceneElementEditorDialog(
 
                     else -> Unit
                 }
-                SceneTaskBindingSelector(
+                SceneActionBindingSelector(
                     label = stringResource(R.string.label_tap_task),
-                    tasks = tasks,
+                    actions = actions,
                     selectedTaskId = tapTaskId,
                     onSelect = { tapTaskId = it },
                 )
                 SceneTaskBindingSelector(
                     label = stringResource(R.string.label_long_press_task),
-                    tasks = tasks,
+                    actions = actions,
                     selectedTaskId = longPressTaskId,
                     onSelect = { longPressTaskId = it },
                 )
@@ -430,21 +430,23 @@ private fun SceneElementTypeSelector(
 }
 
 @Composable
-private fun SceneTaskBindingSelector(
+private fun SceneActionBindingSelector(
     label: String,
-    tasks: List<Task>,
+    actions: List<ActionExecutionBinding>,
     selectedTaskId: Long?,
     onSelect: (Long?) -> Unit,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    val taskNames = remember(tasks) { tasks.associate { it.id to it.name } }
-    val selectedTaskLabel = selectedTaskId?.let { taskId ->
-        taskNames[taskId] ?: stringResource(R.string.scenes_missing_task_id, taskId)
-    } ?: stringResource(R.string.label_none)
+    val selectedAction = actions.firstOrNull { it.execution.id == selectedTaskId }
+    val selectedActionLabel = when {
+        selectedTaskId == null -> stringResource(R.string.label_none)
+        selectedAction != null -> selectedAction.action.name
+        else -> stringResource(R.string.scenes_missing_action)
+    }
     Box {
         OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
             Text(
-                stringResource(R.string.scenes_task_binding_value, label, selectedTaskLabel),
+                stringResource(R.string.scenes_task_binding_value, label, selectedActionLabel),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -457,11 +459,11 @@ private fun SceneTaskBindingSelector(
                     expanded = false
                 },
             )
-            tasks.sortedBy { it.name.lowercase() }.forEach { task ->
+            actions.forEach { binding ->
                 DropdownMenuItem(
-                    text = { Text(task.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    text = { Text(binding.action.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     onClick = {
-                        onSelect(task.id)
+                        onSelect(binding.execution.id)
                         expanded = false
                     },
                 )
