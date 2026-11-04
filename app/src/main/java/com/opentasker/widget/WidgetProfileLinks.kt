@@ -23,6 +23,7 @@ object WidgetProfileLinks {
         name: String,
         style: WidgetStyle,
         existingProfileId: Long? = null,
+        sourceProfileId: Long? = null,
     ): Long {
         val db = OpenTaskerApp_NoHilt.awaitDb()
         return db.withTransaction {
@@ -68,14 +69,27 @@ object WidgetProfileLinks {
                 )
                 existing.id
             } else {
-                val execution = Task(name = name, projectId = DEFAULT_PROJECT_ID)
+                // When migrating a widget from the previous "choose an existing Action" design,
+                // clone that Action's execution steps so the widget owns an independent sequence.
+                val source = sourceProfileId?.takeIf { it > 0L }?.let { profileDao.getById(it) }
+                    ?.toDomainDecodeResult()
+                    ?.takeIf { it.issue == null && it.value.widgetId == null }
+                    ?.value
+                val sourceExecution = source?.let { profile ->
+                    db.taskDao().getById(profile.enterTaskId)?.toDomainDecodeResult()
+                        ?.takeIf { it.issue == null }
+                        ?.value
+                }
+                val projectId = source?.projectId ?: DEFAULT_PROJECT_ID
+                val execution = sourceExecution?.copy(id = 0L, name = name, projectId = projectId)
+                    ?: Task(name = name, projectId = projectId)
                 val executionId = db.taskDao().insert(execution.toEntity())
                 val action = Profile(
                     name = name,
                     enabled = false,
                     contexts = emptyList(),
                     enterTaskId = executionId,
-                    projectId = DEFAULT_PROJECT_ID,
+                    projectId = projectId,
                     icon = WidgetIconCatalog.resolve(style.icon).key,
                     widgetId = widgetId,
                     group = "Shortcuts",
