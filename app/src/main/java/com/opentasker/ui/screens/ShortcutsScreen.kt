@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -26,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -57,11 +59,13 @@ private data class ShortcutWidgetRow(
 internal fun ShortcutsScreen(
     contentPadding: PaddingValues,
     onCreateNew: () -> Unit,
+    onDeleteWidget: (Int, (Boolean) -> Unit) -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var refreshKey by remember { mutableIntStateOf(0) }
     var shortcuts by remember { mutableStateOf(loadShortcutWidgets(context)) }
+    var pendingDelete by remember { mutableStateOf<ShortcutWidgetRow?>(null) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -166,9 +170,41 @@ internal fun ShortcutsScreen(
                         Spacer(Modifier.width(5.dp))
                         Text("Edit")
                     }
+                    TextButton(onClick = { pendingDelete = shortcut }) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
         }
+    }
+
+    pendingDelete?.let { shortcut ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("Delete widget?") },
+            text = {
+                Text(
+                    "This deletes the widget's protected Action and removes it from OpenTasker's Shortcuts list. Android's launcher still owns the home-screen widget itself, so you'll also need to remove that leftover icon from your home screen.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteWidget(shortcut.widgetId) { deleted ->
+                            if (deleted) {
+                                shortcuts = shortcuts.filterNot { it.widgetId == shortcut.widgetId }
+                            }
+                            pendingDelete = null
+                        }
+                    },
+                ) {
+                    Text("Delete widget", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) { Text("Cancel") }
+            },
+        )
     }
 }
 
@@ -178,20 +214,31 @@ internal fun requestNewTaskWidget(context: Context): Boolean {
     return manager.requestPinAppWidget(provider, null, null)
 }
 
-internal fun taskWidgetCount(context: Context): Int = AppWidgetManager.getInstance(context)
-    .getAppWidgetIds(ComponentName(context, TaskWidgetProvider::class.java)).size
+internal fun taskWidgetCount(context: Context): Int {
+    val prefs = context.getSharedPreferences(TaskWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
+    return AppWidgetManager.getInstance(context)
+        .getAppWidgetIds(ComponentName(context, TaskWidgetProvider::class.java))
+        .count { widgetId ->
+            prefs.getLong(TaskWidgetProvider.keyActionProfileId(widgetId), -1L) > 0L &&
+                !prefs.getBoolean(TaskWidgetProvider.keyRemoved(widgetId), false)
+        }
+}
 
 private fun loadShortcutWidgets(context: Context): List<ShortcutWidgetRow> {
     val manager = AppWidgetManager.getInstance(context)
     val ids = manager.getAppWidgetIds(ComponentName(context, TaskWidgetProvider::class.java))
     val prefs = context.getSharedPreferences(TaskWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
-    return ids.map { widgetId ->
+    return ids.mapNotNull { widgetId ->
+        val actionProfileId = prefs.getLong(TaskWidgetProvider.keyActionProfileId(widgetId), -1L)
+        if (actionProfileId <= 0L || prefs.getBoolean(TaskWidgetProvider.keyRemoved(widgetId), false)) {
+            return@mapNotNull null
+        }
         ShortcutWidgetRow(
             widgetId = widgetId,
             actionName = prefs.getString(
                 TaskWidgetProvider.keyActionName(widgetId),
-                "Choose an Action",
-            ) ?: "Choose an Action",
+                "Widget $widgetId",
+            ) ?: "Widget $widgetId",
             icon = WidgetIconCatalog.resolve(
                 prefs.getString(
                     TaskWidgetProvider.keyIcon(widgetId),
