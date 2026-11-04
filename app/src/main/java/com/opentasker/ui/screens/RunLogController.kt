@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -50,6 +51,7 @@ internal class RunLogController(
     val runLogs: StateFlow<ImmutableList<RunLogEntry>> = db.runLogDao()
         .getRecentFlow()
         .map { entities -> entities.map { it.toDomain() }.toImmutableList() }
+        .flowOn(Dispatchers.Default)
         .stateIn(scope, SharingStarted.WhileSubscribed(5_000), persistentListOf())
 
     private val _runLogFilters = MutableStateFlow(RunLogFilterState())

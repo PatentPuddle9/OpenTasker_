@@ -4,8 +4,10 @@ import androidx.compose.runtime.Immutable
 import com.opentasker.core.storage.AppDatabase
 import com.opentasker.core.storage.EditHistoryDao
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
@@ -53,4 +55,5 @@ internal fun editHistoryAvailability(
             },
         )
     }
+    .flowOn(Dispatchers.Default)
     .stateIn(scope, SharingStarted.WhileSubscribed(5_000), EditHistoryAvailabilityState())
