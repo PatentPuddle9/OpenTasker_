@@ -346,7 +346,7 @@
     <string name="setup_item_already_ready">%1$s is already ready.</string>
     <string name="setup_theme_helper_full">Choose the display mode used across navigation, setup, and runtime review surfaces.</string>
     <string name="setup_direct_boot_title">Pre-unlock time triggers</string>
-    <string name="setup_direct_boot_body">Optional and off by default. When it is on, the only thing OpenTasker starts before you first unlock the phone is its own once-a-minute clock, and it remembers a single tick in storage the lock screen can reach. Your actions, tasks, saved data, secrets, and every other kind of trigger wait until you unlock.</string>
+    <string name="setup_direct_boot_body">Optional and off by default. When it is on, the only thing OpenTasker starts before you first unlock the phone is its own once-a-minute clock, and it remembers a single tick in storage the lock screen can reach. Your actions, saved data, secrets, and every other kind of trigger wait until you unlock.</string>
     <string name="setup_direct_boot_enabled">On: one clock tick may be remembered before you unlock.</string>
     <string name="setup_direct_boot_disabled">Disabled: all triggers wait until unlock.</string>
     <string name="setup_backup_helper_full">Create a local database backup, export a copy, or keep encrypted snapshots in a folder you control. Secret variable values remain device-bound and must be re-entered after a transfer.</string>
@@ -548,7 +548,7 @@
     <string name="empty_tasks_title">No tasks yet</string>
     <string name="empty_tasks_body">Tasks contain the actions your automations will execute.</string>
     <string name="empty_run_log_title">No run log entries</string>
-    <string name="empty_run_log_body">Entries appear here after actions trigger task execution.</string>
+    <string name="empty_run_log_body">Entries appear here after an action runs.</string>
     <string name="empty_variables_title">No global variables yet</string>
     <string name="empty_variables_body">Store values your tasks can reuse. Tasks can set them too, and anything they save shows up here.</string>
     <string name="empty_variables_create">New variable</string>
@@ -660,15 +660,15 @@
     <string name="automation_lint_warning_prefix">Warning:</string>
     <string name="automation_lint_finding">%1$s: %2$s %3$s</string>
     <string name="automation_lint_missing_reversal_title">Missing reversal</string>
-    <string name="automation_lint_missing_reversal_detail">%1$s writes %2$s when it enters but has no exit task.</string>
-    <string name="automation_lint_missing_reversal_fix">Add an exit task that restores the setting, or use a bounded temporary-state action.</string>
+    <string name="automation_lint_missing_reversal_detail">%1$s writes %2$s when it runs but does not restore it.</string>
+    <string name="automation_lint_missing_reversal_fix">Add a follow-up action that restores the setting, or use a bounded temporary-state action.</string>
     <string name="automation_lint_repeated_triggering_title">Repeated triggering</string>
     <string name="automation_lint_repeated_triggering_detail">%1$s has a state context without a cooldown, dwell, or explicit idempotency guard.</string>
-    <string name="automation_lint_repeated_triggering_fix">Add a cooldown, a dwell requirement, or an explicit guard condition to the enter task.</string>
+    <string name="automation_lint_repeated_triggering_fix">Add a cooldown, a dwell requirement, or an explicit guard condition to the action.</string>
     <string name="automation_lint_priority_conflict_title">Priority conflict</string>
     <string name="automation_lint_priority_conflict_detail">%1$s and %2$s can both write %3$s while their action priorities are %4$d and %5$d.</string>
-    <string name="automation_lint_priority_conflict_equal_fix">Raise one task priority or make the contexts mutually exclusive.</string>
-    <string name="automation_lint_priority_conflict_ordered_fix">Confirm that the higher-priority task should win, or make the contexts mutually exclusive.</string>
+    <string name="automation_lint_priority_conflict_equal_fix">Raise one action priority or make the triggers mutually exclusive.</string>
+    <string name="automation_lint_priority_conflict_ordered_fix">Confirm that the higher-priority action should win, or make the triggers mutually exclusive.</string>
     <string name="automation_lint_inter_profile_loop_title">Inter-action loop</string>
     <string name="automation_lint_inter_profile_loop_detail">Actions form a direct task cycle: %1$s.</string>
     <string name="automation_lint_inter_profile_loop_fix">Remove one task.run edge or add an explicit state guard so the chain cannot retrigger itself.</string>
@@ -679,8 +679,8 @@
     <string name="automation_lint_unreachable_rule_detail">%1$s cannot run: %2$s.</string>
     <string name="automation_lint_unreachable_rule_fix">Restore the referenced task or adjust the context and lifetime constraints so the action can run.</string>
     <string name="automation_lint_action_revert_pair_title">Action/revert pair</string>
-    <string name="automation_lint_action_revert_pair_detail">%1$s writes %2$s in both its enter and exit tasks.</string>
-    <string name="automation_lint_action_revert_pair_fix">Verify that the exit task restores the intended previous state instead of repeating the enter action.</string>
+    <string name="automation_lint_action_revert_pair_detail">%1$s changes %2$s more than once in its action sequence.</string>
+    <string name="automation_lint_action_revert_pair_fix">Verify that the later step restores the intended previous state instead of repeating the earlier change.</string>
     <string name="automation_lint_invariant_violation_title">A watched setting could be changed</string>
     <string name="automation_lint_invariant_violation_detail">Your rule %1$s (%2$s) watches a setting that %3$s may change by writing %4$s.</string>
     <string name="automation_lint_invariant_violation_fix">Turn that action off or narrow when it runs. If the change is deliberate, edit the rule instead.</string>
@@ -830,7 +830,7 @@
 
     <!-- Flow -->
     <string name="flow_empty_title">No automation flow</string>
-    <string name="flow_empty_body">Create actions and tasks to see their connections here.</string>
+    <string name="flow_empty_body">Create actions and triggers to see their connections here.</string>
 
     <!-- Localization extraction batch -->
     <string name="action_retry">Retry</string>
@@ -961,7 +961,7 @@
     <string name="context_field_event_extra_value_label">Extra value</string>
     <string name="context_field_event_extra_value_hint">Optional. Fire only when that extra contains this text</string>
     <string name="context_preset_broadcast_received">Received broadcast</string>
-    <string name="context_broadcast_platform_action_note">This looks like a system action. Apps cannot send those, so a action on one may never fire. OpenTasker has purpose-built triggers for the common system events.</string>
+    <string name="context_broadcast_platform_action_note">This looks like a system action. Apps cannot send those, so an action on one may never fire. OpenTasker has purpose-built triggers for the common system events.</string>
     <string name="context_broadcast_sender_unavailable_note">Android 13 and older never report who sent a broadcast, so this filter will not match anything on this device.</string>
     <string name="context_broadcast_sender_optin_note">Android names the sender only when the sending app opts in to sharing its identity. Most apps do not, and neither does adb. A broadcast whose sender is unknown is refused by this filter, so leave it blank unless you know your sender shares its identity.</string>
     <string name="inspector_broadcast_listening">Listening for %1$d broadcast action(s): %2$s</string>
@@ -1032,10 +1032,10 @@
 
     <string name="flow_empty_content_description">Flow view empty</string>
     <string name="flow_empty_profile_graph_title">No action graph yet</string>
-    <string name="flow_empty_profile_graph_body">Create or import an action to generate a readable automation graph with triggers, actions, and missing references.</string>
+    <string name="flow_empty_profile_graph_body">Create or import an action to generate a readable graph of its triggers and action steps.</string>
     <string name="flow_waiting_for_profile">Waiting for action</string>
     <string name="flow_overview_title">Flow overview</string>
-    <string name="flow_overview_body">Action graph generated from your saved actions and tasks.</string>
+    <string name="flow_overview_body">Action graph generated from your saved actions and triggers.</string>
     <string name="flow_context_action_summary">%1$d context(s) - %2$d action(s)</string>
     <string name="flow_all_context_rules">all context rules</string>
     <string name="flow_add_content_description">Add</string>
@@ -1055,8 +1055,8 @@
     <string name="flow_subflow">Subflow</string>
     <string name="flow_branch_condition">Branch condition</string>
     <string name="flow_branch">Branch</string>
-    <string name="flow_accessibility_summary">%1$s: %2$d context(s), %3$d action(s), enter task %4$s, exit task %5$s, %6$s.</string>
-    <string name="flow_no_exit_task">no exit task</string>
+    <string name="flow_accessibility_summary">%1$s: %2$d trigger(s), %3$d action step(s), %6$s.</string>
+    <string name="flow_no_exit_task">none</string>
 
     <string name="semantic_diff_title">Review what actually changed</string>
     <string name="semantic_diff_summary">%1$s across %2$s</string>
@@ -1104,8 +1104,8 @@
     <string name="semantic_diff_path_priority">Priority</string>
     <string name="semantic_diff_path_collision_mode">Collision mode</string>
     <string name="semantic_diff_path_enabled">Enabled</string>
-    <string name="semantic_diff_path_enter_task">Enter task</string>
-    <string name="semantic_diff_path_exit_task">Exit task</string>
+    <string name="semantic_diff_path_enter_task">Main action sequence</string>
+    <string name="semantic_diff_path_exit_task">Legacy exit sequence</string>
     <string name="semantic_diff_path_cooldown">Cooldown</string>
     <string name="semantic_diff_path_automation_mode">Automation mode</string>
     <string name="semantic_diff_path_group">Group</string>
@@ -1116,7 +1116,7 @@
     <string name="semantic_diff_path_maximum_active">Running at once, limit</string>
     <string name="semantic_diff_path_burst_limit">Rapid-repeat limit</string>
     <string name="semantic_diff_path_overflow_policy">When the limit is reached</string>
-    <string name="semantic_diff_path_fallback_task">Fallback task</string>
+    <string name="semantic_diff_path_fallback_task">Fallback action</string>
     <string name="semantic_diff_path_action">Action</string>
     <string name="semantic_diff_path_type">Type</string>
     <string name="semantic_diff_path_label">Label</string>
@@ -1223,10 +1223,10 @@
 
     <string name="delete_task_references_title">Task is still in use</string>
     <string name="delete_task_references_body">&quot;%1$s&quot; is referenced by %2$d other automation(s). Choose what happens to those references before it is deleted.</string>
-    <string name="delete_task_references_required">A action runs this task on activation and cannot be left without one, so these references must be reassigned.</string>
+    <string name="delete_task_references_required">An action uses this sequence and must be reassigned before it can be deleted.</string>
     <string name="delete_task_references_option_reassign">Reassign them to another task</string>
     <string name="delete_task_references_option_clear">Clear the references</string>
-    <string name="delete_task_references_clear_hint">Action exit tasks, scene gestures, and notification buttons that pointed here are removed.</string>
+    <string name="delete_task_references_clear_hint">Legacy exit sequences, scene gestures, and notification buttons that pointed here are removed.</string>
     <string name="delete_task_references_pick_replacement">Replacement task</string>
     <string name="delete_task_references_no_replacement">No other task is available to reassign to.</string>
     <string name="delete_task_references_confirm">Delete and apply</string>
@@ -1679,7 +1679,7 @@
     <string name="inspector_warning">Warning</string>
     <string name="inspector_causal_loop_title">Causal action loop stopped</string>
     <string name="inspector_causal_loop_body">The engine stopped this action chain: %1$s. See Run Log and Diagnostics for the parent execution.</string>
-    <string name="inspector_no_profiles_body">Create a action before reviewing match explanations.</string>
+    <string name="inspector_no_profiles_body">Create an action before reviewing trigger explanations.</string>
     <string name="inspector_ready">Ready</string>
     <string name="inspector_attention">%1$d attention</string>
     <string name="inspector_last_update_value">%1$s %2$s</string>
