@@ -23,70 +23,88 @@ class TaskRunActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val taskId = intent.getLongExtra(EXTRA_TASK_ID, -1L)
+        val profileId = intent.getLongExtra(EXTRA_PROFILE_ID, -1L)
+        // Kept only for existing non-widget shortcuts created by older versions.
+        val legacyTaskId = intent.getLongExtra(EXTRA_TASK_ID, -1L)
         val source = intent.getStringExtra(EXTRA_SOURCE) ?: SOURCE_SHORTCUT
-        if (taskId < 0) {
-            finishWithMessage("Invalid task")
+        if (profileId <= 0L && legacyTaskId < 0L) {
+            finishWithMessage("Invalid Action")
             return
         }
 
-        // A widget task can legitimately run for minutes (flow.wait alone allows 30). This
-        // activity draws nothing but is a real window, so staying alive for the run left the
-        // launcher covered by an invisible, touch-consuming overlay with no progress indication.
-        // Hand the work to a detached scope and get out of the way; the result arrives as a toast.
-        if (!RunningWidgetTasks.begin(taskId)) {
-            finishWithMessage(getString(R.string.widget_task_already_running))
-            return
-        }
+        // The widget stores a Profile/Action ID. Only here do we resolve its private execution
+        // record, so the editor's individual ActionSpec steps never become independently runnable.
         val appContext = applicationContext
         val mainHandler = Handler(Looper.getMainLooper())
         finish()
 
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         scope.launch {
+            var admittedTaskId: Long? = null
             val message = try {
-                val db = OpenTaskerApp_NoHilt.db
-                val entity = db.taskDao().getById(taskId)
-                if (entity == null) {
-                    "Task not found"
+                val db = OpenTaskerApp_NoHilt.awaitDb()
+                val action = if (profileId > 0L) {
+                    val entity = db.profileDao().getById(profileId)
+                    val decoded = entity?.toDomainDecodeResult()
+                    if (decoded?.issue != null) {
+                        AppLogger.error(TAG, decoded.issue.recoveryMessage())
+                    }
+                    decoded?.value?.takeIf {
+                        decoded.issue == null && it.widgetId == null && it.enterTaskId > 0L
+                    }
                 } else {
-                    val decoded = entity.toDomainDecodeResult()
-                    val issue = decoded.issue
-                    if (issue != null) {
-                        val reason = issue.recoveryMessage()
-                        AppLogger.error(TAG, reason)
-                        logSkippedRun(db, decoded.value, source, reason)
-                        "${decoded.value.name} is corrupt; restore a database backup"
-                    } else {
-                        val task = decoded.value
-                        val result = executeAndLogTask(
-                            appContext = applicationContext,
-                            db = db,
-                            task = task,
-                            source = source,
-                            execution = ExecutionEnvelope.create(task, source),
-                            visibleActivity = true,
-                            // Without the shared controller this path gets a private in-memory one
-                            // that admits even while the profile is saturated or its circuit is
-                            // open, so widget and shortcut taps ignored limits the in-app Run
-                            // button respects.
-                            admissionController = ExecutionAdmissionRegistry.current(applicationContext),
-                        )
-                        val status = when {
-                            result.held -> "held"
-                            result.skippedReason != null -> "skipped"
-                            result.report.success -> "succeeded"
-                            else -> "failed"
+                    null
+                }
+                val taskId = action?.enterTaskId ?: legacyTaskId
+                if (taskId < 0L) {
+                    appContext.getString(R.string.widget_task_missing)
+                } else if (!RunningWidgetTasks.begin(taskId)) {
+                    appContext.getString(R.string.widget_task_already_running)
+                } else {
+                    admittedTaskId = taskId
+                    try {
+                        val entity = db.taskDao().getById(taskId)
+                        if (entity == null) {
+                            appContext.getString(R.string.widget_task_missing)
+                        } else {
+                            val decoded = entity.toDomainDecodeResult()
+                            val issue = decoded.issue
+                            if (issue != null) {
+                                val reason = issue.recoveryMessage()
+                                AppLogger.error(TAG, reason)
+                                logSkippedRun(db, decoded.value, source, reason)
+                                "${action?.name ?: decoded.value.name} is unavailable; restore a database backup"
+                            } else {
+                                val task = decoded.value
+                                val result = executeAndLogTask(
+                                    appContext = appContext,
+                                    db = db,
+                                    task = task,
+                                    source = source,
+                                    execution = ExecutionEnvelope.create(task, source),
+                                    visibleActivity = true,
+                                    // Use the same admission controller as the in-app Run action.
+                                    admissionController = ExecutionAdmissionRegistry.current(appContext),
+                                )
+                                val status = when {
+                                    result.held -> "held"
+                                    result.skippedReason != null -> "skipped"
+                                    result.report.success -> "succeeded"
+                                    else -> "failed"
+                                }
+                                "${action?.name ?: task.name} $status (${result.report.durationMs}ms)"
+                            }
                         }
-                        "${task.name} $status (${result.report.durationMs}ms)"
+                    } finally {
+                        RunningWidgetTasks.finish(taskId)
+                        admittedTaskId = null
                     }
                 }
             } catch (e: Exception) {
-                AppLogger.error(TAG, "Task run failed", e)
-                "Task run failed"
-            }
-            finally {
-                RunningWidgetTasks.finish(taskId)
+                AppLogger.error(TAG, "Action run failed", e)
+                "Action run failed"
+            } finally {
+                admittedTaskId?.let(RunningWidgetTasks::finish)
             }
             mainHandler.post { Toast.makeText(appContext, message, Toast.LENGTH_SHORT).show() }
         }
@@ -110,6 +128,7 @@ class TaskRunActivity : Activity() {
 
     companion object {
         const val EXTRA_TASK_ID = "com.opentasker.widget.TASK_ID"
+        const val EXTRA_PROFILE_ID = "com.opentasker.widget.PROFILE_ID"
         const val EXTRA_SOURCE = "com.opentasker.widget.SOURCE"
         const val SOURCE_WIDGET = "Widget"
         const val SOURCE_SHORTCUT = "Shortcut"
