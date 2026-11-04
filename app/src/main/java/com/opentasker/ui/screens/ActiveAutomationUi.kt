@@ -780,6 +780,15 @@ fun ActiveAutomationUi(
                 },
                 onPreviewProfileShare = { viewModel.previewLocalProfileShare(BuildConfig.VERSION_NAME) },
                 onPreflightProfile = viewModel::previewProfilePreflight,
+                onRunProfile = { profile ->
+                    val actionTask = tasks.firstOrNull { it.id == profile.enterTaskId }
+                    if (actionTask != null) {
+                        viewModel.runTaskNow(actionTask.copy(name = profile.name))
+                    } else {
+                        scope.launch { snackbarHostState.showSnackbar("This action has no executable steps yet.") }
+                    }
+                },
+                runBusy = runBusy,
                 onExportOpenTaskerBundle = { openTaskerBundleExportLauncher.launch(openTaskerBundleExportName()) },
                 onImportOpenTaskerBundle = { openTaskerBundleImportLauncher.launch(OPEN_TASKER_BUNDLE_MIME_TYPES) },
                 onImportOpenTaskerBundleText = {
