@@ -131,6 +131,7 @@ class TaskWidgetConfigActivity : ComponentActivity() {
                         name = name.trim(),
                         style = style,
                         existingProfileId = existingProfileId,
+                        sourceProfileId = existingProfileId,
                     )
                 }
             }.onSuccess { profileId ->
