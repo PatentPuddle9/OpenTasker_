@@ -460,6 +460,12 @@ object WidgetIconCatalog {
 
     val default: WidgetIconOption = all.first { it.key == "bolt" }
 
+    // Profiles render icons repeatedly during recomposition. Resolve the 443 catalog entries
+    // through an index instead of scanning the entire list for every visible card.
+    private val iconsByKey: Map<String, WidgetIconOption> by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        all.associateBy(WidgetIconOption::key)
+    }
+
     private val legacyKeys = mapOf(
         "⚡︎" to "bolt", "⚡" to "bolt",
         "▶︎" to "play", "▶" to "play",
@@ -481,6 +487,6 @@ object WidgetIconCatalog {
     /** Converts saved icon values from earlier OpenTasker builds to the matching Coolicons key. */
     fun resolve(value: String?): WidgetIconOption {
         val key = value?.let { legacyKeys[it] ?: it }
-        return all.firstOrNull { it.key == key } ?: default
+        return key?.let(iconsByKey::get) ?: default
     }
 }

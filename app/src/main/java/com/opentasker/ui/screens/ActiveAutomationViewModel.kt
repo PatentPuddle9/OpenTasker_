@@ -115,6 +115,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -288,18 +289,22 @@ class ActiveAutomationViewModel(
     private val profileDecodeResults = db.profileDao()
         .getAllAsFlow()
         .map { entities -> entities.map { it.toDomainDecodeResult() } }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val taskDecodeResults = db.taskDao()
         .getAllAsFlow()
         .map { entities -> entities.map { it.toDomainDecodeResult() } }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val profiles: StateFlow<ImmutableList<Profile>> = profileDecodeResults
         .map { results ->
-            results.mapNotNull { result -> result.value.takeIf { result.issue == null } }
-                .sortedBy { it.name.lowercase() }
-                .toImmutableList()
+            withContext(Dispatchers.Default) {
+                results.mapNotNull { result -> result.value.takeIf { result.issue == null } }
+                    .sortedBy { it.name.lowercase() }
+                    .toImmutableList()
+            }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), persistentListOf())
 
@@ -312,15 +317,18 @@ class ActiveAutomationViewModel(
 
     val tasks: StateFlow<ImmutableList<Task>> = taskDecodeResults
         .map { results ->
-            results.mapNotNull { result -> result.value.takeIf { result.issue == null } }
-                .sortedBy { it.name.lowercase() }
-                .toImmutableList()
+            withContext(Dispatchers.Default) {
+                results.mapNotNull { result -> result.value.takeIf { result.issue == null } }
+                    .sortedBy { it.name.lowercase() }
+                    .toImmutableList()
+            }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), persistentListOf())
 
     private val sceneDecodeResults = db.sceneDao()
         .getAllAsFlow()
         .map { entities -> entities.map { it.toDomainDecodeResult() } }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val storageDecodeIssues: StateFlow<ImmutableList<StorageDecodeIssue>> = combine(
@@ -328,24 +336,32 @@ class ActiveAutomationViewModel(
         taskDecodeResults,
         sceneDecodeResults,
     ) { profileResults, taskResults, sceneResults ->
-        (profileResults.mapNotNull { it.issue } + taskResults.mapNotNull { it.issue } + sceneResults.mapNotNull { it.issue })
-            .sortedWith(compareBy<StorageDecodeIssue> { it.recordType.label }.thenBy { it.recordName.lowercase() })
-            .toImmutableList()
+        withContext(Dispatchers.Default) {
+            (profileResults.mapNotNull { it.issue } + taskResults.mapNotNull { it.issue } + sceneResults.mapNotNull { it.issue })
+                .sortedWith(compareBy<StorageDecodeIssue> { it.recordType.label }.thenBy { it.recordName.lowercase() })
+                .toImmutableList()
+        }
     }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), persistentListOf())
 
     val scenes: StateFlow<ImmutableList<Scene>> = sceneDecodeResults
         .map { results ->
-            results.mapNotNull { result -> result.value.takeIf { result.issue == null } }
-                .sortedBy { it.name.lowercase() }
-                .toImmutableList()
+            withContext(Dispatchers.Default) {
+                results.mapNotNull { result -> result.value.takeIf { result.issue == null } }
+                    .sortedBy { it.name.lowercase() }
+                    .toImmutableList()
+            }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), persistentListOf())
 
     val projects: StateFlow<ImmutableList<Project>> = db.projectDao()
         .getAllAsFlow()
         .map { entities ->
-            entities.map(ProjectEntity::toDomain).sortedWith(compareBy<Project> { it.position }.thenBy { it.id }).toImmutableList()
+            withContext(Dispatchers.Default) {
+                entities.map(ProjectEntity::toDomain)
+                    .sortedWith(compareBy<Project> { it.position }.thenBy { it.id })
+                    .toImmutableList()
+            }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), persistentListOf())
 

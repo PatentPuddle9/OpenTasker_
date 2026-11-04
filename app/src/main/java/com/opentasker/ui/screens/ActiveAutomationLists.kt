@@ -159,9 +159,14 @@ internal fun ProfilesScreen(
     val groups = remember(profiles) {
         profiles.mapNotNull { it.group }.distinct().sorted()
     }
-    val filteredProfiles = profiles
-        .filter { selectedGroup == null || it.group == selectedGroup }
-        .filter { profileSearchQuery.isBlank() || it.name.contains(profileSearchQuery, ignoreCase = true) }
+    val filteredProfiles = remember(profiles, selectedGroup, profileSearchQuery) {
+        profiles
+            .filter { selectedGroup == null || it.group == selectedGroup }
+            .filter { profileSearchQuery.isBlank() || it.name.contains(profileSearchQuery, ignoreCase = true) }
+    }
+    // Build this once per task-list update; looking up each card's backing Action is then O(1)
+    // instead of scanning the full task list for every visible profile.
+    val tasksById = remember(allTasks) { allTasks.associateBy(Task::id) }
 
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 168.dp),
@@ -238,7 +243,7 @@ internal fun ProfilesScreen(
             }
         }
         items(filteredProfiles, key = { it.id }) { profile ->
-            val actionCount = allTasks.firstOrNull { it.id == profile.enterTaskId }?.actions?.size ?: 0
+            val actionCount = tasksById[profile.enterTaskId]?.actions?.size ?: 0
             ProfileCard(
                 profile = profile,
                 actionCount = actionCount,
@@ -484,8 +489,11 @@ internal fun TasksScreen(
         return
     }
     var taskSearchQuery by rememberSaveable { mutableStateOf("") }
-    val filteredTasks = if (taskSearchQuery.isBlank()) tasks
+    val filteredTasks = remember(tasks, taskSearchQuery) {
+        if (taskSearchQuery.isBlank()) tasks
         else tasks.filter { it.name.contains(taskSearchQuery, ignoreCase = true) }
+    }
+    val initiallyExpandedTaskId = filteredTasks.firstOrNull()?.id
 
     LazyColumn(
         modifier = Modifier
@@ -527,7 +535,7 @@ internal fun TasksScreen(
         items(filteredTasks, key = { it.id }) { task ->
             TaskCard(
                 task = task,
-                initiallyExpanded = filteredTasks.firstOrNull()?.id == task.id,
+                initiallyExpanded = initiallyExpandedTaskId == task.id,
                 onEdit = { onEditTask(task) },
                 onUndo = { onUndoTaskEdit(task) },
                 onRedo = { onRedoTaskEdit(task) },
