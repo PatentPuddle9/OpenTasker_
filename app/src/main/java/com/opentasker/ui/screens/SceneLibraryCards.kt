@@ -371,7 +371,7 @@ private fun SceneElementRow(
                         element.longPressTaskId?.let {
                             stringResource(
                                 R.string.scenes_binding_long_press,
-                                taskNames[it] ?: stringResource(R.string.scenes_missing_task_id, it),
+                                actionNames[it] ?: stringResource(R.string.scenes_missing_action),
                             )
                         },
                     ).forEach { binding ->
