@@ -18,20 +18,34 @@ class TaskWidgetConfigPolishSourceTest {
     ).first(Files::exists)
 
     @Test
-    fun widgetActionPickerUsesPremiumCardsAndGuidedEmptyState() {
-        val source = sourceRoot.resolve("com/opentasker/widget/TaskWidgetConfigActivity.kt").readText()
+    fun widgetCreatesItsOwnProtectedActionWithoutAnActionPicker() {
+        val config = sourceRoot.resolve("com/opentasker/widget/TaskWidgetConfigActivity.kt").readText()
+        val ownership = sourceRoot.resolve("com/opentasker/widget/WidgetProfileLinks.kt").readText()
+        val selectors = sourceRoot.resolve("com/opentasker/core/model/ActionExecutionBinding.kt").readText()
 
-        assertTrue("Widget picker should explain the Action widget setup", source.contains("Create an action widget"))
-        assertTrue("Widget picker should keep a summary/header card", source.contains("WidgetConfigHeader"))
-        assertTrue("Empty state should explain how to unlock widget assignment", source.contains("R.string.widget_empty_title"))
-        assertTrue("Action rows should expose an explicit assign affordance", source.contains("R.string.widget_assign"))
-        assertTrue("Widget options should come from top-level Actions", source.contains("resolveActionExecutionBindings(actions, executions)"))
-        assertTrue("Widget rows should display Action names", source.contains("binding.action.name"))
-        assertFalse("Widget should not enumerate standalone task records", source.contains("tasks.forEach"))
-        assertFalse("Widget copy should not ask the user to choose a task", source.contains("Choose a task"))
-        assertTrue("Widget picker should expose the icon library", source.contains("WidgetIconCatalog.all"))
-        assertTrue("Widget picker should expose a live preview", source.contains("WidgetLivePreview"))
-        assertFalse("Widget picker should not regress to plain divider list rows", source.contains("HorizontalDivider"))
+        assertTrue("Widget setup should explain that it creates an owned Action", config.contains("Every widget gets its own protected Action"))
+        assertTrue("Widget setup should save an Action automatically", config.contains("WidgetProfileLinks.createOrUpdateAction"))
+        assertTrue("Each widget Action should be tagged with its owning widget ID", ownership.contains("widgetId = widgetId"))
+        assertTrue("The widget Action should be disabled from trigger-based activation", ownership.contains("enabled = false"))
+        assertTrue("Widget cleanup should delete the widget-owned Profile", ownership.contains("deleteWidgetOwnedProfile(widgetId)"))
+        assertFalse("Widget setup must not ask users to choose an existing Action", config.contains("Choose an Action"))
+        assertFalse("Widget setup must not show a list of Actions to select", config.contains("actions.forEach"))
+        assertTrue("Widget-owned Actions must stay out of cross-Action selectors", selectors.contains("it.widgetId == null"))
+        assertTrue("Widget setup should expose the icon library", config.contains("WidgetIconCatalog.all"))
+        assertTrue("Widget setup should expose a live preview", config.contains("WidgetLivePreview"))
+    }
+
+    @Test
+    fun shortcutsSectionCanRemoveWidgetActionsAndExplainsLauncherCleanup() {
+        val shortcuts = sourceRoot.resolve("com/opentasker/ui/screens/ShortcutsScreen.kt").readText()
+        val links = sourceRoot.resolve("com/opentasker/widget/WidgetProfileLinks.kt").readText()
+        val resources = resRoot.resolve("values/strings.xml").readText()
+
+        assertTrue("Shortcuts should expose a delete control", shortcuts.contains("Text(\"Delete\""))
+        assertTrue("Delete should confirm before removing a widget Action", shortcuts.contains("AlertDialog"))
+        assertTrue("Delete should remove the Action and OpenTasker widget configuration", shortcuts.contains("onDeleteWidget"))
+        assertTrue("Widget deletion should mark the launcher instance as removed", links.contains("keyRemoved(widgetId), true"))
+        assertTrue("The cleared launcher widget should explain how to remove it", resources.contains("widget_removed_from_shortcuts_subtitle"))
     }
 
     @Test
@@ -51,8 +65,9 @@ class TaskWidgetConfigPolishSourceTest {
     fun widgetAndShortcutRunnerFinishesAfterExecutionErrors() {
         val source = sourceRoot.resolve("com/opentasker/widget/TaskRunActivity.kt").readText()
 
-        assertTrue("Runner should route all outcomes through a finish helper", source.contains("finishWithMessage"))
-        assertTrue("Runner should catch task execution failures", source.contains("catch (e: Exception)"))
-        assertTrue("Runner should log task execution failures", source.contains("Task run failed"))
+        assertTrue("Runner should route invalid or unavailable bindings through a finish helper", source.contains("finishWithMessage"))
+        assertTrue("Runner should catch Action execution failures", source.contains("catch (e: Exception)"))
+        assertTrue("Runner should log Action execution failures", source.contains("Action run failed"))
+        assertTrue("Runner should resolve the private execution record from the widget Action ID", source.contains("EXTRA_PROFILE_ID"))
     }
 }
