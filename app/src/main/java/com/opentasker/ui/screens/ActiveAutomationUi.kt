@@ -117,6 +117,8 @@ import com.opentasker.core.contexts.NfcTagWriteSession
 import com.opentasker.core.contexts.contextConfigSummary
 import com.opentasker.core.engine.executeAndLogTask
 import com.opentasker.widget.TaskShortcutHelper
+import com.opentasker.widget.TaskWidgetProvider
+import com.opentasker.widget.WidgetProfileLinks
 import com.opentasker.core.flow.AutomationFlowTarget
 import com.opentasker.core.location.LocationDwellStateStore
 import com.opentasker.core.model.ActionExecutionBinding
@@ -238,7 +240,9 @@ fun ActiveAutomationUi(
         if (selectedProjectId != null && projects.none { it.id == selectedProjectId }) selectedProjectId = null
     }
     val projectTasks = remember(tasks, selectedProjectId) { tasks.filter { selectedProjectId == null || it.projectId == selectedProjectId } }
-    val actionProfiles = remember(profiles) { profiles.filter { it.widgetId == null } }
+    // Widget-owned Actions stay visible here, but ActionExecutionBindings excludes them
+    // from every cross-Action picker so private widget steps cannot leak into other editors.
+    val actionProfiles = remember(profiles) { profiles }
     val projectProfiles = remember(actionProfiles, selectedProjectId) { actionProfiles.filter { selectedProjectId == null || it.projectId == selectedProjectId } }
     val actionBindings = remember(profiles, tasks) { resolveActionExecutionBindings(profiles, tasks) }
     val actionNamesByExecutionId = remember(actionBindings) { actionBindings.associate { it.execution.id to it.action.name } }
@@ -791,6 +795,30 @@ fun ActiveAutomationUi(
                 onCreateNew = {
                     if (!requestNewTaskWidget(context)) {
                         scope.launch { snackbarHostState.showSnackbar("Your launcher couldn't create a home-screen widget.") }
+                    }
+                },
+                onDeleteWidget = { widgetId, onComplete ->
+                    scope.launch {
+                        runCatching {
+                            withContext(Dispatchers.IO) {
+                                WidgetProfileLinks.removeFromShortcuts(context, widgetId)
+                            }
+                        }.onSuccess {
+                            TaskWidgetProvider.updateWidget(
+                                context,
+                                android.appwidget.AppWidgetManager.getInstance(context),
+                                widgetId,
+                            )
+                            snackbarHostState.showSnackbar(
+                                "Widget Action deleted. Remove the leftover widget icon from your home screen.",
+                            )
+                            onComplete(true)
+                        }.onFailure { error ->
+                            snackbarHostState.showSnackbar(
+                                "Couldn't delete widget Action: ${error.message ?: "Unknown error"}",
+                            )
+                            onComplete(false)
+                        }
                     }
                 },
             )
