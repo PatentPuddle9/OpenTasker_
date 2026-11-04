@@ -295,7 +295,6 @@ private fun List<Task>.toNotificationCandidates(): List<NotificationTaskCandidat
 @Composable
 internal fun ActionConfigDialog(
     state: ActionEditState,
-    tasks: List<Task> = emptyList(),
     actionBindings: List<ActionExecutionBinding> = emptyList(),
     enclosingActions: List<ActionSpec> = emptyList(),
     globalVariables: List<Variable> = emptyList(),
