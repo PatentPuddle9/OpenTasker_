@@ -136,7 +136,6 @@ import com.opentasker.core.contexts.NfcTagWriteSession
 import com.opentasker.core.contexts.contextConfigSummary
 import com.opentasker.core.engine.executeAndLogTask
 import com.opentasker.widget.TaskShortcutHelper
-import com.opentasker.widget.WidgetProfileLinks
 import com.opentasker.core.flow.AutomationFlowTarget
 import com.opentasker.core.location.LocationDwellStateStore
 import com.opentasker.core.model.ActionExecutionBinding
@@ -221,7 +220,8 @@ fun ActiveAutomationUi(
     val context = LocalContext.current.applicationContext
     LaunchedEffect(db) {
         withContext(Dispatchers.IO) {
-            runCatching { WidgetProfileLinks.syncExistingProfiles(context, db) }
+            // Widgets now reference the user's existing Action directly; no shadow Profiles
+            // need to be synchronized into the Actions collection.
         }
     }
     val blueprintCatalogStore = remember(context) { BlueprintCatalogStore(context) }
