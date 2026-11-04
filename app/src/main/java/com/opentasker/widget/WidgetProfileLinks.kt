@@ -41,12 +41,26 @@ object WidgetProfileLinks {
                     ?: error("The widget's private Action data is missing.")
                 val decodedExecution = executionEntity.toDomainDecodeResult()
                 check(decodedExecution.issue == null) { "The widget's private Action data is corrupt." }
-                db.taskDao().update(decodedExecution.value.copy(name = name).toEntity())
+                val sharedExecution = profileDao.getAll().any { other ->
+                    val otherDecoded = other.toDomainDecodeResult()
+                    otherDecoded.issue == null &&
+                        otherDecoded.value.id != existing.id &&
+                        otherDecoded.value.enterTaskId == existing.enterTaskId
+                }
+                val executionId = if (sharedExecution) {
+                    // Older widget-owned Profiles could point at an Action's shared execution
+                    // record. Give this widget its own copy before it becomes independently owned.
+                    db.taskDao().insert(decodedExecution.value.copy(id = 0L, name = name).toEntity())
+                } else {
+                    db.taskDao().update(decodedExecution.value.copy(name = name).toEntity())
+                    existing.enterTaskId
+                }
 
                 profileDao.update(
                     existing.copy(
                         name = name,
                         enabled = false,
+                        enterTaskId = executionId,
                         icon = WidgetIconCatalog.resolve(style.icon).key,
                         contexts = emptyList(),
                         contextExpression = null,
@@ -105,7 +119,11 @@ object WidgetProfileLinks {
 
             if (entity != null && entity.widgetId == widgetId) {
                 val decoded = entity.toDomainDecodeResult()
-                val executionId = decoded.value.enterTaskId.takeIf { decoded.issue == null && it > 0L }
+                val executionId = if (decoded.issue == null) {
+                    decoded.value.enterTaskId.takeIf { it > 0L }
+                } else {
+                    null
+                }
 
                 dao.deleteWidgetOwnedProfile(widgetId)
 
