@@ -19,6 +19,7 @@ object WidgetProfileLinks {
         widgetId: Int,
         task: Task,
         style: WidgetStyle,
+        action: Profile? = null,
     ): Long {
         val db = OpenTaskerApp_NoHilt.awaitDb()
         val dao = db.profileDao()
@@ -29,23 +30,23 @@ object WidgetProfileLinks {
                 "The widget's linked profile could not be read safely."
             }
             decoded.value.copy(
-                name = task.name,
+                name = action?.name ?: task.name,
                 enabled = false,
                 enterTaskId = task.id,
                 contexts = emptyList(),
                 contextExpression = null,
-                projectId = task.projectId,
+                projectId = action?.projectId ?: task.projectId,
                 icon = WidgetIconCatalog.resolve(style.icon).key,
                 widgetId = widgetId,
                 group = "Shortcuts",
             )
         } else {
             Profile(
-                name = task.name,
+                name = action?.name ?: task.name,
                 enabled = false,
                 enterTaskId = task.id,
                 contexts = emptyList(),
-                projectId = task.projectId,
+                projectId = action?.projectId ?: task.projectId,
                 icon = WidgetIconCatalog.resolve(style.icon).key,
                 widgetId = widgetId,
                 group = "Shortcuts",
@@ -86,7 +87,14 @@ object WidgetProfileLinks {
                 gradient = prefs.getBoolean(TaskWidgetProvider.keyGradient(widgetId), WidgetStyle().gradient),
                 shape = prefs.getString(TaskWidgetProvider.keyShape(widgetId), WidgetShapeCatalog.default.key) ?: WidgetShapeCatalog.default.key,
             )
-            syncProfile(context, widgetId, decodedTask.value, style)
+            val sourceAction = db.profileDao().getAll()
+                .asSequence()
+                .mapNotNull { entity ->
+                    val decoded = entity.toDomainDecodeResult()
+                    decoded.value.takeIf { decoded.issue == null }
+                }
+                .firstOrNull { it.widgetId == null && it.enterTaskId == taskId }
+            syncProfile(context, widgetId, decodedTask.value, style, action = sourceAction)
         }
     }
 
