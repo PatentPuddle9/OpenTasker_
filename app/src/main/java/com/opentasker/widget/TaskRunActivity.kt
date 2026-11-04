@@ -46,11 +46,13 @@ class TaskRunActivity : Activity() {
                 val action = if (profileId > 0L) {
                     val entity = db.profileDao().getById(profileId)
                     val decoded = entity?.toDomainDecodeResult()
-                    if (decoded?.issue != null) {
+                    if (decoded == null) {
+                        null
+                    } else if (decoded.issue != null) {
                         AppLogger.error(TAG, decoded.issue.recoveryMessage())
-                    }
-                    decoded?.value?.takeIf {
-                        decoded.issue == null && it.widgetId == null && it.enterTaskId > 0L
+                        null
+                    } else {
+                        decoded.value.takeIf { it.widgetId == null && it.enterTaskId > 0L }
                     }
                 } else {
                     null
