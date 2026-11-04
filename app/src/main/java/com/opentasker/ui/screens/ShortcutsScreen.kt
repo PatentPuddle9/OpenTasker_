@@ -216,14 +216,12 @@ internal fun requestNewTaskWidget(context: Context): Boolean {
 
 internal fun taskWidgetCount(context: Context): Int {
     val prefs = context.getSharedPreferences(TaskWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
+    // The installed AppWidget IDs are the source of truth. A new widget is listed
+    // immediately, even while its provider callback is still creating the backing Action.
     return AppWidgetManager.getInstance(context)
         .getAppWidgetIds(ComponentName(context, TaskWidgetProvider::class.java))
         .count { widgetId ->
-            (
-                prefs.getLong(TaskWidgetProvider.keyActionProfileId(widgetId), -1L) > 0L ||
-                    prefs.getLong(TaskWidgetProvider.keyTaskId(widgetId), -1L) > 0L ||
-                    prefs.getLong(TaskWidgetProvider.keyProfileId(widgetId), -1L) > 0L
-                ) && !prefs.getBoolean(TaskWidgetProvider.keyRemoved(widgetId), false)
+            !prefs.getBoolean(TaskWidgetProvider.keyRemoved(widgetId), false)
         }
 }
 
@@ -232,11 +230,8 @@ private fun loadShortcutWidgets(context: Context): List<ShortcutWidgetRow> {
     val ids = manager.getAppWidgetIds(ComponentName(context, TaskWidgetProvider::class.java))
     val prefs = context.getSharedPreferences(TaskWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
     return ids.toList().mapNotNull { widgetId ->
-        val hasSavedBinding =
-            prefs.getLong(TaskWidgetProvider.keyActionProfileId(widgetId), -1L) > 0L ||
-                prefs.getLong(TaskWidgetProvider.keyTaskId(widgetId), -1L) > 0L ||
-                prefs.getLong(TaskWidgetProvider.keyProfileId(widgetId), -1L) > 0L
-        if (!hasSavedBinding || prefs.getBoolean(TaskWidgetProvider.keyRemoved(widgetId), false)) {
+        // Do not hide freshly pinned widgets while onUpdate is still creating their Action.
+        if (prefs.getBoolean(TaskWidgetProvider.keyRemoved(widgetId), false)) {
             return@mapNotNull null
         }
         ShortcutWidgetRow(
