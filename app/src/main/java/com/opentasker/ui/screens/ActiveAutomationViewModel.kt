@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.opentasker.app.R
+import com.opentasker.ui.utils.ActionResultNotificationPreference
 import com.opentasker.core.capabilities.AutomationFeedbackRiskAnalyzer
 import com.opentasker.core.capabilities.AutomationLint
 import com.opentasker.core.capabilities.AutomationLintReport
@@ -1495,10 +1496,16 @@ class ActiveAutomationViewModel(
                     result.report.success -> appContext.getString(R.string.ui_run_status_succeeded)
                     else -> appContext.getString(R.string.ui_run_status_failed)
                 }
-                events.send(message(R.string.ui_message_run_status, task.name, status, result.report.durationMs))
+                if (ActionResultNotificationPreference.isEnabled(appContext)) {
+                    events.send(message(R.string.ui_message_run_status, task.name, status, result.report.durationMs))
+                }
                 // A manual run can be held, which adds a row the run-log page should show.
                 runLog.refreshRunLogPage()
-            }.onFailure { events.send(errorMessage(it, R.string.ui_error_run_task)) }
+            }.onFailure {
+                if (ActionResultNotificationPreference.isEnabled(appContext)) {
+                    events.send(errorMessage(it, R.string.ui_error_run_task))
+                }
+            }
             _runActionBusy.value = false
         }
     }
@@ -1541,9 +1548,15 @@ class ActiveAutomationViewModel(
                 }
                 // The label comes from the action's own name or its metadata, never from its
                 // arguments, so a credential in an argument cannot reach this snackbar.
-                events.send(message(R.string.ui_message_action_run_status, label, status, result.report.durationMs))
+                if (ActionResultNotificationPreference.isEnabled(appContext)) {
+                    events.send(message(R.string.ui_message_action_run_status, label, status, result.report.durationMs))
+                }
                 runLog.refreshRunLogPage()
-            }.onFailure { events.send(errorMessage(it, R.string.ui_error_run_action)) }
+            }.onFailure {
+                if (ActionResultNotificationPreference.isEnabled(appContext)) {
+                    events.send(errorMessage(it, R.string.ui_error_run_action))
+                }
+            }
             _runActionBusy.value = false
         }
     }
@@ -1565,9 +1578,15 @@ class ActiveAutomationViewModel(
                     result.report.success -> appContext.getString(R.string.ui_run_status_succeeded)
                     else -> appContext.getString(R.string.ui_run_status_failed)
                 }
-                events.send(message(R.string.ui_message_run_replayed, entry.taskName, status, result.report.durationMs))
+                if (ActionResultNotificationPreference.isEnabled(appContext)) {
+                    events.send(message(R.string.ui_message_run_replayed, entry.taskName, status, result.report.durationMs))
+                }
                 runLog.refreshRunLogPage()
-            }.onFailure { events.send(errorMessage(it, R.string.ui_error_run_log_replay)) }
+            }.onFailure {
+                if (ActionResultNotificationPreference.isEnabled(appContext)) {
+                    events.send(errorMessage(it, R.string.ui_error_run_log_replay))
+                }
+            }
             _runActionBusy.value = false
         }
     }
