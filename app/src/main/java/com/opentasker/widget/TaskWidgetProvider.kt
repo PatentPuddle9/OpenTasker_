@@ -69,7 +69,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
         for (id in appWidgetIds) {
             editor.remove(keyTaskId(id))
             editor.remove(keyActionProfileId(id))
-            editor.remove(keyTaskName(id))
+            editor.remove(keyActionName(id))
             editor.remove(keyIcon(id))
             editor.remove(keyIconColor(id))
             editor.remove(keyBackgroundColor(id))
@@ -85,7 +85,9 @@ class TaskWidgetProvider : AppWidgetProvider() {
 
         /** Legacy-only key used to migrate widgets saved by versions that stored Task IDs. */
         fun keyTaskId(widgetId: Int) = "widget_${widgetId}_task_id"
-        fun keyTaskName(widgetId: Int) = "widget_${widgetId}_task_name"
+        /** Stored name cache; the backing key is kept for upgrade compatibility. */
+        fun keyActionName(widgetId: Int) = "widget_${widgetId}_task_name"
+        fun keyTaskName(widgetId: Int) = keyActionName(widgetId)
         fun keyActionProfileId(widgetId: Int) = "widget_${widgetId}_action_profile_id"
         fun keyIcon(widgetId: Int) = "widget_${widgetId}_icon"
         fun keyIconColor(widgetId: Int) = "widget_${widgetId}_icon_color"
@@ -129,7 +131,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
                 }
 
                 if (selectedAction != null) {
-                    editor.putString(keyTaskName(widgetId), selectedAction.name)
+                    editor.putString(keyActionName(widgetId), selectedAction.name)
                     editor.remove(keyTaskId(widgetId))
                     continue
                 }
@@ -137,7 +139,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
                 // One-time migration for widgets created before they stored an Action/Profile ID.
                 // Only migrate when the old execution ID maps unambiguously to a visible Action.
                 val legacyTaskId = prefs.getLong(keyTaskId(widgetId), -1L)
-                val legacyName = prefs.getString(keyTaskName(widgetId), null)
+                val legacyName = prefs.getString(keyActionName(widgetId), null)
                 val candidates = decodedProfiles.filter {
                     it.widgetId == null && it.enterTaskId == legacyTaskId && it.enterTaskId > 0L
                 }
@@ -146,10 +148,10 @@ class TaskWidgetProvider : AppWidgetProvider() {
 
                 if (migratedAction != null) {
                     editor.putLong(keyActionProfileId(widgetId), migratedAction.id)
-                    editor.putString(keyTaskName(widgetId), migratedAction.name)
+                    editor.putString(keyActionName(widgetId), migratedAction.name)
                 } else {
                     editor.remove(keyActionProfileId(widgetId))
-                    editor.putString(keyTaskName(widgetId), context.getString(R.string.widget_task_missing))
+                    editor.putString(keyActionName(widgetId), context.getString(R.string.widget_task_missing))
                 }
                 editor.remove(keyTaskId(widgetId))
             }
@@ -160,7 +162,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val actionProfileId = prefs.getLong(keyActionProfileId(widgetId), -1L)
             val defaultActionName = context.getString(R.string.app_name)
-            val actionName = prefs.getString(keyTaskName(widgetId), defaultActionName) ?: defaultActionName
+            val actionName = prefs.getString(keyActionName(widgetId), defaultActionName) ?: defaultActionName
 
             val icon = WidgetIconCatalog.resolve(
                 prefs.getString(keyIcon(widgetId), WidgetIconCatalog.default.key),
