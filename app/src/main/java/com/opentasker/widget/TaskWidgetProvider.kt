@@ -68,6 +68,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
         val editor = prefs.edit()
         for (id in appWidgetIds) {
             editor.remove(keyTaskId(id))
+            editor.remove(keyActionProfileId(id))
             editor.remove(keyTaskName(id))
             editor.remove(keyIcon(id))
             editor.remove(keyIconColor(id))
