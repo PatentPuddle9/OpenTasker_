@@ -1561,6 +1561,7 @@
     <string name="ui_message_cancelling_automation">Cancelling automation</string>
     <string name="ui_message_automation_finished">That automation already finished</string>
     <string name="ui_message_task_created">Task created</string>
+    <string name="ui_message_action_ready">Action ready</string>
     <string name="ui_message_task_duplicated">Task duplicated</string>
     <string name="ui_message_task_updated">Task updated</string>
     <string name="ui_message_profile_enabled">Action enabled</string>
