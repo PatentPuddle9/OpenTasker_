@@ -56,7 +56,7 @@ class TaskRunActivity : Activity() {
                             AppLogger.error(TAG, issue.recoveryMessage())
                             null
                         } else {
-                            decoded.value.takeIf { it.widgetId == null && it.enterTaskId > 0L }
+                            decoded.value.takeIf { it.enterTaskId > 0L }
                         }
                     }
                 } else {
