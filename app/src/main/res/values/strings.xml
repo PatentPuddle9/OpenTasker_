@@ -1039,6 +1039,7 @@
     <string name="flow_waiting_for_profile">Waiting for action</string>
     <string name="flow_overview_title">Flow overview</string>
     <string name="flow_overview_body">Action graph generated from your saved actions and triggers.</string>
+    <string name="flow_context_summary">%1$d trigger(s)</string>
     <string name="flow_context_action_summary">%1$d context(s) - %2$d action(s)</string>
     <string name="flow_all_context_rules">all context rules</string>
     <string name="flow_add_content_description">Add</string>
@@ -1447,7 +1448,7 @@
     <string name="header_tasks_detail">%1$d actions • %2$d tasks</string>
     <string name="header_shortcuts_detail">%1$d shortcuts</string>
     <string name="header_variables_detail">%1$d global variables</string>
-    <string name="header_flow_detail">%1$d actions • %2$d tasks</string>
+    <string name="header_flow_detail">%1$d Actions</string>
     <string name="header_scenes_detail">%1$d elements • %2$d scenes</string>
     <string name="header_inspector_detail">Live context health</string>
     <string name="header_setup_detail">Permission and reliability checks</string>
