@@ -106,12 +106,13 @@ object WidgetProfileLinks {
     suspend fun deleteLegacyShadowProfile(context: Context, widgetId: Int) {
         val prefs = context.getSharedPreferences(TaskWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
         val profileId = prefs.getLong(TaskWidgetProvider.keyProfileId(widgetId), -1L)
+        if (profileId <= 0L) return
         val db = OpenTaskerApp_NoHilt.awaitDb()
-        val dao = db.profileDao()
-        val byId = if (profileId > 0L) dao.getById(profileId) else null
-        val entity = byId?.takeIf { it.widgetId == widgetId } ?: dao.getByWidgetId(widgetId)
+        val entity = db.profileDao().getById(profileId)
+        // Only remove the exact legacy shadow row. Never fall back to getByWidgetId here:
+        // current widgets also have a widgetId-owned Action, which must survive every refresh.
         if (entity != null && entity.widgetId == widgetId) {
-            dao.deleteWidgetOwnedProfile(widgetId)
+            db.profileDao().deleteWidgetOwnedProfile(widgetId)
         }
         prefs.edit().remove(TaskWidgetProvider.keyProfileId(widgetId)).apply()
     }
