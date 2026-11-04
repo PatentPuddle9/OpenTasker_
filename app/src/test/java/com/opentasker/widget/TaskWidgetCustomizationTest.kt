@@ -59,7 +59,7 @@ class TaskWidgetCustomizationTest {
         assertTrue(provider.contains("setColorFilter"))
         assertTrue(provider.contains("TaskRunActivity.EXTRA_PROFILE_ID"))
         assertTrue("The initial widget provider update should create a private Action", provider.contains("WidgetProfileLinks.createOrUpdateAction"))
-        assertTrue("The default Action should be named for its new widget", provider.contains("\"Widget $widgetId\""))
+        assertTrue("The default Action should be named for its new widget", provider.contains("\"Widget \$widgetId\""))
         assertTrue(!provider.contains("TaskRunActivity.EXTRA_TASK_ID"))
         assertTrue(style.contains("LinearGradient"))
         assertTrue(layout.contains("@+id/widget_background"))
