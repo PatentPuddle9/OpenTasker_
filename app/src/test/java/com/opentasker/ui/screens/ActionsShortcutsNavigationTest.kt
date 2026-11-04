@@ -27,16 +27,31 @@ class ActionsShortcutsNavigationTest {
     }
 
     @Test
-    fun actionsIsAnIconGridAndProfileOpensItsInlineTaskEditor() {
+    fun actionsIsAnIconGridAndOpensItsInlineActionEditor() {
         val lists = source("app/src/main/java/com/opentasker/ui/screens/ActiveAutomationLists.kt")
         val editor = source("app/src/main/java/com/opentasker/ui/screens/EditorDialogs.kt")
         assertTrue(lists.contains("LazyVerticalGrid("))
         assertTrue(lists.contains("Card(\n        onClick = onEdit"))
         assertTrue(lists.contains("WidgetIconCatalog.all.any"))
         assertTrue(lists.contains("profile.widgetId != null"))
-        assertTrue(editor.contains("When this profile is triggered"))
+        assertTrue(editor.contains("Text(\"Actions\""))
         assertTrue(editor.contains("ActionRow("))
         assertTrue(editor.contains("WidgetIconCatalog.all.forEach"))
+        assertFalse(editor.contains("R.string.profile_enter_task"))
+        assertFalse(editor.contains("R.string.profile_exit_task"))
+        assertTrue(editor.contains("R.string.profile_fallback_task"))
+        assertTrue(editor.contains("onCreateFallbackAction"))
+    }
+
+    @Test
+    fun actionRowsCanTestFromTheirIconOrOverflowMenu() {
+        val lists = source("app/src/main/java/com/opentasker/ui/screens/ActiveAutomationLists.kt")
+        val strings = source("app/src/main/res/values/strings.xml")
+
+        assertTrue(lists.contains("SingleActionRun.isRunnableAlone(action)"))
+        assertTrue(lists.contains("onClick = onRun"))
+        assertTrue(lists.contains("R.string.action_run_alone"))
+        assertTrue(strings.contains("<string name=\"action_run_alone\">Test</string>"))
     }
 
     @Test
