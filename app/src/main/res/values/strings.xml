@@ -158,6 +158,8 @@
     <string name="settings_title">Settings</string>
     <string name="settings_body">Manage appearance, recovery, background behavior, integrations, and other app-wide preferences.</string>
     <string name="settings_section_general">General</string>
+    <string name="settings_action_result_notifications_title">Action result notifications</string>
+    <string name="settings_action_result_notifications_body">Show a message when an action or automation finishes running, including runs started from widgets and shortcuts.</string>
     <string name="setup_focus_title">Finish setting up your new automation</string>
     <string name="setup_focus_body">The template you just installed needs the access listed below before it can run.</string>
     <string name="settings_run_onboarding_title">Run onboarding again</string>
