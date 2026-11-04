@@ -797,7 +797,7 @@ fun ActiveAutomationUi(
 
             OpenTaskerScreen.Flow -> AutomationFlowScreen(
                 profiles = projectProfiles,
-                tasks = projectTasks, invariants = invariants,
+                invariants = invariants,
                 contentPadding = innerPadding, changedNodeKeys = highlightedFlowNodeKeys,
                 contentLoaded = contentLoaded,
                 onNodeTargetSelected = openFlowTarget, onUpdateInvariants = viewModel::updateAutomationInvariants,

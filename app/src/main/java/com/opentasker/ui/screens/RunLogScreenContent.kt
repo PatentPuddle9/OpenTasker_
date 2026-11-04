@@ -125,6 +125,7 @@ internal fun RunLogScreenContent(
             item {
                 ActiveExecutionsCard(
                     executions = activeExecutions,
+                    actionNamesById = actionNamesById,
                     onCancel = onCancelExecution,
                 )
             }
@@ -186,6 +187,7 @@ internal fun RunLogScreenContent(
         items(logs, key = { it.id }) { entry ->
             RunLogCard(
                 entry = entry,
+                actionNamesById = actionNamesById,
                 onReplayHeldRun = onReplayHeldRun,
                 onToggleRunLogStar = onToggleRunLogStar,
             )
@@ -561,6 +563,7 @@ private fun RunLogSummaryCard(
 @Composable
 private fun RunLogCard(
     entry: RunLogEntry,
+    actionNamesById: Map<Long, String>,
     onReplayHeldRun: (RunLogEntry) -> Unit,
     onToggleRunLogStar: (RunLogEntry) -> Unit,
 ) {
@@ -1018,6 +1021,7 @@ private fun VariableChangeInspector(
 @Composable
 private fun ActiveExecutionsCard(
     executions: List<ActiveExecution>,
+    actionNamesById: Map<Long, String>,
     onCancel: (Long) -> Unit,
 ) {
     Card(

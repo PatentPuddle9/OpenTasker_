@@ -50,11 +50,14 @@ class TaskRunActivity : Activity() {
                     val decoded = entity?.toDomainDecodeResult()
                     if (decoded == null) {
                         null
-                    } else if (decoded.issue != null) {
-                        AppLogger.error(TAG, decoded.issue.recoveryMessage())
-                        null
                     } else {
-                        decoded.value.takeIf { it.widgetId == null && it.enterTaskId > 0L }
+                        val issue = decoded.issue
+                        if (issue != null) {
+                            AppLogger.error(TAG, issue.recoveryMessage())
+                            null
+                        } else {
+                            decoded.value.takeIf { it.widgetId == null && it.enterTaskId > 0L }
+                        }
                     }
                 } else {
                     null
