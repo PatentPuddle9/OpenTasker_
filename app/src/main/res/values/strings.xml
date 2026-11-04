@@ -903,6 +903,7 @@
     <string name="a11y_edit_task">Edit task %1$s</string>
     <string name="a11y_add_action_to_task">Add action to task %1$s</string>
     <string name="a11y_run_task">Run task %1$s</string>
+    <string name="a11y_test_action">Test action %1$s</string>
     <string name="a11y_pin_task">Pin task %1$s</string>
     <string name="a11y_delete_task">Delete task %1$s</string>
     <string name="a11y_duplicate_task">More actions for task %1$s</string>
