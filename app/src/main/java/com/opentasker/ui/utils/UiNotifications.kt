@@ -18,6 +18,7 @@ object UiNotifications {
     internal fun infoMessage(message: String): String = message
     
     fun showSuccess(context: Context, message: String) {
+        if (!ActionResultNotificationPreference.isEnabled(context)) return
         Toast.makeText(
             context,
             successMessage(message) { resourceId, value -> context.getString(resourceId, value) },
@@ -26,6 +27,7 @@ object UiNotifications {
     }
     
     fun showError(context: Context, message: String) {
+        if (!ActionResultNotificationPreference.isEnabled(context)) return
         Toast.makeText(
             context,
             errorMessage(message) { resourceId, value -> context.getString(resourceId, value) },
