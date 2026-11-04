@@ -10,16 +10,16 @@
     <string name="catalog_action_notify_show_field_text_hint" formatted="false">Dialog message</string>
     <string name="catalog_action_notify_show_field_button1_label_label" formatted="false">Button 1 label</string>
     <string name="catalog_action_notify_show_field_button1_label_hint" formatted="false">Button text; leave its task blank to dismiss the dialog</string>
-    <string name="catalog_action_notify_show_field_button1_task_id_label" formatted="false">Button 1 task (optional)</string>
-    <string name="catalog_action_notify_show_field_button1_task_id_hint" formatted="false">Optional task to run; leave empty to dismiss the dialog</string>
+    <string name="catalog_action_notify_show_field_button1_task_id_label" formatted="false">Button 1 Action (optional)</string>
+    <string name="catalog_action_notify_show_field_button1_task_id_hint" formatted="false">Optional Action to run; leave empty to dismiss the dialog</string>
     <string name="catalog_action_notify_show_field_button2_label_label" formatted="false">Button 2 label</string>
     <string name="catalog_action_notify_show_field_button2_label_hint" formatted="false">Button text; leave its task blank to dismiss the dialog</string>
-    <string name="catalog_action_notify_show_field_button2_task_id_label" formatted="false">Button 2 task (optional)</string>
-    <string name="catalog_action_notify_show_field_button2_task_id_hint" formatted="false">Optional task to run; leave empty to dismiss the dialog</string>
+    <string name="catalog_action_notify_show_field_button2_task_id_label" formatted="false">Button 2 Action (optional)</string>
+    <string name="catalog_action_notify_show_field_button2_task_id_hint" formatted="false">Optional Action to run; leave empty to dismiss the dialog</string>
     <string name="catalog_action_notify_show_field_button3_label_label" formatted="false">Button 3 label</string>
     <string name="catalog_action_notify_show_field_button3_label_hint" formatted="false">Button text; leave its task blank to dismiss the dialog</string>
-    <string name="catalog_action_notify_show_field_button3_task_id_label" formatted="false">Button 3 task (optional)</string>
-    <string name="catalog_action_notify_show_field_button3_task_id_hint" formatted="false">Optional task to run; leave empty to dismiss the dialog</string>
+    <string name="catalog_action_notify_show_field_button3_task_id_label" formatted="false">Button 3 Action (optional)</string>
+    <string name="catalog_action_notify_show_field_button3_task_id_hint" formatted="false">Optional Action to run; leave empty to dismiss the dialog</string>
     <string name="catalog_action_notify_cancel_name" formatted="false">Cancel Notification</string>
     <string name="catalog_action_notify_cancel_description" formatted="false">Cancel a notification by tag and/or ID</string>
     <string name="catalog_action_notify_cancel_field_tag_label" formatted="false">Tag</string>
@@ -146,9 +146,9 @@
     <string name="catalog_category_flow" formatted="false">Flow</string>
     <string name="catalog_action_flow_wait_field_millis_label" formatted="false">Milliseconds</string>
     <string name="catalog_action_flow_wait_field_millis_hint" formatted="false">Duration in ms</string>
-    <string name="catalog_action_task_run_name" formatted="false">Run Task</string>
-    <string name="catalog_action_task_run_description" formatted="false">Run another task as a reusable sub-task (shares variables; max 8 levels deep)</string>
-    <string name="catalog_action_task_run_field_task_label" formatted="false">Task id or name</string>
+    <string name="catalog_action_task_run_name" formatted="false">Run Action</string>
+    <string name="catalog_action_task_run_description" formatted="false">Run another Action as a reusable sub-action (shares variables; max 8 levels deep)</string>
+    <string name="catalog_action_task_run_field_task_label" formatted="false">Action</string>
     <string name="catalog_action_task_run_field_task_hint" formatted="false">Toggle Wi-Fi</string>
     <string name="catalog_action_flow_if_name" formatted="false">If</string>
     <string name="catalog_action_flow_if_description" formatted="false">Run the following actions only when the condition is true (close with End If)</string>
@@ -598,7 +598,7 @@
     <string name="catalog_action_shortcut_publish_field_id_label" formatted="false">Shortcut ID</string>
     <string name="catalog_action_shortcut_publish_field_id_hint" formatted="false">Stable ID used to update this shortcut</string>
     <string name="catalog_action_shortcut_publish_field_task_id_label" formatted="false">Task</string>
-    <string name="catalog_action_shortcut_publish_field_task_id_hint" formatted="false">Task to run when the shortcut is tapped</string>
+    <string name="catalog_action_shortcut_publish_field_task_id_hint" formatted="false">Action to run when the shortcut is tapped</string>
     <string name="catalog_action_shortcut_publish_field_label_label" formatted="false">Label</string>
     <string name="catalog_action_shortcut_publish_field_label_hint" formatted="false">Label shown by the launcher</string>
     <string name="catalog_action_shortcut_publish_field_mode_label" formatted="false">Mode</string>
