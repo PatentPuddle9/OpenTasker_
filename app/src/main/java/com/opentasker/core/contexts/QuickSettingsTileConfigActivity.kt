@@ -49,13 +49,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.opentasker.app.OpenTaskerApp_NoHilt
 import com.opentasker.app.R
-import com.opentasker.core.model.Task
+import com.opentasker.core.model.ActionExecutionBinding
+import com.opentasker.core.model.resolveActionExecutionBindings
 import com.opentasker.ui.theme.OpenTaskerTheme
 import com.opentasker.ui.theme.ThemeMode
 import com.opentasker.ui.theme.ThemePreference
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.combine
 
 class QuickSettingsTileConfigActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,21 +76,31 @@ class QuickSettingsTileConfigActivity : ComponentActivity() {
         val store = QuickSettingsTileStore(this)
         val initial = store.load(slot)
         // Awaited on first collection rather than in onCreate; see MainActivity.
-        val tasksFlow = flow { emitAll(OpenTaskerApp_NoHilt.awaitDb().taskDao().getAllAsFlow()) }.map { entities ->
-            entities.mapNotNull { entity ->
-                val decoded = entity.toDomainDecodeResult()
-                decoded.value.takeIf { decoded.issue == null }
-            }
+        val actionsFlow = flow {
+            val db = OpenTaskerApp_NoHilt.awaitDb()
+            emitAll(
+                combine(db.profileDao().getAllAsFlow(), db.taskDao().getAllAsFlow()) { profileEntities, taskEntities ->
+                    val actions = profileEntities.mapNotNull { entity ->
+                        val decoded = entity.toDomainDecodeResult()
+                        decoded.value.takeIf { decoded.issue == null }
+                    }
+                    val executions = taskEntities.mapNotNull { entity ->
+                        val decoded = entity.toDomainDecodeResult()
+                        decoded.value.takeIf { decoded.issue == null }
+                    }
+                    resolveActionExecutionBindings(actions, executions)
+                },
+            )
         }
         setContent {
             val themeMode by ThemePreference.observe(this).collectAsState(initial = ThemeMode.System)
-            val tasks by tasksFlow.collectAsState(initial = emptyList())
+            val actions by actionsFlow.collectAsState(initial = emptyList())
             val accentColorHex by ThemePreference.observeAccentColor(this).collectAsState(initial = ThemePreference.DEFAULT_ACCENT_HEX)
             OpenTaskerTheme(themeMode, accentColorHex) {
                 TileConfigScreen(
                     slot = slot,
                     initial = initial,
-                    tasks = tasks,
+                    actions = actions,
                     onSave = { config ->
                         store.save(config)
                         store.requestRefresh(this, slot)
@@ -131,7 +143,7 @@ private val tileIconChoices = listOf(
 private fun TileConfigScreen(
     slot: Int,
     initial: QuickSettingsTileConfig,
-    tasks: List<Task>,
+    actions: List<ActionExecutionBinding>,
     onSave: (QuickSettingsTileConfig) -> Unit,
 ) {
     var taskId by rememberSaveable(slot) { mutableStateOf(initial.taskId) }
@@ -139,7 +151,7 @@ private fun TileConfigScreen(
     var label by rememberSaveable(slot) { mutableStateOf(initial.label) }
     var subtitle by rememberSaveable(slot) { mutableStateOf(initial.subtitle) }
     var iconKey by rememberSaveable(slot) { mutableStateOf(initial.iconKey) }
-    val selectedTask = tasks.firstOrNull { it.id == taskId }
+    val selectedAction = actions.firstOrNull { it.execution.id == taskId }
 
     Scaffold(
         topBar = {
@@ -164,17 +176,17 @@ private fun TileConfigScreen(
             contentPadding = PaddingValues(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item { Text(stringResource(R.string.qs_tile_choose_task), style = MaterialTheme.typography.titleMedium) }
-            if (tasks.isEmpty()) {
-                item { Text(stringResource(R.string.qs_tile_no_tasks), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item { Text(stringResource(R.string.qs_tile_choose_action), style = MaterialTheme.typography.titleMedium) }
+            if (actions.isEmpty()) {
+                item { Text(stringResource(R.string.qs_tile_no_actions), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
-                items(tasks, key = Task::id) { task ->
-                    val selected = task.id == taskId
+                items(actions, key = { it.execution.id }) { binding ->
+                    val selected = binding.execution.id == taskId
                     Card(
                         modifier = Modifier.fillMaxWidth().clickable {
-                            taskId = task.id
-                            taskName = task.name
-                            if (label.isBlank() || label == initial.taskName) label = task.name
+                            taskId = binding.execution.id
+                            taskName = binding.action.name
+                            if (label.isBlank() || label == initial.taskName) label = binding.action.name
                         },
                         colors = CardDefaults.cardColors(
                             containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer
@@ -191,12 +203,7 @@ private fun TileConfigScreen(
                             )
                             Spacer(Modifier.width(12.dp))
                             Column {
-                                Text(task.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(
-                                    stringResource(R.string.qs_tile_task_id, task.id),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                                Text(binding.action.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                         }
                     }
@@ -244,12 +251,12 @@ private fun TileConfigScreen(
             item {
                 Button(
                     onClick = {
-                        selectedTask?.let { task ->
+                        selectedAction?.let { binding ->
                             onSave(
                                 QuickSettingsTileConfig(
                                     slot = slot,
-                                    taskId = task.id,
-                                    taskName = task.name,
+                                    taskId = binding.execution.id,
+                                    taskName = binding.action.name,
                                     label = label,
                                     subtitle = subtitle,
                                     iconKey = iconKey,
@@ -258,7 +265,7 @@ private fun TileConfigScreen(
                             )
                         }
                     },
-                    enabled = selectedTask != null,
+                    enabled = selectedAction != null,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(stringResource(R.string.qs_tile_save))
