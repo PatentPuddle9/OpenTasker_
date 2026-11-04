@@ -16,7 +16,7 @@
     <string name="qs_tile_saved">Quick Settings tile saved.</string>
     <string name="qs_tile_default_label">Task tile %1$d</string>
     <string name="permission_automation_label">Control OpenTasker automations</string>
-    <string name="permission_automation_description">Allows same-signer integrations to run OpenTasker tasks, toggle actions, and query automation status through documented intents.</string>
+    <string name="permission_automation_description">Allows same-signer integrations to run OpenTasker actions and query automation status through documented intents.</string>
     <string name="error_prefix">Error: %1$s</string>
     <string name="success_prefix">Success: %1$s</string>
     <string name="widget_task_description">Run an OpenTasker task with one tap</string>
@@ -58,11 +58,11 @@
     <string name="nav_diagnostics">Diagnostics</string>
     <string name="global_search_content_description">Search all automations</string>
     <string name="global_search_title">Search OpenTasker</string>
-    <string name="global_search_label">Search actions, tasks, actions, variables, and scenes</string>
+    <string name="global_search_label">Search actions, triggers, variables, and scenes</string>
     <string name="global_search_hint">Try a name, action type, or variable reference</string>
     <string name="global_search_clear">Clear global search</string>
     <string name="global_search_prompt">Type to search across every project.</string>
-    <string name="global_search_no_results">No matching actions, tasks, actions, variables, or scenes.</string>
+    <string name="global_search_no_results">No matching actions, triggers, variables, or scenes.</string>
     <string name="global_search_result_profile">Action</string>
     <string name="global_search_result_task">Task</string>
     <string name="global_search_result_action">Action</string>
@@ -218,7 +218,7 @@
     <string name="profile_enter_task">Enter task</string>
     <string name="profile_exit_task">Exit task</string>
     <string name="profile_exit_task_helper">Optional cleanup task to run when this action stops matching.</string>
-    <string name="profile_fallback_task">Action fallback task</string>
+    <string name="profile_fallback_task">Fallback Action</string>
     <string name="profile_fallback_task_helper">Optional action to run when this action fails without a flow.catch.</string>
     <string name="profile_fallback_action_add">Add fallback action</string>
     <string name="profile_fallback_action_replace">Replace missing fallback action</string>
@@ -695,7 +695,7 @@
     <string name="automation_invariant_forbidden_write">Warn if this changes: %1$s</string>
     <string name="automation_invariant_add_title">Watch a device setting</string>
     <string name="automation_invariant_edit_title">Edit a watched device setting</string>
-    <string name="automation_invariant_editor_body">While the condition below holds, a action that changes the chosen setting is reported as a problem. The change still happens; this only warns you.</string>
+    <string name="automation_invariant_editor_body">While the condition below holds, an action that changes the chosen setting is reported as a problem. The change still happens; this only warns you.</string>
     <string name="automation_invariant_name_label">Name this rule</string>
     <string name="automation_invariant_guard_key_label">Condition: device state</string>
     <string name="automation_invariant_operator_value">Operator: %1$s</string>
@@ -1032,7 +1032,7 @@
 
     <string name="flow_empty_content_description">Flow view empty</string>
     <string name="flow_empty_profile_graph_title">No action graph yet</string>
-    <string name="flow_empty_profile_graph_body">Create or import a action to generate a readable automation graph with contexts, tasks, actions, and missing references.</string>
+    <string name="flow_empty_profile_graph_body">Create or import an action to generate a readable automation graph with triggers, actions, and missing references.</string>
     <string name="flow_waiting_for_profile">Waiting for action</string>
     <string name="flow_overview_title">Flow overview</string>
     <string name="flow_overview_body">Action graph generated from your saved actions and tasks.</string>
