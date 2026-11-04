@@ -16,12 +16,16 @@ class TaskWidgetConfigPolishSourceTest {
         Path.of("src/main/res"),
         Path.of("app/src/main/res"),
     ).first(Files::exists)
+    private val modelSourceRoot: Path = listOf(
+        Path.of("core/model/src/main/kotlin"),
+        Path.of("../core/model/src/main/kotlin"),
+    ).first(Files::exists)
 
     @Test
     fun widgetCreatesItsOwnProtectedActionWithoutAnActionPicker() {
         val config = sourceRoot.resolve("com/opentasker/widget/TaskWidgetConfigActivity.kt").readText()
         val ownership = sourceRoot.resolve("com/opentasker/widget/WidgetProfileLinks.kt").readText()
-        val selectors = sourceRoot.resolve("com/opentasker/core/model/ActionExecutionBinding.kt").readText()
+        val selectors = modelSourceRoot.resolve("com/opentasker/core/model/ActionExecutionBinding.kt").readText()
 
         assertTrue("Widget setup should explain that it creates an owned Action", config.contains("Every widget gets its own protected Action"))
         assertTrue("Widget setup should save an Action automatically", config.contains("WidgetProfileLinks.createOrUpdateAction"))
