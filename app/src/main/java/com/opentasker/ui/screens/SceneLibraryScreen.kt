@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.opentasker.app.R
+import com.opentasker.core.model.ActionExecutionBinding
 import com.opentasker.core.model.Scene
 import com.opentasker.core.model.Task
 import com.opentasker.core.scenes.SceneOverlayService
@@ -40,6 +41,7 @@ import com.opentasker.ui.theme.DesignSystem
 fun SceneLibraryScreen(
     scenes: List<Scene>,
     tasks: List<Task>,
+    actions: List<ActionExecutionBinding>,
     focusSceneId: Long? = null,
     onCreateScene: (name: String, widthDp: Int, heightDp: Int, onSaved: () -> Unit) -> Unit,
     onUpdateScene: (Scene, Int, onSaved: () -> Unit) -> Unit,
@@ -90,7 +92,7 @@ fun SceneLibraryScreen(
     elementEditor?.let { state ->
         SceneElementEditorDialog(
             state = state,
-            tasks = tasks,
+            actions = actions,
             onDismiss = {
                 elementEditorSceneId = null
                 elementEditorIndex = null
@@ -181,6 +183,7 @@ fun SceneLibraryScreen(
                 SceneCard(
                     scene = scene,
                     tasks = tasks,
+                    actions = actions,
                     onAddElement = {
                         elementEditorSceneId = scene.id
                         elementEditorIndex = null
