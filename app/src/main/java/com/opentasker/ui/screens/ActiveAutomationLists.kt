@@ -113,7 +113,7 @@ internal fun ProfilesScreen(
     contentPadding: PaddingValues,
     contentLoaded: Boolean = true,
     historyAvailability: EditHistoryAvailabilityState = EditHistoryAvailabilityState(),
-    /** Every task, whatever the project scope, so a card can name a task from another project. */
+    /** Every backing action record, whatever the project scope, so cards can show the correct action count. */
     allTasks: List<Task> = tasks,
 ) {
     // An unread database and an empty one look identical from here; without this gate a cold
@@ -251,10 +251,10 @@ internal fun ProfilesScreen(
             }
         }
         items(filteredProfiles, key = { it.id }) { profile ->
-            val enterTaskName = allTasks.firstOrNull { it.id == profile.enterTaskId }?.name ?: stringResource(R.string.workspace_missing_task, profile.enterTaskId)
+            val actionCount = allTasks.firstOrNull { it.id == profile.enterTaskId }?.actions?.size ?: 0
             ProfileCard(
                 profile = profile,
-                enterTaskName = enterTaskName,
+                actionCount = actionCount,
                 onEdit = { onEditProfile(profile) },
                 onUndo = { onUndoProfileEdit(profile) },
                 onRedo = { onRedoProfileEdit(profile) },
@@ -345,7 +345,7 @@ private fun TemplatePromptCard(onBrowseTemplates: () -> Unit) {
 @Composable
 private fun ProfileCard(
     profile: Profile,
-    enterTaskName: String,
+    actionCount: Int,
     onEdit: () -> Unit,
     canUndo: Boolean,
     canRedo: Boolean,
@@ -399,7 +399,7 @@ private fun ProfileCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        stringResource(R.string.workspace_runs_task, enterTaskName),
+                        stringResource(R.string.label_action_count, actionCount),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
@@ -840,14 +840,30 @@ internal fun ActionRow(
             Surface(
                 color = MaterialTheme.colorScheme.primaryContainer,
                 shape = RoundedCornerShape(DesignSystem.Radii.sm),
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier.size(36.dp),
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "${index + 1}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
+                if (SingleActionRun.isRunnableAlone(action)) {
+                    IconButton(
+                        onClick = onRun,
+                        enabled = !runBusy,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .semantics { contentDescription = runDescription },
+                    ) {
+                        Icon(
+                            Icons.Filled.PlayArrow,
+                            contentDescription = runDescription,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+                } else {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "${index + 1}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
                 }
             }
             Column(Modifier.weight(1f)) {
