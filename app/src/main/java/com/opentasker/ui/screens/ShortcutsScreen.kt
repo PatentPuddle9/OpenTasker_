@@ -51,11 +51,11 @@ import com.opentasker.widget.WidgetIconCatalog
 
 private data class ShortcutWidgetRow(
     val widgetId: Int,
-    val taskName: String,
+    val actionName: String,
     val icon: String,
 )
 
-/** A list of pinned home-screen task widgets, with direct access to their configuration editor. */
+/** A list of pinned home-screen Action widgets, with direct access to their configuration editor. */
 @Composable
 internal fun ShortcutsScreen(
     contentPadding: PaddingValues,
@@ -95,7 +95,7 @@ internal fun ShortcutsScreen(
             Spacer(Modifier.size(16.dp))
             Text("No shortcuts yet", style = MaterialTheme.typography.titleLarge)
             Text(
-                "Create a home-screen widget that looks like an app icon and runs one of your tasks when tapped.",
+                "Create a home-screen widget that looks like an app icon and runs one of your Actions when tapped.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -153,7 +153,7 @@ internal fun ShortcutsScreen(
                         )
                     }
                     Column(Modifier.weight(1f)) {
-                        Text(shortcut.taskName, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(shortcut.actionName, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text("Home screen widget", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     OutlinedButton(
@@ -191,10 +191,10 @@ private fun loadShortcutWidgets(context: Context): List<ShortcutWidgetRow> {
     return ids.map { widgetId ->
         ShortcutWidgetRow(
             widgetId = widgetId,
-            taskName = prefs.getString(
+            actionName = prefs.getString(
                 TaskWidgetProvider.keyTaskName(widgetId),
-                "Choose a task",
-            ) ?: "Choose a task",
+                "Choose an Action",
+            ) ?: "Choose an Action",
             icon = WidgetIconCatalog.resolve(
                 prefs.getString(
                     TaskWidgetProvider.keyIcon(widgetId),
@@ -202,5 +202,5 @@ private fun loadShortcutWidgets(context: Context): List<ShortcutWidgetRow> {
                 ),
             ).key,
         )
-    }.sortedBy { it.taskName.lowercase() }
+    }.sortedBy { it.actionName.lowercase() }
 }
