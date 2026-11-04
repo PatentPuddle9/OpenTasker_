@@ -139,6 +139,7 @@ import com.opentasker.widget.TaskShortcutHelper
 import com.opentasker.widget.WidgetProfileLinks
 import com.opentasker.core.flow.AutomationFlowTarget
 import com.opentasker.core.location.LocationDwellStateStore
+import com.opentasker.core.model.ActionExecutionBinding
 import com.opentasker.core.model.ActionSpec
 import com.opentasker.core.model.AutomationMode
 import com.opentasker.core.model.ContextSpec
@@ -148,6 +149,7 @@ import com.opentasker.core.model.RunLogEntry
 import com.opentasker.core.model.Scene
 import com.opentasker.core.model.Task
 import com.opentasker.core.model.Variable
+import com.opentasker.core.model.resolveActionExecutionBindings
 import com.opentasker.core.search.GlobalSearchResultKind
 import com.opentasker.core.storage.AppDatabase
 import com.opentasker.core.storage.DatabaseBackupManager
@@ -261,7 +263,8 @@ fun ActiveAutomationUi(
         if (selectedProjectId != null && projects.none { it.id == selectedProjectId }) selectedProjectId = null
     }
     val projectTasks = remember(tasks, selectedProjectId) { tasks.filter { selectedProjectId == null || it.projectId == selectedProjectId } }
-    val projectProfiles = remember(profiles, selectedProjectId) { profiles.filter { selectedProjectId == null || it.projectId == selectedProjectId } }
+    val projectProfiles = remember(profiles, selectedProjectId) { profiles.filter { it.widgetId == null && (selectedProjectId == null || it.projectId == selectedProjectId) } }
+    val actionBindings = remember(profiles, tasks) { resolveActionExecutionBindings(profiles, tasks) }
     val projectScenes = remember(scenes, selectedProjectId) { scenes.filter { selectedProjectId == null || it.projectId == selectedProjectId } }
     val projectVariables = remember(globalVariables, selectedProjectId) { globalVariables.filter { selectedProjectId == null || it.projectId == selectedProjectId } }
     val screen = OpenTaskerScreen.entries.getOrElse(screenOrdinal) { OpenTaskerScreen.Actions }
@@ -860,6 +863,7 @@ fun ActiveAutomationUi(
             OpenTaskerScreen.Scenes -> SceneLibraryScreen(
                 scenes = projectScenes,
                 tasks = projectTasks,
+                actions = actionBindings,
                 focusSceneId = focusedSceneId.takeIf { it != NO_DIALOG_ENTITY_ID },
                 onCreateScene = { name, width, height, onSaved ->
                     viewModel.createScene(name, width, height, selectedProjectId ?: com.opentasker.core.model.DEFAULT_PROJECT_ID, onSaved)
@@ -1264,6 +1268,7 @@ fun ActiveAutomationUi(
         ActionConfigDialog(
             state = state,
             tasks = tasks,
+            actionBindings = actionBindings,
             enclosingActions = state.task.actions,
             globalVariables = projectVariables,
             onDismiss = { clearActionEdit() },
