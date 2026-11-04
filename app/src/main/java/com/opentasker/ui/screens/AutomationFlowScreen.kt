@@ -221,7 +221,6 @@ private fun FlowGraphCard(
     graph: AutomationFlowGraph,
     onNodeTargetSelected: (AutomationFlowTarget) -> Unit,
     onAddContext: (Long) -> Unit,
-    onAddAction: (Long) -> Unit,
 ) {
     val profileNode = graph.nodes.firstOrNull { it.kind == AutomationFlowNodeKind.PROFILE }
         ?: return
