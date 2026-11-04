@@ -27,11 +27,14 @@ class TaskWidgetConfigPolishSourceTest {
         val ownership = sourceRoot.resolve("com/opentasker/widget/WidgetProfileLinks.kt").readText()
         val selectors = modelSourceRoot.resolve("com/opentasker/core/model/ActionExecutionBinding.kt").readText()
         val actionList = sourceRoot.resolve("com/opentasker/ui/screens/ActiveAutomationLists.kt").readText()
+        val provider = sourceRoot.resolve("com/opentasker/widget/TaskWidgetProvider.kt").readText()
 
         assertTrue("Widget-owned Actions should not show the normal delete/duplicate menu", actionList.contains("if (widgetOwned)"))
         assertTrue("Widget-owned Actions should be labeled as widgets", actionList.contains("Text(\"Widget\""))
         assertTrue("Widget setup should explain that it creates an owned Action", config.contains("Every widget gets its own protected Action"))
         assertTrue("Widget setup should save an Action automatically", config.contains("WidgetProfileLinks.createOrUpdateAction"))
+        assertTrue("The first provider update should create an Action without waiting for the config Save button", provider.contains("sourceExecutionId = legacyTaskId.takeIf { sourceAction == null && it > 0L }"))
+        assertTrue("New widgets should receive a default Action name immediately", provider.contains("\"Widget $widgetId\""))
         assertTrue("Each widget Action should be tagged with its owning widget ID", ownership.contains("widgetId = widgetId"))
         assertTrue("The widget Action should be disabled from trigger-based activation", ownership.contains("enabled = false"))
         assertTrue("Widget cleanup should delete the widget-owned Profile", ownership.contains("deleteWidgetOwnedProfile(widgetId)"))
@@ -48,6 +51,7 @@ class TaskWidgetConfigPolishSourceTest {
         val links = sourceRoot.resolve("com/opentasker/widget/WidgetProfileLinks.kt").readText()
         val resources = resRoot.resolve("values/strings.xml").readText()
 
+        assertFalse("A newly pinned widget must not be hidden while its Action is being created", shortcuts.contains("if (!hasSavedBinding"))
         assertTrue("Shortcuts should expose a delete control", shortcuts.contains("Text(\"Delete\""))
         assertTrue("Delete should confirm before removing a widget Action", shortcuts.contains("AlertDialog"))
         assertTrue("Delete should remove the Action and OpenTasker widget configuration", shortcuts.contains("onDeleteWidget"))
