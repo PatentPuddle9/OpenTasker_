@@ -111,6 +111,7 @@ import com.opentasker.core.diagnostics.AdvancedProtectionReader
 import com.opentasker.core.permissions.RuntimePermissionOutcome
 import com.opentasker.core.permissions.RuntimePermissionRequestHistory
 import com.opentasker.ui.theme.ThemeMode
+import com.opentasker.ui.utils.ActionResultNotificationPreference
 import com.opentasker.ui.theme.ThemePreference
 import com.opentasker.ui.theme.DesignSystem
 import java.util.Date
@@ -264,6 +265,11 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
         .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemePreference.DEFAULT_ACCENT_HEX)
 
+    private val _actionResultNotificationsEnabled = MutableStateFlow(
+        ActionResultNotificationPreference.isEnabled(context),
+    )
+    val actionResultNotificationsEnabled: StateFlow<Boolean> = _actionResultNotificationsEnabled.asStateFlow()
+
     private val _updateCheckState = MutableStateFlow(
         if (UpdateCheckAvailability.isAvailable()) UpdateCheckSettings(context).load() else UpdateCheckState(),
     )
@@ -335,6 +341,11 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
             DirectBootTriggerStore.setEnabled(context, enabled)
             refresh()
         }
+    }
+
+    fun setActionResultNotificationsEnabled(enabled: Boolean) {
+        ActionResultNotificationPreference.setEnabled(context, enabled)
+        _actionResultNotificationsEnabled.value = enabled
     }
 
     fun setThemeMode(mode: ThemeMode) {
@@ -648,6 +659,7 @@ fun PermissionOnboardingScreen(
     val loadedItems by setupViewModel.permissionItems.collectAsState()
     val items = loadedItems.orEmpty()
     val directBootEnabled by setupViewModel.directBootEnabled.collectAsState()
+    val actionResultNotificationsEnabled by setupViewModel.actionResultNotificationsEnabled.collectAsState()
     val themeMode by setupViewModel.themeMode.collectAsState()
     val accentColorHex by setupViewModel.accentColorHex.collectAsState()
     val updateCheckState by setupViewModel.updateCheckState.collectAsState()
@@ -887,6 +899,12 @@ fun PermissionOnboardingScreen(
                     currentAccentHex = accentColorHex,
                     onSelectMode = setupViewModel::setThemeMode,
                     onSelectAccent = setupViewModel::setAccentColor,
+                )
+            }
+            item {
+                ActionResultNotificationsCard(
+                    enabled = actionResultNotificationsEnabled,
+                    onEnabledChange = setupViewModel::setActionResultNotificationsEnabled,
                 )
             }
             item {
@@ -2280,6 +2298,37 @@ private fun RunOnboardingAgainCard(onRunAgain: () -> Unit) {
             OutlinedButton(onClick = onRunAgain) {
                 Text(stringResource(R.string.settings_run_onboarding_action))
             }
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
+    }
+}
+
+@Composable
+private fun ActionResultNotificationsCard(
+    enabled: Boolean,
+    onEnabledChange: (Boolean) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(value = enabled, onValueChange = onEnabledChange, role = Role.Switch)
+                .padding(horizontal = 8.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    stringResource(R.string.settings_action_result_notifications_title),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    stringResource(R.string.settings_action_result_notifications_body),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(checked = enabled, onCheckedChange = null)
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
     }
