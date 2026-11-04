@@ -218,12 +218,6 @@ fun ActiveAutomationUi(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current.applicationContext
-    LaunchedEffect(db) {
-        withContext(Dispatchers.IO) {
-            // Widgets now reference the user's existing Action directly; no shadow Profiles
-            // need to be synchronized into the Actions collection.
-        }
-    }
     val blueprintCatalogStore = remember(context) { BlueprintCatalogStore(context) }
     val availableBlueprints = remember(blueprintCatalogStore) { blueprintCatalogStore.available() }
     val useNavigationRail = usesNavigationRail(LocalConfiguration.current.screenWidthDp, LocalConfiguration.current.fontScale)
