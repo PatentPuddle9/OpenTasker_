@@ -25,15 +25,13 @@ class TaskWidgetProvider : AppWidgetProvider() {
         for (widgetId in appWidgetIds) {
             updateWidget(context, appWidgetManager, widgetId)
         }
-        // The cached label is only ever written when the widget is configured, so a renamed task
-        // showed its old name forever and a deleted one still looked runnable. Re-read the names
-        // the widget claims to display; goAsync keeps the receiver alive for the query.
+        // Re-read the selected Action name and migrate older widgets away from task IDs and
+        // widget-owned shadow profiles. goAsync keeps the receiver alive for the database work.
         val pending = goAsync()
         val appContext = context.applicationContext
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 refreshCachedNames(appContext, appWidgetIds)
-                runCatching { WidgetProfileLinks.syncExistingProfiles(appContext, OpenTaskerApp_NoHilt.db) }
                 for (widgetId in appWidgetIds) {
                     updateWidget(appContext, appWidgetManager, widgetId)
                 }
@@ -84,8 +82,10 @@ class TaskWidgetProvider : AppWidgetProvider() {
         const val PREFS_NAME = "opentasker_widget_prefs"
         private const val EXPANDED_LAYOUT_MIN_SIZE_DP = 110
 
+        /** Legacy-only key used to migrate widgets saved by versions that stored Task IDs. */
         fun keyTaskId(widgetId: Int) = "widget_${widgetId}_task_id"
         fun keyTaskName(widgetId: Int) = "widget_${widgetId}_task_name"
+        fun keyActionProfileId(widgetId: Int) = "widget_${widgetId}_action_profile_id"
         fun keyIcon(widgetId: Int) = "widget_${widgetId}_icon"
         fun keyIconColor(widgetId: Int) = "widget_${widgetId}_icon_color"
         fun keyBackgroundColor(widgetId: Int) = "widget_${widgetId}_background_color"
@@ -94,8 +94,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
         fun keyProfileId(widgetId: Int) = "widget_${widgetId}_profile_id"
 
         /**
-         * Asks every task widget to re-read its label. Call after a task rename or delete: nothing
-         * else notices, because widgets render from a cache written at configuration time.
+         * Asks every Action widget to re-read its label after an Action rename or deletion.
          */
         fun requestRefresh(context: Context) {
             val manager = AppWidgetManager.getInstance(context) ?: return
@@ -112,42 +111,55 @@ class TaskWidgetProvider : AppWidgetProvider() {
         private suspend fun refreshCachedNames(context: Context, appWidgetIds: IntArray) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val editor = prefs.edit()
-            val dao = runCatching { OpenTaskerApp_NoHilt.db.taskDao() }.getOrNull() ?: return
+            val db = runCatching { OpenTaskerApp_NoHilt.awaitDb() }.getOrNull() ?: return
+            val decodedProfiles = db.profileDao().getAll().mapNotNull { entity ->
+                val decoded = entity.toDomainDecodeResult()
+                decoded.value.takeIf { decoded.issue == null }
+            }
+
             for (widgetId in appWidgetIds) {
-                val taskId = prefs.getLong(keyTaskId(widgetId), -1L)
-                if (taskId < 0) continue
-                val actionName = runCatching {
-                    OpenTaskerApp_NoHilt.db.profileDao().getAll()
-                        .asSequence()
-                        .mapNotNull { entity ->
-                            val decoded = entity.toDomainDecodeResult()
-                            decoded.value.takeIf { decoded.issue == null }
-                        }
-                        .firstOrNull { it.widgetId == null && it.enterTaskId == taskId }
-                        ?.name
-                }.getOrNull()
-                val executionName = runCatching { dao.getById(taskId) }.getOrNull()
-                    ?.toDomainDecodeResult()
-                    ?.value
-                    ?.name
-                val name = actionName ?: executionName
-                if (name == null) {
-                    // The task is gone. Drop the id so the widget stops offering a run that can
-                    // only fail, and label it so the tap target explains itself.
-                    editor.remove(keyTaskId(widgetId))
-                    editor.putString(keyTaskName(widgetId), context.getString(R.string.widget_task_missing))
-                } else {
-                    editor.putString(keyTaskName(widgetId), name)
+                // Remove the shadow Profile created by older widget builds. A widget now points
+                // straight at the user's original top-level Action instead of owning a duplicate.
+                runCatching { WidgetProfileLinks.deleteProfile(context, widgetId) }
+
+                val storedProfileId = prefs.getLong(keyActionProfileId(widgetId), -1L)
+                val selectedAction = decodedProfiles.firstOrNull {
+                    it.id == storedProfileId && it.widgetId == null && it.enterTaskId > 0L
                 }
+
+                if (selectedAction != null) {
+                    editor.putString(keyTaskName(widgetId), selectedAction.name)
+                    editor.remove(keyTaskId(widgetId))
+                    continue
+                }
+
+                // One-time migration for widgets created before they stored an Action/Profile ID.
+                // Only migrate when the old execution ID maps unambiguously to a visible Action.
+                val legacyTaskId = prefs.getLong(keyTaskId(widgetId), -1L)
+                val legacyName = prefs.getString(keyTaskName(widgetId), null)
+                val candidates = decodedProfiles.filter {
+                    it.widgetId == null && it.enterTaskId == legacyTaskId && it.enterTaskId > 0L
+                }
+                val migratedAction = candidates.firstOrNull { it.name == legacyName }
+                    ?: candidates.singleOrNull()
+
+                if (migratedAction != null) {
+                    editor.putLong(keyActionProfileId(widgetId), migratedAction.id)
+                    editor.putString(keyTaskName(widgetId), migratedAction.name)
+                } else {
+                    editor.remove(keyActionProfileId(widgetId))
+                    editor.putString(keyTaskName(widgetId), context.getString(R.string.widget_task_missing))
+                }
+                editor.remove(keyTaskId(widgetId))
             }
             editor.apply()
         }
 
         fun updateWidget(context: Context, manager: AppWidgetManager, widgetId: Int) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val taskId = prefs.getLong(keyTaskId(widgetId), -1L)
-            val defaultTaskName = context.getString(R.string.app_name)
-            val taskName = prefs.getString(keyTaskName(widgetId), defaultTaskName) ?: defaultTaskName
+            val actionProfileId = prefs.getLong(keyActionProfileId(widgetId), -1L)
+            val defaultActionName = context.getString(R.string.app_name)
+            val actionName = prefs.getString(keyTaskName(widgetId), defaultActionName) ?: defaultActionName
 
             val icon = WidgetIconCatalog.resolve(
                 prefs.getString(keyIcon(widgetId), WidgetIconCatalog.default.key),
@@ -170,18 +182,18 @@ class TaskWidgetProvider : AppWidgetProvider() {
             )
             views.setImageViewResource(R.id.widget_icon, icon.drawableRes)
             views.setInt(R.id.widget_icon, "setColorFilter", iconColor)
-            views.setTextViewText(R.id.widget_task_name, taskName)
+            views.setTextViewText(R.id.widget_task_name, actionName)
             views.setTextColor(R.id.widget_task_name, WidgetBackgroundRenderer.contrastingTextColor(backgroundColor))
             views.setTextColor(R.id.widget_tap_to_run, WidgetBackgroundRenderer.contrastingTextColor(backgroundColor))
 
-            val target = if (taskId >= 0) {
+            val target = if (actionProfileId > 0L) {
                 Intent(context, TaskRunActivity::class.java).apply {
-                    putExtra(TaskRunActivity.EXTRA_TASK_ID, taskId)
+                    putExtra(TaskRunActivity.EXTRA_PROFILE_ID, actionProfileId)
                     putExtra(TaskRunActivity.EXTRA_SOURCE, TaskRunActivity.SOURCE_WIDGET)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 }
             } else {
-                // No task bound: send the tap to configuration rather than leaving a dead widget.
+                // No Action bound: send the tap to configuration rather than leaving a dead widget.
                 Intent(context, TaskWidgetConfigActivity::class.java).apply {
                     putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
