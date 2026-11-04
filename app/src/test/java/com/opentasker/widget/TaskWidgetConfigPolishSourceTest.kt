@@ -34,7 +34,7 @@ class TaskWidgetConfigPolishSourceTest {
         assertTrue("Widget setup should explain that it creates an owned Action", config.contains("Every widget gets its own protected Action"))
         assertTrue("Widget setup should save an Action automatically", config.contains("WidgetProfileLinks.createOrUpdateAction"))
         assertTrue("The first provider update should create an Action without waiting for the config Save button", provider.contains("sourceExecutionId = legacyTaskId.takeIf { sourceAction == null && it > 0L }"))
-        assertTrue("New widgets should receive a default Action name immediately", provider.contains("\"Widget $widgetId\""))
+        assertTrue("New widgets should receive a default Action name immediately", provider.contains("\"Widget \$widgetId\""))
         assertTrue("Each widget Action should be tagged with its owning widget ID", ownership.contains("widgetId = widgetId"))
         assertTrue("The widget Action should be disabled from trigger-based activation", ownership.contains("enabled = false"))
         assertTrue("Widget cleanup should delete the widget-owned Profile", ownership.contains("deleteWidgetOwnedProfile(widgetId)"))
