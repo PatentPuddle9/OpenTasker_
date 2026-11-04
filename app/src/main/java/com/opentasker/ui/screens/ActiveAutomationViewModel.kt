@@ -481,7 +481,7 @@ class ActiveAutomationViewModel(
                 val id = db.taskDao().insert(draft.toEntity())
                 draft.copy(id = id)
             }.onSuccess { task ->
-                events.send(message(R.string.ui_message_task_created))
+                events.send(message(R.string.ui_message_action_ready))
                 onCreated(task)
             }.onFailure { error ->
                 events.send(errorMessage(error, R.string.ui_error_generic))
