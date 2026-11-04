@@ -871,7 +871,11 @@ class ActiveAutomationViewModel(
         @StringRes successMessageRes: Int = R.string.ui_message_profile_updated,
         successAction: UiMessageAction? = null,
         onSaved: () -> Unit = {},
-    ) = launchWithMessage(successMessageRes, successAction, onSaved) {
+    ) = launchWithMessage(
+        successMessageRes,
+        successAction,
+        onSaved = { TaskWidgetProvider.requestRefresh(appContext); onSaved() },
+    ) {
             val reviewedProfile = reviewFeedbackRisk(ProfileLifecyclePolicy.normalize(profile))
             requireValidProfileFieldLimits(reviewedProfile)
             val lint = requireAutomationLint(reviewedProfile)
