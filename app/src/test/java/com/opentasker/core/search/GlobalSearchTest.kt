@@ -45,20 +45,30 @@ class GlobalSearchTest {
     )
 
     @Test
-    fun searchFindsNamedVariableReferencesInTasksAndActions() {
-        val results = searchGlobalEntities("%reportname", listOf(profile), listOf(task), listOf(variable), listOf(scene))
+    fun searchFindsTopLevelActionsAndVariablesButNotNestedExecutionSteps() {
+        val results = searchGlobalEntities(
+            "reportname",
+            listOf(profile),
+            listOf(variable),
+            listOf(scene),
+        )
 
         assertTrue(results.any { it.kind == GlobalSearchResultKind.VARIABLE && it.variableName == "ReportName" })
-        assertTrue(results.any { it.kind == GlobalSearchResultKind.TASK && it.entityId == task.id })
-        assertTrue(results.any { it.kind == GlobalSearchResultKind.ACTION && it.actionIndex == 0 })
+        assertTrue(results.none { it.title == task.name })
+        assertTrue(results.none { it.detail.contains("action 1", ignoreCase = true) })
     }
 
     @Test
-    fun searchResolvesTaskReferencesInProfilesAndScenes() {
-        val results = searchGlobalEntities("build report", listOf(profile), listOf(task), emptyList(), listOf(scene))
+    fun searchDoesNotExposeBackingExecutionRecordsAsStandaloneResults() {
+        val results = searchGlobalEntities(
+            "build report",
+            listOf(profile),
+            emptyList(),
+            listOf(scene),
+        )
 
         assertEquals(
-            setOf(GlobalSearchResultKind.PROFILE, GlobalSearchResultKind.TASK, GlobalSearchResultKind.SCENE),
+            setOf(GlobalSearchResultKind.SCENE),
             results.map { it.kind }.toSet(),
         )
     }
