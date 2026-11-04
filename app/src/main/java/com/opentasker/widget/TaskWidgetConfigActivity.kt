@@ -205,7 +205,7 @@ private fun ConfigScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text(if (initialTaskId == null) "Create an action widget" else "Edit widget", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(if (initialProfileId == null) "Create an action widget" else "Edit widget", maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             "Choose an Action, then make it look like your own app icon",
                             style = MaterialTheme.typography.labelMedium,
