@@ -190,6 +190,7 @@ private fun ConfigScreen(
 ) {
     var selectedProfileId by rememberSaveable { mutableStateOf(initialProfileId) }
     var selectedIcon by rememberSaveable { mutableStateOf(WidgetIconCatalog.resolve(initialStyle.icon).key) }
+    var iconSearchQuery by rememberSaveable { mutableStateOf("") }
     var iconColorHex by rememberSaveable { mutableStateOf(initialStyle.iconColor.toHexColor()) }
     var backgroundColorHex by rememberSaveable { mutableStateOf(initialStyle.backgroundColor.toHexColor()) }
     var useGradient by rememberSaveable { mutableStateOf(initialStyle.gradient) }
@@ -323,12 +324,29 @@ private fun ConfigScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    OutlinedTextField(
+                        value = iconSearchQuery,
+                        onValueChange = { iconSearchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Search all 442 Coolicons icons") },
+                        singleLine = true,
+                    )
+                    val visibleIcons = WidgetIconCatalog.all.filter { option ->
+                        iconSearchQuery.isBlank() ||
+                            option.label.contains(iconSearchQuery, ignoreCase = true) ||
+                            option.key.contains(iconSearchQuery, ignoreCase = true)
+                    }
+                    Text(
+                        "${visibleIcons.size} matching icons",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        WidgetIconCatalog.all.forEach { option ->
+                        visibleIcons.forEach { option ->
                             val isSelected = selectedIcon == option.key
                             Surface(
                                 modifier = Modifier.size(46.dp).clickable { selectedIcon = option.key },
