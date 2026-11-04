@@ -87,6 +87,8 @@ class TaskWidgetConfigActivity : ComponentActivity() {
         val prefs = getSharedPreferences(TaskWidgetProvider.PREFS_NAME, MODE_PRIVATE)
         val initialProfileId = prefs.getLong(TaskWidgetProvider.keyActionProfileId(widgetId), -1L)
             .takeIf { it > 0L }
+        val initialExecutionId = prefs.getLong(TaskWidgetProvider.keyTaskId(widgetId), -1L)
+            .takeIf { it > 0L }
         val initialActionName = prefs.getString(
             TaskWidgetProvider.keyActionName(widgetId),
             null,
@@ -110,7 +112,7 @@ class TaskWidgetConfigActivity : ComponentActivity() {
                     initialActionName = initialActionName,
                     initialStyle = initialStyle,
                     onWidgetSaved = { name, style ->
-                        saveWidgetAction(initialProfileId, name, style)
+                        saveWidgetAction(initialProfileId, initialExecutionId, name, style)
                     },
                 )
             }
@@ -119,6 +121,7 @@ class TaskWidgetConfigActivity : ComponentActivity() {
 
     private fun saveWidgetAction(
         existingProfileId: Long?,
+        existingExecutionId: Long?,
         name: String,
         style: WidgetStyle,
     ) {
@@ -132,6 +135,7 @@ class TaskWidgetConfigActivity : ComponentActivity() {
                         style = style,
                         existingProfileId = existingProfileId,
                         sourceProfileId = existingProfileId,
+                        sourceExecutionId = existingExecutionId,
                     )
                 }
             }.onSuccess { profileId ->
