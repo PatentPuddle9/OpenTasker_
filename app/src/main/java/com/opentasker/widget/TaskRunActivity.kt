@@ -10,6 +10,7 @@ import com.opentasker.core.engine.ExecutionEnvelope
 import com.opentasker.core.engine.logSkippedRun
 import com.opentasker.core.logging.AppLogger
 import com.opentasker.core.storage.recoveryMessage
+import com.opentasker.ui.utils.ActionResultNotificationPreference
 import android.os.Handler
 import android.os.Looper
 import com.opentasker.app.R
@@ -41,6 +42,7 @@ class TaskRunActivity : Activity() {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         scope.launch {
             var admittedTaskId: Long? = null
+            var isActionResult = false
             val message = try {
                 val db = OpenTaskerApp_NoHilt.awaitDb()
                 val action = if (profileId > 0L) {
@@ -88,6 +90,7 @@ class TaskRunActivity : Activity() {
                                     // Use the same admission controller as the in-app Run action.
                                     admissionController = ExecutionAdmissionRegistry.current(appContext),
                                 )
+                                isActionResult = true
                                 val status = when {
                                     result.held -> "held"
                                     result.skippedReason != null -> "skipped"
@@ -103,12 +106,17 @@ class TaskRunActivity : Activity() {
                     }
                 }
             } catch (e: Exception) {
+                isActionResult = true
                 AppLogger.error(TAG, "Action run failed", e)
                 "Action run failed"
             } finally {
                 admittedTaskId?.let(RunningWidgetTasks::finish)
             }
-            mainHandler.post { Toast.makeText(appContext, message, Toast.LENGTH_SHORT).show() }
+            mainHandler.post {
+                if (!isActionResult || ActionResultNotificationPreference.isEnabled(appContext)) {
+                    Toast.makeText(appContext, message, Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
