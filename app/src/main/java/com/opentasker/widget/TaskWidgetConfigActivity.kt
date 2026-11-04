@@ -66,7 +66,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.opentasker.app.R
 import com.opentasker.app.OpenTaskerApp_NoHilt
+import com.opentasker.core.model.ActionExecutionBinding
+import com.opentasker.core.model.Profile
 import com.opentasker.core.model.Task
+import com.opentasker.core.model.resolveActionExecutionBindings
 import com.opentasker.core.storage.StorageDecodeIssue
 import com.opentasker.ui.screens.StorageDecodeWarningCard
 import com.opentasker.ui.theme.DesignSystem
@@ -76,6 +79,7 @@ import com.opentasker.ui.theme.ThemePreference
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -99,14 +103,21 @@ class TaskWidgetConfigActivity : ComponentActivity() {
             return
         }
 
-        val tasksFlow = flow { emitAll(OpenTaskerApp_NoHilt.awaitDb().taskDao().getAllAsFlow()) }
-            .map { entities ->
-                val results = entities.map { it.toDomainDecodeResult() }
-                WidgetTaskState(
-                    tasks = results.mapNotNull { result -> result.value.takeIf { result.issue == null } },
-                    storageDecodeIssues = results.mapNotNull { it.issue },
-                )
-            }
+        val actionsFlow = flow {
+            val db = OpenTaskerApp_NoHilt.awaitDb()
+            emitAll(
+                combine(db.profileDao().getAllAsFlow(), db.taskDao().getAllAsFlow()) { profileEntities, taskEntities ->
+                    val profileResults = profileEntities.map { it.toDomainDecodeResult() }
+                    val taskResults = taskEntities.map { it.toDomainDecodeResult() }
+                    val actions = profileResults.mapNotNull { it.value.takeIf { _ -> it.issue == null } }
+                    val executions = taskResults.mapNotNull { it.value.takeIf { _ -> it.issue == null } }
+                    WidgetActionState(
+                        actions = resolveActionExecutionBindings(actions, executions),
+                        storageDecodeIssues = profileResults.mapNotNull { it.issue } + taskResults.mapNotNull { it.issue },
+                    )
+                },
+            )
+        }
 
         val prefs = getSharedPreferences(TaskWidgetProvider.PREFS_NAME, MODE_PRIVATE)
         val initialTaskId = prefs.getLong(TaskWidgetProvider.keyTaskId(widgetId), -1L).takeIf { it > 0L }
@@ -122,10 +133,10 @@ class TaskWidgetConfigActivity : ComponentActivity() {
         setContent {
             val themeMode by ThemePreference.observe(this).collectAsState(initial = ThemeMode.System)
             OpenTaskerTheme(themeMode) {
-                val taskState by tasksFlow.collectAsState(initial = WidgetTaskState())
+                val actionState by actionsFlow.collectAsState(initial = WidgetActionState())
                 ConfigScreen(
-                    tasks = taskState.tasks,
-                    storageDecodeIssues = taskState.storageDecodeIssues,
+                    actions = actionState.actions,
+                    storageDecodeIssues = actionState.storageDecodeIssues,
                     initialTaskId = initialTaskId,
                     initialStyle = initialStyle,
                     onWidgetCreated = ::onWidgetCreated,
@@ -134,17 +145,17 @@ class TaskWidgetConfigActivity : ComponentActivity() {
         }
     }
 
-    private fun onWidgetCreated(task: Task, style: WidgetStyle) {
+    private fun onWidgetCreated(binding: ActionExecutionBinding, style: WidgetStyle) {
         lifecycleScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    WidgetProfileLinks.syncProfile(this@TaskWidgetConfigActivity, widgetId, task, style)
+                    WidgetProfileLinks.syncProfile(this@TaskWidgetConfigActivity, widgetId, binding.execution, style, action = binding.action)
                 }
             }.onSuccess {
                 val prefs = getSharedPreferences(TaskWidgetProvider.PREFS_NAME, MODE_PRIVATE)
                 prefs.edit()
-                    .putLong(TaskWidgetProvider.keyTaskId(widgetId), task.id)
-                    .putString(TaskWidgetProvider.keyTaskName(widgetId), task.name)
+                    .putLong(TaskWidgetProvider.keyTaskId(widgetId), binding.execution.id)
+                    .putString(TaskWidgetProvider.keyTaskName(widgetId), binding.action.name)
                     .putString(TaskWidgetProvider.keyIcon(widgetId), style.icon)
                     .putInt(TaskWidgetProvider.keyIconColor(widgetId), style.iconColor)
                     .putInt(TaskWidgetProvider.keyBackgroundColor(widgetId), style.backgroundColor)
@@ -171,20 +182,20 @@ private fun Int.toHexColor(): String = String.format(java.util.Locale.ROOT, "#%0
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun ConfigScreen(
-    tasks: List<Task>,
+    actions: List<ActionExecutionBinding>,
     storageDecodeIssues: List<StorageDecodeIssue>,
     initialTaskId: Long?,
     initialStyle: WidgetStyle,
-    onWidgetCreated: (Task, WidgetStyle) -> Unit,
+    onWidgetCreated: (ActionExecutionBinding, WidgetStyle) -> Unit,
 ) {
-    var selectedTaskId by rememberSaveable { mutableStateOf(initialTaskId) }
+    var selectedExecutionId by rememberSaveable { mutableStateOf(initialTaskId) }
     var selectedIcon by rememberSaveable { mutableStateOf(WidgetIconCatalog.resolve(initialStyle.icon).key) }
     var iconColorHex by rememberSaveable { mutableStateOf(initialStyle.iconColor.toHexColor()) }
     var backgroundColorHex by rememberSaveable { mutableStateOf(initialStyle.backgroundColor.toHexColor()) }
     var useGradient by rememberSaveable { mutableStateOf(initialStyle.gradient) }
     var selectedShape by rememberSaveable { mutableStateOf(initialStyle.shape) }
 
-    val selectedTask = tasks.firstOrNull { it.id == selectedTaskId }
+    val selectedAction = actions.firstOrNull { it.execution.id == selectedExecutionId }
     val iconColor = parseWidgetColor(iconColorHex)
     val backgroundColor = parseWidgetColor(backgroundColorHex)
     val previewTextColor = backgroundColor?.let { color ->
@@ -196,9 +207,9 @@ private fun ConfigScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text(if (initialTaskId == null) "Create a task widget" else "Edit widget", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(if (initialTaskId == null) "Create an action widget" else "Edit widget", maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            "Choose a task, then make it look like your own app icon",
+                            "Choose an Action, then make it look like your own app icon",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -210,7 +221,7 @@ private fun ConfigScreen(
             )
         },
     ) { padding ->
-        if (tasks.isEmpty() && storageDecodeIssues.isEmpty()) {
+        if (actions.isEmpty() && storageDecodeIssues.isEmpty()) {
             Surface(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 color = MaterialTheme.colorScheme.background,
@@ -255,13 +266,13 @@ private fun ConfigScreen(
                 verticalArrangement = Arrangement.spacedBy(DesignSystem.Screen.cardGap),
             ) {
                 if (storageDecodeIssues.isNotEmpty()) StorageDecodeWarningCard(storageDecodeIssues)
-                WidgetConfigHeader(taskCount = tasks.size)
+                WidgetConfigHeader(actionCount = actions.size)
 
-                Text("1. Choose what this widget runs", style = MaterialTheme.typography.titleMedium)
-                tasks.forEach { task ->
-                    val selected = task.id == selectedTaskId
+                Text("1. Choose an Action", style = MaterialTheme.typography.titleMedium)
+                actions.forEach { binding ->
+                    val selected = binding.execution.id == selectedExecutionId
                     Card(
-                        onClick = { selectedTaskId = task.id },
+                        onClick = { selectedExecutionId = binding.execution.id },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 68.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.56f)
@@ -286,9 +297,9 @@ private fun ConfigScreen(
                             )
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(task.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(binding.action.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(
-                                    pluralStringResource(R.plurals.widget_action_count, task.actions.size, task.actions.size),
+                                    stringResource(R.string.widget_action_available),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -304,7 +315,7 @@ private fun ConfigScreen(
                     }
                 }
 
-                if (selectedTask != null) {
+                if (selectedAction != null) {
                     Spacer(Modifier.height(2.dp))
                     Text("2. Pick an icon", style = MaterialTheme.typography.titleMedium)
                     Text(
@@ -391,7 +402,7 @@ private fun ConfigScreen(
 
                     Text("Live preview", style = MaterialTheme.typography.titleMedium)
                     WidgetLivePreview(
-                        taskName = selectedTask.name,
+                        taskName = selectedAction.action.name,
                         icon = selectedIcon,
                         iconColor = iconColor?.let { Color(it) },
                         backgroundColor = backgroundColor?.let { Color(it) },
@@ -405,7 +416,7 @@ private fun ConfigScreen(
                             val selectedIconColor = iconColor ?: return@Button
                             val selectedBackgroundColor = backgroundColor ?: return@Button
                             onWidgetCreated(
-                                selectedTask,
+                                selectedAction,
                                 WidgetStyle(
                                     icon = selectedIcon,
                                     iconColor = selectedIconColor,
@@ -480,7 +491,7 @@ private fun widgetPreviewShape(key: String): androidx.compose.ui.graphics.Shape 
 
 @Composable
 private fun WidgetLivePreview(
-    taskName: String,
+    actionName: String,
     icon: String,
     iconColor: Color?,
     backgroundColor: Color?,
@@ -512,7 +523,7 @@ private fun WidgetLivePreview(
             )
         }
         Text(
-            taskName,
+            actionName,
             color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Medium,
@@ -530,13 +541,13 @@ private fun parseWidgetColor(value: String): Int? {
     return runCatching { AndroidColor.parseColor("#$normalized") }.getOrNull()
 }
 
-private data class WidgetTaskState(
-    val tasks: List<Task> = emptyList(),
+private data class WidgetActionState(
+    val actions: List<ActionExecutionBinding> = emptyList(),
     val storageDecodeIssues: List<StorageDecodeIssue> = emptyList(),
 )
 
 @Composable
-private fun WidgetConfigHeader(taskCount: Int) {
+private fun WidgetConfigHeader(actionCount: Int) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -548,7 +559,7 @@ private fun WidgetConfigHeader(taskCount: Int) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Make OpenTasker look like an app on your home screen", style = MaterialTheme.typography.headlineSmall)
             Text(
-                pluralStringResource(R.plurals.widget_saved_task_count, taskCount, taskCount),
+                pluralStringResource(R.plurals.widget_available_action_count, actionCount, actionCount),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
