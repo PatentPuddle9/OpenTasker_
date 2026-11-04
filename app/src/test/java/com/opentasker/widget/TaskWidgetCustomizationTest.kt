@@ -29,14 +29,18 @@ class TaskWidgetCustomizationTest {
     }
 
     @Test
-    fun customizationScreenIncludesTaskIconColorGradientAndPreviewControls() {
+    fun customizationScreenIncludesActionNameIconColorGradientAndPreviewControls() {
         val source = sourceRoot.resolve("com/opentasker/widget/TaskWidgetConfigActivity.kt").readText()
         assertTrue(source.contains("WidgetIconCatalog.all"))
         assertTrue(source.contains("WidgetColorEditor"))
         assertTrue(source.contains("HEX color"))
         assertTrue(source.contains("Switch(checked = useGradient"))
         assertTrue(source.contains("WidgetLivePreview"))
-        assertTrue(source.contains("Add widget to home screen"))
+        assertTrue(source.contains("Widget Action name"))
+        assertTrue(source.contains("Create widget and Action"))
+        assertTrue(source.contains("Every widget gets its own protected Action"))
+        assertTrue(source.contains("WidgetProfileLinks.createOrUpdateAction"))
+        assertTrue(!source.contains("Choose an Action"))
     }
 
     @Test
@@ -53,7 +57,8 @@ class TaskWidgetCustomizationTest {
         assertTrue(provider.contains("WidgetBackgroundRenderer.render"))
         assertTrue(provider.contains("views.setImageViewResource(R.id.widget_icon"))
         assertTrue(provider.contains("setColorFilter"))
-        assertTrue(provider.contains("TaskRunActivity.EXTRA_TASK_ID"))
+        assertTrue(provider.contains("TaskRunActivity.EXTRA_PROFILE_ID"))
+        assertTrue(!provider.contains("TaskRunActivity.EXTRA_TASK_ID"))
         assertTrue(style.contains("LinearGradient"))
         assertTrue(layout.contains("@+id/widget_background"))
         assertTrue(layout.contains("@+id/widget_icon"))
