@@ -18,13 +18,17 @@ class TaskWidgetConfigPolishSourceTest {
     ).first(Files::exists)
 
     @Test
-    fun widgetTaskPickerUsesPremiumCardsAndGuidedEmptyState() {
+    fun widgetActionPickerUsesPremiumCardsAndGuidedEmptyState() {
         val source = sourceRoot.resolve("com/opentasker/widget/TaskWidgetConfigActivity.kt").readText()
 
-        assertTrue("Widget picker should explain the task widget setup", source.contains("Create a task widget"))
+        assertTrue("Widget picker should explain the Action widget setup", source.contains("Create an action widget"))
         assertTrue("Widget picker should keep a summary/header card", source.contains("WidgetConfigHeader"))
         assertTrue("Empty state should explain how to unlock widget assignment", source.contains("R.string.widget_empty_title"))
-        assertTrue("Task rows should expose an explicit assign affordance", source.contains("R.string.widget_assign"))
+        assertTrue("Action rows should expose an explicit assign affordance", source.contains("R.string.widget_assign"))
+        assertTrue("Widget options should come from top-level Actions", source.contains("resolveActionExecutionBindings(actions, executions)"))
+        assertTrue("Widget rows should display Action names", source.contains("binding.action.name"))
+        assertFalse("Widget should not enumerate standalone task records", source.contains("tasks.forEach"))
+        assertFalse("Widget copy should not ask the user to choose a task", source.contains("Choose a task"))
         assertTrue("Widget picker should expose the icon library", source.contains("WidgetIconCatalog.all"))
         assertTrue("Widget picker should expose a live preview", source.contains("WidgetLivePreview"))
         assertFalse("Widget picker should not regress to plain divider list rows", source.contains("HorizontalDivider"))
