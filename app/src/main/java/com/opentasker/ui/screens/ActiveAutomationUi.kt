@@ -575,7 +575,7 @@ fun ActiveAutomationUi(
         OpenTaskerScreen.Actions -> stringResource(R.string.header_profiles_detail, projectProfiles.count { it.enabled }, projectProfiles.size)
         OpenTaskerScreen.Shortcuts -> stringResource(R.string.header_shortcuts_detail, taskWidgetCount(context))
         OpenTaskerScreen.Vars -> stringResource(R.string.header_variables_detail, globalVariables.size)
-        OpenTaskerScreen.Flow -> stringResource(R.string.header_flow_detail, projectProfiles.size, projectTasks.size)
+        OpenTaskerScreen.Flow -> stringResource(R.string.header_flow_detail, projectProfiles.size)
         OpenTaskerScreen.Scenes -> stringResource(R.string.header_scenes_detail, scenes.sumOf { it.elements.size }, scenes.size)
         OpenTaskerScreen.Inspector -> stringResource(R.string.header_inspector_detail)
         OpenTaskerScreen.Setup -> stringResource(R.string.header_setup_detail)
@@ -830,15 +830,6 @@ fun ActiveAutomationUi(
                     if (profile != null) {
                         screenOrdinal = OpenTaskerScreen.Actions.ordinal
                         openContextPicker(profile)
-                    } else {
-                        scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.ui_flow_target_missing)) }
-                    }
-                },
-                onAddAction = { taskId ->
-                    val task = tasks.firstOrNull { it.id == taskId }
-                    if (task != null) {
-                        screenOrdinal = OpenTaskerScreen.Actions.ordinal
-                        openActionPicker(task)
                     } else {
                         scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.ui_flow_target_missing)) }
                     }
