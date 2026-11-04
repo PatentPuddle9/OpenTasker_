@@ -35,7 +35,6 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import com.opentasker.app.R
 import com.opentasker.core.model.Profile
 import com.opentasker.core.model.Scene
-import com.opentasker.core.model.Task
 import com.opentasker.core.model.Variable
 import com.opentasker.core.search.GlobalSearchResult
 import com.opentasker.core.search.GlobalSearchResultKind
@@ -44,15 +43,14 @@ import com.opentasker.core.search.searchGlobalEntities
 @Composable
 fun GlobalSearchDialog(
     profiles: List<Profile>,
-    tasks: List<Task>,
     variables: List<Variable>,
     scenes: List<Scene>,
     onDismiss: () -> Unit,
     onSelect: (GlobalSearchResult) -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
-    val results = remember(query, profiles, tasks, variables, scenes) {
-        searchGlobalEntities(query, profiles, tasks, variables, scenes)
+    val results = remember(query, profiles, variables, scenes) {
+        searchGlobalEntities(query, profiles, variables, scenes)
     }
 
     AlertDialog(
@@ -157,8 +155,6 @@ private fun GlobalSearchResultCard(result: GlobalSearchResult, onClick: () -> Un
 
 private fun GlobalSearchResultKind.labelRes(): Int = when (this) {
     GlobalSearchResultKind.PROFILE -> R.string.global_search_result_profile
-    GlobalSearchResultKind.TASK -> R.string.global_search_result_task
-    GlobalSearchResultKind.ACTION -> R.string.global_search_result_action
     GlobalSearchResultKind.VARIABLE -> R.string.global_search_result_variable
     GlobalSearchResultKind.SCENE -> R.string.global_search_result_scene
 }
