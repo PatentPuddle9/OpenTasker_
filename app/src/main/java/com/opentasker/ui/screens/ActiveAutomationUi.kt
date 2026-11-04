@@ -1245,7 +1245,6 @@ fun ActiveAutomationUi(
     actionEdit?.let { state ->
         ActionConfigDialog(
             state = state,
-            tasks = tasks,
             actionBindings = actionBindings,
             enclosingActions = state.task.actions,
             globalVariables = projectVariables,
