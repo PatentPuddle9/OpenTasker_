@@ -79,7 +79,6 @@ fun AutomationFlowScreen(
     contentPadding: PaddingValues,
     onNodeTargetSelected: (AutomationFlowTarget) -> Unit = {},
     onAddContext: (Long) -> Unit = {},
-    onAddAction: (Long) -> Unit = {},
     changedNodeKeys: Set<String> = emptySet(),
     invariants: List<AutomationInvariant> = emptyList(),
     onUpdateInvariants: (List<AutomationInvariant>) -> Unit = {},
@@ -123,7 +122,6 @@ fun AutomationFlowScreen(
         item {
             FlowOverviewCard(
                 profiles = profiles,
-                tasks = tasks,
                 graphs = graphs,
             )
         }
@@ -132,7 +130,6 @@ fun AutomationFlowScreen(
                 graph = graph,
                 onNodeTargetSelected = onNodeTargetSelected,
                 onAddContext = onAddContext,
-                onAddAction = onAddAction,
             )
         }
     }
@@ -183,7 +180,6 @@ private fun FlowEmptyState(contentPadding: PaddingValues) {
 @Composable
 private fun FlowOverviewCard(
     profiles: List<Profile>,
-    tasks: List<Task>,
     graphs: List<AutomationFlowGraph>,
 ) {
     val warningCount = graphs.sumOf { it.warnings.size + it.lintFindings.size }
@@ -212,7 +208,7 @@ private fun FlowOverviewCard(
                 modifier = Modifier.weight(1f),
             )
             Text(
-                stringResource(R.string.header_flow_detail, profiles.size, tasks.size),
+                stringResource(R.string.header_flow_detail, profiles.size),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -244,9 +240,8 @@ private fun FlowGraphCard(
                     Text(graph.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
                         stringResource(
-                            R.string.flow_context_action_summary,
+                            R.string.flow_context_summary,
                             graph.contextNodes.size,
-                            graph.nodes.count { it.kind == AutomationFlowNodeKind.ACTION },
                         ),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -270,15 +265,6 @@ private fun FlowGraphCard(
             FlowInlineCommand(label = stringResource(R.string.profile_add_context), onClick = { onAddContext(graph.profileId) })
 
             FlowNodeView(profileNode, onNodeTargetSelected)
-            FlowTaskLane(graph, graph.enterTaskNode, stringResource(R.string.flow_enter), onNodeTargetSelected, onAddAction)
-            FlowTaskLane(graph, graph.exitTaskNode, stringResource(R.string.flow_exit), onNodeTargetSelected, onAddAction)
-
-            val missingNodes = graph.nodes.filter { it.kind == AutomationFlowNodeKind.MISSING }
-            missingNodes.forEach { missingNode ->
-                FlowEdgeLabel(stringResource(R.string.flow_missing_reference))
-                FlowNodeView(missingNode, onNodeTargetSelected)
-            }
-
             if (graph.warnings.isNotEmpty()) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -349,8 +335,6 @@ private fun FlowCanvasOverview(
     val lanes = buildList {
         if (graph.contextNodes.isNotEmpty()) add(FlowLaneData(stringResource(R.string.flow_lane_contexts), graph.contextNodes))
         add(FlowLaneData(stringResource(R.string.flow_lane_profile), listOf(profileNode)))
-        graph.enterTaskNode?.let { add(FlowLaneData(stringResource(R.string.flow_lane_enter), listOf(it) + graph.actionNodesFor(it.id))) }
-        graph.exitTaskNode?.let { add(FlowLaneData(stringResource(R.string.flow_lane_exit), listOf(it) + graph.actionNodesFor(it.id))) }
     }
 
     Surface(
@@ -498,27 +482,6 @@ private fun FlowCanvasNode(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun FlowTaskLane(
-    graph: AutomationFlowGraph,
-    taskNode: AutomationFlowNode?,
-    label: String,
-    onNodeTargetSelected: (AutomationFlowTarget) -> Unit,
-    onAddAction: (Long) -> Unit,
-) {
-    if (taskNode == null) return
-    Spacer(Modifier.height(2.dp))
-    FlowEdgeLabel(label)
-    FlowNodeView(taskNode, onNodeTargetSelected)
-    graph.actionNodesFor(taskNode.id).forEachIndexed { index, actionNode ->
-        FlowEdgeLabel(graph.incomingEdgeLabel(actionNode.id) ?: if (index == 0) stringResource(R.string.flow_step_label, index + 1) else stringResource(R.string.flow_then))
-        FlowNodeView(actionNode, onNodeTargetSelected)
-    }
-    (taskNode.target as? AutomationFlowTarget.Task)?.taskId?.let { taskId ->
-        FlowInlineCommand(label = stringResource(R.string.action_add_step), onClick = { onAddAction(taskId) })
     }
 }
 
