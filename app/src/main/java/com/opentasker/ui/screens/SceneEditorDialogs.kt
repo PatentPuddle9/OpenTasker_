@@ -357,7 +357,7 @@ internal fun SceneElementEditorDialog(
                     selectedTaskId = tapTaskId,
                     onSelect = { tapTaskId = it },
                 )
-                SceneTaskBindingSelector(
+                SceneActionBindingSelector(
                     label = stringResource(R.string.label_long_press_task),
                     actions = actions,
                     selectedTaskId = longPressTaskId,
@@ -446,7 +446,7 @@ private fun SceneActionBindingSelector(
     Box {
         OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
             Text(
-                stringResource(R.string.scenes_task_binding_value, label, selectedActionLabel),
+                stringResource(R.string.scenes_action_binding_value, label, selectedActionLabel),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
