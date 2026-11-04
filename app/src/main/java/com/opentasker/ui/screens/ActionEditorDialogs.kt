@@ -317,6 +317,9 @@ internal fun ActionConfigDialog(
     var waitForCompletion by rememberSaveable(state.existing?.id, state.metadata.id) {
         mutableStateOf(state.existing?.waitForCompletion ?: true)
     }
+    val actionReferenceRecords = remember(actionBindings) {
+        actionBindings.map { binding -> binding.execution.copy(name = binding.action.name) }
+    }
     var values by rememberSaveable(state.existing?.id, state.metadata.id) {
         mutableStateOf(
             state.metadata.fields.associate { field ->
@@ -324,16 +327,16 @@ internal fun ActionConfigDialog(
                     actionId = state.metadata.id,
                     key = field.key,
                     args = state.existing?.args.orEmpty(),
-                    tasks = tasks,
+                    tasks = actionReferenceRecords,
                 )
             }
         )
     }
-    val initialTaskBindingIssues = remember(state.existing?.args, state.metadata.id, tasks) {
+    val initialTaskBindingIssues = remember(state.existing?.args, state.metadata.id, actionReferenceRecords) {
         unresolvedNotificationTaskBindings(
             actionId = state.metadata.id,
             args = state.existing?.args.orEmpty(),
-            tasks = tasks,
+            tasks = actionReferenceRecords,
         )
     }
     var addressedTaskBindingKeys by rememberSaveable(state.existing?.id, state.metadata.id) {
