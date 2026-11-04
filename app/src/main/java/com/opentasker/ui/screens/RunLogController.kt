@@ -15,7 +15,6 @@ import com.opentasker.core.storage.loadPage
 import com.opentasker.core.storage.minimumTimestamp
 import com.opentasker.core.storage.normalized
 import com.opentasker.core.storage.openSnapshot
-import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -24,17 +23,14 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * The Run Log lane of [ActiveAutomationViewModel]: the live list, the filtered and paged
- * snapshot, export, retention and clearing. It runs on the view model's scope and reports
+ * The Run Log lane of [ActiveAutomationViewModel]: the paged snapshot, filters, export, retention
+ * and clearing. It runs on the view model's scope and reports
  * through the view model's message channel, so it lives and dies with the screen (A-353).
  */
 internal class RunLogController(

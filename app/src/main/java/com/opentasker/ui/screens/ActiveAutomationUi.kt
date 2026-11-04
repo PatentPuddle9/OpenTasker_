@@ -212,7 +212,6 @@ fun ActiveAutomationUi(
     val projects by viewModel.projects.collectAsState()
     val runLogPage by viewModel.runLog.runLogPage.collectAsState()
     val runLogFilters by viewModel.runLog.runLogFilters.collectAsState()
-    val activeExecutions by viewModel.activeExecutions.collectAsState()
     val globalVariables by viewModel.globalVariables.collectAsState()
     val runLogRetentionPolicy by viewModel.runLog.runLogRetentionPolicy.collectAsState()
     val globalFallbackTaskId by viewModel.globalFallbackTaskId.collectAsState()
@@ -878,7 +877,11 @@ fun ActiveAutomationUi(
                 onUndoableMessage = showUndoableMessage,
             )
 
-            OpenTaskerScreen.RunLog -> RunLogScreenContent(
+            OpenTaskerScreen.RunLog -> {
+                // Only observe step-by-step execution progress while the Run Log is visible.
+                // Otherwise each automation step would invalidate the entire main screen.
+                val activeExecutions by viewModel.activeExecutions.collectAsState()
+                RunLogScreenContent(
                 logs = runLogPage.entries,
                 tasks = emptyList(),
                 totalCount = runLogPage.totalCount,
@@ -908,7 +911,8 @@ fun ActiveAutomationUi(
                 onCancelExecution = viewModel::cancelExecution,
                 onReplayHeldRun = viewModel::replayHeldRun,
                 onToggleRunLogStar = { entry -> viewModel.runLog.setRunLogStarred(entry) },
-            )
+                )
+            }
 
             OpenTaskerScreen.Diagnostics -> DiagnosticsScreen(
                 state = diagnosticsState,
