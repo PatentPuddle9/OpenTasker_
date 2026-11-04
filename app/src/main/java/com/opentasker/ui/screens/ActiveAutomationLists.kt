@@ -98,6 +98,8 @@ internal fun ProfilesScreen(
     onBrowseTemplates: () -> Unit,
     onPreviewProfileShare: () -> Unit,
     onPreflightProfile: (Profile) -> Unit,
+    onRunProfile: (Profile) -> Unit = {},
+    runBusy: Boolean = false,
     onExportOpenTaskerBundle: () -> Unit,
     onImportOpenTaskerBundle: () -> Unit,
     onImportOpenTaskerBundleText: () -> Unit,
@@ -263,6 +265,8 @@ internal fun ProfilesScreen(
                 onDelete = { onDeleteProfile(profile) },
                 onDuplicate = { onDuplicateProfile(profile) },
                 onPreflight = { onPreflightProfile(profile) },
+                onRun = { onRunProfile(profile) },
+                runBusy = runBusy,
             )
         }
     }
@@ -354,8 +358,12 @@ private fun ProfileCard(
     onDelete: () -> Unit,
     onDuplicate: () -> Unit,
     onPreflight: () -> Unit,
+    onRun: () -> Unit,
+    runBusy: Boolean,
 ) {
     val widgetOwned = profile.widgetId != null
+    val testEnabled = !runBusy && !profile.requiresRiskAcknowledgement
+    val testDescription = stringResource(R.string.a11y_test_action, profile.name)
     val profileState = when {
         widgetOwned -> "Home-screen shortcut"
         profile.requiresRiskAcknowledgement -> stringResource(R.string.imported_profile_review_required)
@@ -380,9 +388,15 @@ private fun ProfileCard(
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f),
                     shape = RoundedCornerShape(DesignSystem.Radii.md),
-                    modifier = Modifier.size(46.dp),
+                    modifier = Modifier.size(48.dp),
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    IconButton(
+                        onClick = onRun,
+                        enabled = testEnabled,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .semantics { this.contentDescription = testDescription },
+                    ) {
                         Icon(
                             painter = painterResource(WidgetIconCatalog.resolve(profile.icon).drawableRes),
                             contentDescription = null,
@@ -434,6 +448,8 @@ private fun ProfileCard(
                         canRedo = canRedo,
                         onEdit = onEdit,
                         onPreflight = onPreflight,
+                        onTest = onRun,
+                        testEnabled = testEnabled,
                         onDuplicate = onDuplicate,
                         onUndo = onUndo,
                         onRedo = onRedo,
@@ -682,6 +698,8 @@ private fun ProfileActionsMenu(
     canRedo: Boolean,
     onEdit: () -> Unit,
     onPreflight: () -> Unit,
+    onTest: () -> Unit,
+    testEnabled: Boolean,
     onDuplicate: () -> Unit,
     onUndo: () -> Unit,
     onRedo: () -> Unit,
@@ -691,6 +709,7 @@ private fun ProfileActionsMenu(
         contentDescription = contentDescription,
         actions = listOf(
             ContextualMenuAction(R.string.action_edit, accessibilityLabel = editDescription, onClick = onEdit),
+            ContextualMenuAction(R.string.action_run_alone, enabled = testEnabled, onClick = onTest),
             ContextualMenuAction(R.string.action_preflight, onClick = onPreflight),
             ContextualMenuAction(R.string.action_duplicate, onClick = onDuplicate),
             ContextualMenuAction(R.string.action_undo, enabled = canUndo, onClick = onUndo),
