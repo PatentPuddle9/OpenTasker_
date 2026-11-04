@@ -24,6 +24,7 @@ object WidgetProfileLinks {
         style: WidgetStyle,
         existingProfileId: Long? = null,
         sourceProfileId: Long? = null,
+        sourceExecutionId: Long? = null,
     ): Long {
         val db = OpenTaskerApp_NoHilt.awaitDb()
         return db.withTransaction {
@@ -79,8 +80,12 @@ object WidgetProfileLinks {
                     db.taskDao().getById(profile.enterTaskId)?.toDomainDecodeResult()
                         ?.takeIf { it.issue == null }
                         ?.value
+                } ?: sourceExecutionId?.takeIf { it > 0L }?.let { id ->
+                    db.taskDao().getById(id)?.toDomainDecodeResult()
+                        ?.takeIf { it.issue == null }
+                        ?.value
                 }
-                val projectId = source?.projectId ?: DEFAULT_PROJECT_ID
+                val projectId = source?.projectId ?: sourceExecution?.projectId ?: DEFAULT_PROJECT_ID
                 val execution = sourceExecution?.copy(id = 0L, name = name, projectId = projectId)
                     ?: Task(name = name, projectId = projectId)
                 val executionId = db.taskDao().insert(execution.toEntity())
