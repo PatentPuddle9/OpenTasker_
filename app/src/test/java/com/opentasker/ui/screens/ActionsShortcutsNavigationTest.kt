@@ -55,6 +55,16 @@ class ActionsShortcutsNavigationTest {
     }
 
     @Test
+    fun actionCardsCanTestFromTheirIconAndOverflowMenu() {
+        val lists = source("app/src/main/java/com/opentasker/ui/screens/ActiveAutomationLists.kt")
+
+        assertTrue(lists.contains("onRun = { onRunProfile(profile) }"))
+        assertTrue(lists.contains("onTest = onRun"))
+        assertTrue(lists.contains("ContextualMenuAction(R.string.action_run_alone, enabled = testEnabled, onClick = onTest)"))
+        assertTrue(lists.contains("contentDescription = testDescription"))
+    }
+
+    @Test
     fun shortcutsListCanCreateAndEditWidgetsAndWidgetProfilesAreOwned() {
         val shortcuts = source("app/src/main/java/com/opentasker/ui/screens/ShortcutsScreen.kt")
         val provider = source("app/src/main/java/com/opentasker/widget/TaskWidgetProvider.kt")
