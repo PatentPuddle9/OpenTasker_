@@ -75,6 +75,7 @@ import com.opentasker.core.actions.typedVariableOptions
 import com.opentasker.core.capabilities.ActionCapabilityRegistry
 import com.opentasker.core.capabilities.CapabilityLevel
 import com.opentasker.core.engine.FlowControl
+import com.opentasker.core.model.ActionExecutionBinding
 import com.opentasker.core.model.ActionSpec
 import com.opentasker.core.model.Task
 import com.opentasker.core.model.Variable
@@ -295,6 +296,7 @@ private fun List<Task>.toNotificationCandidates(): List<NotificationTaskCandidat
 internal fun ActionConfigDialog(
     state: ActionEditState,
     tasks: List<Task> = emptyList(),
+    actionBindings: List<ActionExecutionBinding> = emptyList(),
     enclosingActions: List<ActionSpec> = emptyList(),
     globalVariables: List<Variable> = emptyList(),
     eventVariables: List<EditorEventVariable> = DEFAULT_EDITOR_EVENT_VARIABLES,
@@ -339,8 +341,8 @@ internal fun ActionConfigDialog(
     }
     val taskBindingIssues = initialTaskBindingIssues.filterKeys { it !in addressedTaskBindingKeys }
     val capability = remember(state.metadata.id) { ActionCapabilityRegistry.get(state.metadata.id) }
-    val availableTaskIds = remember(tasks) { tasks.mapTo(mutableSetOf()) { it.id } }
-    val validationIssues = ActionFieldPolicy.validateForm(state.metadata, values, availableTaskIds)
+    val availableActionIds = remember(actionBindings) { actionBindings.mapTo(mutableSetOf()) { it.execution.id } }
+    val validationIssues = ActionFieldPolicy.validateForm(state.metadata, values, availableActionIds)
     val variableOptions = remember(enclosingActions, state.index, globalVariables, eventVariables) {
         typedVariableOptions(
             actions = enclosingActions,
@@ -531,7 +533,7 @@ internal fun ActionConfigDialog(
                                 addressedTaskBindingKeys = addressedTaskBindingKeys + field.key
                             }
                         },
-                        tasks = tasks,
+                        actionBindings = actionBindings,
                         issue = validationIssues[field.key],
                         variableOptions = variableOptions.filter { option -> field.acceptsVariableType(option.type) },
                     )
@@ -578,7 +580,7 @@ internal fun ActionFieldInput(
     field: ActionField,
     value: String,
     onChange: (String) -> Unit,
-    tasks: List<Task> = emptyList(),
+    actionBindings: List<ActionExecutionBinding> = emptyList(),
     suggestedPackage: String? = null,
     issue: ActionFieldPolicy.Issue? = null,
     variableOptions: List<VariableChipOption> = emptyList(),
@@ -644,11 +646,11 @@ internal fun ActionFieldInput(
             variableOptions = variableOptions,
         )
 
-        FieldType.TASK -> TaskActionFieldInput(
+        FieldType.TASK -> ActionExecutionFieldInput(
             label = label,
             hint = hint,
             value = value,
-            tasks = tasks,
+            actionBindings = actionBindings,
             onChange = onChange,
         )
 
@@ -967,20 +969,20 @@ private fun ActionFileFieldInput(
 }
 
 @Composable
-internal fun TaskActionFieldInput(
+internal fun ActionExecutionFieldInput(
     label: String,
     hint: String?,
     value: String,
-    tasks: List<Task>,
+    actionBindings: List<ActionExecutionBinding>,
     onChange: (String) -> Unit,
 ) {
     var expanded by rememberSaveable(label) { mutableStateOf(false) }
     val selectedId = value.toLongOrNull()
+    val selectedAction = actionBindings.firstOrNull { it.execution.id == selectedId }
     val selectedLabel = when {
         value.isBlank() -> stringResource(R.string.label_none)
-        selectedId == null -> stringResource(R.string.action_task_binding_invalid_value, value)
-        else -> tasks.firstOrNull { it.id == selectedId }?.name
-            ?: stringResource(R.string.action_task_binding_missing_id, selectedId)
+        selectedAction != null -> selectedAction.action.name
+        else -> stringResource(R.string.action_binding_unavailable)
     }
     Box(Modifier.fillMaxWidth()) {
         OutlinedButton(
@@ -1003,11 +1005,11 @@ internal fun TaskActionFieldInput(
                     expanded = false
                 },
             )
-            tasks.sortedBy { it.name.lowercase() }.forEach { task ->
+            actionBindings.forEach { binding ->
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_task_picker_option, task.name, task.id)) },
+                    text = { Text(binding.action.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     onClick = {
-                        onChange(task.id.toString())
+                        onChange(binding.execution.id.toString())
                         expanded = false
                     },
                 )
