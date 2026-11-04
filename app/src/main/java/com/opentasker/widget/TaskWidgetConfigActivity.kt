@@ -144,9 +144,11 @@ class TaskWidgetConfigActivity : ComponentActivity() {
         lifecycleScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    // Remove the duplicate profile created by older widget versions. New widgets
-                    // reference the user's existing Action directly and never create a profile.
-                    WidgetProfileLinks.deleteProfile(this@TaskWidgetConfigActivity, widgetId)
+                    // Cleanup is best-effort; a stale shadow Profile must never block saving
+                    // the new direct Action binding.
+                    runCatching {
+                        WidgetProfileLinks.deleteProfile(this@TaskWidgetConfigActivity, widgetId)
+                    }
                 }
             }.onSuccess {
                 val prefs = getSharedPreferences(TaskWidgetProvider.PREFS_NAME, MODE_PRIVATE)
