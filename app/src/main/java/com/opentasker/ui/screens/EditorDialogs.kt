@@ -391,12 +391,12 @@ internal fun ProfileEditorDialog(
     onEditContextLogic: () -> Unit = {},
     onEditContext: (Int, ContextSpec) -> Unit = { _, _ -> },
     onDeleteContext: (Int) -> Unit = {},
-    onEditTask: (Task) -> Unit = {},
     onAddAction: (Task) -> Unit = {},
     onEditAction: (Task, Int, ActionSpec) -> Unit = { _, _, _ -> },
     onDeleteAction: (Task, Int) -> Unit = { _, _ -> },
     onMoveAction: (Task, Int, Int) -> Unit = { _, _, _ -> },
     onRunAction: (Task, Int) -> Unit = { _, _ -> },
+    onCreateFallbackAction: ((Long) -> Unit) -> Unit = {},
     runBusy: Boolean = false,
 ) {
     val widgetOwned = profile?.widgetId != null
@@ -409,7 +409,6 @@ internal fun ProfileEditorDialog(
     // default whenever the tasks flow re-emitted (a parallel import, a rename re-sorting the
     // list) mid-edit. A vanished selection is caught by the canSave existence check below.
     var enterTaskId by rememberSaveable(profile?.id) { mutableLongStateOf(initialTaskId) }
-    var exitTaskId by rememberSaveable(profile?.id) { mutableStateOf(profile?.exitTaskId) }
     var cooldown by rememberSaveable(profile?.id) { mutableStateOf((profile?.cooldownSec ?: 0).toString()) }
     var priority by rememberSaveable(profile?.id) { mutableStateOf((profile?.priority ?: 0).toString()) }
     var gracePeriod by rememberSaveable(profile?.id) { mutableStateOf((profile?.gracePeriodSec ?: 0).toString()) }
@@ -459,13 +458,13 @@ internal fun ProfileEditorDialog(
     val overflowPolicy = profileOverflowPolicyFromName(overflowPolicyName)
     val selectedTask = tasks.firstOrNull { it.id == enterTaskId }
     val selectedTaskExists = selectedTask != null
-    val selectedExitTaskExists = exitTaskId == null || tasks.any { it.id == exitTaskId }
-    val selectedFallbackTaskExists = fallbackTaskId == null || tasks.any { it.id == fallbackTaskId }
+    val fallbackTask = tasks.firstOrNull { it.id == fallbackTaskId }
+    val selectedFallbackTaskExists = fallbackTaskId == null || fallbackTask != null
     val canSave = profileEditorCanSave(
         name = name,
         enterTaskId = enterTaskId,
         selectedTaskExists = selectedTaskExists,
-        selectedExitTaskExists = selectedExitTaskExists,
+        selectedExitTaskExists = true,
         selectedFallbackTaskExists = selectedFallbackTaskExists,
         cooldown = cooldown,
         parsedCooldown = parsedCooldown,
@@ -535,7 +534,7 @@ internal fun ProfileEditorDialog(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Text("Profile icon", style = MaterialTheme.typography.labelLarge)
+                    Text("Action icon", style = MaterialTheme.typography.labelLarge)
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -600,16 +599,6 @@ internal fun ProfileEditorDialog(
                             Switch(checked = enabled, onCheckedChange = null, enabled = !importedReviewRequired)
                         }
                     }
-                    Text(stringResource(R.string.profile_enter_task), style = MaterialTheme.typography.labelLarge)
-                    tasks.forEach { task ->
-                        SelectableOption(
-                            title = task.name,
-                            body = stringResource(R.string.label_action_count, task.actions.size),
-                            selected = task.id == enterTaskId,
-                            onClick = { enterTaskId = task.id },
-                        )
-                    }
-    
                     val triggerContexts = profile?.contexts ?: draftContexts
                     Text("Trigger conditions", style = MaterialTheme.typography.titleMedium)
                     if (triggerContexts.isEmpty()) {
@@ -667,12 +656,12 @@ internal fun ProfileEditorDialog(
                     }
                 } else {
                     Text(
-                        "This profile is managed by a home-screen widget. Edit the task actions below; widget appearance is managed in Shortcuts.",
+                        "This action is managed by a home-screen widget. Edit its actions below; appearance is managed in Shortcuts.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        "Widget task: ${selectedTask?.name ?: "Missing task"}",
+                        "Widget action: ${selectedTask?.name ?: "Missing action"}",
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
@@ -684,14 +673,13 @@ internal fun ProfileEditorDialog(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text("When this profile is triggered", style = MaterialTheme.typography.titleMedium)
+                            Text("Actions", style = MaterialTheme.typography.titleMedium)
                             Text(
-                                "Actions run in order: ${task.actions.size}",
+                                stringResource(R.string.label_action_count, task.actions.size),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        TextButton(onClick = { onEditTask(task) }) { Text("Task settings") }
                     }
                     OutlinedButton(
                         onClick = { onAddAction(task) },
@@ -703,7 +691,7 @@ internal fun ProfileEditorDialog(
                     }
                     if (task.actions.isEmpty()) {
                         Text(
-                            "Nothing runs yet. Add an action to define what this profile does.",
+                            "No actions yet. Add one to define what this action does.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -725,20 +713,50 @@ internal fun ProfileEditorDialog(
                     }
                 }
                 if (!widgetOwned) {
-                    TaskActionFieldInput(
-                        label = stringResource(R.string.profile_exit_task),
-                        hint = stringResource(R.string.profile_exit_task_helper),
-                        value = exitTaskId?.toString().orEmpty(),
-                        tasks = tasks,
-                        onChange = { exitTaskId = it.toLongOrNull() },
+                    Text(stringResource(R.string.profile_fallback_task), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(R.string.profile_fallback_task_helper),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    TaskActionFieldInput(
-                        label = stringResource(R.string.profile_fallback_task),
-                        hint = stringResource(R.string.profile_fallback_task_helper),
-                        value = fallbackTaskId?.toString().orEmpty(),
-                        tasks = tasks,
-                        onChange = { fallbackTaskId = it.toLongOrNull() },
-                    )
+                    if (fallbackTask?.actions.isNullOrEmpty()) {
+                        OutlinedButton(
+                            onClick = {
+                                if (fallbackTask != null) {
+                                    onAddAction(fallbackTask)
+                                } else {
+                                    onCreateFallbackAction { createdTaskId -> fallbackTaskId = createdTaskId }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Icon(Icons.Filled.Add, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                stringResource(
+                                    if (fallbackTaskId != null) R.string.profile_fallback_action_replace
+                                    else R.string.profile_fallback_action_add,
+                                ),
+                            )
+                        }
+                    } else {
+                        fallbackTask?.let { task ->
+                            task.actions.forEachIndexed { index, action ->
+                                ActionRow(
+                                    index = index,
+                                    action = action,
+                                    canMoveUp = index > 0,
+                                    canMoveDown = index < task.actions.lastIndex,
+                                    onMoveUp = { onMoveAction(task, index, index - 1) },
+                                    onMoveDown = { onMoveAction(task, index, index + 1) },
+                                    onEdit = { onEditAction(task, index, action) },
+                                    onDelete = { onDeleteAction(task, index) },
+                                    onRun = { onRunAction(task, index) },
+                                    runBusy = runBusy,
+                                )
+                            }
+                        }
+                    }
                     OutlinedTextField(
                         value = cooldown,
                         onValueChange = { cooldown = it.filter(Char::isDigit).take(5) },
@@ -900,7 +918,7 @@ internal fun ProfileEditorDialog(
                         name,
                         enabled,
                         enterTaskId,
-                        exitTaskId,
+                        null,
                         parsedCooldown ?: 0,
                         parsedPriority ?: 0,
                         parsedGracePeriod ?: 0,
@@ -934,7 +952,7 @@ internal fun ProfileEditorDialog(
                                     name = name.trim(),
                                     enabled = enabled,
                                     enterTaskId = enterTaskId,
-                                    exitTaskId = exitTaskId,
+                                    exitTaskId = null,
                                     cooldownSec = (parsedCooldown ?: 0).coerceAtLeast(0),
                                     automationMode = automationMode,
                                     group = group.trim().ifBlank { null },
