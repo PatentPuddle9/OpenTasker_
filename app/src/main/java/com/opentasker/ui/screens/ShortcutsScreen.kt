@@ -231,7 +231,7 @@ private fun loadShortcutWidgets(context: Context): List<ShortcutWidgetRow> {
     val manager = AppWidgetManager.getInstance(context)
     val ids = manager.getAppWidgetIds(ComponentName(context, TaskWidgetProvider::class.java))
     val prefs = context.getSharedPreferences(TaskWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
-    return ids.mapNotNull { widgetId ->
+    return ids.toList().mapNotNull { widgetId ->
         val hasSavedBinding =
             prefs.getLong(TaskWidgetProvider.keyActionProfileId(widgetId), -1L) > 0L ||
                 prefs.getLong(TaskWidgetProvider.keyTaskId(widgetId), -1L) > 0L ||
