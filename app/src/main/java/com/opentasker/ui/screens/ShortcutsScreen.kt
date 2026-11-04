@@ -219,8 +219,11 @@ internal fun taskWidgetCount(context: Context): Int {
     return AppWidgetManager.getInstance(context)
         .getAppWidgetIds(ComponentName(context, TaskWidgetProvider::class.java))
         .count { widgetId ->
-            prefs.getLong(TaskWidgetProvider.keyActionProfileId(widgetId), -1L) > 0L &&
-                !prefs.getBoolean(TaskWidgetProvider.keyRemoved(widgetId), false)
+            (
+                prefs.getLong(TaskWidgetProvider.keyActionProfileId(widgetId), -1L) > 0L ||
+                    prefs.getLong(TaskWidgetProvider.keyTaskId(widgetId), -1L) > 0L ||
+                    prefs.getLong(TaskWidgetProvider.keyProfileId(widgetId), -1L) > 0L
+                ) && !prefs.getBoolean(TaskWidgetProvider.keyRemoved(widgetId), false)
         }
 }
 
@@ -229,8 +232,11 @@ private fun loadShortcutWidgets(context: Context): List<ShortcutWidgetRow> {
     val ids = manager.getAppWidgetIds(ComponentName(context, TaskWidgetProvider::class.java))
     val prefs = context.getSharedPreferences(TaskWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
     return ids.mapNotNull { widgetId ->
-        val actionProfileId = prefs.getLong(TaskWidgetProvider.keyActionProfileId(widgetId), -1L)
-        if (actionProfileId <= 0L || prefs.getBoolean(TaskWidgetProvider.keyRemoved(widgetId), false)) {
+        val hasSavedBinding =
+            prefs.getLong(TaskWidgetProvider.keyActionProfileId(widgetId), -1L) > 0L ||
+                prefs.getLong(TaskWidgetProvider.keyTaskId(widgetId), -1L) > 0L ||
+                prefs.getLong(TaskWidgetProvider.keyProfileId(widgetId), -1L) > 0L
+        if (!hasSavedBinding || prefs.getBoolean(TaskWidgetProvider.keyRemoved(widgetId), false)) {
             return@mapNotNull null
         }
         ShortcutWidgetRow(
