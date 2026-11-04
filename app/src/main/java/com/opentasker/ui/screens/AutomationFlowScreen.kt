@@ -69,13 +69,11 @@ import com.opentasker.core.flow.AutomationFlowNode
 import com.opentasker.core.flow.AutomationFlowNodeKind
 import com.opentasker.core.flow.AutomationFlowTarget
 import com.opentasker.core.model.Profile
-import com.opentasker.core.model.Task
 import com.opentasker.core.model.AutomationInvariant
 
 @Composable
 fun AutomationFlowScreen(
     profiles: List<Profile>,
-    tasks: List<Task>,
     contentPadding: PaddingValues,
     onNodeTargetSelected: (AutomationFlowTarget) -> Unit = {},
     onAddContext: (Long) -> Unit = {},
@@ -92,8 +90,8 @@ fun AutomationFlowScreen(
     }
     val resources = LocalContext.current.resources
     val lintStrings = AutomationLintStrings.from(resources)
-    val graphs = remember(profiles, tasks, resources, changedNodeKeys, invariants) {
-        val tasksById = tasks.associateBy { it.id }
+    val graphs = remember(profiles, resources, changedNodeKeys, invariants) {
+        val tasksById = emptyMap<Long, com.opentasker.core.model.Task>()
         val strings = com.opentasker.core.flow.AutomationFlowStrings.from(resources)
         profiles.map {
             profile -> AutomationFlowGraphBuilder.build(
