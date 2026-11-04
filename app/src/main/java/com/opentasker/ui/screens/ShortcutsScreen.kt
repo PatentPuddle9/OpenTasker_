@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.delay
 import com.opentasker.widget.TaskWidgetConfigActivity
 import com.opentasker.widget.TaskWidgetProvider
 import com.opentasker.widget.WidgetIconCatalog
@@ -77,6 +79,17 @@ internal fun ShortcutsScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
+    // Android can deliver the widget-pinned callback just after the app resumes. Recheck
+    // briefly so a new widget appears on this visit instead of requiring the user to reopen
+    // Shortcuts. The ID is enough to show a pending row; its name/icon fill in when saved.
+    LaunchedEffect(refreshKey) {
+        repeat(12) {
+            delay(250L)
+            val refreshed = loadShortcutWidgets(context)
+            if (refreshed != shortcuts) shortcuts = refreshed
+        }
+    }
+
     // Keep the state read explicit so a return from the widget editor refreshes this list.
     @Suppress("UNUSED_VARIABLE")
     val observedRefresh = refreshKey
