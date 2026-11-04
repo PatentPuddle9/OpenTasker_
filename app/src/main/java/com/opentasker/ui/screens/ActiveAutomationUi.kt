@@ -263,7 +263,8 @@ fun ActiveAutomationUi(
         if (selectedProjectId != null && projects.none { it.id == selectedProjectId }) selectedProjectId = null
     }
     val projectTasks = remember(tasks, selectedProjectId) { tasks.filter { selectedProjectId == null || it.projectId == selectedProjectId } }
-    val projectProfiles = remember(profiles, selectedProjectId) { profiles.filter { it.widgetId == null && (selectedProjectId == null || it.projectId == selectedProjectId) } }
+    val actionProfiles = remember(profiles) { profiles.filter { it.widgetId == null } }
+    val projectProfiles = remember(actionProfiles, selectedProjectId) { actionProfiles.filter { selectedProjectId == null || it.projectId == selectedProjectId } }
     val actionBindings = remember(profiles, tasks) { resolveActionExecutionBindings(profiles, tasks) }
     val projectScenes = remember(scenes, selectedProjectId) { scenes.filter { selectedProjectId == null || it.projectId == selectedProjectId } }
     val projectVariables = remember(globalVariables, selectedProjectId) { globalVariables.filter { selectedProjectId == null || it.projectId == selectedProjectId } }
@@ -1053,8 +1054,7 @@ fun ActiveAutomationUi(
 
     if (showGlobalSearchDialog) {
         GlobalSearchDialog(
-            profiles = profiles,
-            tasks = tasks,
+            profiles = actionProfiles,
             variables = globalVariables,
             scenes = scenes,
             onDismiss = { showGlobalSearchDialog = false },
@@ -1062,24 +1062,9 @@ fun ActiveAutomationUi(
                 showGlobalSearchDialog = false
                 selectedProjectId = result.projectId
                 when (result.kind) {
-                    GlobalSearchResultKind.PROFILE -> profiles.firstOrNull { it.id == result.entityId }?.let {
+                    GlobalSearchResultKind.PROFILE -> actionProfiles.firstOrNull { it.id == result.entityId }?.let {
                         screenOrdinal = OpenTaskerScreen.Actions.ordinal
                         openProfileDialog(it)
-                    }
-
-                    GlobalSearchResultKind.TASK -> tasks.firstOrNull { it.id == result.entityId }?.let {
-                        screenOrdinal = OpenTaskerScreen.Actions.ordinal
-                        openTaskDialog(it)
-                    }
-
-                    GlobalSearchResultKind.ACTION -> {
-                        val task = tasks.firstOrNull { it.id == result.entityId }
-                        val action = result.actionIndex?.let { task?.actions?.getOrNull(it) }
-                        val metadata = action?.let { ActionMetadataRegistry.get(it.type) }
-                        if (task != null && metadata != null) {
-                            screenOrdinal = OpenTaskerScreen.Actions.ordinal
-                            openActionEdit(task, metadata, result.actionIndex)
-                        }
                     }
 
                     GlobalSearchResultKind.VARIABLE -> {
