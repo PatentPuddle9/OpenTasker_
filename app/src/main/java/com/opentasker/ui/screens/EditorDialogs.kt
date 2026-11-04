@@ -481,7 +481,7 @@ internal fun ProfileEditorDialog(
     val onLabel = stringResource(R.string.label_on)
     val offLabel = stringResource(R.string.label_off)
     val draftContextProfile = Profile(
-        name = name.trim().ifBlank { "New profile" },
+        name = name.trim().ifBlank { "New action" },
         enterTaskId = enterTaskId,
         contexts = draftContexts,
         contextExpression = draftContextExpression,
@@ -603,7 +603,7 @@ internal fun ProfileEditorDialog(
                     Text("Trigger conditions", style = MaterialTheme.typography.titleMedium)
                     if (triggerContexts.isEmpty()) {
                         Text(
-                            "No trigger conditions yet. Add one to decide when this profile should run.",
+                            "No triggers yet. Add one to decide when this action should run.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -734,7 +734,7 @@ internal fun ProfileEditorDialog(
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 stringResource(
-                                    if (fallbackTaskId != null) R.string.profile_fallback_action_replace
+                                    if (fallbackTask == null && fallbackTaskId != null) R.string.profile_fallback_action_replace
                                     else R.string.profile_fallback_action_add,
                                 ),
                             )
