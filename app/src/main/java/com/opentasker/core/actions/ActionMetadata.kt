@@ -96,6 +96,7 @@ object ActionMetadataRegistry {
 private fun declaredActionSummaryRes(actionId: String): Int = when (actionId) {
     "notify.show",
     "scene.show",
+    "auth.device_credential",
     "notify.progress",
     "notify.cancel",
     "var.set",
@@ -240,6 +241,20 @@ private val deviceFileRule = ActionFileRule(ActionFileScope.DEVICE_OR_URI)
 
 fun registerActionMetadata() {
     // Built-in actions
+    ActionMetadataRegistry.register(
+        ActionMetadata(
+            id = "auth.device_credential",
+            nameRes = R.string.catalog_action_auth_device_credential_name,
+            descriptionRes = R.string.catalog_action_auth_device_credential_description,
+            categoryRes = R.string.catalog_category_system,
+            fields = listOf(
+                ActionField("title", R.string.catalog_action_auth_device_credential_field_title_label, hintRes = R.string.catalog_action_auth_device_credential_field_title_hint),
+                ActionField("description", R.string.catalog_action_auth_device_credential_field_description_label, FieldType.MULTILINE, hintRes = R.string.catalog_action_auth_device_credential_field_description_hint),
+                ActionField("fallback_action_id", R.string.catalog_action_auth_device_credential_field_fallback_label, FieldType.TASK, hintRes = R.string.catalog_action_auth_device_credential_field_fallback_hint),
+            ),
+        ),
+    )
+
     ActionMetadataRegistry.register(
         ActionMetadata(
             id = "scene.show",
