@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
 internal sealed interface DeviceCredentialPromptResult {
     data object Authenticated : DeviceCredentialPromptResult
     data class Rejected(val reason: String) : DeviceCredentialPromptResult
+    data class Unavailable(val reason: String) : DeviceCredentialPromptResult
 }
 
 /**
@@ -52,7 +53,7 @@ internal object DeviceCredentialPromptRequests {
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
-            DeviceCredentialPromptResult.Rejected(
+            DeviceCredentialPromptResult.Unavailable(
                 "Android could not open the device credential prompt: ${error.message ?: error.javaClass.simpleName}",
             )
         } finally {
@@ -134,7 +135,7 @@ class DeviceCredentialPromptActivity : Activity() {
             )
         } catch (error: Exception) {
             complete(
-                DeviceCredentialPromptResult.Rejected(
+                DeviceCredentialPromptResult.Unavailable(
                     "Android could not show the device credential prompt: ${error.message ?: error.javaClass.simpleName}",
                 ),
             )
@@ -149,13 +150,17 @@ class DeviceCredentialPromptActivity : Activity() {
         try {
             val challenge = keyguard.createConfirmDeviceCredentialIntent(title, description)
             if (challenge == null) {
-                complete(DeviceCredentialPromptResult.Authenticated)
+                if (keyguard.isDeviceSecure) {
+                    complete(DeviceCredentialPromptResult.Unavailable("Android did not provide a device credential challenge."))
+                } else {
+                    complete(DeviceCredentialPromptResult.Authenticated)
+                }
             } else {
                 startActivityForResult(challenge, REQUEST_CONFIRM_DEVICE_CREDENTIAL)
             }
         } catch (error: Exception) {
             complete(
-                DeviceCredentialPromptResult.Rejected(
+                DeviceCredentialPromptResult.Unavailable(
                     "Android could not show the device credential prompt: ${error.message ?: error.javaClass.simpleName}",
                 ),
             )
