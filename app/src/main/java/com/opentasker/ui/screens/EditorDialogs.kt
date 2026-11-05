@@ -96,6 +96,7 @@ import com.opentasker.feature.automation.AutomationInputKeyboard
 import com.opentasker.ui.theme.DesignSystem
 import com.opentasker.ui.theme.selectedContainerColor
 import com.opentasker.widget.WidgetIconCatalog
+import com.opentasker.widget.CustomWidgetIconStore
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -398,6 +399,9 @@ internal fun ProfileEditorDialog(
 ) {
     val widgetOwned = profile?.widgetId != null
     val context = LocalContext.current.applicationContext
+    val customIcons by CustomWidgetIconStore.observe(context).collectAsState()
+    val selectedIconLabel = customIcons.firstOrNull { it.key == selectedIcon }?.name
+        ?: WidgetIconCatalog.labelFor(selectedIcon)
     val initialTaskId = profile?.enterTaskId ?: tasks.firstOrNull()?.id ?: 0L
     var name by rememberSaveable(profile?.id) { mutableStateOf(profile?.name.orEmpty()) }
     // New profiles start disabled, matching templates and imports and the "Leave off until
@@ -545,7 +549,7 @@ internal fun ProfileEditorDialog(
                             modifier = Modifier.size(22.dp),
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text("Choose icon: ${WidgetIconCatalog.labelFor(selectedIcon)}")
+                        Text("Choose icon: $selectedIconLabel")
                     }
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),
