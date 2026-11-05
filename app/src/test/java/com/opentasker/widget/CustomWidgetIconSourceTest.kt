@@ -3,7 +3,6 @@ package com.opentasker.widget
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.readText
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -32,16 +31,21 @@ class PopupIconSettingsOnlyTest {
     }
 
     @Test
-    fun uploadedPopupIconsAreNotRegularActionOrWidgetIcons() {
+    fun uploadedIconsAppearInSharedCategorizedPickerAndRenderAcrossTheApp() {
         val picker = sourceRoot.resolve("com/opentasker/ui/screens/ActionIconPickerDialog.kt").readText()
         val image = sourceRoot.resolve("com/opentasker/ui/icons/WidgetIconImage.kt").readText()
         val provider = sourceRoot.resolve("com/opentasker/widget/TaskWidgetProvider.kt").readText()
         val catalog = sourceRoot.resolve("com/opentasker/widget/WidgetIconCatalog.kt").readText()
 
-        assertFalse(picker.contains("CustomWidgetIconStore"))
-        assertFalse(image.contains("CustomWidgetIconStore"))
-        assertFalse(provider.contains("CustomWidgetIconStore"))
-        assertFalse(catalog.contains("CustomWidgetIconStore"))
+        assertTrue(picker.contains("CustomWidgetIconStore.observe"))
+        assertTrue(picker.contains("category = \"Custom\""))
+        assertTrue(picker.contains("FilterChip"))
+        assertTrue(picker.contains("WidgetIconCatalog.categoryFor"))
+        assertTrue(image.contains("CustomWidgetIconStore.idFromKey"))
+        assertTrue(image.contains("CustomWidgetIconStore.loadBitmap"))
+        assertTrue(provider.contains("CustomWidgetIconStore.loadBitmapForWidget"))
+        assertTrue(catalog.contains("fun categoryFor(option: WidgetIconOption)"))
+        assertTrue(catalog.contains("CustomWidgetIconStore.idFromKey"))
         assertTrue(catalog.contains("fun labelFor(value: String?)"))
     }
 
