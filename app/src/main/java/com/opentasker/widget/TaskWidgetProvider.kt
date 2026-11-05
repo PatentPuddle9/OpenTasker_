@@ -214,8 +214,17 @@ class TaskWidgetProvider : AppWidgetProvider() {
                 R.id.widget_background,
                 WidgetBackgroundRenderer.render(backgroundColor, gradient, shape = shape),
             )
-            views.setImageViewResource(R.id.widget_icon, icon.drawableRes)
-            views.setInt(R.id.widget_icon, "setColorFilter", iconColor)
+            val customIconBitmap = CustomWidgetIconStore.loadBitmapForWidget(
+                context,
+                iconKey,
+                iconColor,
+            )
+            if (customIconBitmap != null) {
+                views.setImageViewBitmap(R.id.widget_icon, customIconBitmap)
+            } else {
+                views.setImageViewResource(R.id.widget_icon, icon.drawableRes)
+                views.setInt(R.id.widget_icon, "setColorFilter", iconColor)
+            }
             views.setTextViewText(R.id.widget_task_name, actionName)
             if (removedFromShortcuts) {
                 views.setTextViewText(
