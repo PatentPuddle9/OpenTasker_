@@ -18,7 +18,7 @@ class ApplicationContextEventsTest {
 
     @Test
     fun initialForegroundSnapshotDoesNotPretendTheAppWasJustOpened() = runBlocking {
-        // Seed the previous-package state; event pulses themselves are intentionally not replayed.
+        // Seed the previous-package state; older app-open pulses are converted to a fresh initial snapshot.
         ApplicationContextEvents.publishForeground("com.example.seed", initial = true)
         val nextEvent = async(start = CoroutineStart.UNDISPATCHED) {
             ApplicationContextEvents.events.drop(1).first()
