@@ -5,6 +5,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -18,12 +19,17 @@ class ApplicationContextSourceImpl : SubscriptionReadyContextSource {
     override val type = "app"
 
     override fun events(app: Context, onSubscribed: () -> Unit): Flow<ContextEvent> = channelFlow {
-        val collector = launch(start = CoroutineStart.UNDISPATCHED) {
-            ApplicationContextEvents.events.collect { event -> send(event) }
+        val collectors = listOf(
+            ApplicationContextEvents.events,
+            PackageContextEvents.events.map { event -> event.copy(type = type) },
+        ).map { upstream ->
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                upstream.collect { event -> send(event) }
+            }
         }
-        // The undispatched collector has subscribed to the shared event stream before the
-        // producer is allowed to start.
+        // Both undispatched collectors are subscribed before the producer is allowed to start.
+        // Package monitoring is demand-gated by ContextMonitorLifecycle for install/update specs.
         onSubscribed()
-        awaitClose { collector.cancel() }
+        awaitClose { collectors.forEach { it.cancel() } }
     }
 }
