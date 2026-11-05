@@ -205,6 +205,88 @@ class TaskRunnerSubTaskTest {
     }
 
     @Test
+    fun deviceCredentialFallbackRunsAndStopsTheOriginalSequenceEvenWhenContinueOnErrorIsSet() = runBlocking {
+        registerRecorderAction("test.credential.recorder")
+        ActionRegistry.register(object : Action {
+            override val id = "auth.device_credential"
+            override val category = ActionCategory.SYSTEM
+            override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult =
+                ActionResult.Failure("device credential was not confirmed", fallbackTaskId = 42L)
+        })
+        val fallbackAction = Task(
+            id = 42,
+            name = "Locked fallback",
+            actions = listOf(
+                ActionSpec(
+                    type = "test.credential.recorder",
+                    args = mapOf("key" to "FALLBACK_RAN"),
+                ),
+            ),
+        )
+        val variables = VariableStore()
+        val report = runner(variables) { ref ->
+            fallbackAction.takeIf { ref == fallbackAction.id.toString() }
+        }.run(
+            Task(
+                id = 41,
+                name = "Protected sequence",
+                actions = listOf(
+                    ActionSpec(
+                        type = "auth.device_credential",
+                        args = mapOf("fallback_action_id" to "42"),
+                        continueOnError = true,
+                        waitForCompletion = false,
+                    ),
+                    ActionSpec(
+                        type = "test.credential.recorder",
+                        args = mapOf("key" to "ORIGINAL_SEQUENCE_CONTINUED"),
+                    ),
+                ),
+            ),
+        )
+
+        assertTrue(report.success)
+        assertEquals("true", variables.get("FALLBACK_RAN"))
+        assertEquals(null, variables.get("ORIGINAL_SEQUENCE_CONTINUED"))
+        assertEquals(1, report.results.size)
+        assertEquals(ActionResult.Success, report.results.single())
+        assertTrue(report.traces.single().message.contains("fallback Action 'Locked fallback'"))
+        assertTrue(report.traces.single().message.contains("were skipped"))
+    }
+
+    @Test
+    fun deviceCredentialFailureWithoutFallbackStopsEvenWhenContinueOnErrorIsSet() = runBlocking {
+        registerRecorderAction("test.credential.no_fallback.recorder")
+        ActionRegistry.register(object : Action {
+            override val id = "auth.device_credential"
+            override val category = ActionCategory.SYSTEM
+            override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult =
+                ActionResult.Failure("device credential was not confirmed")
+        })
+        val variables = VariableStore()
+        val report = runner(variables, resolve = null).run(
+            Task(
+                name = "Protected sequence without fallback",
+                actions = listOf(
+                    ActionSpec(
+                        type = "auth.device_credential",
+                        continueOnError = true,
+                    ),
+                    ActionSpec(
+                        type = "test.credential.no_fallback.recorder",
+                        args = mapOf("key" to "ORIGINAL_SEQUENCE_CONTINUED"),
+                    ),
+                ),
+            ),
+        )
+
+        assertFalse(report.success)
+        assertEquals(null, variables.get("ORIGINAL_SEQUENCE_CONTINUED"))
+        assertEquals(1, report.results.size)
+        assertTrue((report.results.single() as ActionResult.Failure).message.contains("not confirmed"))
+    }
+
+    @Test
     fun failsWhenSubTaskNotFound() = runBlocking {
         val report = runner(VariableStore()) { null }.run(
             Task(name = "Parent", actions = listOf(ActionSpec(type = "task.run", args = mapOf("task" to "ghost")))),
