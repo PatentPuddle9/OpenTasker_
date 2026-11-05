@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,12 +46,14 @@ import com.opentasker.ui.theme.DesignSystem
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun PopupIconsSettingsCard() {
+internal fun CustomIconsSettingsCard() {
     val context = LocalContext.current.applicationContext
     val icons by CustomWidgetIconStore.observe(context).collectAsState()
     val scope = rememberCoroutineScope()
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var selectedImageUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var croppedImage by remember { mutableStateOf<Bitmap?>(null) }
+    var showCropDialog by rememberSaveable { mutableStateOf(false) }
     var addName by rememberSaveable { mutableStateOf("") }
     var addRecolorable by rememberSaveable { mutableStateOf(true) }
     var adding by remember { mutableStateOf(false) }
@@ -63,10 +66,11 @@ internal fun PopupIconsSettingsCard() {
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             selectedImageUri = uri.toString()
+            croppedImage = null
             addName = ""
             addRecolorable = true
             addError = null
-            showAddDialog = true
+            showCropDialog = true
         }
     }
 
@@ -80,9 +84,9 @@ internal fun PopupIconsSettingsCard() {
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text("Popup icons", style = MaterialTheme.typography.titleMedium)
+            Text("Custom icons", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Upload images for popup titles here. Popup actions can select these images, and recolorable images can be tinted to match the system dialog theme.",
+                "Upload your own images for use throughout OpenTasker. Custom and built-in icons appear together in the Icons picker.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -95,7 +99,7 @@ internal fun PopupIconsSettingsCard() {
             }
             if (icons.isEmpty()) {
                 Text(
-                    "Your uploaded popup icons will appear here and can be selected in popup actions.",
+                    "Your custom icons will appear beside the built-in icons in the Icons picker.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -127,12 +131,10 @@ internal fun PopupIconsSettingsCard() {
 
     if (showAddDialog) {
         val uri = selectedImageUri?.let(Uri::parse)
-        val originalPreview by produceState<Bitmap?>(null, selectedImageUri) {
-            value = uri?.let { CustomWidgetIconStore.loadPreviewBitmap(context, it, 128) }
-        }
+        val originalPreview = croppedImage
         AlertDialog(
             onDismissRequest = { if (!adding) showAddDialog = false },
-            title = { Text("Upload popup icon") },
+            title = { Text("Add custom icon") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
@@ -149,7 +151,7 @@ internal fun PopupIconsSettingsCard() {
                         Column(Modifier.weight(1f)) {
                             Text("Recolorable", style = MaterialTheme.typography.labelLarge)
                             Text(
-                                "When enabled, this image can be tinted with the system dialog accent color.",
+                                "When enabled, this image can use the app's selected icon color.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -165,15 +167,17 @@ internal fun PopupIconsSettingsCard() {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Image(
                                     bitmap = originalPreview!!.asImageBitmap(),
-                                    contentDescription = "Original icon preview",
+                                    contentDescription = "Square crop preview",
+                                    contentScale = ContentScale.Crop,
                                     modifier = Modifier.size(64.dp),
                                 )
-                                Text("Original", style = MaterialTheme.typography.labelSmall)
+                                Text("Square crop", style = MaterialTheme.typography.labelSmall)
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Image(
                                     bitmap = originalPreview!!.asImageBitmap(),
-                                    contentDescription = "Recolored icon preview",
+                                    contentDescription = "Recolored square icon preview",
+                                    contentScale = ContentScale.Crop,
                                     modifier = Modifier.size(64.dp),
                                     colorFilter = if (addRecolorable) {
                                         ColorFilter.tint(MaterialTheme.colorScheme.primary, BlendMode.SrcIn)
@@ -200,11 +204,13 @@ internal fun PopupIconsSettingsCard() {
                         adding = true
                         scope.launch {
                             runCatching {
-                                CustomWidgetIconStore.add(context, sourceUri, addName, addRecolorable)
+                                val image = croppedImage ?: error("Crop the image before saving.")
+                                CustomWidgetIconStore.add(context, image, addName, addRecolorable)
                             }.onSuccess {
                                 adding = false
                                 showAddDialog = false
                                 selectedImageUri = null
+                                croppedImage = null
                                 
                             }.onFailure {
                                 adding = false
@@ -212,7 +218,7 @@ internal fun PopupIconsSettingsCard() {
                             }
                         }
                     },
-                    enabled = uri != null && addName.isNotBlank() && !adding,
+                    enabled = uri != null && croppedImage != null && addName.isNotBlank() && !adding,
                 ) {
                     Text(if (adding) "Saving…" else "Save icon")
                 }
@@ -223,10 +229,22 @@ internal fun PopupIconsSettingsCard() {
         )
     }
 
+    if (showCropDialog && selectedImageUri != null) {
+        SquareImageCropDialog(
+            source = Uri.parse(selectedImageUri),
+            onDismiss = { showCropDialog = false },
+            onCropped = { bitmap ->
+                croppedImage = bitmap
+                showCropDialog = false
+                showAddDialog = true
+            },
+        )
+    }
+
     editingIcon?.let { icon ->
         AlertDialog(
             onDismissRequest = { editingIcon = null },
-            title = { Text("Rename popup icon") },
+            title = { Text("Rename custom icon") },
             text = {
                 OutlinedTextField(
                     value = editName,
@@ -252,9 +270,9 @@ internal fun PopupIconsSettingsCard() {
     deletingIcon?.let { icon ->
         AlertDialog(
             onDismissRequest = { deletingIcon = null },
-            title = { Text("Delete popup icon?") },
+            title = { Text("Delete custom icon?") },
             text = {
-                Text("“${icon.name}” will be removed from the popup icon library. Popup actions using it will show no icon.")
+                Text("“${icon.name}” will be removed from the custom icon library. Actions or widgets using it will fall back to the default icon.")
             },
             confirmButton = {
                 Button(
@@ -295,6 +313,7 @@ private fun PopupIconSettingsRow(
                     Image(
                         bitmap = previewBitmap!!.asImageBitmap(),
                         contentDescription = icon.name,
+                        contentScale = ContentScale.Crop,
                         modifier = Modifier.size(42.dp),
                         colorFilter = if (icon.recolorable) ColorFilter.tint(MaterialTheme.colorScheme.primary, BlendMode.SrcIn) else null,
                     )

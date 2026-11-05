@@ -39,7 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import com.opentasker.ui.icons.WidgetIconImage
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -159,8 +159,8 @@ internal fun ShortcutsScreen(
                         modifier = Modifier.size(48.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(
-                            painter = painterResource(WidgetIconCatalog.resolve(shortcut.icon).drawableRes),
+                        WidgetIconImage(
+                            iconKey = shortcut.icon,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(28.dp),
@@ -253,12 +253,12 @@ private fun loadShortcutWidgets(context: Context): List<ShortcutWidgetRow> {
                 TaskWidgetProvider.keyActionName(widgetId),
                 "Widget $widgetId",
             ) ?: "Widget $widgetId",
-            icon = WidgetIconCatalog.resolve(
+            icon = WidgetIconCatalog.resolveKey(
                 prefs.getString(
                     TaskWidgetProvider.keyIcon(widgetId),
                     WidgetIconCatalog.default.key,
                 ),
-            ).key,
+            ),
         )
     }.sortedBy { it.actionName.lowercase() }
 }

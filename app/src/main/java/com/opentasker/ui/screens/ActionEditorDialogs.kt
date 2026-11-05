@@ -83,6 +83,7 @@ import com.opentasker.core.model.Variable
 import com.opentasker.core.engine.tryRetryPlan
 import com.opentasker.ui.theme.DesignSystem
 import com.opentasker.widget.CustomWidgetIconStore
+import com.opentasker.widget.WidgetIconCatalog
 import androidx.compose.runtime.produceState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -853,41 +854,50 @@ private fun PopupIconFieldInput(
     onChange: (String) -> Unit,
 ) {
     val context = LocalContext.current.applicationContext
-    val popupIcons by CustomWidgetIconStore.observe(context).collectAsState()
-    val selectedIcon = popupIcons.firstOrNull { it.key == value }
+    val customIcons by CustomWidgetIconStore.observe(context).collectAsState()
+    val selectedCustomIcon = customIcons.firstOrNull { it.key == value }
+    val selectedBuiltIn = WidgetIconCatalog.findBuiltIn(value)
     val legacyImageSelected = value.startsWith("content://") || value.startsWith("file://")
     val selectedLabel = when {
-        selectedIcon != null -> selectedIcon.name
+        selectedCustomIcon != null -> selectedCustomIcon.name
+        selectedBuiltIn != null -> selectedBuiltIn.label
         legacyImageSelected -> "Previously selected image"
         value.isNotBlank() -> "Saved icon unavailable"
         else -> "No icon"
     }
-    var expanded by rememberSaveable { mutableStateOf(false) }
+    var showPicker by rememberSaveable { mutableStateOf(false) }
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(label, style = MaterialTheme.typography.labelLarge)
-        Box(Modifier.fillMaxWidth()) {
-            OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-                Text(selectedLabel, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        OutlinedButton(onClick = { showPicker = true }, modifier = Modifier.fillMaxWidth()) {
+            if (selectedCustomIcon != null || selectedBuiltIn != null) {
+                com.opentasker.ui.icons.WidgetIconImage(
+                    iconKey = value,
+                    contentDescription = selectedLabel,
+                    modifier = Modifier.size(22.dp),
+                )
+                Spacer(Modifier.width(8.dp))
             }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                DropdownMenuItem(text = { Text("No icon") }, onClick = { onChange(""); expanded = false })
-                popupIcons.forEach { icon ->
-                    DropdownMenuItem(text = { Text(icon.name) }, onClick = { onChange(icon.key); expanded = false })
-                }
-            }
+            Text(selectedLabel, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Text("Upload and manage popup icons in Settings > General > Popup icons.",
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (popupIcons.isEmpty()) {
-            Text("No popup icons saved yet. Add one in Settings.",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        if (value.isNotBlank() && selectedIcon == null) {
-            TextButton(onClick = { onChange("") }) { Text("Remove selected icon") }
+        Text(
+            "Choose from built-in and custom icons. Add custom icons in Settings > General > Custom icons.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (value.isNotBlank()) {
+            TextButton(onClick = { onChange("") }) { Text("Remove icon") }
         }
         hint?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         issue?.let { ActionFieldErrorText(it) }
+    }
+
+    if (showPicker) {
+        ActionIconPickerDialog(
+            selectedIcon = value,
+            onIconSelected = onChange,
+            onDismiss = { showPicker = false },
+        )
     }
 }
 
