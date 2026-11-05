@@ -4,6 +4,7 @@ import android.app.AlertDialog
 import android.app.Service
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.content.DialogInterface
 import android.content.Intent
@@ -18,7 +19,9 @@ import android.view.WindowManager
 import com.opentasker.core.external.AutomationTargetContract
 import com.opentasker.core.external.InternalTaskRunSource
 import com.opentasker.core.logging.AppLogger
+import androidx.core.content.ContextCompat
 import com.opentasker.widget.CustomWidgetIconStore
+import com.opentasker.widget.WidgetIconCatalog
 
 /**
  * Hosts a modal dialog as an application-overlay window.
@@ -126,14 +129,27 @@ class PopupDialogService : Service() {
      * Loads a small title icon from the Settings-managed popup library. Legacy document URIs
      * remain supported for popup actions saved by older builds.
      */
-    private fun loadPopupIcon(rawUri: String?, themedContext: ContextThemeWrapper): BitmapDrawable? {
+    private fun loadPopupIcon(rawUri: String?, themedContext: ContextThemeWrapper): Drawable? {
         val value = rawUri?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val accent = TypedValue()
+        val tintColor = if (
+            themedContext.theme.resolveAttribute(android.R.attr.colorAccent, accent, true)
+        ) accent.data else android.graphics.Color.WHITE
+
         if (CustomWidgetIconStore.idFromKey(value) != null) {
-            val accent = TypedValue()
-            val tintColor = if (themedContext.theme.resolveAttribute(android.R.attr.colorAccent, accent, true)) accent.data else android.graphics.Color.WHITE
             val bitmap = CustomWidgetIconStore.loadBitmapForPopup(this, value, tintColor, 96) ?: return null
             return BitmapDrawable(resources, bitmap)
         }
+
+        // Built-in icon keys are catalog identifiers, not document URIs. Resolve them to their
+        // bundled vector drawable before attempting the legacy URI fallback.
+        val builtInDrawableRes = popupBuiltInIconDrawableRes(value)
+        if (builtInDrawableRes != null) {
+            return ContextCompat.getDrawable(themedContext, builtInDrawableRes)
+                ?.mutate()
+                ?.apply { setTint(tintColor) }
+        }
+
         // Older actions may still contain a document URI from the former editor upload field.
         val uri = runCatching { Uri.parse(value) }.getOrNull() ?: return null
         return try {
@@ -219,6 +235,9 @@ class PopupDialogService : Service() {
  * Uses the Android device's own dialog styling rather than OpenTasker's in-app palette.
  * The service is not an Activity, so the dialog theme must be selected explicitly.
  */
+internal fun popupBuiltInIconDrawableRes(iconKey: String?): Int? =
+    WidgetIconCatalog.findBuiltIn(iconKey)?.drawableRes
+
 internal fun popupDialogThemeResource(uiMode: Int): Int =
     if ((uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES) {
         android.R.style.Theme_DeviceDefault_Dialog_Alert
