@@ -145,7 +145,7 @@ class AppUsageMonitorTest {
     }
 
     @Test
-    fun usageStatsRemainsFallbackUntilAccessibilityListenerActuallyConnects() {
+    fun usageStatsRunsAsFallbackWhenAccessibilityListenerIsNotConnected() {
         assertSame(
             AppUsagePollAction.QUERY_FOREGROUND,
             appUsagePollAction(hasUsageAccess = true, accessibilityServiceConnected = false),
