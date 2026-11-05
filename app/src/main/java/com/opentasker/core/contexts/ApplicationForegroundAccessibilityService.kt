@@ -48,9 +48,7 @@ class ApplicationForegroundAccessibilityService : AccessibilityService() {
 /** Small policy function kept independent of the Android service lifecycle for unit testing. */
 internal object ApplicationForegroundAccessibilityEventPolicy {
     fun packageName(eventType: Int, packageName: CharSequence?): String? {
-        if (eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
-            eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED
-        ) return null
+        if (eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return null
 
         return packageName
             ?.toString()
