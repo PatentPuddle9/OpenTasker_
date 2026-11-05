@@ -7,6 +7,8 @@ import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.content.DialogInterface
 import android.content.Intent
+import android.content.Context
+import android.util.TypedValue
 import android.content.res.Configuration
 import android.os.IBinder
 import android.provider.Settings
@@ -16,6 +18,7 @@ import android.view.WindowManager
 import com.opentasker.core.external.AutomationTargetContract
 import com.opentasker.core.external.InternalTaskRunSource
 import com.opentasker.core.logging.AppLogger
+import com.opentasker.widget.CustomWidgetIconStore
 
 /**
  * Hosts a modal dialog as an application-overlay window.
@@ -51,10 +54,11 @@ class PopupDialogService : Service() {
         dismissActiveDialog()
         val deviceTheme = popupDialogThemeResource(resources.configuration.uiMode)
         val themedContext = ContextThemeWrapper(this, deviceTheme)
+        val popupIcon = loadPopupIcon(intent.getStringExtra(EXTRA_ICON_URI), themedContext)
         val builder = AlertDialog.Builder(themedContext)
-        loadPopupIcon(intent.getStringExtra(EXTRA_ICON_URI))?.let { builder.setIcon(it) }
         if (title.isNotBlank()) builder.setTitle(title)
         if (message.isNotBlank()) builder.setMessage(message)
+        popupIcon?.let { builder.setIcon(it) }
 
         if (buttons.isEmpty()) {
             builder.setPositiveButton(android.R.string.ok, null)
@@ -72,6 +76,7 @@ class PopupDialogService : Service() {
         }
 
         val dialog = builder.create().apply {
+            popupIcon?.let { setIcon(it) }
             setCancelable(true)
             setCanceledOnTouchOutside(true)
         }
@@ -118,12 +123,18 @@ class PopupDialogService : Service() {
     }
 
     /**
-     * Loads a small title icon from the persistable document URI chosen in the Action editor.
-     * Decode bounds first and sample large source images so an oversized photo cannot exhaust
-     * memory just to draw the dialog's compact title icon.
+     * Loads a small title icon from the Settings-managed popup library. Legacy document URIs
+     * remain supported for popup actions saved by older builds.
      */
-    private fun loadPopupIcon(rawUri: String?): BitmapDrawable? {
+    private fun loadPopupIcon(rawUri: String?, themedContext: ContextThemeWrapper): BitmapDrawable? {
         val value = rawUri?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        if (CustomWidgetIconStore.idFromKey(value) != null) {
+            val accent = TypedValue()
+            val tintColor = if (themedContext.theme.resolveAttribute(android.R.attr.colorAccent, accent, true)) accent.data else android.graphics.Color.WHITE
+            val bitmap = CustomWidgetIconStore.loadBitmapForPopup(this, value, tintColor, 96) ?: return null
+            return BitmapDrawable(resources, bitmap)
+        }
+        // Older actions may still contain a document URI from the former editor upload field.
         val uri = runCatching { Uri.parse(value) }.getOrNull() ?: return null
         return try {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }

@@ -39,15 +39,13 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.opentasker.ui.icons.WidgetIconImage
 import com.opentasker.widget.CustomWidgetIcon
 import com.opentasker.widget.CustomWidgetIconStore
-import com.opentasker.widget.TaskWidgetProvider
 import com.opentasker.ui.theme.DesignSystem
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun CustomIconsSettingsCard() {
+internal fun PopupIconsSettingsCard() {
     val context = LocalContext.current.applicationContext
     val icons by CustomWidgetIconStore.observe(context).collectAsState()
     val scope = rememberCoroutineScope()
@@ -82,9 +80,9 @@ internal fun CustomIconsSettingsCard() {
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text("Custom icons", style = MaterialTheme.typography.titleMedium)
+            Text("Popup icons", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Upload your own image, name it, and choose whether OpenTasker can recolor it to match an Action or widget.",
+                "Upload images for popup titles here. Popup actions can select these images, and recolorable images can be tinted to match the system dialog theme.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -97,19 +95,19 @@ internal fun CustomIconsSettingsCard() {
             }
             if (icons.isEmpty()) {
                 Text(
-                    "Your uploaded icons will appear here and in the Action and widget icon pickers.",
+                    "Your uploaded popup icons will appear here and can be selected in popup actions.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
                 icons.forEach { icon ->
-                    CustomIconSettingsRow(
+                    PopupIconSettingsRow(
                         icon = icon,
                         onRecolorableChange = { enabled ->
                             scope.launch {
                                 runCatching {
                                     CustomWidgetIconStore.update(context, icon.copy(recolorable = enabled))
-                                    TaskWidgetProvider.requestRefresh(context)
+                                    
                                 }.onFailure { actionError = it.message ?: "Could not update the icon." }
                             }
                         },
@@ -134,7 +132,7 @@ internal fun CustomIconsSettingsCard() {
         }
         AlertDialog(
             onDismissRequest = { if (!adding) showAddDialog = false },
-            title = { Text("Upload custom icon") },
+            title = { Text("Upload popup icon") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
@@ -151,7 +149,7 @@ internal fun CustomIconsSettingsCard() {
                         Column(Modifier.weight(1f)) {
                             Text("Recolorable", style = MaterialTheme.typography.labelLarge)
                             Text(
-                                "When enabled, this image can be tinted with the selected icon color.",
+                                "When enabled, this image can be tinted with the system dialog accent color.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -207,7 +205,7 @@ internal fun CustomIconsSettingsCard() {
                                 adding = false
                                 showAddDialog = false
                                 selectedImageUri = null
-                                TaskWidgetProvider.requestRefresh(context)
+                                
                             }.onFailure {
                                 adding = false
                                 addError = it.message ?: "Could not save this icon."
@@ -228,7 +226,7 @@ internal fun CustomIconsSettingsCard() {
     editingIcon?.let { icon ->
         AlertDialog(
             onDismissRequest = { editingIcon = null },
-            title = { Text("Rename custom icon") },
+            title = { Text("Rename popup icon") },
             text = {
                 OutlinedTextField(
                     value = editName,
@@ -254,15 +252,15 @@ internal fun CustomIconsSettingsCard() {
     deletingIcon?.let { icon ->
         AlertDialog(
             onDismissRequest = { deletingIcon = null },
-            title = { Text("Delete custom icon?") },
+            title = { Text("Delete popup icon?") },
             text = {
-                Text("“${icon.name}” will be removed from the icon library. Any profile or widget using it will fall back to the default icon.")
+                Text("“${icon.name}” will be removed from the popup icon library. Popup actions using it will show no icon.")
             },
             confirmButton = {
                 Button(
                     onClick = {
                         CustomWidgetIconStore.delete(context, icon.id)
-                        TaskWidgetProvider.requestRefresh(context)
+                        
                         deletingIcon = null
                     },
                 ) { Text("Delete") }
@@ -273,12 +271,16 @@ internal fun CustomIconsSettingsCard() {
 }
 
 @Composable
-private fun CustomIconSettingsRow(
+private fun PopupIconSettingsRow(
     icon: CustomWidgetIcon,
     onRecolorableChange: (Boolean) -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val context = LocalContext.current.applicationContext
+    val previewBitmap by produceState<Bitmap?>(null, icon.id) {
+        value = CustomWidgetIconStore.loadBitmap(context, icon, 96)
+    }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(DesignSystem.Radii.md),
@@ -289,12 +291,20 @@ private fun CustomIconSettingsRow(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                WidgetIconImage(
-                    iconKey = icon.key,
-                    contentDescription = icon.name,
-                    modifier = Modifier.size(42.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
+                if (previewBitmap != null) {
+                    Image(
+                        bitmap = previewBitmap!!.asImageBitmap(),
+                        contentDescription = icon.name,
+                        modifier = Modifier.size(42.dp),
+                        colorFilter = if (icon.recolorable) ColorFilter.tint(MaterialTheme.colorScheme.primary, BlendMode.SrcIn) else null,
+                    )
+                } else {
+                    Surface(
+                        modifier = Modifier.size(42.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(10.dp),
+                    ) {}
+                }
                 Column(Modifier.weight(1f)) {
                     Text(icon.name, style = MaterialTheme.typography.titleSmall)
                     Text(

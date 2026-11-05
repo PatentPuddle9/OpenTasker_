@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -81,6 +82,7 @@ import com.opentasker.core.model.Task
 import com.opentasker.core.model.Variable
 import com.opentasker.core.engine.tryRetryPlan
 import com.opentasker.ui.theme.DesignSystem
+import com.opentasker.widget.CustomWidgetIconStore
 import androidx.compose.runtime.produceState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -588,6 +590,16 @@ internal fun ActionFieldInput(
     issue: ActionFieldPolicy.Issue? = null,
     variableOptions: List<VariableChipOption> = emptyList(),
 ) {
+    if (field.key == POPUP_ICON_FIELD_KEY) {
+        PopupIconFieldInput(
+            label = stringResource(field.labelRes),
+            hint = field.hintRes?.let { stringResource(it) },
+            value = value,
+            issue = issue,
+            onChange = onChange,
+        )
+        return
+    }
     val label = stringResource(field.labelRes) + if (field.required) " *" else ""
     val hint = field.hintRes?.let { stringResource(it) }
     when (field.fieldType) {
@@ -829,6 +841,54 @@ private fun formatActionNumberLimit(limit: Double?): String = when {
     limit == null -> ""
     limit % 1.0 == 0.0 -> limit.toLong().toString()
     else -> limit.toString()
+}
+
+
+@Composable
+private fun PopupIconFieldInput(
+    label: String,
+    hint: String?,
+    value: String,
+    issue: ActionFieldPolicy.Issue?,
+    onChange: (String) -> Unit,
+) {
+    val context = LocalContext.current.applicationContext
+    val popupIcons by CustomWidgetIconStore.observe(context).collectAsState()
+    val selectedIcon = popupIcons.firstOrNull { it.key == value }
+    val legacyImageSelected = value.startsWith("content://") || value.startsWith("file://")
+    val selectedLabel = when {
+        selectedIcon != null -> selectedIcon.name
+        legacyImageSelected -> "Previously selected image"
+        value.isNotBlank() -> "Saved icon unavailable"
+        else -> "No icon"
+    }
+    var expanded by rememberSaveable { mutableStateOf(false) }
+
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge)
+        Box(Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+                Text(selectedLabel, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenuItem(text = { Text("No icon") }, onClick = { onChange(""); expanded = false })
+                popupIcons.forEach { icon ->
+                    DropdownMenuItem(text = { Text(icon.name) }, onClick = { onChange(icon.key); expanded = false })
+                }
+            }
+        }
+        Text("Upload and manage popup icons in Settings > General > Popup icons.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (popupIcons.isEmpty()) {
+            Text("No popup icons saved yet. Add one in Settings.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (value.isNotBlank() && selectedIcon == null) {
+            TextButton(onClick = { onChange("") }) { Text("Remove selected icon") }
+        }
+        hint?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        issue?.let { ActionFieldErrorText(it) }
+    }
 }
 
 @Composable

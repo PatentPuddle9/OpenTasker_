@@ -22,9 +22,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * A user-owned image stored inside the app's private files directory.
+ * An image uploaded in Settings for use beside a popup dialog title.
  *
- * [key] is what profiles and widgets save, so renaming or recoloring an icon never changes
+ * [key] is what popup actions save, so renaming or recoloring an icon never changes
  * assignments that already use it.
  */
 data class CustomWidgetIcon(
@@ -67,7 +67,7 @@ object CustomWidgetIconStore {
             ?.takeIf { it == raw }
     }
 
-    /** Shared state keeps profile cards, settings, and both icon pickers in sync. */
+    /** Shared state keeps Settings and popup action editors in sync. */
     fun observe(context: Context): StateFlow<List<CustomWidgetIcon>> {
         val preferences = preferences(context)
         synchronized(lock) {
@@ -97,7 +97,7 @@ object CustomWidgetIconStore {
         require(cleanedName.isNotBlank()) { "Give the icon a name first." }
 
         val icons = observe(app).value
-        require(icons.size < MAX_ICONS) { "You can save up to $MAX_ICONS custom icons." }
+        require(icons.size < MAX_ICONS) { "You can save up to $MAX_ICONS popup icons." }
 
         val id = UUID.randomUUID().toString()
         val target = iconFile(app, id)
@@ -142,6 +142,26 @@ object CustomWidgetIconStore {
         decodeIconCached(context.applicationContext, icon, maxDimensionPx)
     }
 
+    /** Loads a compact popup-title bitmap and applies the system accent only when enabled. */
+    fun loadBitmapForPopup(
+        context: Context,
+        key: String?,
+        tintColor: Int,
+        maxDimensionPx: Int = 96,
+    ): Bitmap? {
+        val icon = find(context, key) ?: return null
+        val bitmap = decodeIconCached(context.applicationContext, icon, maxDimensionPx) ?: return null
+        if (!icon.recolorable) return bitmap
+        return runCatching {
+            val tinted = bitmap.copy(Bitmap.Config.ARGB_8888, true) ?: return@runCatching bitmap
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                colorFilter = PorterDuffColorFilter(tintColor, PorterDuff.Mode.SRC_IN)
+            }
+            Canvas(tinted).drawBitmap(bitmap, 0f, 0f, paint)
+            tinted
+        }.getOrDefault(bitmap)
+    }
+
     suspend fun loadPreviewBitmap(
         context: Context,
         source: Uri,
@@ -154,26 +174,6 @@ object CustomWidgetIconStore {
      * RemoteViews cannot render Compose images. Return a small bitmap for the home-screen widget,
      * tinting only icons whose owner enabled recolorability.
      */
-    fun renderForWidget(
-        context: Context,
-        key: String?,
-        tintColor: Int,
-        maxDimensionPx: Int = 192,
-    ): Bitmap? {
-        val icon = find(context, key) ?: return null
-        val bitmap = decodeIconCached(context.applicationContext, icon, maxDimensionPx) ?: return null
-        if (!icon.recolorable) return bitmap
-
-        return runCatching {
-            val tinted = bitmap.copy(Bitmap.Config.ARGB_8888, true) ?: return@runCatching bitmap
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                colorFilter = PorterDuffColorFilter(tintColor, PorterDuff.Mode.SRC_IN)
-            }
-            Canvas(tinted).drawBitmap(bitmap, 0f, 0f, paint)
-            tinted
-        }.getOrDefault(bitmap)
-    }
-
     private fun preferences(context: Context): SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
@@ -217,7 +217,7 @@ object CustomWidgetIconStore {
 
     private fun iconDirectory(context: Context): File =
         File(context.applicationContext.filesDir, "custom_icons").apply {
-            if (!exists() && !mkdirs()) throw IOException("Could not create the custom icon folder.")
+            if (!exists() && !mkdirs()) throw IOException("Could not create the popup icon folder.")
         }
 
     private fun iconFile(context: Context, id: String): File =

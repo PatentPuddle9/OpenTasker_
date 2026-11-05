@@ -484,12 +484,10 @@ object WidgetIconCatalog {
         "close" to "close-md",
     )
 
-    /** Keeps valid user-uploaded keys while normalizing bundled and legacy values. */
-    fun resolveKey(value: String?): String =
-        if (CustomWidgetIconStore.idFromKey(value) != null) value!! else resolve(value).key
+    /** Normalizes bundled and legacy values to a built-in Coolicons key. */
+    fun resolveKey(value: String?): String = resolve(value).key
 
-    fun labelFor(value: String?, customIcons: List<CustomWidgetIcon>): String =
-        customIcons.firstOrNull { it.key == value }?.name ?: resolve(value).label
+    fun labelFor(value: String?): String = resolve(value).label
 
     /** Converts saved icon values from earlier OpenTasker builds to the matching Coolicons key. */
     fun resolve(value: String?): WidgetIconOption {
