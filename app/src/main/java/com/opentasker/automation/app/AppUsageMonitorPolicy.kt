@@ -1,12 +1,24 @@
 package com.opentasker.automation.app
 
 internal enum class AppUsagePollAction {
+    WAIT_FOR_ACCESSIBILITY_EVENTS,
     PAUSE_FOR_MISSING_ACCESS,
     QUERY_FOREGROUND,
 }
 
-internal fun appUsagePollAction(hasUsageAccess: Boolean): AppUsagePollAction =
-    if (hasUsageAccess) AppUsagePollAction.QUERY_FOREGROUND else AppUsagePollAction.PAUSE_FOR_MISSING_ACCESS
+/**
+ * There must be exactly one foreground-app authority at a time. When the user enables the
+ * Accessibility listener, its real window callbacks take precedence over the UsageStats fallback.
+ * Otherwise the fallback can overwrite a just-received "opened" transition with a stale snapshot.
+ */
+internal fun appUsagePollAction(
+    hasUsageAccess: Boolean,
+    accessibilityServiceEnabled: Boolean = false,
+): AppUsagePollAction = when {
+    accessibilityServiceEnabled -> AppUsagePollAction.WAIT_FOR_ACCESSIBILITY_EVENTS
+    hasUsageAccess -> AppUsagePollAction.QUERY_FOREGROUND
+    else -> AppUsagePollAction.PAUSE_FOR_MISSING_ACCESS
+}
 
 /**
  * Replays Activity resume/pause events into the set of Activities that are currently resumed.
