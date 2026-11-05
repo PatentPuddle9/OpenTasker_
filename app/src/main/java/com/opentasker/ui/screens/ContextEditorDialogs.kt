@@ -332,7 +332,7 @@ internal fun ContextConfigDialog(
     onSimulate: ((ContextSpec) -> Unit)? = null,
 ) {
     var invert by rememberSaveable(state.profile.id, state.index, state.type) { mutableStateOf(state.existing?.invert ?: false) }
-    var config by rememberSaveable(state.profile.id, state.index, state.type) {
+    var config by rememberSaveable(state.profile.id, state.index, state.type, state.initialConfig, state.existing?.config) {
         mutableStateOf(defaultContextConfig(state.type) + state.initialConfig + canonicalContextConfig(state.type, state.existing?.config ?: emptyMap()))
     }
     var nfcWriteMessage by rememberSaveable(state.profile.id, state.index, state.type) { mutableStateOf<String?>(null) }
