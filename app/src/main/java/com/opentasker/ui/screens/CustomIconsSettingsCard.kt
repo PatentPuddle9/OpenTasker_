@@ -49,8 +49,10 @@ internal fun PopupIconsSettingsCard() {
     val context = LocalContext.current.applicationContext
     val icons by CustomWidgetIconStore.observe(context).collectAsState()
     val scope = rememberCoroutineScope()
+    var showCropDialog by rememberSaveable { mutableStateOf(false) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var selectedImageUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var croppedImage by remember { mutableStateOf<Bitmap?>(null) }
     var addName by rememberSaveable { mutableStateOf("") }
     var addRecolorable by rememberSaveable { mutableStateOf(true) }
     var adding by remember { mutableStateOf(false) }
@@ -63,10 +65,11 @@ internal fun PopupIconsSettingsCard() {
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             selectedImageUri = uri.toString()
+            croppedImage = null
             addName = ""
             addRecolorable = true
             addError = null
-            showAddDialog = true
+            showCropDialog = true
         }
     }
 
@@ -125,13 +128,35 @@ internal fun PopupIconsSettingsCard() {
         }
     }
 
-    if (showAddDialog) {
-        val uri = selectedImageUri?.let(Uri::parse)
-        val originalPreview by produceState<Bitmap?>(null, selectedImageUri) {
-            value = uri?.let { CustomWidgetIconStore.loadPreviewBitmap(context, it, 128) }
+    if (showCropDialog) {
+        val sourceUri = selectedImageUri?.let(Uri::parse)
+        if (sourceUri != null) {
+            SquareImageCropDialog(
+                source = sourceUri,
+                onDismiss = {
+                    showCropDialog = false
+                    selectedImageUri = null
+                    croppedImage = null
+                },
+                onCropped = { bitmap ->
+                    croppedImage = bitmap
+                    showCropDialog = false
+                    showAddDialog = true
+                },
+            )
         }
+    }
+
+    if (showAddDialog) {
+        val squarePreview = croppedImage
         AlertDialog(
-            onDismissRequest = { if (!adding) showAddDialog = false },
+            onDismissRequest = {
+                if (!adding) {
+                    showAddDialog = false
+                    selectedImageUri = null
+                    croppedImage = null
+                }
+            },
             title = { Text("Upload popup icon") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -156,7 +181,7 @@ internal fun PopupIconsSettingsCard() {
                         }
                         Switch(checked = addRecolorable, onCheckedChange = { addRecolorable = it })
                     }
-                    if (originalPreview != null) {
+                    if (squarePreview != null) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(18.dp),
@@ -164,16 +189,16 @@ internal fun PopupIconsSettingsCard() {
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Image(
-                                    bitmap = originalPreview!!.asImageBitmap(),
-                                    contentDescription = "Original icon preview",
+                                    bitmap = squarePreview.asImageBitmap(),
+                                    contentDescription = "Square-cropped icon preview",
                                     modifier = Modifier.size(64.dp),
                                 )
-                                Text("Original", style = MaterialTheme.typography.labelSmall)
+                                Text("Square crop", style = MaterialTheme.typography.labelSmall)
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Image(
-                                    bitmap = originalPreview!!.asImageBitmap(),
-                                    contentDescription = "Recolored icon preview",
+                                    bitmap = squarePreview.asImageBitmap(),
+                                    contentDescription = "Recolored square icon preview",
                                     modifier = Modifier.size(64.dp),
                                     colorFilter = if (addRecolorable) {
                                         ColorFilter.tint(MaterialTheme.colorScheme.primary, BlendMode.SrcIn)
@@ -196,29 +221,35 @@ internal fun PopupIconsSettingsCard() {
             confirmButton = {
                 Button(
                     onClick = {
-                        val sourceUri = uri ?: return@Button
+                        val imageToSave = croppedImage ?: return@Button
                         adding = true
                         scope.launch {
                             runCatching {
-                                CustomWidgetIconStore.add(context, sourceUri, addName, addRecolorable)
+                                CustomWidgetIconStore.add(context, imageToSave, addName, addRecolorable)
                             }.onSuccess {
                                 adding = false
                                 showAddDialog = false
                                 selectedImageUri = null
-                                
+                                croppedImage = null
                             }.onFailure {
                                 adding = false
                                 addError = it.message ?: "Could not save this icon."
                             }
                         }
                     },
-                    enabled = uri != null && addName.isNotBlank() && !adding,
+                    enabled = squarePreview != null && addName.isNotBlank() && !adding,
                 ) {
                     Text(if (adding) "Saving…" else "Save icon")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { if (!adding) showAddDialog = false }) { Text("Cancel") }
+                TextButton(onClick = {
+                    if (!adding) {
+                        showAddDialog = false
+                        selectedImageUri = null
+                        croppedImage = null
+                    }
+                }) { Text("Cancel") }
             },
         )
     }
