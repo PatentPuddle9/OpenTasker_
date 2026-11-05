@@ -185,14 +185,20 @@ class AppUsageMonitor(
         @Suppress("DEPRECATION")
         @SuppressLint("InlinedApi")
         private fun isForegroundEvent(eventType: Int): Boolean =
-            eventType == UsageEvents.Event.MOVE_TO_FOREGROUND ||
-                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && eventType == UsageEvents.Event.ACTIVITY_RESUMED)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                eventType == UsageEvents.Event.ACTIVITY_RESUMED
+            } else {
+                eventType == UsageEvents.Event.MOVE_TO_FOREGROUND
+            }
 
         @Suppress("DEPRECATION")
         @SuppressLint("InlinedApi")
         private fun isBackgroundEvent(eventType: Int): Boolean =
-            eventType == UsageEvents.Event.MOVE_TO_BACKGROUND ||
-                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && eventType == UsageEvents.Event.ACTIVITY_PAUSED)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                eventType == UsageEvents.Event.ACTIVITY_PAUSED
+            } else {
+                eventType == UsageEvents.Event.MOVE_TO_BACKGROUND
+            }
 
         internal fun selectLatestForegroundPackage(events: List<ForegroundUsageEvent>): String? =
             selectLatestForegroundEvent(events)?.packageName
