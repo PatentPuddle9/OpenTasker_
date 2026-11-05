@@ -195,6 +195,7 @@ fun ActionField.acceptsVariableType(type: ActionValueType): Boolean {
         FieldType.TASK,
         FieldType.APP,
         FieldType.FILE,
+        FieldType.SCENE,
         -> false
     }
 }
