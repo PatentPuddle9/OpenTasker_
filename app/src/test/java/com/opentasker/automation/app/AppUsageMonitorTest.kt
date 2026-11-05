@@ -130,26 +130,26 @@ class AppUsageMonitorTest {
     }
 
     @Test
-    fun enabledAccessibilityListenerTakesExclusivePrecedenceOverUsageStats() {
+    fun connectedAccessibilityListenerTakesExclusivePrecedenceOverUsageStats() {
         assertSame(
             AppUsagePollAction.WAIT_FOR_ACCESSIBILITY_EVENTS,
-            appUsagePollAction(hasUsageAccess = true, accessibilityServiceEnabled = true),
+            appUsagePollAction(hasUsageAccess = true, accessibilityServiceConnected = true),
         )
         assertSame(
             AppUsagePollAction.WAIT_FOR_ACCESSIBILITY_EVENTS,
-            appUsagePollAction(hasUsageAccess = false, accessibilityServiceEnabled = true),
+            appUsagePollAction(hasUsageAccess = false, accessibilityServiceConnected = true),
         )
     }
 
     @Test
-    fun usageStatsRemainsFallbackWhenAccessibilityListenerIsDisabled() {
+    fun usageStatsRemainsFallbackUntilAccessibilityListenerActuallyConnects() {
         assertSame(
             AppUsagePollAction.QUERY_FOREGROUND,
-            appUsagePollAction(hasUsageAccess = true, accessibilityServiceEnabled = false),
+            appUsagePollAction(hasUsageAccess = true, accessibilityServiceConnected = false),
         )
         assertSame(
             AppUsagePollAction.PAUSE_FOR_MISSING_ACCESS,
-            appUsagePollAction(hasUsageAccess = false, accessibilityServiceEnabled = false),
+            appUsagePollAction(hasUsageAccess = false, accessibilityServiceConnected = false),
         )
     }
 
