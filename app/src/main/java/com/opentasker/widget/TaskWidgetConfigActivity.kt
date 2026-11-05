@@ -188,7 +188,9 @@ private fun ConfigScreen(
     var actionName by rememberSaveable { mutableStateOf(initialActionName) }
     val context = LocalContext.current.applicationContext
     var selectedIcon by rememberSaveable { mutableStateOf(WidgetIconCatalog.resolveKey(initialStyle.icon)) }
-    val selectedIconLabel = WidgetIconCatalog.labelFor(selectedIcon)
+    val customIcons by CustomWidgetIconStore.observe(context).collectAsState()
+    val selectedIconLabel = customIcons.firstOrNull { it.key == selectedIcon }?.name
+        ?: WidgetIconCatalog.labelFor(selectedIcon)
     var showIconPicker by rememberSaveable { mutableStateOf(false) }
     var iconColorHex by rememberSaveable { mutableStateOf(initialStyle.iconColor.toHexColor()) }
     var backgroundColorHex by rememberSaveable { mutableStateOf(initialStyle.backgroundColor.toHexColor()) }
