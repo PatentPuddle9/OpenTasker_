@@ -489,6 +489,13 @@ object WidgetIconCatalog {
 
     fun labelFor(value: String?): String = resolve(value).label
 
+    /** Returns a built-in icon only when the saved value resolves to a real catalog entry. */
+    fun findBuiltIn(value: String?): WidgetIconOption? {
+        if (value.isNullOrBlank()) return null
+        val key = legacyKeys[value] ?: value
+        return iconsByKey[key]
+    }
+
     /** Converts saved icon values from earlier OpenTasker builds to the matching Coolicons key. */
     fun resolve(value: String?): WidgetIconOption {
         val key = value?.let { legacyKeys[it] ?: it }
