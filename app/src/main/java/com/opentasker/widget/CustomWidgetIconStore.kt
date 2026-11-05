@@ -158,12 +158,12 @@ object CustomWidgetIconStore {
         decodeIconCached(context.applicationContext, icon, maxDimensionPx)
     }
 
-    /** Loads a compact popup-title bitmap and applies the system accent only when enabled. */
-    fun loadBitmapForPopup(
+    /** Loads a compact bitmap and applies the supplied tint only when recoloring is enabled. */
+    fun loadBitmapForDisplay(
         context: Context,
         key: String?,
         tintColor: Int,
-        maxDimensionPx: Int = 96,
+        maxDimensionPx: Int = 192,
     ): Bitmap? {
         val icon = find(context, key) ?: return null
         val bitmap = decodeIconCached(context.applicationContext, icon, maxDimensionPx) ?: return null
@@ -177,6 +177,22 @@ object CustomWidgetIconStore {
             tinted
         }.getOrDefault(bitmap)
     }
+
+    /** Small bitmap used by popup dialogs. */
+    fun loadBitmapForPopup(
+        context: Context,
+        key: String?,
+        tintColor: Int,
+        maxDimensionPx: Int = 96,
+    ): Bitmap? = loadBitmapForDisplay(context, key, tintColor, maxDimensionPx)
+
+    /** RemoteViews cannot render Compose images, so widgets use this bitmap-backed variant. */
+    fun loadBitmapForWidget(
+        context: Context,
+        key: String?,
+        tintColor: Int,
+        maxDimensionPx: Int = 192,
+    ): Bitmap? = loadBitmapForDisplay(context, key, tintColor, maxDimensionPx)
 
     suspend fun loadPreviewBitmap(
         context: Context,
