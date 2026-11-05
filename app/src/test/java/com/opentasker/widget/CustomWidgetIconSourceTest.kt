@@ -20,13 +20,13 @@ class PopupIconSettingsOnlyTest {
 
         assertTrue(settings.contains("OpenDocument"))
         assertTrue(settings.contains("arrayOf(\"image/*\")"))
-        assertTrue(settings.contains("Popup icons"))
+        assertTrue(settings.contains("Custom icons"))
         assertTrue(settings.contains("Icon name"))
         assertTrue(settings.contains("addRecolorable"))
         assertTrue(settings.contains("Recolored preview"))
         assertTrue(store.contains("filesDir, \"custom_icons\""))
         assertTrue(store.contains("fun loadBitmapForPopup"))
-        assertTrue(editor.contains("Upload and manage popup icons in Settings"))
+        assertTrue(editor.contains("Add custom icons in Settings > General > Custom icons."))
         assertTrue(editor.contains("popupIcons.forEach"))
     }
 
