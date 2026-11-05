@@ -140,7 +140,7 @@ jobs:
           } > app/build/outputs/apk/debug/build-info.txt
 
       - name: Upload APK and build metadata
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: OpenTasker-${{ github.ref_name }}-debug-apk
           path: |
