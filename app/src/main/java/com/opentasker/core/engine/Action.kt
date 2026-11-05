@@ -43,6 +43,11 @@ sealed class ActionResult {
         val cause: Throwable? = null,
         /** Child task failures retain their original structured location when they bubble up. */
         val structuredError: StructuredTaskError? = null,
+        /**
+         * Optional top-level Action execution to run as a recovery branch. The TaskRunner handles
+         * this only for the device-credential gate and stops the original sequence afterward.
+         */
+        val fallbackTaskId: Long? = null,
     ) : ActionResult()
     data object Skip : ActionResult()
 }
