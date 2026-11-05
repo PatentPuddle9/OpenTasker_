@@ -8,6 +8,22 @@ import org.junit.Test
 class ApplicationForegroundAccessibilityEventPolicyTest {
 
     @Test
+    fun acceptsWindowContentAndFocusEventsAsAppTransitionFallbacks() {
+        listOf(
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
+            AccessibilityEvent.TYPE_VIEW_FOCUSED,
+        ).forEach { eventType ->
+            assertEquals(
+                "com.example.target",
+                ApplicationForegroundAccessibilityEventPolicy.packageName(
+                    eventType,
+                    "com.example.target",
+                ),
+            )
+        }
+    }
+
+    @Test
     fun acceptsWindowTransitionEventsAndReturnsOnlyThePackageName() {
         assertEquals(
             "com.example.target",
