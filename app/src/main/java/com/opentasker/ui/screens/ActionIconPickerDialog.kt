@@ -29,6 +29,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -48,6 +49,7 @@ import com.opentasker.widget.CustomWidgetIcon
 import com.opentasker.widget.CustomWidgetIconStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 
 /**
  * Caches raster thumbnails for the picker only. The app continues to use each original vector
@@ -67,19 +69,21 @@ private object WidgetIconThumbnailCache {
 
     suspend fun get(context: Context, drawableRes: Int): ImageBitmap? =
         withContext(Dispatchers.Default) {
-            cache.get(drawableRes) ?: synchronized(cache) {
-                cache.get(drawableRes) ?: runCatching {
-                    val drawable = context.applicationContext.getDrawable(drawableRes)
-                        ?: return@runCatching null
-                    val bitmap = Bitmap.createBitmap(
-                        THUMBNAIL_SIZE_PX,
-                        THUMBNAIL_SIZE_PX,
-                        Bitmap.Config.ARGB_8888,
-                    )
-                    drawable.setBounds(0, 0, THUMBNAIL_SIZE_PX, THUMBNAIL_SIZE_PX)
-                    drawable.draw(Canvas(bitmap))
-                    bitmap.asImageBitmap().also { cache.put(drawableRes, it) }
-                }.getOrNull()
+            // LruCache synchronizes its own get/put operations. Keep the expensive drawable
+            // inflation and rasterization outside that lock so separate icons can load in parallel.
+            cache.get(drawableRes) ?: runCatching {
+                val drawable = context.applicationContext.getDrawable(drawableRes)
+                    ?: return@runCatching null
+                val bitmap = Bitmap.createBitmap(
+                    THUMBNAIL_SIZE_PX,
+                    THUMBNAIL_SIZE_PX,
+                    Bitmap.Config.ARGB_8888,
+                )
+                drawable.setBounds(0, 0, THUMBNAIL_SIZE_PX, THUMBNAIL_SIZE_PX)
+                drawable.draw(Canvas(bitmap))
+                bitmap.asImageBitmap()
+            }.getOrNull()?.also { rendered ->
+                cache.put(drawableRes, rendered)
             }
         }
 }
@@ -103,7 +107,15 @@ internal fun ActionIconPickerDialog(
     onDismiss: () -> Unit,
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var appliedSearchQuery by rememberSaveable { mutableStateOf("") }
     var selectedCategory by rememberSaveable { mutableStateOf("All") }
+
+    // Avoid filtering and rebuilding the lazy grid for every keystroke when the user is typing
+    // quickly. The text field stays immediate; results settle after a short idle window.
+    LaunchedEffect(searchQuery) {
+        delay(120)
+        appliedSearchQuery = searchQuery.trim()
+    }
     val context = LocalContext.current.applicationContext
     val customIcons by CustomWidgetIconStore.observe(context).collectAsState()
     val pickerIcons = remember(customIcons) {
@@ -133,12 +145,12 @@ internal fun ActionIconPickerDialog(
             category == "Custom" || pickerIcons.any { it.category == category }
         }
     }
-    val filteredIcons = remember(pickerIcons, searchQuery, selectedCategory) {
+    val filteredIcons = remember(pickerIcons, appliedSearchQuery, selectedCategory) {
         pickerIcons.filter { option ->
             (selectedCategory == "All" || option.category == selectedCategory) &&
-                (searchQuery.isBlank() ||
-                    option.label.contains(searchQuery, ignoreCase = true) ||
-                    option.key.contains(searchQuery, ignoreCase = true))
+                (appliedSearchQuery.isBlank() ||
+                    option.label.contains(appliedSearchQuery, ignoreCase = true) ||
+                    option.key.contains(appliedSearchQuery, ignoreCase = true))
         }
     }
 
