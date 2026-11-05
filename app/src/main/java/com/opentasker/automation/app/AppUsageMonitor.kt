@@ -161,25 +161,26 @@ class AppUsageMonitor(
                 }
             }
             hasPublishedInitialState = true
-        } else {
-            // Preserve short-lived open/close transitions, but suppress UsageStats entries whose
-            // timestamps are already covered by a live Accessibility callback.
-            transitions.forEach { transition ->
-                if (!shouldPublishUsageTransition(
-                        usageEventTimestamp = transition.timestamp,
-                        lastAccessibilityEventAtMillis = ApplicationForegroundAccessibilityService.lastEventAtMillis(),
-                    )
-                ) return@forEach
+        }
 
-                val foreground = transition.foreground
-                if (foreground == null) {
-                    ApplicationContextEvents.publishBackground()
-                } else {
-                    ApplicationContextEvents.publishForeground(
-                        packageName = foreground.packageName,
-                        className = foreground.className,
-                    )
-                }
+        // Preserve short-lived open/close transitions, including switches that happened between
+        // monitor startup and the first completed UsageStats query. Suppress only transitions
+        // already covered by a newer live Accessibility callback.
+        transitions.forEach { transition ->
+            if (!shouldPublishUsageTransition(
+                    usageEventTimestamp = transition.timestamp,
+                    lastAccessibilityEventAtMillis = ApplicationForegroundAccessibilityService.lastEventAtMillis(),
+                )
+            ) return@forEach
+
+            val foreground = transition.foreground
+            if (foreground == null) {
+                ApplicationContextEvents.publishBackground()
+            } else {
+                ApplicationContextEvents.publishForeground(
+                    packageName = foreground.packageName,
+                    className = foreground.className,
+                )
             }
         }
         if (identity != lastForegroundIdentity) {
