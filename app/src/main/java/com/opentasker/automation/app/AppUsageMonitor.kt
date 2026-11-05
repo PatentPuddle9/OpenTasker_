@@ -6,6 +6,7 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.os.Build
 import com.opentasker.core.contexts.ApplicationContextEvents
+import com.opentasker.core.contexts.ApplicationForegroundAccessibilityService
 import com.opentasker.core.logging.AppLogger
 import com.opentasker.core.permissions.UsageAccess
 import kotlinx.coroutines.CoroutineScope
@@ -37,24 +38,52 @@ class AppUsageMonitor(
     private var lastForegroundIdentity: ForegroundIdentity? = null
     private var hasPublishedInitialState = false
     private var warnedMissingAccess = false
+    private var lastDetectionAction: AppUsagePollAction? = null
 
     fun start(scope: CoroutineScope): Boolean {
         if (monitorJob?.isActive == true) return true
         resetTracking()
         monitorJob = scope.launch(Dispatchers.IO) {
             while (isActive) {
-                if (appUsagePollAction(UsageAccess.hasUsageStatsAccess(appContext)) == AppUsagePollAction.PAUSE_FOR_MISSING_ACCESS) {
-                    if (!warnedMissingAccess) {
-                        AppLogger.warn(TAG, "Usage access is not granted; app conditions are paused")
-                        warnedMissingAccess = true
-                    }
-                    delay(MISSING_ACCESS_RETRY_MS)
-                    continue
+                val action = appUsagePollAction(
+                    hasUsageAccess = UsageAccess.hasUsageStatsAccess(appContext),
+                    accessibilityServiceEnabled =
+                        ApplicationForegroundAccessibilityService.isEnabled(appContext),
+                )
+
+                if (action != lastDetectionAction) {
+                    // Never carry UsageStats' reconstructed Activity set across a switch to/from
+                    // the live Accessibility callback source.
+                    if (lastDetectionAction != null) clearPollingState()
+                    lastDetectionAction = action
+                    AppLogger.info(TAG, when (action) {
+                        AppUsagePollAction.WAIT_FOR_ACCESSIBILITY_EVENTS ->
+                            "Instant app detection is enabled; UsageStats polling is suspended"
+                        AppUsagePollAction.QUERY_FOREGROUND ->
+                            "Instant app detection is disabled; using UsageStats as the fallback"
+                        AppUsagePollAction.PAUSE_FOR_MISSING_ACCESS ->
+                            "Usage access is missing and instant app detection is disabled"
+                    })
                 }
 
-                warnedMissingAccess = false
-                pollForegroundComponent()
-                delay(POLL_INTERVAL_MS)
+                when (action) {
+                    AppUsagePollAction.WAIT_FOR_ACCESSIBILITY_EVENTS -> {
+                        warnedMissingAccess = false
+                        delay(ACCESSIBILITY_MODE_CHECK_INTERVAL_MS)
+                    }
+                    AppUsagePollAction.PAUSE_FOR_MISSING_ACCESS -> {
+                        if (!warnedMissingAccess) {
+                            AppLogger.warn(TAG, "Usage access is not granted; app conditions are paused")
+                            warnedMissingAccess = true
+                        }
+                        delay(MISSING_ACCESS_RETRY_MS)
+                    }
+                    AppUsagePollAction.QUERY_FOREGROUND -> {
+                        warnedMissingAccess = false
+                        pollForegroundComponent()
+                        delay(POLL_INTERVAL_MS)
+                    }
+                }
             }
         }
         return true
@@ -67,6 +96,12 @@ class AppUsageMonitor(
     }
 
     private fun resetTracking() {
+        clearPollingState()
+        lastDetectionAction = null
+        warnedMissingAccess = false
+    }
+
+    private fun clearPollingState() {
         foregroundTracker.clear()
         seenUsageEventKeys.clear()
         lastQueriedAtMs = 0L
@@ -180,6 +215,9 @@ class AppUsageMonitor(
         // Keep UsageStats polling at a lower frequency so it does not wake the engine four times a second.
         internal const val POLL_INTERVAL_MS = 1_000L
         private const val MISSING_ACCESS_RETRY_MS = 30_000L
+        // Only checks whether the user switched detection providers; app transitions themselves
+        // arrive directly from AccessibilityService and are not delayed by this interval.
+        private const val ACCESSIBILITY_MODE_CHECK_INTERVAL_MS = 2_000L
         private const val INITIAL_LOOKBACK_MS = 7L * 24 * 60 * 60 * 1_000
         // Re-read up to two poll intervals to cover UsageStats publication jitter; event keys dedupe repeats.
         internal const val QUERY_OVERLAP_MS = 2_000L
