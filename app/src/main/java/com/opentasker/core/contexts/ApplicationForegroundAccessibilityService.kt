@@ -3,6 +3,7 @@ package com.opentasker.core.contexts
 import android.accessibilityservice.AccessibilityService
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.provider.Settings
 import android.view.accessibility.AccessibilityEvent
 import com.opentasker.core.logging.AppLogger
@@ -19,7 +20,19 @@ class ApplicationForegroundAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        serviceConnected = true
         AppLogger.info(TAG, "Instant app detection AccessibilityService connected")
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        serviceConnected = false
+        AppLogger.warn(TAG, "Instant app detection AccessibilityService disconnected")
+        return super.onUnbind(intent)
+    }
+
+    override fun onDestroy() {
+        serviceConnected = false
+        super.onDestroy()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -49,6 +62,12 @@ class ApplicationForegroundAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "AppDetection"
+
+        @Volatile
+        private var serviceConnected = false
+
+        /** True only after Android has actually bound and connected this service instance. */
+        fun isConnected(): Boolean = serviceConnected
 
         /** Reads the explicit user grant shown in Android's Accessibility settings. */
         fun isEnabled(context: Context): Boolean {
