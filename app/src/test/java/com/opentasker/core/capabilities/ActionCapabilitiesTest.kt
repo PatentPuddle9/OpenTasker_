@@ -76,6 +76,15 @@ class ActionCapabilitiesTest {
     }
 
     @Test
+    fun deviceCredentialActionIsAddableAndDeclaresItsOverlaySetupRequirement() {
+        val capability = ActionCapabilityRegistry.get("auth.device_credential")
+
+        assertTrue(capability.canAdd)
+        assertEquals(CapabilityLevel.RequiresSetup, capability.level)
+        assertTrue(capability.reason.contains("Display over other apps"))
+    }
+
+    @Test
     fun unknownActionsFailClosedUntilClassified() {
         assertFalse(ActionCapabilityRegistry.get("plugin.example").canAdd)
         assertEquals(CapabilityLevel.Unsupported, ActionCapabilityRegistry.get("plugin.example").level)
