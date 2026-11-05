@@ -1,6 +1,7 @@
 package com.opentasker.automation.app
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -102,8 +103,10 @@ class AppUsageMonitorTest {
         )
 
         assertEquals(2, transitions.size)
-        assertNull(transitions[0])
-        assertEquals("com.example", transitions[1]?.packageName)
+        assertEquals(200L, transitions[0].timestamp)
+        assertNull(transitions[0].foreground)
+        assertEquals(300L, transitions[1].timestamp)
+        assertEquals("com.example", transitions[1].foreground?.packageName)
     }
 
     @Test
@@ -130,9 +133,9 @@ class AppUsageMonitorTest {
     }
 
     @Test
-    fun connectedAccessibilityListenerTakesExclusivePrecedenceOverUsageStats() {
+    fun connectedAccessibilityListenerDoesNotDisableUsageStatsRecovery() {
         assertSame(
-            AppUsagePollAction.WAIT_FOR_ACCESSIBILITY_EVENTS,
+            AppUsagePollAction.QUERY_FOREGROUND,
             appUsagePollAction(hasUsageAccess = true, accessibilityServiceConnected = true),
         )
         assertSame(
@@ -154,15 +157,27 @@ class AppUsageMonitorTest {
     }
 
     @Test
-    fun usageStatsPollingRemainsOnlyTheFallbackForEventDrivenDetection() {
+    fun usageStatsFallbackStaysResponsiveWithoutBusyPolling() {
         assertTrue(
-            "The callback-based accessibility listener handles instant transitions; polling stays lightweight",
-            AppUsageMonitor.POLL_INTERVAL_MS >= 1_000L,
+            "The fallback should check often enough to recover from missed window callbacks",
+            AppUsageMonitor.POLL_INTERVAL_MS <= 1_000L,
+        )
+        assertTrue(
+            "The fallback should not spin continuously",
+            AppUsageMonitor.POLL_INTERVAL_MS >= 250L,
         )
         assertTrue(
             "The query overlap should cover at least one full fallback poll interval",
             AppUsageMonitor.QUERY_OVERLAP_MS >= AppUsageMonitor.POLL_INTERVAL_MS,
         )
+    }
+
+    @Test
+    fun usageStatsEventsAlreadyCoveredByAccessibilityAreSuppressed() {
+        assertFalse(shouldPublishUsageTransition(1_000L, 1_000L))
+        assertFalse(shouldPublishUsageTransition(999L, 1_000L))
+        assertTrue(shouldPublishUsageTransition(1_001L, 1_000L))
+        assertTrue(shouldPublishUsageTransition(1_000L, 0L))
     }
 
 }
