@@ -23,6 +23,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -76,6 +77,9 @@ internal data class LocalizedContextType(
     val type: ContextType,
     val title: String,
     val description: String,
+    val category: String = "Other",
+    val id: String = type.name,
+    val initialConfig: Map<String, String> = emptyMap(),
 )
 
 internal fun filterContextPickerItems(
@@ -87,26 +91,167 @@ internal fun filterContextPickerItems(
     return items.filter { item ->
         item.title.contains(normalizedQuery, ignoreCase = true) ||
             item.description.contains(normalizedQuery, ignoreCase = true) ||
-            item.type.name.contains(normalizedQuery, ignoreCase = true)
+            item.type.name.contains(normalizedQuery, ignoreCase = true) ||
+            item.category.contains(normalizedQuery, ignoreCase = true) ||
+            item.id.contains(normalizedQuery, ignoreCase = true) ||
+            item.initialConfig.values.any { it.contains(normalizedQuery, ignoreCase = true) }
     }
 }
 
 @Composable
 @SuppressLint("LocalContextGetResourceValueCall")
-internal fun ContextTypePickerDialog(onDismiss: () -> Unit, onSelect: (ContextType) -> Unit) {
+internal fun ContextTypePickerDialog(
+    onDismiss: () -> Unit,
+    onSelect: (LocalizedContextType) -> Unit,
+) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     var query by rememberSaveable { mutableStateOf("") }
+    var selectedCategory by rememberSaveable { mutableStateOf("All") }
     val localizedTypes = remember(configuration) {
-        ContextType.entries.map { type ->
-            LocalizedContextType(
-                type = type,
-                title = context.getString(contextTitleRes(type)),
-                description = context.getString(contextDescriptionRes(type)),
+        buildList {
+            add(
+                LocalizedContextType(
+                    type = ContextType.APPLICATION,
+                    title = context.getString(contextTitleRes(ContextType.APPLICATION)),
+                    description = "Choose an app and match when it opens, closes, installs, updates, or is removed.",
+                    category = "Apps",
+                    id = "application",
+                ),
+            )
+
+            fun state(id: String, title: String, description: String, key: String, category: String) {
+                add(
+                    LocalizedContextType(
+                        type = ContextType.STATE,
+                        title = title,
+                        description = description,
+                        category = category,
+                        id = id,
+                        initialConfig = mapOf("key" to key, "operator" to "="),
+                    ),
+                )
+            }
+            fun event(id: String, title: String, description: String, name: String, category: String) {
+                add(
+                    LocalizedContextType(
+                        type = ContextType.EVENT,
+                        title = title,
+                        description = description,
+                        category = category,
+                        id = id,
+                        initialConfig = mapOf("event" to name),
+                    ),
+                )
+            }
+
+            // Device status
+            state("battery-level", "Battery level", "Match when the battery reaches a percentage.", "battery_level", "Device")
+            state("charging", "Charging", "Match when the device starts or stops charging.", "charging", "Device")
+            state("screen", "Screen state", "Match when the screen turns on or off.", "screen", "Device")
+            state("unlocked", "Lock state", "Match when the device becomes locked or unlocked.", "unlocked", "Device")
+            state("power-save", "Power saving mode", "Match when battery saver is enabled or disabled.", "power_save", "Device")
+            state("headphones", "Headphones", "Match when headphones are connected or disconnected.", "headphones", "Device")
+            state("airplane", "Airplane mode", "Match when airplane mode changes.", "airplane", "Device")
+            state("media-playback", "Media playback", "Match when media becomes active or inactive.", "media_active", "Device")
+            state("call-state", "Phone call state", "Match when a call is ringing, active, or idle.", "call_state", "Device")
+
+            // Display and motion sensors
+            state("orientation", "Orientation", "Match portrait, landscape, or face-up/down orientation.", "orientation", "Display & Sensors")
+            state("proximity", "Proximity", "Match when the proximity sensor reports near or far.", "proximity", "Display & Sensors")
+            state("activity", "Physical activity", "Match stationary, walking, or running activity.", "activity", "Display & Sensors")
+            state("speed", "Movement speed", "Match a speed threshold using location updates.", "speed", "Display & Sensors")
+
+            // Connectivity states and event triggers
+            state("wifi", "Wi-Fi connection", "Match Wi-Fi connected, disconnected, or a network name.", "wifi", "Connectivity")
+            state("internet", "Internet access", "Match when internet access changes.", "internet", "Connectivity")
+            state("network-type", "Network type", "Match mobile, Wi-Fi, or another active network type.", "network_type", "Connectivity")
+            state("vpn", "VPN connection", "Match when a VPN becomes active or inactive.", "vpn", "Connectivity")
+            state("roaming", "Data roaming", "Match when the mobile network starts or stops roaming.", "roaming", "Connectivity")
+            state("tethering", "Hotspot / tethering", "Match when tethering is enabled or disabled.", "tethering", "Connectivity")
+            event("bluetooth", "Bluetooth device", "Match a Bluetooth device connecting or disconnecting.", "bluetooth", "Connectivity")
+            event("bluetooth-security", "Bluetooth security", "Match Bluetooth key-loss or encryption changes.", "bluetooth_key_missing", "Connectivity")
+            event("companion", "Companion device", "Match companion-device presence changes.", "companion_presence", "Connectivity")
+
+            // Time, calendar, and location
+            add(
+                LocalizedContextType(
+                    ContextType.TIME,
+                    context.getString(contextTitleRes(ContextType.TIME)),
+                    context.getString(contextDescriptionRes(ContextType.TIME)),
+                    "Time & Date",
+                    "time",
+                ),
+            )
+            add(
+                LocalizedContextType(
+                    ContextType.DAY,
+                    context.getString(contextTitleRes(ContextType.DAY)),
+                    context.getString(contextDescriptionRes(ContextType.DAY)),
+                    "Time & Date",
+                    "day",
+                ),
+            )
+            event("calendar", "Calendar event", "Match an upcoming or ongoing calendar event.", "calendar", "Time & Date")
+            event("sunrise", "Sunrise", "Match a window around local sunrise.", "sunrise", "Time & Date")
+            event("sunset", "Sunset", "Match a window around local sunset.", "sunset", "Time & Date")
+            add(
+                LocalizedContextType(
+                    ContextType.LOCATION,
+                    context.getString(contextTitleRes(ContextType.LOCATION)),
+                    context.getString(contextDescriptionRes(ContextType.LOCATION)),
+                    "Location",
+                    "location",
+                ),
+            )
+
+            // Notifications and incoming content
+            event("notification", "Notification received", "Match a notification from an app, with optional text filters.", "notification", "Notifications")
+            if (BuildConfig.SMS_RECEIVE_AVAILABLE) {
+                event("sms", "SMS / MMS received", "Match an incoming message, with optional sender or text filters.", "sms_received", "Notifications")
+            }
+            event("push", "Push message received", "Match an incoming push delivery or topic.", "push", "Notifications")
+
+            // Physical hardware and sensors
+            event("nfc", "NFC tag scanned", "Match when an NFC tag is scanned.", "nfc", "Hardware")
+            event("shake", "Shake detected", "Match a shake gesture.", "shake", "Hardware")
+            event("usb", "USB device", "Match a USB device being attached or detached.", "usb", "Hardware")
+            event("camera", "Camera in use", "Match when an app starts or stops using the camera.", "camera", "Hardware")
+            event("microphone", "Microphone in use", "Match when an app starts or stops using the microphone.", "mic", "Hardware")
+
+            // System and app lifecycle events
+            event("boot", "Device startup", "Match when Android finishes booting.", "boot_completed", "System")
+            event("screen-recording", "Screen recording", "Match when screen recording becomes visible or stops.", "screen_recording", "System")
+            event("advanced-protection", "Advanced Protection", "Match when Android Advanced Protection changes.", "advanced_protection", "System")
+            event("quick-settings", "Quick Settings tile", "Match when the OpenTasker tile is tapped.", "tile_clicked", "System")
+            event("broadcast", "External broadcast", "Match a named broadcast sent by another app.", "broadcast", "System")
+            event("share", "Shared content", "Match text, links, or files received from Android's share sheet.", "share", "System")
+
+            add(
+                LocalizedContextType(
+                    type = ContextType.PLUGIN,
+                    title = context.getString(contextTitleRes(ContextType.PLUGIN)),
+                    description = context.getString(contextDescriptionRes(ContextType.PLUGIN)),
+                    category = "Plugins",
+                    id = "plugin",
+                ),
             )
         }
     }
-    val filteredTypes = remember(localizedTypes, query) { filterContextPickerItems(localizedTypes, query) }
+    val categoryOrder = listOf(
+        "Apps", "Device", "Display & Sensors", "Connectivity", "Time & Date",
+        "Location", "Notifications", "Hardware", "System", "Plugins",
+    )
+    val categories = remember(localizedTypes) {
+        listOf("All") + categoryOrder.filter { category ->
+            localizedTypes.any { it.category == category }
+        }
+    }
+    val filteredTypes = remember(localizedTypes, query, selectedCategory) {
+        filterContextPickerItems(localizedTypes, query).filter { localized ->
+            selectedCategory == "All" || localized.category == selectedCategory
+        }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.dialog_add_context)) },
@@ -129,6 +274,22 @@ internal fun ContextTypePickerDialog(onDismiss: () -> Unit, onSelect: (ContextTy
                     },
                     singleLine = true,
                 )
+                androidx.compose.foundation.lazy.LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    items(categories, key = { it }) { category ->
+                        FilterChip(
+                            selected = selectedCategory == category,
+                            onClick = { selectedCategory = category },
+                            label = { Text(category) },
+                        )
+                    }
+                }
+                Text(
+                    "${filteredTypes.size} triggers",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 if (filteredTypes.isEmpty()) {
                     Text(
                         stringResource(R.string.context_picker_no_results),
@@ -137,13 +298,12 @@ internal fun ContextTypePickerDialog(onDismiss: () -> Unit, onSelect: (ContextTy
                     )
                 } else {
                     LazyColumn(
-                        modifier = Modifier.heightIn(max = 360.dp),
+                        modifier = Modifier.heightIn(max = 300.dp),
                         verticalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.sm),
                     ) {
-                        items(filteredTypes, key = { it.type.name }) { localized ->
-                            val type = localized.type
+                        items(filteredTypes, key = { it.id }) { localized ->
                             Card(
-                                onClick = { onSelect(type) },
+                                onClick = { onSelect(localized) },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.64f)),
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.44f)),
@@ -173,10 +333,10 @@ internal fun ContextConfigDialog(
 ) {
     var invert by rememberSaveable(state.profile.id, state.index, state.type) { mutableStateOf(state.existing?.invert ?: false) }
     var config by rememberSaveable(state.profile.id, state.index, state.type) {
-        mutableStateOf(defaultContextConfig(state.type) + canonicalContextConfig(state.type, state.existing?.config ?: emptyMap()))
+        mutableStateOf(defaultContextConfig(state.type) + state.initialConfig + canonicalContextConfig(state.type, state.existing?.config ?: emptyMap()))
     }
     var nfcWriteMessage by rememberSaveable(state.profile.id, state.index, state.type) { mutableStateOf<String?>(null) }
-    val fields = contextFields(state.type)
+    val fields = contextFields(state.type, config)
     val saveConfig = contextConfigForSave(state.type, config)
     val missingRequired = fields.any { it.required && config[it.key].isNullOrBlank() } ||
         (state.type == ContextType.DAY && saveConfig["days"].isNullOrBlank())
@@ -443,7 +603,7 @@ internal fun contextInvalidFields(type: ContextType, config: Map<String, String>
     return issues
 }
 
-private fun contextFields(type: ContextType): List<ActionField> = when (type) {
+private fun contextFields(type: ContextType, config: Map<String, String> = emptyMap()): List<ActionField> = when (type) {
     ContextType.APPLICATION -> listOf(
         ActionField("package", R.string.context_field_application_package_label, FieldType.APP, required = true, hintRes = R.string.context_field_application_package_hint),
         ActionField(
@@ -456,6 +616,9 @@ private fun contextFields(type: ContextType): List<ActionField> = when (type) {
                 ActionFieldOption("foreground", R.string.context_app_condition_foreground),
                 ActionFieldOption("opened", R.string.context_app_condition_opened),
                 ActionFieldOption("closed", R.string.context_app_condition_closed),
+                ActionFieldOption("installed", R.string.context_app_condition_installed),
+                ActionFieldOption("updated", R.string.context_app_condition_updated),
+                ActionFieldOption("uninstalled", R.string.context_app_condition_uninstalled),
                 ActionFieldOption("not_foreground", R.string.context_app_condition_not_foreground),
             ),
         ),
@@ -478,28 +641,50 @@ private fun contextFields(type: ContextType): List<ActionField> = when (type) {
         ActionField("operator", R.string.context_field_state_operator_label, hintRes = R.string.context_field_state_operator_hint),
         ActionField("value", R.string.context_field_state_value_label, required = true, hintRes = R.string.context_field_state_value_hint),
     )
-    ContextType.EVENT -> listOf(
-        ActionField("event", R.string.context_field_event_type_label, required = true, hintRes = R.string.context_field_event_type_hint),
-        ActionField("state", R.string.context_field_event_state_label, hintRes = R.string.context_field_event_state_hint),
-        ActionField("calendar", R.string.context_field_event_calendar_label, hintRes = R.string.context_field_event_calendar_hint),
-        ActionField("beforeMinutes", R.string.context_field_event_before_label, FieldType.NUMBER, hintRes = R.string.context_field_event_before_hint),
-        ActionField("package", R.string.context_field_event_package_label, FieldType.APP, hintRes = R.string.context_field_event_package_hint),
-        ActionField("sender", R.string.context_field_event_sender_label, hintRes = R.string.context_field_event_sender_hint),
-        ActionField("action", R.string.context_field_event_action_label, hintRes = R.string.context_field_event_action_hint),
-        ActionField("extraKey", R.string.context_field_event_extra_key_label, hintRes = R.string.context_field_event_extra_key_hint),
-        ActionField("extraValue", R.string.context_field_event_extra_value_label, hintRes = R.string.context_field_event_extra_value_hint),
-        ActionField("tagId", R.string.context_field_event_tag_label, hintRes = R.string.context_field_event_tag_hint),
-        ActionField("latitude", R.string.context_field_event_latitude_label, FieldType.NUMBER, hintRes = R.string.context_field_event_latitude_hint),
-        ActionField("longitude", R.string.context_field_event_longitude_label, FieldType.NUMBER, hintRes = R.string.context_field_event_longitude_hint),
-        ActionField("offsetMinutes", R.string.context_field_event_offset_label, FieldType.NUMBER, hintRes = R.string.context_field_event_offset_hint),
-        ActionField("windowMinutes", R.string.context_field_event_window_label, FieldType.NUMBER, hintRes = R.string.context_field_event_window_hint),
-        ActionField("topic", R.string.context_field_event_topic_label, hintRes = R.string.context_field_event_topic_hint),
-        ActionField("eventId", R.string.context_field_event_id_label, hintRes = R.string.context_field_event_id_hint),
-        ActionField("title", R.string.context_field_event_title_label, hintRes = R.string.context_field_event_title_hint),
-        ActionField("body", R.string.context_field_event_body_label, hintRes = R.string.context_field_event_body_hint),
-        ActionField("filter", R.string.context_field_event_filter_label, hintRes = R.string.context_field_event_filter_hint),
-        ActionField("regex", R.string.context_field_event_regex_label, FieldType.CHECKBOX),
-    )
+    ContextType.EVENT -> {
+        val allFields = listOf(
+            ActionField("event", R.string.context_field_event_type_label, required = true, hintRes = R.string.context_field_event_type_hint),
+            ActionField("state", R.string.context_field_event_state_label, hintRes = R.string.context_field_event_state_hint),
+            ActionField("calendar", R.string.context_field_event_calendar_label, hintRes = R.string.context_field_event_calendar_hint),
+            ActionField("beforeMinutes", R.string.context_field_event_before_label, FieldType.NUMBER, hintRes = R.string.context_field_event_before_hint),
+            ActionField("package", R.string.context_field_event_package_label, FieldType.APP, hintRes = R.string.context_field_event_package_hint),
+            ActionField("sender", R.string.context_field_event_sender_label, hintRes = R.string.context_field_event_sender_hint),
+            ActionField("action", R.string.context_field_event_action_label, hintRes = R.string.context_field_event_action_hint),
+            ActionField("extraKey", R.string.context_field_event_extra_key_label, hintRes = R.string.context_field_event_extra_key_hint),
+            ActionField("extraValue", R.string.context_field_event_extra_value_label, hintRes = R.string.context_field_event_extra_value_hint),
+            ActionField("tagId", R.string.context_field_event_tag_label, hintRes = R.string.context_field_event_tag_hint),
+            ActionField("latitude", R.string.context_field_event_latitude_label, FieldType.NUMBER, hintRes = R.string.context_field_event_latitude_hint),
+            ActionField("longitude", R.string.context_field_event_longitude_label, FieldType.NUMBER, hintRes = R.string.context_field_event_longitude_hint),
+            ActionField("offsetMinutes", R.string.context_field_event_offset_label, FieldType.NUMBER, hintRes = R.string.context_field_event_offset_hint),
+            ActionField("windowMinutes", R.string.context_field_event_window_label, FieldType.NUMBER, hintRes = R.string.context_field_event_window_hint),
+            ActionField("topic", R.string.context_field_event_topic_label, hintRes = R.string.context_field_event_topic_hint),
+            ActionField("eventId", R.string.context_field_event_id_label, hintRes = R.string.context_field_event_id_hint),
+            ActionField("title", R.string.context_field_event_title_label, hintRes = R.string.context_field_event_title_hint),
+            ActionField("body", R.string.context_field_event_body_label, hintRes = R.string.context_field_event_body_hint),
+            ActionField("filter", R.string.context_field_event_filter_label, hintRes = R.string.context_field_event_filter_hint),
+            ActionField("regex", R.string.context_field_event_regex_label, FieldType.CHECKBOX),
+        )
+        val event = config["event"]?.trim()?.lowercase().orEmpty()
+        val relevantKeys = when (event) {
+            "calendar" -> setOf("event", "state", "calendar", "beforeMinutes")
+            "sunrise", "sunset" -> setOf("event", "latitude", "longitude", "offsetMinutes", "windowMinutes")
+            "notification" -> setOf("event", "package", "title", "body", "regex")
+            "sms_received" -> setOf("event", "sender", "body", "regex")
+            "nfc" -> setOf("event", "tagId")
+            "package_added", "package_removed", "package_replaced" -> setOf("event", "package")
+            "camera", "mic" -> setOf("event", "package")
+            "bluetooth", "bluetooth_all_disconnected", "bluetooth_some_connected",
+            "bluetooth_key_missing", "bluetooth_encryption_change", "usb", "companion_presence" ->
+                setOf("event", "state", "filter", "regex")
+            "screen_recording", "advanced_protection" -> setOf("event", "state")
+            "push" -> setOf("event", "topic", "eventId")
+            "share" -> setOf("event", "filter", "regex")
+            "broadcast" -> setOf("event", "sender", "action", "extraKey", "extraValue")
+            "boot_completed", "shake", "tile_clicked" -> setOf("event")
+            else -> emptySet()
+        }
+        if (relevantKeys.isEmpty()) allFields else allFields.filter { it.key in relevantKeys }
+    }
     ContextType.PLUGIN -> listOf(
         ActionField("package", R.string.context_field_plugin_package_label, FieldType.APP, required = true, hintRes = R.string.context_field_plugin_package_hint),
         ActionField("bundleJson", R.string.context_field_plugin_bundle_label, hintRes = R.string.context_field_plugin_bundle_hint),
@@ -540,7 +725,7 @@ private fun contextConfigForSave(type: ContextType, config: Map<String, String>)
 private fun canonicalContextConfig(type: ContextType, config: Map<String, String>): Map<String, String> {
     if (type != ContextType.APPLICATION) return config
     val withoutLegacyComponent = config - setOf("component", "activity", "class")
-    val supportedConditions = setOf("foreground", "opened", "closed", "not_foreground")
+    val supportedConditions = setOf("foreground", "opened", "closed", "installed", "updated", "uninstalled", "not_foreground")
     val condition = withoutLegacyComponent["condition"]
         ?.trim()
         ?.takeIf { it in supportedConditions }
