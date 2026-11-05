@@ -451,7 +451,7 @@
     <string name="setup_overlay_access_required_for">Scenes, popup dialogs, device credential prompts</string>
     <string name="capability_popup_dialog_overlay">Requires Display over other apps access to show popup dialogs.</string>
     <string name="capability_scene_overlay">Requires Display over other apps access to show scene overlays.</string>
-    <string name="capability_device_credential_overlay">Requires Display over other apps access so background automations can open Android&apos;s device credential screen.</string>
+    <string name="capability_device_credential_overlay">Requires Display over other apps access so background automations can open Android’s device credential screen.</string>
     <string name="setup_install_unknown_apps_title">Install unknown apps</string>
     <string name="setup_install_unknown_apps_body">Allows OpenTasker to launch Android’s installer for a downloaded APK, such as an app update. Android still asks you to confirm the installation; this does not allow silent installs.</string>
     <string name="setup_install_unknown_apps_required_for">Installing downloaded APK updates</string>
