@@ -5,7 +5,7 @@ import java.util.LinkedHashMap
 
 /** Shared rendering and validation contract for metadata-driven action fields. */
 object ActionFieldPolicy {
-    enum class Renderer { TEXT, NUMBER, DROPDOWN, CHECKBOX, MULTILINE, TASK, APP, FILE }
+    enum class Renderer { TEXT, NUMBER, DROPDOWN, CHECKBOX, MULTILINE, TASK, APP, FILE, SCENE }
 
     enum class Error {
         REQUIRED,
@@ -17,6 +17,7 @@ object ActionFieldPolicy {
         INVALID_TASK,
         INVALID_APP,
         INVALID_FILE,
+        INVALID_SCENE,
         CONFLICTING_VALUE,
         BODY_NOT_ALLOWED,
         INVALID_DEFINITION,
@@ -38,6 +39,7 @@ object ActionFieldPolicy {
         FieldType.NUMBER -> if (validNumberRule(field.numberRule)) Renderer.NUMBER else null
         FieldType.DROPDOWN -> if (validOptions(field.options)) Renderer.DROPDOWN else null
         FieldType.FILE -> if (field.fileRule != null) Renderer.FILE else null
+        FieldType.SCENE -> Renderer.SCENE
     }
 
     fun validate(
@@ -63,6 +65,10 @@ object ActionFieldPolicy {
             FieldType.TASK -> {
                 val taskId = rawValue.toLongOrNull()
                 if (taskId != null && taskId in availableTaskIds) null else Issue(Error.INVALID_TASK)
+            }
+            FieldType.SCENE -> {
+                val sceneId = rawValue.toLongOrNull()
+                if (sceneId != null && sceneId > 0L) null else Issue(Error.INVALID_SCENE)
             }
             FieldType.APP -> if (PackageNamePolicy.isValid(rawValue.trim())) null else Issue(Error.INVALID_APP)
             FieldType.FILE -> when (field.fileRule?.scope) {
