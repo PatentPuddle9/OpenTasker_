@@ -110,6 +110,11 @@ class AppUsageMonitor(
     }
 
     private fun pollForegroundComponent() {
+        // The Accessibility callback is authoritative from the moment Android connects it.
+        // Guard both before and after the UsageStats query so a poll already in flight cannot
+        // overwrite the live app-switch event while the monitor loop is changing providers.
+        if (ApplicationForegroundAccessibilityService.isConnected()) return
+
         val now = System.currentTimeMillis()
         val initialSnapshot = !hasPublishedInitialState
         val queryStart = if (lastQueriedAtMs == 0L) {
@@ -118,6 +123,7 @@ class AppUsageMonitor(
             (lastQueriedAtMs - QUERY_OVERLAP_MS).coerceAtLeast(0L)
         }
         val observedEvents = readForegroundEvents(queryStart, now) ?: return
+        if (ApplicationForegroundAccessibilityService.isConnected()) return
         val newEvents = observedEvents.filter(::rememberUsageEvent)
         val transitions = foregroundTracker.applyWithTransitions(newEvents)
         val current = foregroundTracker.current()
