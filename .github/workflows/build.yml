@@ -114,13 +114,19 @@ jobs:
       - name: Verify locale resources
         run: ./gradlew :app:verifyLocaleResources --stacktrace --dependency-verification=off
 
+      # The resource error reported a string that is absent from the checked-out XML.
+      # Remove stale project intermediates and bypass Gradle build-cache restoration so
+      # AAPT recompiles the exact resources from this commit.
+      - name: Clean stale Android build intermediates
+        run: ./gradlew clean --no-build-cache --stacktrace --dependency-verification=off
+
       - name: Build debug APK
         run: |
           ./gradlew \
             -PopenTaskerVersionName="$OPENTASKER_VERSION_NAME" \
             -PopenTaskerVersionCode="$OPENTASKER_VERSION_CODE" \
             -PopenTaskerBuildBranch="$GITHUB_REF_NAME" \
-            :app:assembleDebug --stacktrace --dependency-verification=off
+            :app:assembleDebug --no-build-cache --stacktrace --dependency-verification=off
 
       - name: Write build metadata
         shell: bash
