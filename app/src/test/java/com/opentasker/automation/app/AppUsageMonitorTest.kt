@@ -130,6 +130,30 @@ class AppUsageMonitorTest {
     }
 
     @Test
+    fun enabledAccessibilityListenerTakesExclusivePrecedenceOverUsageStats() {
+        assertSame(
+            AppUsagePollAction.WAIT_FOR_ACCESSIBILITY_EVENTS,
+            appUsagePollAction(hasUsageAccess = true, accessibilityServiceEnabled = true),
+        )
+        assertSame(
+            AppUsagePollAction.WAIT_FOR_ACCESSIBILITY_EVENTS,
+            appUsagePollAction(hasUsageAccess = false, accessibilityServiceEnabled = true),
+        )
+    }
+
+    @Test
+    fun usageStatsRemainsFallbackWhenAccessibilityListenerIsDisabled() {
+        assertSame(
+            AppUsagePollAction.QUERY_FOREGROUND,
+            appUsagePollAction(hasUsageAccess = true, accessibilityServiceEnabled = false),
+        )
+        assertSame(
+            AppUsagePollAction.PAUSE_FOR_MISSING_ACCESS,
+            appUsagePollAction(hasUsageAccess = false, accessibilityServiceEnabled = false),
+        )
+    }
+
+    @Test
     fun usageStatsPollingRemainsOnlyTheFallbackForEventDrivenDetection() {
         assertTrue(
             "The callback-based accessibility listener handles instant transitions; polling stays lightweight",
