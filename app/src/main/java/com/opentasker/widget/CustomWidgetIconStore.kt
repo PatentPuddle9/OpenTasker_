@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * An image uploaded in Settings for use beside a popup dialog title.
+ * An image uploaded in Settings for use anywhere the app supports a selectable icon, including popup titles.
  *
  * [key] is what popup actions save, so renaming or recoloring an icon never changes
  * assignments that already use it.
@@ -66,7 +66,7 @@ object CustomWidgetIconStore {
             ?.takeIf { it == raw }
     }
 
-    /** Shared state keeps Settings and popup action editors in sync. */
+    /** Shared state keeps Settings and every icon picker in sync. */
     fun observe(context: Context): StateFlow<List<CustomWidgetIcon>> {
         val preferences = preferences(context)
         synchronized(lock) {
