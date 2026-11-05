@@ -47,6 +47,21 @@ class PickerSearchTest {
     }
 
     @Test
+    fun contextSearchMatchesCategoryPresetIdAndInitialConfig() {
+        val wifi = LocalizedContextType(
+            type = ContextType.STATE,
+            title = "Wi-Fi connection",
+            description = "Match when Wi-Fi changes",
+            category = "Connectivity",
+            id = "wifi",
+            initialConfig = mapOf("key" to "wifi"),
+        )
+
+        assertEquals(listOf(wifi), filterContextPickerItems(listOf(wifi), "connectivity"))
+        assertEquals(listOf(wifi), filterContextPickerItems(listOf(wifi), "WIFI"))
+    }
+
+    @Test
     fun pickerCatalogsAreRememberedAcrossRecomposition() {
         val actionSource = moduleRoot.resolve("src/main/java/com/opentasker/ui/screens/ActionEditorDialogs.kt").readText()
         val contextSource = moduleRoot.resolve("src/main/java/com/opentasker/ui/screens/ContextEditorDialogs.kt").readText()
