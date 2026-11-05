@@ -113,6 +113,9 @@ object ApplicationContextEvents {
     /** Latest Activity class shown by the Context Inspector, when the OEM reported one. */
     fun latestObservedComponent(): String? = latestForegroundComponent
 
+    /** Whether either detection source has established an initial foreground/background state. */
+    fun hasObservedState(): Boolean = synchronized(stateLock) { hasObservedForegroundState }
+
     private fun initialSnapshotLocked(): ContextEvent {
         if (!hasObservedForegroundState) {
             return ContextEvent(
