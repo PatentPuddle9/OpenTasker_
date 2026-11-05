@@ -5,8 +5,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -376,7 +374,6 @@ internal fun TaskEditorDialog(
     )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ProfileEditorDialog(
     profile: Profile?,
@@ -416,6 +413,7 @@ internal fun ProfileEditorDialog(
             WidgetIconCatalog.resolve(profile?.icon).key,
         )
     }
+    var showIconPicker by rememberSaveable(profile?.id) { mutableStateOf(false) }
     var lifetimeName by rememberSaveable(profile?.id) {
         mutableStateOf((profile?.lifetime ?: ProfileLifetime.NEVER).name)
     }
@@ -532,32 +530,17 @@ internal fun ProfileEditorDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Text("Action icon", style = MaterialTheme.typography.labelLarge)
-                    FlowRow(
+                    OutlinedButton(
+                        onClick = { showIconPicker = true },
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        WidgetIconCatalog.all.forEach { option ->
-                            val selected = option.key == selectedIcon
-                            Surface(
-                                modifier = Modifier.size(40.dp).clickable { selectedIcon = option.key },
-                                shape = RoundedCornerShape(10.dp),
-                                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                                border = BorderStroke(
-                                    if (selected) 2.dp else 1.dp,
-                                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                                ),
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        painter = painterResource(option.drawableRes),
-                                        contentDescription = option.label,
-                                        tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.size(22.dp),
-                                    )
-                                }
-                            }
-                        }
+                        Icon(
+                            painter = painterResource(WidgetIconCatalog.resolve(selectedIcon).drawableRes),
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Choose icon: ${WidgetIconCatalog.resolve(selectedIcon).label}")
                     }
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),
@@ -1018,6 +1001,14 @@ internal fun ProfileEditorDialog(
                 draftContextExpression = expression
                 draftContextLogicOpen = false
             },
+        )
+    }
+
+    if (!widgetOwned && showIconPicker) {
+        ActionIconPickerDialog(
+            selectedIcon = selectedIcon,
+            onIconSelected = { selectedIcon = it },
+            onDismiss = { showIconPicker = false },
         )
     }
 }

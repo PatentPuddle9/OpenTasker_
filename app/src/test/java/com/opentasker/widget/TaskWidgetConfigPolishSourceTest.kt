@@ -73,6 +73,20 @@ class TaskWidgetConfigPolishSourceTest {
     }
 
     @Test
+    fun iconPickersRenderOnlyVisibleIconsInsteadOfAll442AtOnce() {
+        val picker = sourceRoot.resolve("com/opentasker/ui/screens/ActionIconPickerDialog.kt").readText()
+        val profileEditor = sourceRoot.resolve("com/opentasker/ui/screens/EditorDialogs.kt").readText()
+        val widgetConfig = sourceRoot.resolve("com/opentasker/widget/TaskWidgetConfigActivity.kt").readText()
+
+        assertTrue("The shared icon picker should use a lazy grid", picker.contains("LazyVerticalGrid"))
+        assertTrue("The picker should provide stable keys for catalog entries", picker.contains("items(filteredIcons, key = { it.key })"))
+        assertFalse("Profile editing must not compose every icon into a FlowRow", profileEditor.contains("WidgetIconCatalog.all.forEach"))
+        assertTrue("Profile editing should open the lazy icon picker", profileEditor.contains("ActionIconPickerDialog"))
+        assertFalse("Widget editing must not eagerly filter and compose every vector icon", widgetConfig.contains("val visibleIcons = WidgetIconCatalog.all.filter"))
+        assertTrue("Widget editing should open the lazy icon picker", widgetConfig.contains("ActionIconPickerDialog"))
+    }
+
+    @Test
     fun widgetAndShortcutRunnerFinishesAfterExecutionErrors() {
         val source = sourceRoot.resolve("com/opentasker/widget/TaskRunActivity.kt").readText()
 

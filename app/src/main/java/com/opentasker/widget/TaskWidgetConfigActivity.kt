@@ -33,6 +33,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -183,7 +184,7 @@ private fun ConfigScreen(
 ) {
     var actionName by rememberSaveable { mutableStateOf(initialActionName) }
     var selectedIcon by rememberSaveable { mutableStateOf(WidgetIconCatalog.resolve(initialStyle.icon).key) }
-    var iconSearchQuery by rememberSaveable { mutableStateOf("") }
+    var showIconPicker by rememberSaveable { mutableStateOf(false) }
     var iconColorHex by rememberSaveable { mutableStateOf(initialStyle.iconColor.toHexColor()) }
     var backgroundColorHex by rememberSaveable { mutableStateOf(initialStyle.backgroundColor.toHexColor()) }
     var useGradient by rememberSaveable { mutableStateOf(initialStyle.gradient) }
@@ -241,54 +242,19 @@ private fun ConfigScreen(
                 singleLine = true,
             )
 
-            Text("Choose an icon", style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(
-                value = iconSearchQuery,
-                onValueChange = { iconSearchQuery = it },
+            Text("Action icon", style = MaterialTheme.typography.titleMedium)
+            OutlinedButton(
+                onClick = { showIconPicker = true },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Search all Coolicons") },
-                singleLine = true,
-            )
-            val visibleIcons = WidgetIconCatalog.all.filter { option ->
-                iconSearchQuery.isBlank() ||
-                    option.label.contains(iconSearchQuery, ignoreCase = true) ||
-                    option.key.contains(iconSearchQuery, ignoreCase = true)
-            }
-            Text(
-                "${visibleIcons.size} matching icons",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                visibleIcons.forEach { option ->
-                    val isSelected = selectedIcon == option.key
-                    Surface(
-                        modifier = Modifier.size(46.dp).clickable { selectedIcon = option.key },
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f),
-                        border = BorderStroke(
-                            if (isSelected) 2.dp else 1.dp,
-                            if (isSelected) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
-                        ),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                painter = painterResource(option.drawableRes),
-                                contentDescription = option.label,
-                                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(24.dp),
-                            )
-                        }
-                    }
-                }
+                Icon(
+                    painter = painterResource(WidgetIconCatalog.resolve(selectedIcon).drawableRes),
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Choose icon: ${WidgetIconCatalog.resolve(selectedIcon).label}")
             }
-            Text("Selected: ${WidgetIconCatalog.resolve(selectedIcon).label}")
 
             Text("Icon color", style = MaterialTheme.typography.titleMedium)
             WidgetColorEditor(
@@ -393,6 +359,14 @@ private fun ConfigScreen(
                 Text(if (initialProfileId == null) "Create widget and Action" else "Save widget")
             }
         }
+    }
+
+    if (showIconPicker) {
+        ActionIconPickerDialog(
+            selectedIcon = selectedIcon,
+            onIconSelected = { selectedIcon = it },
+            onDismiss = { showIconPicker = false },
+        )
     }
 }
 
