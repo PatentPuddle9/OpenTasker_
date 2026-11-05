@@ -63,7 +63,7 @@ object WidgetProfileLinks {
                         name = name,
                         enabled = false,
                         enterTaskId = executionId,
-                        icon = WidgetIconCatalog.resolve(style.icon).key,
+                        icon = WidgetIconCatalog.resolveKey(style.icon),
                         contexts = emptyList(),
                         contextExpression = null,
                     ).toEntity(),

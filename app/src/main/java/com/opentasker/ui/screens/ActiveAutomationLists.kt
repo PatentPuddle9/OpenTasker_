@@ -72,6 +72,7 @@ import com.opentasker.core.storage.StorageDecodeIssue
 import com.opentasker.ui.theme.DesignSystem
 import com.opentasker.ui.utils.expandCollapseToggle
 import com.opentasker.widget.WidgetIconCatalog
+import com.opentasker.ui.icons.WidgetIconImage
 @Composable
 internal fun ProfilesScreen(
     profiles: List<Profile>,
@@ -385,8 +386,8 @@ private fun ProfileCard(
                             .fillMaxSize()
                             .semantics { this.contentDescription = testDescription },
                     ) {
-                        Icon(
-                            painter = painterResource(WidgetIconCatalog.resolve(profile.icon).drawableRes),
+                        WidgetIconImage(
+                            iconKey = profile.icon,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.size(24.dp),

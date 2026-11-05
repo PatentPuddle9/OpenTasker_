@@ -197,9 +197,8 @@ class TaskWidgetProvider : AppWidgetProvider() {
             }
             val actionName = prefs.getString(keyActionName(widgetId), defaultActionName) ?: defaultActionName
 
-            val icon = WidgetIconCatalog.resolve(
-                prefs.getString(keyIcon(widgetId), WidgetIconCatalog.default.key),
-            )
+            val iconKey = prefs.getString(keyIcon(widgetId), WidgetIconCatalog.default.key)
+            val icon = WidgetIconCatalog.resolve(iconKey)
             val iconColor = prefs.getInt(keyIconColor(widgetId), WidgetStyle().iconColor)
             val backgroundColor = prefs.getInt(keyBackgroundColor(widgetId), WidgetStyle().backgroundColor)
             val gradient = prefs.getBoolean(keyGradient(widgetId), WidgetStyle().gradient)
@@ -215,8 +214,13 @@ class TaskWidgetProvider : AppWidgetProvider() {
                 R.id.widget_background,
                 WidgetBackgroundRenderer.render(backgroundColor, gradient, shape = shape),
             )
-            views.setImageViewResource(R.id.widget_icon, icon.drawableRes)
-            views.setInt(R.id.widget_icon, "setColorFilter", iconColor)
+            val customIconBitmap = CustomWidgetIconStore.renderForWidget(context, iconKey, iconColor)
+            if (customIconBitmap != null) {
+                views.setImageViewBitmap(R.id.widget_icon, customIconBitmap)
+            } else {
+                views.setImageViewResource(R.id.widget_icon, icon.drawableRes)
+                views.setInt(R.id.widget_icon, "setColorFilter", iconColor)
+            }
             views.setTextViewText(R.id.widget_task_name, actionName)
             if (removedFromShortcuts) {
                 views.setTextViewText(

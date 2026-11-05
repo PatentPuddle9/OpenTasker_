@@ -43,6 +43,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableLongStateOf
@@ -54,6 +55,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import com.opentasker.ui.icons.WidgetIconImage
+import com.opentasker.widget.CustomWidgetIconStore
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.role
@@ -394,6 +398,8 @@ internal fun ProfileEditorDialog(
     runBusy: Boolean = false,
 ) {
     val widgetOwned = profile?.widgetId != null
+    val context = LocalContext.current.applicationContext
+    val customIcons by CustomWidgetIconStore.observe(context).collectAsState()
     val initialTaskId = profile?.enterTaskId ?: tasks.firstOrNull()?.id ?: 0L
     var name by rememberSaveable(profile?.id) { mutableStateOf(profile?.name.orEmpty()) }
     // New profiles start disabled, matching templates and imports and the "Leave off until
@@ -410,7 +416,7 @@ internal fun ProfileEditorDialog(
     var group by rememberSaveable(profile?.id) { mutableStateOf(profile?.group.orEmpty()) }
     var selectedIcon by rememberSaveable(profile?.id) {
         mutableStateOf(
-            WidgetIconCatalog.resolve(profile?.icon).key,
+            WidgetIconCatalog.resolveKey(profile?.icon),
         )
     }
     var showIconPicker by rememberSaveable(profile?.id) { mutableStateOf(false) }
@@ -534,13 +540,14 @@ internal fun ProfileEditorDialog(
                         onClick = { showIconPicker = true },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Icon(
-                            painter = painterResource(WidgetIconCatalog.resolve(selectedIcon).drawableRes),
+                        WidgetIconImage(
+                            iconKey = selectedIcon,
                             contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(22.dp),
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text("Choose icon: ${WidgetIconCatalog.resolve(selectedIcon).label}")
+                        Text("Choose icon: ${WidgetIconCatalog.labelFor(selectedIcon, customIcons)}")
                     }
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),

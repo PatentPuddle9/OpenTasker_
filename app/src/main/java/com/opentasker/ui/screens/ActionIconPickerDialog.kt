@@ -24,6 +24,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -32,11 +33,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.opentasker.widget.CustomWidgetIconStore
 import com.opentasker.widget.WidgetIconCatalog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -88,7 +91,15 @@ internal fun ActionIconPickerDialog(
     onDismiss: () -> Unit,
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
-    val context = LocalContext.current
+    val context = LocalContext.current.applicationContext
+    val customIcons by CustomWidgetIconStore.observe(context).collectAsState()
+    val filteredCustomIcons = remember(searchQuery, customIcons) {
+        customIcons.filter { option ->
+            searchQuery.isBlank() ||
+                option.name.contains(searchQuery, ignoreCase = true) ||
+                option.key.contains(searchQuery, ignoreCase = true)
+        }
+    }
     val filteredIcons = remember(searchQuery) {
         WidgetIconCatalog.all.filter { option ->
             searchQuery.isBlank() ||
@@ -110,7 +121,7 @@ internal fun ActionIconPickerDialog(
                     singleLine = true,
                 )
                 Text(
-                    "${filteredIcons.size} matching icons",
+                    "${filteredIcons.size + filteredCustomIcons.size} matching icons",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -152,6 +163,50 @@ internal fun ActionIconPickerDialog(
                                             if (selected) MaterialTheme.colorScheme.primary
                                             else MaterialTheme.colorScheme.onSurface,
                                         ),
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    items(filteredCustomIcons, key = { it.key }) { option ->
+                        val selected = option.key == selectedIcon
+                        val thumbnail by produceState<Bitmap?>(
+                            initialValue = null,
+                            option.id,
+                            option.fileName,
+                        ) {
+                            value = CustomWidgetIconStore.loadBitmap(context, option, 128)
+                        }
+                        Surface(
+                            modifier = Modifier.size(48.dp).clickable {
+                                onIconSelected(option.key)
+                                onDismiss()
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (selected) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f),
+                            border = BorderStroke(
+                                if (selected) 2.dp else 1.dp,
+                                if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outlineVariant,
+                            ),
+                        ) {
+                            androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
+                                if (thumbnail != null) {
+                                    Image(
+                                        bitmap = thumbnail!!.asImageBitmap(),
+                                        contentDescription = option.name,
+                                        colorFilter = if (option.recolorable) {
+                                            ColorFilter.tint(
+                                                if (selected) MaterialTheme.colorScheme.primary
+                                                else MaterialTheme.colorScheme.onSurface,
+                                                BlendMode.SrcIn,
+                                            )
+                                        } else {
+                                            null
+                                        },
                                         modifier = Modifier.size(24.dp),
                                     )
                                 }

@@ -52,7 +52,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
+import com.opentasker.ui.icons.WidgetIconImage
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import com.opentasker.app.R
 import com.opentasker.app.OpenTaskerApp_NoHilt
 import com.opentasker.ui.screens.ActionIconPickerDialog
+import com.opentasker.widget.CustomWidgetIconStore
 import com.opentasker.ui.theme.OpenTaskerTheme
 import com.opentasker.ui.theme.ThemeMode
 import com.opentasker.ui.theme.ThemePreference
@@ -185,7 +187,10 @@ private fun ConfigScreen(
     onWidgetSaved: (String, WidgetStyle) -> Unit,
 ) {
     var actionName by rememberSaveable { mutableStateOf(initialActionName) }
-    var selectedIcon by rememberSaveable { mutableStateOf(WidgetIconCatalog.resolve(initialStyle.icon).key) }
+    val context = LocalContext.current.applicationContext
+    val customIcons by CustomWidgetIconStore.observe(context).collectAsState()
+    var selectedIcon by rememberSaveable { mutableStateOf(WidgetIconCatalog.resolveKey(initialStyle.icon)) }
+    val selectedIconLabel = WidgetIconCatalog.labelFor(selectedIcon, customIcons)
     var showIconPicker by rememberSaveable { mutableStateOf(false) }
     var iconColorHex by rememberSaveable { mutableStateOf(initialStyle.iconColor.toHexColor()) }
     var backgroundColorHex by rememberSaveable { mutableStateOf(initialStyle.backgroundColor.toHexColor()) }
@@ -249,13 +254,14 @@ private fun ConfigScreen(
                 onClick = { showIconPicker = true },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Icon(
-                    painter = painterResource(WidgetIconCatalog.resolve(selectedIcon).drawableRes),
+                WidgetIconImage(
+                    iconKey = selectedIcon,
                     contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(22.dp),
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("Choose icon: ${WidgetIconCatalog.resolve(selectedIcon).label}")
+                Text("Choose icon: $selectedIconLabel")
             }
 
             Text("Icon color", style = MaterialTheme.typography.titleMedium)
@@ -294,8 +300,8 @@ private fun ConfigScreen(
                             ),
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    painter = painterResource(WidgetIconCatalog.resolve(selectedIcon).drawableRes),
+                                WidgetIconImage(
+                                    iconKey = selectedIcon,
                                     contentDescription = null,
                                     tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(22.dp),
@@ -450,8 +456,8 @@ private fun WidgetLivePreview(
             modifier = Modifier.size(104.dp).background(Brush.linearGradient(listOf(base, end)), widgetPreviewShape(shape)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                painter = painterResource(WidgetIconCatalog.resolve(icon).drawableRes),
+            WidgetIconImage(
+                iconKey = icon,
                 contentDescription = null,
                 tint = iconColor ?: MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(52.dp),
