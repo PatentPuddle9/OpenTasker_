@@ -192,6 +192,7 @@ internal data class ContextEditState(
     val type: ContextType,
     val index: Int? = null,
     val existing: ContextSpec? = null,
+    val initialConfig: Map<String, String> = emptyMap(),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -281,6 +282,7 @@ fun ActiveAutomationUi(
     var contextEditProfileId by rememberSaveable { mutableLongStateOf(NO_DIALOG_ENTITY_ID) }
     var contextEditTypeName by rememberSaveable { mutableStateOf<String?>(null) }
     var contextEditIndex by rememberSaveable { mutableIntStateOf(NO_DIALOG_INDEX) }
+    var contextEditInitialConfig by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var contextLogicProfileId by rememberSaveable { mutableLongStateOf(NO_DIALOG_ENTITY_ID) }
     var pendingDeleteKind by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingDeleteOwnerId by rememberSaveable { mutableLongStateOf(NO_DIALOG_ENTITY_ID) }
@@ -350,7 +352,13 @@ fun ActiveAutomationUi(
         if (index != null && existing == null) {
             null
         } else {
-            ContextEditState(profile = profile, type = type, index = index, existing = existing)
+            ContextEditState(
+                profile = profile,
+                type = type,
+                index = index,
+                existing = existing,
+                initialConfig = contextEditInitialConfig,
+            )
         }
     }
     val contextLogicProfile = contextLogicProfileId.takeIf { it != NO_DIALOG_ENTITY_ID }
@@ -418,15 +426,22 @@ fun ActiveAutomationUi(
     fun clearContextPicker() {
         contextPickerProfileId = NO_DIALOG_ENTITY_ID
     }
-    fun openContextEdit(profile: Profile, type: ContextType, index: Int? = null) {
+    fun openContextEdit(
+        profile: Profile,
+        type: ContextType,
+        index: Int? = null,
+        initialConfig: Map<String, String> = emptyMap(),
+    ) {
         contextEditProfileId = profile.id
         contextEditTypeName = type.name
         contextEditIndex = index ?: NO_DIALOG_INDEX
+        contextEditInitialConfig = initialConfig
     }
     fun clearContextEdit() {
         contextEditProfileId = NO_DIALOG_ENTITY_ID
         contextEditTypeName = null
         contextEditIndex = NO_DIALOG_INDEX
+        contextEditInitialConfig = emptyMap()
     }
     fun clearContextLogic() {
         contextLogicProfileId = NO_DIALOG_ENTITY_ID
@@ -1268,9 +1283,9 @@ fun ActiveAutomationUi(
     contextPickerProfile?.let { profile ->
         ContextTypePickerDialog(
             onDismiss = { clearContextPicker() },
-            onSelect = { type ->
+            onSelect = { selection ->
                 clearContextPicker()
-                openContextEdit(profile, type)
+                openContextEdit(profile, selection.type, initialConfig = selection.initialConfig)
             },
         )
     }
