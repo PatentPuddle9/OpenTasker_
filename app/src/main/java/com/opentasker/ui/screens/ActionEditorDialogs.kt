@@ -735,10 +735,11 @@ private fun SceneSelectionFieldInput(
 ) {
     val appContext = LocalContext.current.applicationContext
     val scenes by produceState(initialValue = emptyList<Scene>(), key1 = appContext) {
+        val sceneState = this
         try {
             withContext(Dispatchers.IO) {
                 OpenTaskerApp_NoHilt.awaitDb().sceneDao().getAllAsFlow().collect { entities ->
-                    this.value = entities.mapNotNull { entity ->
+                    sceneState.value = entities.mapNotNull { entity ->
                         runCatching { entity.toDomain() }.getOrNull()
                     }.sortedBy { it.name.lowercase() }
                 }
@@ -746,7 +747,7 @@ private fun SceneSelectionFieldInput(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
-            this.value = emptyList()
+            sceneState.value = emptyList()
         }
     }
     var expanded by rememberSaveable { mutableStateOf(false) }
