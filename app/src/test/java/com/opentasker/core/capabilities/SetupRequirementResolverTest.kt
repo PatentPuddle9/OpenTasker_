@@ -174,6 +174,17 @@ class SetupRequirementResolverTest {
     }
 
     @Test
+    fun showingASceneRequiresOverlayAccess() {
+        assertEquals(
+            setOf(SetupRequirement.OVERLAY),
+            SetupRequirementResolver.resolveForTemplate(
+                actionTypes = listOf("scene.show"),
+                contexts = emptyList(),
+            ),
+        )
+    }
+
+    @Test
     fun aTemplateThatNeedsNothingSpecialResolvesEmpty() {
         assertEquals(
             emptySet<SetupRequirement>(),
