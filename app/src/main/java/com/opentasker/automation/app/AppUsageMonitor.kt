@@ -58,9 +58,13 @@ class AppUsageMonitor(
                     lastDetectionAction = action
                     AppLogger.info(TAG, when (action) {
                         AppUsagePollAction.WAIT_FOR_ACCESSIBILITY_EVENTS ->
-                            "Instant app detection service is connected; UsageStats polling is suspended"
+                            "Usage Access is unavailable; relying on live Accessibility app events"
                         AppUsagePollAction.QUERY_FOREGROUND ->
-                            "Instant app detection service is not connected; using UsageStats as the fallback"
+                            if (ApplicationForegroundAccessibilityService.isConnected()) {
+                                "Instant Accessibility events are active; UsageStats is retained as a recovery fallback"
+                            } else {
+                                "Instant Accessibility events are not connected; using UsageStats polling"
+                            }
                         AppUsagePollAction.PAUSE_FOR_MISSING_ACCESS ->
                             "Usage access is missing and instant app detection is not connected"
                     })
@@ -110,11 +114,9 @@ class AppUsageMonitor(
     }
 
     private fun pollForegroundComponent() {
-        // The Accessibility callback is authoritative from the moment Android connects it.
-        // Guard both before and after the UsageStats query so a poll already in flight cannot
-        // overwrite the live app-switch event while the monitor loop is changing providers.
-        if (ApplicationForegroundAccessibilityService.isConnected()) return
-
+        // Keep this fallback alive even while Accessibility is connected. Some Android builds bind
+        // the service but omit individual window callbacks; timestamp arbitration below lets the
+        // fast source win without allowing stale UsageStats history to overwrite it.
         val now = System.currentTimeMillis()
         val initialSnapshot = !hasPublishedInitialState
         val queryStart = if (lastQueriedAtMs == 0L) {
@@ -123,7 +125,6 @@ class AppUsageMonitor(
             (lastQueriedAtMs - QUERY_OVERLAP_MS).coerceAtLeast(0L)
         }
         val observedEvents = readForegroundEvents(queryStart, now) ?: return
-        if (ApplicationForegroundAccessibilityService.isConnected()) return
         val newEvents = observedEvents.filter(::rememberUsageEvent)
         val transitions = foregroundTracker.applyWithTransitions(newEvents)
         val current = foregroundTracker.current()
@@ -133,20 +134,31 @@ class AppUsageMonitor(
             ForegroundIdentity(it.packageName.trim(), it.className.trim().ifBlank { null })
         }
         if (initialSnapshot) {
-            if (current == null) {
-                ApplicationContextEvents.publishBackground(initial = true)
-            } else {
-                ApplicationContextEvents.publishForeground(
-                    packageName = current.packageName,
-                    className = current.className,
-                    initial = true,
-                )
+            // The live listener may have established the current app before this first UsageStats
+            // query completes. Never replace that newer state with the fallback's startup replay.
+            if (!ApplicationContextEvents.hasObservedState()) {
+                if (current == null) {
+                    ApplicationContextEvents.publishBackground(initial = true)
+                } else {
+                    ApplicationContextEvents.publishForeground(
+                        packageName = current.packageName,
+                        className = current.className,
+                        initial = true,
+                    )
+                }
             }
             hasPublishedInitialState = true
         } else {
-            // Emit every observed transition, not just the final state for this polling interval.
-            // Otherwise an app that opens and closes between polls can disappear without a pulse.
-            transitions.forEach { foreground ->
+            // Preserve short-lived open/close transitions, but suppress UsageStats entries whose
+            // timestamps are already covered by a live Accessibility callback.
+            transitions.forEach { transition ->
+                if (!shouldPublishUsageTransition(
+                        usageEventTimestamp = transition.timestamp,
+                        lastAccessibilityEventAtMillis = ApplicationForegroundAccessibilityService.lastEventAtMillis(),
+                    )
+                ) return@forEach
+
+                val foreground = transition.foreground
                 if (foreground == null) {
                     ApplicationContextEvents.publishBackground()
                 } else {
@@ -217,9 +229,9 @@ class AppUsageMonitor(
 
     companion object {
         private const val TAG = "AppUsageMonitor"
-        // Fallback only: the AccessibilityService receives the real window-transition callback.
-        // Keep UsageStats polling at a lower frequency so it does not wake the engine four times a second.
-        internal const val POLL_INTERVAL_MS = 1_000L
+        // Recovery path for missing Accessibility callbacks. Two bounded timeline queries per
+        // second keep the fallback responsive without a busy loop; the listener remains immediate.
+        internal const val POLL_INTERVAL_MS = 500L
         // Recheck quickly so a service that connects after the monitor starts takes over promptly.
         private const val MISSING_ACCESS_RETRY_MS = 2_000L
         // Only checks whether the user switched detection providers; app transitions themselves
