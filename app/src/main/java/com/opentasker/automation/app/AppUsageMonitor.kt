@@ -37,12 +37,14 @@ class AppUsageMonitor(
     private var lastQueriedAtMs = 0L
     private var lastForegroundIdentity: ForegroundIdentity? = null
     private var hasPublishedInitialState = false
+    private var monitoringStartedAtMs = 0L
     private var warnedMissingAccess = false
     private var lastDetectionAction: AppUsagePollAction? = null
 
     fun start(scope: CoroutineScope): Boolean {
         if (monitorJob?.isActive == true) return true
         resetTracking()
+        monitoringStartedAtMs = System.currentTimeMillis()
         monitorJob = scope.launch(Dispatchers.IO) {
             while (isActive) {
                 val action = appUsagePollAction(
@@ -52,9 +54,8 @@ class AppUsageMonitor(
                 )
 
                 if (action != lastDetectionAction) {
-                    // Never carry UsageStats' reconstructed Activity set across a switch to/from
-                    // the live Accessibility callback source.
-                    if (lastDetectionAction != null) clearPollingState()
+                    // Keep the UsageStats cursor across permission changes so transitions that
+                    // happened while access was temporarily unavailable can still be recovered.
                     lastDetectionAction = action
                     AppLogger.info(TAG, when (action) {
                         AppUsagePollAction.WAIT_FOR_ACCESSIBILITY_EVENTS ->
@@ -126,7 +127,19 @@ class AppUsageMonitor(
         }
         val observedEvents = readForegroundEvents(queryStart, now) ?: return
         val newEvents = observedEvents.filter(::rememberUsageEvent)
-        val transitions = foregroundTracker.applyWithTransitions(newEvents)
+        var initialBaseline: ForegroundUsageEvent? = null
+        val transitions = if (initialSnapshot) {
+            // Reconstruct the state at monitor startup without replaying historical opens. Then
+            // preserve every actual app switch that happened after monitoring began, even when
+            // it occurred before this first poll completed.
+            foregroundTracker.apply(newEvents.filter { it.timestamp < monitoringStartedAtMs })
+            initialBaseline = foregroundTracker.current()
+            foregroundTracker.applyWithTransitions(
+                newEvents.filter { it.timestamp >= monitoringStartedAtMs },
+            )
+        } else {
+            foregroundTracker.applyWithTransitions(newEvents)
+        }
         val current = foregroundTracker.current()
         lastQueriedAtMs = now
 
@@ -137,12 +150,12 @@ class AppUsageMonitor(
             // The live listener may have established the current app before this first UsageStats
             // query completes. Never replace that newer state with the fallback's startup replay.
             if (!ApplicationContextEvents.hasObservedState()) {
-                if (current == null) {
+                if (initialBaseline == null) {
                     ApplicationContextEvents.publishBackground(initial = true)
                 } else {
                     ApplicationContextEvents.publishForeground(
-                        packageName = current.packageName,
-                        className = current.className,
+                        packageName = initialBaseline.packageName,
+                        className = initialBaseline.className,
                         initial = true,
                     )
                 }
