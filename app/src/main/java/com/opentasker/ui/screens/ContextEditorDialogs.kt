@@ -154,6 +154,7 @@ internal fun ContextTypePickerDialog(
             state("headphones", "Headphones", "Match when headphones are connected or disconnected.", "headphones", "Device")
             state("airplane", "Airplane mode", "Match when airplane mode changes.", "airplane", "Device")
             state("media-playback", "Media playback", "Match when media becomes active or inactive.", "media_active", "Device")
+            state("media-app", "Media app", "Match the app currently playing audio or video.", "media_package", "Device")
             state("call-state", "Phone call state", "Match when a call is ringing, active, or idle.", "call_state", "Device")
 
             // Display and motion sensors
