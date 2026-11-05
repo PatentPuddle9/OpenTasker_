@@ -140,7 +140,20 @@ object ApplicationContextEvents {
 
     private fun publishLocked(event: ContextEvent): Boolean {
         observationRevision += 1L
-        return foregroundEvents.tryEmit(VersionedEvent(observationRevision, event))
+        // Application open/close contexts are pulse-based. A stable per-observation identity lets
+        // multiple application context slots share one physical app-switch pulse instead of each
+        // incrementing the profile's pulse sequence independently.
+        val identifiedEvent = if (event.type == TYPE) {
+            event.copy(
+                metadata = event.metadata + mapOf(
+                    "event" to "application",
+                    "eventId" to observationRevision.toString(),
+                ),
+            )
+        } else {
+            event
+        }
+        return foregroundEvents.tryEmit(VersionedEvent(observationRevision, identifiedEvent))
     }
 
     private fun observationMetadata(
