@@ -734,7 +734,7 @@ private fun SceneSelectionFieldInput(
     onChange: (String) -> Unit,
 ) {
     val appContext = LocalContext.current.applicationContext
-    val scenes by produceState(initialValue = emptyList<Scene>(), key1 = appContext) {
+    val scenes by produceState(initialValue = emptyList<Scene>(), appContext) {
         val sceneState = this
         try {
             withContext(Dispatchers.IO) {
