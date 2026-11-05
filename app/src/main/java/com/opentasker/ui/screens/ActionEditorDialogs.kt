@@ -57,6 +57,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import com.opentasker.app.OpenTaskerApp_NoHilt
 import com.opentasker.app.R
 import com.opentasker.core.actions.ActionField
 import com.opentasker.core.actions.ActionFieldPolicy
@@ -80,6 +81,7 @@ import com.opentasker.core.capabilities.CapabilityLevel
 import com.opentasker.core.engine.FlowControl
 import com.opentasker.core.model.ActionExecutionBinding
 import com.opentasker.core.model.ActionSpec
+import com.opentasker.core.model.Scene
 import com.opentasker.core.model.Task
 import com.opentasker.core.model.Variable
 import com.opentasker.core.engine.tryRetryPlan
@@ -87,6 +89,7 @@ import com.opentasker.ui.theme.DesignSystem
 import com.opentasker.widget.CustomWidgetIconStore
 import com.opentasker.widget.WidgetIconCatalog
 import androidx.compose.runtime.produceState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -664,6 +667,13 @@ internal fun ActionFieldInput(
             variableOptions = variableOptions,
         )
 
+        FieldType.SCENE -> SceneSelectionFieldInput(
+            label = label,
+            hint = hint,
+            value = value,
+            onChange = onChange,
+        )
+
         FieldType.TASK -> ActionExecutionFieldInput(
             label = label,
             hint = hint,
@@ -711,8 +721,89 @@ internal fun ActionFieldInput(
         )
     }
 
-    if (issue != null && field.fieldType in setOf(FieldType.TASK, FieldType.APP, FieldType.CHECKBOX)) {
+    if (issue != null && field.fieldType in setOf(FieldType.TASK, FieldType.APP, FieldType.CHECKBOX, FieldType.SCENE)) {
         ActionFieldErrorText(issue)
+    }
+}
+
+@Composable
+private fun SceneSelectionFieldInput(
+    label: String,
+    hint: String?,
+    value: String,
+    onChange: (String) -> Unit,
+) {
+    val appContext = LocalContext.current.applicationContext
+    val scenes by produceState(initialValue = emptyList<Scene>(), key1 = appContext) {
+        try {
+            withContext(Dispatchers.IO) {
+                OpenTaskerApp_NoHilt.awaitDb().sceneDao().getAllAsFlow().collect { entities ->
+                    value = entities.mapNotNull { entity ->
+                        runCatching { entity.toDomain() }.getOrNull()
+                    }.sortedBy { it.name.lowercase() }
+                }
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            value = emptyList()
+        }
+    }
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val selectedScene = scenes.firstOrNull { it.id.toString() == value }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelLarge)
+        Box {
+            OutlinedButton(
+                onClick = { expanded = true },
+                enabled = scenes.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    selectedScene?.name ?: stringResource(R.string.action_scene_picker_select),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.heightIn(max = 320.dp),
+            ) {
+                scenes.forEach { scene ->
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(scene.name)
+                                Text(
+                                    stringResource(R.string.scenes_card_summary, scene.widthDp, scene.heightDp, scene.elements.size),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        },
+                        onClick = {
+                            onChange(scene.id.toString())
+                            expanded = false
+                        },
+                    )
+                }
+            }
+        }
+        hint?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (scenes.isEmpty()) {
+            Text(
+                stringResource(R.string.action_scene_picker_empty),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -831,6 +922,7 @@ private fun ActionFieldErrorText(issue: ActionFieldPolicy.Issue) {
         ActionFieldPolicy.Error.INVALID_TASK -> stringResource(R.string.action_field_error_invalid_task)
         ActionFieldPolicy.Error.INVALID_APP -> stringResource(R.string.action_field_error_invalid_app)
         ActionFieldPolicy.Error.INVALID_FILE -> stringResource(R.string.action_field_error_invalid_file)
+        ActionFieldPolicy.Error.INVALID_SCENE -> stringResource(R.string.action_field_error_invalid_scene)
         ActionFieldPolicy.Error.CONFLICTING_VALUE -> stringResource(R.string.action_field_error_conflicting_value)
         ActionFieldPolicy.Error.BODY_NOT_ALLOWED -> stringResource(R.string.action_field_error_body_not_allowed)
         ActionFieldPolicy.Error.INVALID_DEFINITION -> stringResource(R.string.action_field_error_invalid_definition)
