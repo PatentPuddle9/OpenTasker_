@@ -400,8 +400,6 @@ internal fun ProfileEditorDialog(
     val widgetOwned = profile?.widgetId != null
     val context = LocalContext.current.applicationContext
     val customIcons by CustomWidgetIconStore.observe(context).collectAsState()
-    val selectedIconLabel = customIcons.firstOrNull { it.key == selectedIcon }?.name
-        ?: WidgetIconCatalog.labelFor(selectedIcon)
     val initialTaskId = profile?.enterTaskId ?: tasks.firstOrNull()?.id ?: 0L
     var name by rememberSaveable(profile?.id) { mutableStateOf(profile?.name.orEmpty()) }
     // New profiles start disabled, matching templates and imports and the "Leave off until
@@ -421,6 +419,8 @@ internal fun ProfileEditorDialog(
             WidgetIconCatalog.resolveKey(profile?.icon),
         )
     }
+    val selectedIconLabel = customIcons.firstOrNull { it.key == selectedIcon }?.name
+        ?: WidgetIconCatalog.labelFor(selectedIcon)
     var showIconPicker by rememberSaveable(profile?.id) { mutableStateOf(false) }
     var lifetimeName by rememberSaveable(profile?.id) {
         mutableStateOf((profile?.lifetime ?: ProfileLifetime.NEVER).name)
