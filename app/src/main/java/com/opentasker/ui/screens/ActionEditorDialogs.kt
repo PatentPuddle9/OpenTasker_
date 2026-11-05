@@ -108,6 +108,7 @@ internal fun filterActionPickerItems(
 internal const val ACTION_CONTINUE_ON_ERROR_TAG = "action_continue_on_error"
 internal const val ACTION_WAIT_FOR_FINISH_TAG = "action_wait_for_finish"
 internal const val ACTION_VARIABLE_PICKER_TAG = "action_variable_picker"
+private const val POPUP_ICON_FIELD_KEY = "icon_uri"
 
 @Composable
 @SuppressLint("LocalContextGetResourceValueCall")
@@ -924,45 +925,76 @@ private fun ActionFileFieldInput(
             }
         }
     }
-    Column(Modifier.fillMaxWidth()) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onChange,
-            label = { Text(label) },
-            placeholder = hint?.let { { Text(it) } },
-            supportingText = actionFieldSupportingText(field, issue),
-            isError = issue != null,
-            singleLine = true,
+    if (field.key == POPUP_ICON_FIELD_KEY) {
+        Column(
             modifier = Modifier.fillMaxWidth(),
-        )
-        Box {
-            TextButton(
-                onClick = {
-                    if (field.fileRule?.scope == ActionFileScope.OPENTASKER) expanded = true
-                    else openDocument.launch(arrayOf("*/*"))
-                },
-            ) { Text(stringResource(R.string.action_browse)) }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                if (savedPaths.isEmpty()) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.action_file_picker_empty)) },
-                        onClick = { expanded = false },
-                        enabled = false,
-                    )
-                } else {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.action_file_picker_saved_files)) },
-                        onClick = {},
-                        enabled = false,
-                    )
-                    savedPaths.forEach { path ->
+            verticalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.xs),
+        ) {
+            Text(label, style = MaterialTheme.typography.labelLarge)
+            Text(
+                stringResource(
+                    if (value.isBlank()) R.string.action_no_image_selected
+                    else R.string.action_image_selected,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(onClick = { openDocument.launch(arrayOf("image/*")) }) {
+                    Text(stringResource(R.string.action_choose_image))
+                }
+                if (value.isNotBlank()) {
+                    TextButton(onClick = { onChange("") }) {
+                        Text(stringResource(R.string.action_remove_image))
+                    }
+                }
+            }
+            hint?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            issue?.let { ActionFieldErrorText(it) }
+        }
+    } else {
+        Column(Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onChange,
+                label = { Text(label) },
+                placeholder = hint?.let { { Text(it) } },
+                supportingText = actionFieldSupportingText(field, issue),
+                isError = issue != null,
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Box {
+                TextButton(
+                    onClick = {
+                        if (field.fileRule?.scope == ActionFileScope.OPENTASKER) expanded = true
+                        else openDocument.launch(arrayOf("*/*"))
+                    },
+                ) { Text(stringResource(R.string.action_browse)) }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    if (savedPaths.isEmpty()) {
                         DropdownMenuItem(
-                            text = { Text(path) },
-                            onClick = {
-                                onChange(path.trimEnd('/'))
-                                expanded = false
-                            },
+                            text = { Text(stringResource(R.string.action_file_picker_empty)) },
+                            onClick = { expanded = false },
+                            enabled = false,
                         )
+                    } else {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.action_file_picker_saved_files)) },
+                            onClick = {},
+                            enabled = false,
+                        )
+                        savedPaths.forEach { path ->
+                            DropdownMenuItem(
+                                text = { Text(path) },
+                                onClick = {
+                                    onChange(path.trimEnd('/'))
+                                    expanded = false
+                                },
+                            )
+                        }
                     }
                 }
             }

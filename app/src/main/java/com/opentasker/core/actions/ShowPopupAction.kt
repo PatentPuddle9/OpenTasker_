@@ -55,6 +55,9 @@ class ShowPopupAction : DeclaredAction(ActionCatalog.require("notify.show")) {
         val intent = Intent(ctx.app, PopupDialogService::class.java).apply {
             putExtra(PopupDialogService.EXTRA_TITLE, args["title"]?.trim().orEmpty().ifBlank { "OpenTasker" })
             putExtra(PopupDialogService.EXTRA_MESSAGE, args["text"].orEmpty())
+            args["icon_uri"]?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                putExtra(PopupDialogService.EXTRA_ICON_URI, it)
+            }
             putExtra(PopupDialogService.EXTRA_BUTTON_COUNT, buttons.size)
             buttons.forEachIndexed { offset, plan ->
                 val buttonIndex = offset + 1

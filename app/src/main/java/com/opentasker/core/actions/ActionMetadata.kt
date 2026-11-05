@@ -246,6 +246,7 @@ fun registerActionMetadata() {
             categoryRes = R.string.catalog_category_notification,
             fields = listOf(
                 ActionField("title", R.string.catalog_action_notify_show_field_title_label, required = true, hintRes = R.string.catalog_action_notify_show_field_title_hint),
+                ActionField("icon_uri", R.string.catalog_action_notify_show_field_icon_label, FieldType.FILE, hintRes = R.string.catalog_action_notify_show_field_icon_hint, sensitive = false, fileRule = deviceFileRule),
                 ActionField("text", R.string.catalog_action_notify_show_field_text_label, FieldType.MULTILINE, hintRes = R.string.catalog_action_notify_show_field_text_hint),
                 ActionField("button1_label", R.string.catalog_action_notify_show_field_button1_label_label, hintRes = R.string.catalog_action_notify_show_field_button1_label_hint),
                 ActionField("button1_task_id", R.string.catalog_action_notify_show_field_button1_task_id_label, FieldType.TASK, hintRes = R.string.catalog_action_notify_show_field_button1_task_id_hint),

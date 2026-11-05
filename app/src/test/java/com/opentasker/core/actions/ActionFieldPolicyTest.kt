@@ -40,6 +40,19 @@ class ActionFieldPolicyTest {
     }
 
     @Test
+    fun showPopupHasAnOptionalImageUriField() {
+        val field = requireNotNull(ActionMetadataRegistry.get("notify.show"))
+            .fields.firstOrNull { it.key == "icon_uri" }
+
+        assertNotNull(field)
+        assertEquals(FieldType.FILE, field?.fieldType)
+        assertEquals(false, field?.required)
+        assertEquals(ActionFileScope.DEVICE_OR_URI, field?.fileRule?.scope)
+        assertNull(ActionFieldPolicy.validate(requireNotNull(field), ""))
+        assertNull(ActionFieldPolicy.validate(requireNotNull(field), "content://media/external/images/media/42"))
+    }
+
+    @Test
     fun everyDropdownHasUniqueStableStoredValues() {
         ActionMetadataRegistry.all().flatMap { it.fields }.filter { it.fieldType == FieldType.DROPDOWN }
             .forEach { field ->

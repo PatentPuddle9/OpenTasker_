@@ -2,6 +2,9 @@ package com.opentasker.core.actions
 
 import android.app.AlertDialog
 import android.app.Service
+import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
+import android.net.Uri
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.res.Configuration
@@ -49,6 +52,7 @@ class PopupDialogService : Service() {
         val deviceTheme = popupDialogThemeResource(resources.configuration.uiMode)
         val themedContext = ContextThemeWrapper(this, deviceTheme)
         val builder = AlertDialog.Builder(themedContext)
+        loadPopupIcon(intent.getStringExtra(EXTRA_ICON_URI))?.let { builder.setIcon(it) }
         if (title.isNotBlank()) builder.setTitle(title)
         if (message.isNotBlank()) builder.setMessage(message)
 
@@ -113,6 +117,44 @@ class PopupDialogService : Service() {
         super.onDestroy()
     }
 
+    /**
+     * Loads a small title icon from the persistable document URI chosen in the Action editor.
+     * Decode bounds first and sample large source images so an oversized photo cannot exhaust
+     * memory just to draw the dialog's compact title icon.
+     */
+    private fun loadPopupIcon(rawUri: String?): BitmapDrawable? {
+        val value = rawUri?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val uri = runCatching { Uri.parse(value) }.getOrNull() ?: return null
+        return try {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, bounds)
+            } ?: return null
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+            val maximumDimension = (resources.displayMetrics.density * 64f)
+                .toInt()
+                .coerceAtLeast(64)
+            var sampleSize = 1
+            while (
+                maxOf(bounds.outWidth / sampleSize, bounds.outHeight / sampleSize) > maximumDimension &&
+                sampleSize < (1 shl 15)
+            ) {
+                sampleSize *= 2
+            }
+            val options = BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+            }
+            val bitmap = contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, options)
+            } ?: return null
+            BitmapDrawable(resources, bitmap)
+        } catch (_: Exception) {
+            // The image is optional; a revoked or unreadable URI must not suppress the popup.
+            null
+        }
+    }
+
     private fun dismissActiveDialog() {
         activeDialog?.setOnDismissListener(null)
         activeDialog?.dismiss()
@@ -147,6 +189,7 @@ class PopupDialogService : Service() {
 
         const val EXTRA_TITLE = "com.opentasker.extra.POPUP_TITLE"
         const val EXTRA_MESSAGE = "com.opentasker.extra.POPUP_MESSAGE"
+        const val EXTRA_ICON_URI = "com.opentasker.extra.POPUP_ICON_URI"
         const val EXTRA_BUTTON_COUNT = "com.opentasker.extra.POPUP_BUTTON_COUNT"
 
         fun buttonLabelExtra(index: Int): String {
