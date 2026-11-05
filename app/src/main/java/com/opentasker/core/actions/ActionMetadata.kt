@@ -54,6 +54,7 @@ enum class FieldType {
     TASK,           // stable task-ID picker
     APP,            // validated package input with scoped installed-app picker
     FILE,           // file/URI input with a dedicated picker
+    SCENE,          // saved Scene picker backed by the Scene library
 }
 
 data class ActionMetadata(
@@ -94,6 +95,7 @@ object ActionMetadataRegistry {
  */
 private fun declaredActionSummaryRes(actionId: String): Int = when (actionId) {
     "notify.show",
+    "scene.show",
     "notify.progress",
     "notify.cancel",
     "var.set",
@@ -238,6 +240,18 @@ private val deviceFileRule = ActionFileRule(ActionFileScope.DEVICE_OR_URI)
 
 fun registerActionMetadata() {
     // Built-in actions
+    ActionMetadataRegistry.register(
+        ActionMetadata(
+            id = "scene.show",
+            nameRes = R.string.catalog_action_scene_show_name,
+            descriptionRes = R.string.catalog_action_scene_show_description,
+            categoryRes = R.string.catalog_category_scenes,
+            fields = listOf(
+                ActionField("scene_id", R.string.catalog_action_scene_show_field_scene_label, FieldType.SCENE, required = true, hintRes = R.string.catalog_action_scene_show_field_scene_hint),
+            ),
+        ),
+    )
+
     ActionMetadataRegistry.register(
         ActionMetadata(
             id = "notify.show",
