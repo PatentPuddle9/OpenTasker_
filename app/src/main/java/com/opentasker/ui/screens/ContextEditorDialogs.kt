@@ -169,8 +169,7 @@ internal fun ContextTypePickerDialog(
             state("vpn", "VPN connection", "Match when a VPN becomes active or inactive.", "vpn", "Connectivity")
             state("roaming", "Data roaming", "Match when the mobile network starts or stops roaming.", "roaming", "Connectivity")
             state("tethering", "Hotspot / tethering", "Match when tethering is enabled or disabled.", "tethering", "Connectivity")
-            event("bluetooth", "Bluetooth device", "Match a Bluetooth device connecting or disconnecting.", "bluetooth", "Connectivity")
-            event("bluetooth-security", "Bluetooth security", "Match Bluetooth key-loss or encryption changes.", "bluetooth_key_missing", "Connectivity")
+            event("bluetooth", "Bluetooth", "Match device connections, disconnections, or Bluetooth security changes. More event choices are available as presets.", "bluetooth", "Connectivity")
             event("companion", "Companion device", "Match companion-device presence changes.", "companion_presence", "Connectivity")
 
             // Time, calendar, and location
