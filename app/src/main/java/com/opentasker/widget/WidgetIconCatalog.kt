@@ -484,10 +484,41 @@ object WidgetIconCatalog {
         "close" to "close-md",
     )
 
-    /** Normalizes bundled and legacy values to a built-in Coolicons key. */
-    fun resolveKey(value: String?): String = resolve(value).key
+    /** Keeps valid user icons intact; normalizes bundled and legacy values to a Coolicons key. */
+    fun resolveKey(value: String?): String =
+        value?.takeIf { CustomWidgetIconStore.idFromKey(it) != null } ?: resolve(value).key
 
-    fun labelFor(value: String?): String = resolve(value).label
+    fun labelFor(value: String?): String =
+        if (CustomWidgetIconStore.idFromKey(value) != null) "Custom icon" else resolve(value).label
+
+    /**
+     * Organizes the Coolicons set into practical picker sections. These groups are based on icon
+     * names, so newly added catalog entries automatically appear in an appropriate section.
+     */
+    fun categoryFor(option: WidgetIconOption): String = categoryFor(option.key)
+
+    fun categoryFor(key: String): String {
+        val value = key.lowercase()
+        return when {
+            value.startsWith("arrow-") || value.startsWith("arrows-") ||
+                value.startsWith("caret-") || value.startsWith("chevron-") ||
+                value.startsWith("angle-") -> "Arrows"
+            value.containsAny("mail", "message", "chat", "comment", "phone", "call", "bell", "notification", "send", "reply", "inbox", "at-sign") -> "Communication"
+            value.containsAny("desktop", "laptop", "monitor", "keyboard", "mouse", "mobile", "tablet", "device", "wifi", "bluetooth", "airplay", "screen", "usb", "computer", "headset") -> "Devices"
+            value.containsAny("file", "folder", "document", "archive", "cloud", "database", "code", "data", "download", "upload", "server", "storage", "terminal") -> "Files & Data"
+            value.containsAny("camera", "image", "video", "music", "audio", "play", "pause", "stop", "volume", "speaker", "microphone", "mic", "film", "headphone", "radio", "record") -> "Media"
+            value.containsAny("compass", "map", "location", "pin", "route", "navigation", "direction", "globe", "earth", "flag", "target") -> "Navigation"
+            value.containsAny("alarm", "calendar", "clock", "time", "timer", "stopwatch", "hourglass", "history", "schedule") -> "Time"
+            value.containsAny("building", "house", "home", "car", "truck", "vehicle", "coffee", "coffe", "cup", "food", "restaurant", "plant", "leaf", "tree", "sun", "moon", "weather") -> "Places & Things"
+            value.containsAny("chart", "board", "list", "table", "book", "bookmark", "note", "clipboard", "task", "checklist", "calculator", "presentation", "layers", "filter", "search", "settings", "sliders") -> "Productivity"
+            value.containsAny("circle", "square", "triangle", "star", "heart", "shape", "polygon", "hexagon", "diamond", "badge", "award", "lightning", "bolt", "bulb") -> "Symbols & Shapes"
+            value.containsAny("add", "minus", "plus", "delete", "remove", "close", "edit", "copy", "paste", "cut", "save", "refresh", "reload", "undo", "redo", "share", "external", "link", "lock", "unlock", "check", "warning", "error", "info") -> "Actions"
+            else -> "Other"
+        }
+    }
+
+    private fun String.containsAny(vararg terms: String): Boolean =
+        terms.any { term -> contains(term) }
 
     /** Returns a built-in icon only when the saved value resolves to a real catalog entry. */
     fun findBuiltIn(value: String?): WidgetIconOption? {
