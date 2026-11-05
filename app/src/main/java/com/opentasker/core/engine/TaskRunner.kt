@@ -174,7 +174,9 @@ class TaskRunner(
                 onStep?.invoke(actionIndex, stepLabel)
                 // Retrying blocks and foreach iterations depend on strict action ordering. Keep
                 // those scopes sequential even when an action's saved preference is turned off.
-                val mustWait = spec.waitForCompletion || tryStack.isNotEmpty() || loopStack.isNotEmpty()
+                val mustWait = spec.waitForCompletion ||
+                    spec.type == DEVICE_CREDENTIAL_ACTION_ID ||
+                    tryStack.isNotEmpty() || loopStack.isNotEmpty()
                 val result: ActionResult? = if (mustWait) {
                     val (actionResult, trace) = runOne(actionIndex, spec)
                     onStepCompleted?.invoke(actionIndex, stepLabel)
@@ -200,6 +202,94 @@ class TaskRunner(
                 ) {
                     clearRetryVariables()
                 }
+                if (result is ActionResult.Failure && spec.type == DEVICE_CREDENTIAL_ACTION_ID) {
+                    // Authentication is a hard branch: never let continueOnError or an enclosing
+                    // try/catch release the original actions after the user did not authenticate.
+                    val fallbackTaskId = result.fallbackTaskId
+                    if (fallbackTaskId == null) {
+                        if (structuredFailure == null) {
+                            structuredFailure = setFailureVariables(
+                                task = task,
+                                pc = pc,
+                                spec = spec,
+                                failure = result,
+                                attempt = 1,
+                                retrying = false,
+                                retryReason = null,
+                            )
+                            ctx.variables.set(FLOW_ERROR_CAUGHT, "false")
+                        }
+                        unhandledFailure = true
+                        break
+                    }
+
+                    val fallbackTask = resolveTask?.invoke(fallbackTaskId.toString())
+                    if (fallbackTask == null) {
+                        val fallbackFailure = ActionResult.Failure(
+                            "Selected fallback Action (ID $fallbackTaskId) no longer exists.",
+                        )
+                        results[results.lastIndex] = fallbackFailure
+                        val previousTrace = requireNotNull(traces.last())
+                        traces[traces.lastIndex] = previousTrace.copy(
+                            status = ActionTraceStatus.FAILURE,
+                            message = "${previousTrace.message}; fallback Action $fallbackTaskId could not be found.",
+                        )
+                        if (structuredFailure == null) {
+                            structuredFailure = setFailureVariables(
+                                task = task,
+                                pc = pc,
+                                spec = spec,
+                                failure = fallbackFailure,
+                                attempt = 1,
+                                retrying = false,
+                                retryReason = null,
+                            )
+                            ctx.variables.set(FLOW_ERROR_CAUGHT, "false")
+                        }
+                        unhandledFailure = true
+                        break
+                    }
+
+                    val (fallbackResult, _) = runSubTask(
+                        actionIndex,
+                        ActionSpec(
+                            type = SUB_TASK_ACTION_ID,
+                            args = mapOf("task" to fallbackTask.id.toString()),
+                        ),
+                        now(),
+                    )
+                    val previousTrace = requireNotNull(traces.last())
+                    if (fallbackResult is ActionResult.Failure) {
+                        results[results.lastIndex] = fallbackResult
+                        traces[traces.lastIndex] = previousTrace.copy(
+                            status = ActionTraceStatus.FAILURE,
+                            message = "${previousTrace.message}; fallback Action '${fallbackTask.name}' failed: ${fallbackResult.message}",
+                        )
+                        if (structuredFailure == null) {
+                            structuredFailure = setFailureVariables(
+                                task = task,
+                                pc = pc,
+                                spec = spec,
+                                failure = fallbackResult,
+                                attempt = 1,
+                                retrying = false,
+                                retryReason = null,
+                            )
+                            ctx.variables.set(FLOW_ERROR_CAUGHT, "false")
+                        }
+                        unhandledFailure = true
+                    } else {
+                        // The fallback is the alternate branch's successful outcome. The parent
+                        // action is marked handled, but no later action in the original list runs.
+                        results[results.lastIndex] = ActionResult.Success
+                        traces[traces.lastIndex] = previousTrace.copy(
+                            status = ActionTraceStatus.SUCCESS,
+                            message = "Device credential was not confirmed; ran fallback Action '${fallbackTask.name}'. Remaining actions in the original sequence were skipped.",
+                        )
+                    }
+                    break
+                }
+
                 if (result is ActionResult.Failure) {
                     val recovery = recoverFailure(task, pc, spec, result, structure, loopStack, tryStack)
                     recovery.reason?.let { reason ->
@@ -695,6 +785,7 @@ class TaskRunner(
                 ActionResult.Failure(
                     message = redactedMessage,
                     structuredError = rawResult.structuredError,
+                    fallbackTaskId = rawResult.fallbackTaskId,
                 )
             } else {
                 rawResult
@@ -912,7 +1003,9 @@ class TaskRunner(
     }
 
     private companion object {
-        // The closing braces must be escaped: Android's ICU regex engine rejects a bare "}}"
+        const val DEVICE_CREDENTIAL_ACTION_ID = "auth.device_credential"
+
+    // The closing braces must be escaped: Android's ICU regex engine rejects a bare "}}"
         // where desktop java.util.regex accepts it. Because this sits in a companion
         // initializer, the failure was an ExceptionInInitializerError that made TaskRunner
         // unusable on device - every task execution, not only ones using array references.
@@ -941,6 +1034,7 @@ enum class ActionTraceStatus {
 
 private fun actionTimeoutMs(actionType: String): Long = when {
     actionType == "flow.wait" -> MAX_WAIT_TIMEOUT_MS
+    actionType == "auth.device_credential" -> MEDIA_ACTION_TIMEOUT_MS
     // The two other network actions belong in this bucket too. The HA webhook's own contract
     // allows timeout_sec=30 across four attempts plus backoff (~140 s) and MQTT allows a 30 s
     // connect plus three 30 s reads, so the 60 s default silently truncated retries the user
