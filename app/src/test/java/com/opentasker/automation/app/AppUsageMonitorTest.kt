@@ -3,6 +3,7 @@ package com.opentasker.automation.app
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AppUsageMonitorTest {
@@ -127,4 +128,10 @@ class AppUsageMonitorTest {
         assertSame(AppUsagePollAction.PAUSE_FOR_MISSING_ACCESS, appUsagePollAction(hasUsageAccess = false))
         assertSame(AppUsagePollAction.QUERY_FOREGROUND, appUsagePollAction(hasUsageAccess = true))
     }
+    @Test
+    fun applicationForegroundTransitionsArePolledAtNearRealTimeCadence() {
+        assertTrue("App launches should be detected within a fraction of a second", AppUsageMonitor.POLL_INTERVAL_MS <= 250L)
+        assertTrue("A query overlap should cover timing jitter between system events and polling", AppUsageMonitor.QUERY_OVERLAP_MS >= AppUsageMonitor.POLL_INTERVAL_MS)
+    }
+
 }
