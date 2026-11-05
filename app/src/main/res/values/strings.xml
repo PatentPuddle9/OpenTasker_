@@ -435,8 +435,13 @@
     <string name="setup_risk_high">high</string>
     <string name="setup_risk_severe">severe</string>
     <string name="setup_usage_card_title">Usage access</string>
-    <string name="setup_usage_card_body">Needed to detect foreground apps without an accessibility service.</string>
-    <string name="setup_usage_required_for">Application contexts</string>
+    <string name="setup_usage_card_body">Fallback for Application triggers. Android exposes foreground history through polling, so app-open and app-close detection can be delayed. Enable Instant app detection below for prompt window-transition events.</string>
+    <string name="setup_usage_required_for">Application contexts (fallback detection)</string>
+    <string name="setup_app_detection_accessibility_title">Instant app detection</string>
+    <string name="setup_app_detection_accessibility_body">Enable this accessibility service for app-open and app-close triggers to fire directly from Android window-transition events instead of waiting for Usage access polling. It observes only the foreground package and Activity class; screen content retrieval is disabled. Android will show an accessibility permission warning because this is a powerful system service.</string>
+    <string name="setup_app_detection_accessibility_required_for">Near-instant Application open and close triggers</string>
+    <string name="application_foreground_accessibility_service_label">OpenTasker instant app detection</string>
+    <string name="application_foreground_accessibility_service_description">Detects which app window becomes active for OpenTasker Application triggers. Only the app package and Activity class are observed; OpenTasker does not retrieve screen text or window contents.</string>
     <string name="setup_notification_access_title">Notification access</string>
     <string name="setup_notification_access_body">Needed for notification-text triggers and rich notification matching.</string>
     <string name="setup_notification_access_required_for">Notification triggers</string>
