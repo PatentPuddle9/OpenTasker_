@@ -69,12 +69,14 @@ class ActionOutputsTest {
     fun fieldCompatibilityKeepsNumbersAndArraysTyped() {
         val number = ActionField("number", 1, FieldType.NUMBER, numberRule = ActionNumberRule())
         val array = ActionField("array", 1, inputType = ActionValueType.ARRAY)
+        val scene = ActionField("scene_id", 1, FieldType.SCENE)
 
         assertTrue(number.acceptsVariableType(ActionValueType.NUMBER))
         assertTrue(number.acceptsVariableType(ActionValueType.ANY))
         assertFalse(number.acceptsVariableType(ActionValueType.TEXT))
         assertTrue(array.acceptsVariableType(ActionValueType.ARRAY))
         assertFalse(array.acceptsVariableType(ActionValueType.TEXT))
+        assertFalse(scene.acceptsVariableType(ActionValueType.ANY))
     }
 
     @Test
