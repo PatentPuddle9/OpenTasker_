@@ -23,6 +23,7 @@ import com.opentasker.core.actions.secureSettingsGrantCommand
 import com.opentasker.core.permissions.OemBatteryGuidance
 import com.opentasker.core.permissions.RuntimePermissionRequestHistory
 import com.opentasker.core.permissions.UsageAccess
+import com.opentasker.core.contexts.ApplicationForegroundAccessibilityService
 import com.opentasker.core.power.ShizukuPowerBackend
 import com.opentasker.core.power.ShizukuPowerState
 import com.opentasker.core.scheduling.ExactAlarmSupport
@@ -92,6 +93,9 @@ internal fun buildPermissionItems(
     val exactAlarms = probes.granted("exact alarms") { ExactAlarmSupport.canScheduleExactAlarms(context) }
     val battery = probes.granted("battery optimization") { ignoresBatteryOptimizations(context) }
     val usageAccess = probes.granted("usage access") { UsageAccess.hasUsageStatsAccess(context) }
+    val instantAppDetection = probes.granted("instant app detection") {
+        ApplicationForegroundAccessibilityService.isEnabled(context)
+    }
     val notificationAccess = probes.granted("notification access") { hasNotificationListenerAccess(context) }
     val overlay = probes.granted("display over other apps") { Settings.canDrawOverlays(context) }
     val installUnknownApps = probes.granted("install unknown apps") {
@@ -183,6 +187,17 @@ internal fun buildPermissionItems(
             requiredFor = context.getString(R.string.setup_usage_required_for),
             section = SetupSection.NEEDED,
             requirements = setOf(SetupRequirement.USAGE_ACCESS),
+        ),
+        PermissionSetupItem(
+            title = context.getString(R.string.setup_app_detection_accessibility_title),
+            body = context.getString(R.string.setup_app_detection_accessibility_body),
+            granted = instantAppDetection == true,
+            unavailable = instantAppDetection == null,
+            actionLabel = openSettings,
+            action = PermissionAction.SettingsIntent(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)),
+            requiredFor = context.getString(R.string.setup_app_detection_accessibility_required_for),
+            optional = true,
+            section = SetupSection.RELIABILITY,
         ),
         PermissionSetupItem(
             title = context.getString(R.string.setup_notification_access_title),
