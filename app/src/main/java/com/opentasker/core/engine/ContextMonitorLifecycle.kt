@@ -118,7 +118,12 @@ internal fun contextMonitorReferenceCounts(profiles: Collection<Profile>): Map<C
 internal fun requiredContextMonitors(profile: Profile): Set<ContextMonitor> = buildSet {
     profile.contexts.forEach { spec ->
         when (spec.type) {
-            ContextType.APPLICATION -> add(ContextMonitor.APP_USAGE)
+            ContextType.APPLICATION -> {
+                add(ContextMonitor.APP_USAGE)
+                if (spec.config["condition"]?.trim()?.lowercase(Locale.US) in setOf("installed", "updated", "uninstalled")) {
+                    add(ContextMonitor.PACKAGE_EVENTS)
+                }
+            }
             ContextType.STATE -> addStateMonitor(spec)
             ContextType.EVENT -> addEventMonitor(spec)
             ContextType.TIME,
