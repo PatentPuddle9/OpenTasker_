@@ -738,7 +738,7 @@ private fun SceneSelectionFieldInput(
         try {
             withContext(Dispatchers.IO) {
                 OpenTaskerApp_NoHilt.awaitDb().sceneDao().getAllAsFlow().collect { entities ->
-                    value = entities.mapNotNull { entity ->
+                    this.value = entities.mapNotNull { entity ->
                         runCatching { entity.toDomain() }.getOrNull()
                     }.sortedBy { it.name.lowercase() }
                 }
@@ -746,7 +746,7 @@ private fun SceneSelectionFieldInput(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
-            value = emptyList()
+            this.value = emptyList()
         }
     }
     var expanded by rememberSaveable { mutableStateOf(false) }
