@@ -13,6 +13,14 @@ object BluetoothEventPresets {
             ),
         ),
         EventContextPreset(
+            id = "bluetooth-some-connected",
+            labelRes = R.string.context_preset_some_bluetooth_connected,
+            config = mapOf(
+                "event" to BluetoothContextEvents.EVENT_SOME_CONNECTED,
+                "state" to BluetoothContextEvents.STATE_SOME_CONNECTED,
+            ),
+        ),
+        EventContextPreset(
             id = "bluetooth-key-missing",
             labelRes = R.string.context_preset_bluetooth_key_missing,
             config = mapOf(
