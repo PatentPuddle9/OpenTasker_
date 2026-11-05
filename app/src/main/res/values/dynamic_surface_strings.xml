@@ -112,6 +112,7 @@
     <string name="context_preset_at_sunset" formatted="false">At sunset</string>
     <string name="context_preset_30_after" formatted="false">30 min after</string>
     <string name="context_preset_all_bluetooth_disconnected" formatted="false">All Bluetooth devices disconnected</string>
+    <string name="context_preset_some_bluetooth_connected" formatted="false">One or more Bluetooth devices connected</string>
     <string name="context_preset_bluetooth_key_missing" formatted="false">Bluetooth key missing</string>
     <string name="context_preset_bluetooth_encrypted" formatted="false">Bluetooth link encrypted</string>
     <string name="context_preset_bluetooth_unencrypted" formatted="false">Bluetooth link unencrypted</string>
