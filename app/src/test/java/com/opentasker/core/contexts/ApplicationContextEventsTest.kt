@@ -18,8 +18,10 @@ class ApplicationContextEventsTest {
 
     @Test
     fun initialForegroundSnapshotDoesNotPretendTheAppWasJustOpened() = runBlocking {
+        // Seed the replay slot first so this test is independent of the order other singleton tests run.
+        ApplicationContextEvents.publishForeground("com.example.seed", initial = true)
         val nextEvent = async(start = CoroutineStart.UNDISPATCHED) {
-            ApplicationContextEvents.events.drop(1).first()
+            ApplicationContextEvents.events.drop(2).first()
         }
 
         assertTrue(ApplicationContextEvents.publishForeground("com.example.app", initial = true))

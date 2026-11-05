@@ -17,30 +17,49 @@ internal class ForegroundAppTracker {
     private val activeActivities = linkedMapOf<String, ForegroundUsageEvent>()
 
     fun apply(events: List<ForegroundUsageEvent>): ForegroundUsageEvent? {
+        applyWithTransitions(events)
+        return current()
+    }
+
+    /**
+     * Returns the foreground state after each event that changes the current Activity.
+     * A null entry represents a real transition to no resumed application Activity.
+     */
+    fun applyWithTransitions(events: List<ForegroundUsageEvent>): List<ForegroundUsageEvent?> {
+        val transitions = mutableListOf<ForegroundUsageEvent?>()
         events.asSequence()
             .filter { it.packageName.isNotBlank() }
             .sortedBy { it.timestamp }
             .forEach { event ->
+                val previous = current()
                 val packageName = event.packageName.trim()
                 val className = event.className.trim()
                 if (event.isForeground) {
                     activeActivities[key(packageName, className)] = event
                 } else if (className.isBlank()) {
-                    // Legacy MOVE_TO_BACKGROUND events are package-level and clear all Activities.
+                    // MOVE_TO_BACKGROUND is package-level and clears all Activities for that app.
                     activeActivities.keys
                         .filter { it.substringBefore(SEPARATOR) == packageName }
                         .forEach { activeActivities.remove(it) }
                 } else {
                     activeActivities.remove(key(packageName, className))
                 }
-            }
 
-        return activeActivities.values.maxByOrNull { it.timestamp }
+                val next = current()
+                if (identity(previous) != identity(next)) transitions += next
+            }
+        return transitions
     }
+
+    fun current(): ForegroundUsageEvent? =
+        activeActivities.values.maxByOrNull { it.timestamp }
 
     fun clear() {
         activeActivities.clear()
     }
+
+    private fun identity(event: ForegroundUsageEvent?): String? =
+        event?.let { key(it.packageName.trim(), it.className.trim()) }
 
     private fun key(packageName: String, className: String): String =
         "$packageName$SEPARATOR$className"

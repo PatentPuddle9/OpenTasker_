@@ -84,28 +84,44 @@ class AppUsageMonitor(
         }
         val observedEvents = readForegroundEvents(queryStart, now) ?: return
         val newEvents = observedEvents.filter(::rememberUsageEvent)
-        val current = foregroundTracker.apply(newEvents)
+        val transitions = foregroundTracker.applyWithTransitions(newEvents)
+        val current = foregroundTracker.current()
         lastQueriedAtMs = now
 
         val identity = current?.let {
             ForegroundIdentity(it.packageName.trim(), it.className.trim().ifBlank { null })
         }
-        if (!hasPublishedInitialState || identity != lastForegroundIdentity) {
+        if (initialSnapshot) {
             if (current == null) {
-                ApplicationContextEvents.publishBackground(initial = initialSnapshot)
+                ApplicationContextEvents.publishBackground(initial = true)
             } else {
                 ApplicationContextEvents.publishForeground(
                     packageName = current.packageName,
                     className = current.className,
-                    initial = initialSnapshot,
+                    initial = true,
                 )
             }
+            hasPublishedInitialState = true
+        } else {
+            // Emit every observed transition, not just the final state for this polling interval.
+            // Otherwise an app that opens and closes between polls can disappear without a pulse.
+            transitions.forEach { foreground ->
+                if (foreground == null) {
+                    ApplicationContextEvents.publishBackground()
+                } else {
+                    ApplicationContextEvents.publishForeground(
+                        packageName = foreground.packageName,
+                        className = foreground.className,
+                    )
+                }
+            }
+        }
+        if (identity != lastForegroundIdentity) {
             AppLogger.debug(
                 TAG,
                 "Foreground app changed: ${lastForegroundIdentity?.packageName ?: "(none)"} -> ${identity?.packageName ?: "(none)"}",
             )
             lastForegroundIdentity = identity
-            hasPublishedInitialState = true
         }
     }
 
@@ -141,7 +157,8 @@ class AppUsageMonitor(
                 if (packageName.isBlank()) continue
                 foregroundEvents += ForegroundUsageEvent(
                     packageName = packageName,
-                    className = event.className.orEmpty(),
+                    // MOVE_TO_BACKGROUND is a package-wide transition on older Android versions.
+                    className = if (event.eventType == UsageEvents.Event.MOVE_TO_BACKGROUND) "" else event.className.orEmpty(),
                     timestamp = event.timeStamp,
                     isForeground = foreground,
                 )

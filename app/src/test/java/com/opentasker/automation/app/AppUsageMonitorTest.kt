@@ -87,6 +87,25 @@ class AppUsageMonitorTest {
     }
 
     @Test
+    fun trackerPreservesOpenAndCloseTransitionsThatOccurWithinOnePoll() {
+        val tracker = ForegroundAppTracker()
+        tracker.apply(
+            listOf(ForegroundUsageEvent("com.example", "com.example.MainActivity", 100L)),
+        )
+
+        val transitions = tracker.applyWithTransitions(
+            listOf(
+                ForegroundUsageEvent("com.example", "com.example.MainActivity", 200L, isForeground = false),
+                ForegroundUsageEvent("com.example", "com.example.MainActivity", 300L),
+            ),
+        )
+
+        assertEquals(2, transitions.size)
+        assertNull(transitions[0])
+        assertEquals("com.example", transitions[1]?.packageName)
+    }
+
+    @Test
     fun trackerPackageBackgroundEventClearsEveryActivityForThatPackage() {
         val tracker = ForegroundAppTracker()
         tracker.apply(
