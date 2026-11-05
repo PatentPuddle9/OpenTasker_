@@ -83,9 +83,9 @@ internal fun PopupIconsSettingsCard() {
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text("Popup icons", style = MaterialTheme.typography.titleMedium)
+            Text("Custom icons", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Upload images for popup titles here. Popup actions can select these images, and recolorable images can be tinted to match the system dialog theme.",
+                "Upload your own images here. They appear in the Custom category beside the built-in icons and can be used for profiles, widgets, and popup titles.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -94,11 +94,11 @@ internal fun PopupIconsSettingsCard() {
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !adding,
             ) {
-                Text("Upload an icon")
+                Text("Upload custom icon")
             }
             if (icons.isEmpty()) {
                 Text(
-                    "Your uploaded popup icons will appear here and can be selected in popup actions.",
+                    "Your uploaded icons will appear in the Custom category of the shared icon picker.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -157,7 +157,7 @@ internal fun PopupIconsSettingsCard() {
                     croppedImage = null
                 }
             },
-            title = { Text("Upload popup icon") },
+            title = { Text("Upload custom icon") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
@@ -257,7 +257,7 @@ internal fun PopupIconsSettingsCard() {
     editingIcon?.let { icon ->
         AlertDialog(
             onDismissRequest = { editingIcon = null },
-            title = { Text("Rename popup icon") },
+            title = { Text("Rename custom icon") },
             text = {
                 OutlinedTextField(
                     value = editName,
@@ -283,9 +283,9 @@ internal fun PopupIconsSettingsCard() {
     deletingIcon?.let { icon ->
         AlertDialog(
             onDismissRequest = { deletingIcon = null },
-            title = { Text("Delete popup icon?") },
+            title = { Text("Delete custom icon?") },
             text = {
-                Text("“${icon.name}” will be removed from the popup icon library. Popup actions using it will show no icon.")
+                Text("“${icon.name}” will be removed from the Custom category. Places using it will fall back to the default icon.")
             },
             confirmButton = {
                 Button(
