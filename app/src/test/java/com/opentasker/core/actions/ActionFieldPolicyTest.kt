@@ -41,6 +41,18 @@ class ActionFieldPolicyTest {
     }
 
     @Test
+    fun deviceCredentialFallbackSelectsAnExistingTopLevelAction() {
+        val field = requireNotNull(ActionMetadataRegistry.get("auth.device_credential"))
+            .fields.firstOrNull { it.key == "fallback_action_id" }
+
+        assertNotNull(field)
+        assertEquals(FieldType.TASK, field?.fieldType)
+        assertNull(ActionFieldPolicy.validate(requireNotNull(field), "42", setOf(42)))
+        assertEquals(ActionFieldPolicy.Error.INVALID_TASK, ActionFieldPolicy.validate(requireNotNull(field), "99", setOf(42))?.error)
+        assertNull(ActionFieldPolicy.validate(requireNotNull(field), ""))
+    }
+
+    @Test
     fun showPopupHasAnOptionalImageUriField() {
         val field = requireNotNull(ActionMetadataRegistry.get("notify.show"))
             .fields.firstOrNull { it.key == "icon_uri" }
