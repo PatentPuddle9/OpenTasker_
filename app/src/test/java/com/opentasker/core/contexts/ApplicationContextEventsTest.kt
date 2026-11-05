@@ -48,6 +48,22 @@ class ApplicationContextEventsTest {
     }
 
     @Test
+    fun appOpenPulseFromBeforeSubscriptionIsNotReplayedToANewMatcher() = runBlocking {
+        ApplicationContextEvents.publishForeground("com.example.previous", initial = true)
+        ApplicationContextEvents.publishForeground("com.example.already.open")
+
+        val nextEvent = async(start = CoroutineStart.UNDISPATCHED) {
+            ApplicationContextEvents.events.drop(1).first()
+        }
+        ApplicationContextEvents.publishForeground("com.example.just.opened")
+
+        val event = nextEvent.await()
+        assertEquals("opened", event.metadata["transition"])
+        assertEquals("com.example.just.opened", event.metadata["foreground"])
+        assertEquals("com.example.already.open", event.metadata["previous_foreground"])
+    }
+
+    @Test
     fun leavingAllApplicationsPublishesAClosedTransition() = runBlocking {
         ApplicationContextEvents.publishForeground("com.example.app", initial = true)
         val nextEvent = async(start = CoroutineStart.UNDISPATCHED) {
