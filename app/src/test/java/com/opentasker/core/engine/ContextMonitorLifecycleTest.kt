@@ -97,9 +97,16 @@ class ContextMonitorLifecycleTest {
             ContextSpec(ContextType.APPLICATION, mapOf("package" to "com.example", "condition" to "foreground")),
         )
 
+        val lifecycleProfiles = profile(
+            10,
+            installed.contexts.single(),
+            updated.contexts.single(),
+            uninstalled.contexts.single(),
+        )
+
         assertEquals(
             setOf(ContextMonitor.APP_USAGE, ContextMonitor.PACKAGE_EVENTS),
-            requiredContextMonitors(installed + updated + uninstalled),
+            requiredContextMonitors(lifecycleProfiles),
         )
         assertEquals(setOf(ContextMonitor.APP_USAGE), requiredContextMonitors(foregroundOnly))
     }
