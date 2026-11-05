@@ -187,17 +187,7 @@ internal class ProfileMatcher(
 
     /** Evaluates editor-provided events through the same profile boolean logic as live matching. */
     internal fun evaluateSyntheticEvents(events: Map<Int, ContextEvent>): ProfileMatchSnapshot {
-        val updates = profile.contexts.mapIndexed { index, spec ->
-            val event = events[index]
-            val rawMatched = event?.let { ContextMatchEvaluator.matches(spec, it) } == true
-            val pulseContext = isPulseContext(spec)
-            ContextMatchUpdate(
-                matched = if (spec.invert) !rawMatched else rawMatched,
-                pulseContext = pulseContext,
-                pulseSequence = if (pulseContext && rawMatched) 1L else 0L,
-                event = event?.takeIf { rawMatched },
-            )
-        }
+        val updates = syntheticContextUpdates(profile, events)
         return ProfileMatchSnapshot(
             allMatched = evaluateContextExpression(
                 updates.toTypedArray(),
@@ -275,6 +265,22 @@ internal fun isPulseContext(spec: ContextSpec): Boolean {
     return condition.equals("opened", ignoreCase = true) ||
         condition.equals("closed", ignoreCase = true)
 }
+
+internal fun syntheticContextUpdates(
+    profile: Profile,
+    events: Map<Int, ContextEvent>,
+): List<ContextMatchUpdate> =
+    profile.contexts.mapIndexed { index, spec ->
+        val event = events[index]
+        val rawMatched = event?.let { ContextMatchEvaluator.matches(spec, it) } == true
+        val pulseContext = isPulseContext(spec)
+        ContextMatchUpdate(
+            matched = if (spec.invert) !rawMatched else rawMatched,
+            pulseContext = pulseContext,
+            pulseSequence = if (pulseContext && rawMatched) 1L else 0L,
+            event = event?.takeIf { rawMatched },
+        )
+    }
 
 internal data class ContextMatchUpdate(
     val matched: Boolean,
