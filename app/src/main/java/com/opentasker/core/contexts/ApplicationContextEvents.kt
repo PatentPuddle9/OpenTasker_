@@ -16,8 +16,12 @@ import kotlinx.coroutines.flow.flow
 object ApplicationContextEvents {
     private const val TYPE = "app"
 
+    // Application transitions are pulses, not durable state. Replaying an old "opened" pulse to a
+    // newly enabled profile falsely reports that the app was just launched. The UsageStats monitor
+    // publishes one explicit initial snapshot after matchers subscribe; live accessibility events
+    // are delivered only to currently active matchers.
     private val foregroundEvents = MutableSharedFlow<ContextEvent>(
-        replay = 1,
+        replay = 0,
         extraBufferCapacity = 16,
     )
     @Volatile private var latestForegroundPackage: String? = null
