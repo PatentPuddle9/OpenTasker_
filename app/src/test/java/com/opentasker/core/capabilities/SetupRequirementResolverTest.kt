@@ -185,6 +185,17 @@ class SetupRequirementResolverTest {
     }
 
     @Test
+    fun deviceCredentialConfirmationRequiresOverlayAccess() {
+        assertEquals(
+            setOf(SetupRequirement.OVERLAY),
+            SetupRequirementResolver.resolveForTemplate(
+                actionTypes = listOf("auth.device_credential"),
+                contexts = emptyList(),
+            ),
+        )
+    }
+
+    @Test
     fun aTemplateThatNeedsNothingSpecialResolvesEmpty() {
         assertEquals(
             emptySet<SetupRequirement>(),
