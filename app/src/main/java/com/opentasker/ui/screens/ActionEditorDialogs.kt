@@ -941,7 +941,7 @@ private fun ActionFileFieldInput(
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedButton(onClick = { openDocument.launch(arrayOf("image/*")) }) {
-                    Text(stringResource(R.string.action_choose_image))
+                    Text(stringResource(R.string.popup_action_choose_image))
                 }
                 if (value.isNotBlank()) {
                     TextButton(onClick = { onChange("") }) {

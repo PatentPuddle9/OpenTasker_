@@ -8,7 +8,7 @@
     <string name="catalog_action_notify_show_field_title_hint" formatted="false">Dialog title</string>
     <string name="catalog_action_notify_show_field_icon_label" formatted="false">Popup icon</string>
     <string name="catalog_action_notify_show_field_icon_hint" formatted="false">Optional image shown beside the title</string>
-    <string name="action_choose_image" formatted="false">Choose image</string>
+    <string name="popup_action_choose_image" formatted="false">Choose image</string>
     <string name="action_remove_image" formatted="false">Remove</string>
     <string name="action_no_image_selected" formatted="false">No image selected</string>
     <string name="action_image_selected" formatted="false">Image selected</string>
