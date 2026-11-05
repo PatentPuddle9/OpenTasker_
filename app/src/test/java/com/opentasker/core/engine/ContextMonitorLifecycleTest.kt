@@ -79,6 +79,32 @@ class ContextMonitorLifecycleTest {
     }
 
     @Test
+    fun applicationInstallUpdateAndRemovalConditionsStartPackageReceiver() {
+        val installed = profile(
+            1,
+            ContextSpec(ContextType.APPLICATION, mapOf("package" to "com.example", "condition" to "installed")),
+        )
+        val updated = profile(
+            2,
+            ContextSpec(ContextType.APPLICATION, mapOf("package" to "com.example", "condition" to "updated")),
+        )
+        val uninstalled = profile(
+            3,
+            ContextSpec(ContextType.APPLICATION, mapOf("package" to "com.example", "condition" to "uninstalled")),
+        )
+        val foregroundOnly = profile(
+            4,
+            ContextSpec(ContextType.APPLICATION, mapOf("package" to "com.example", "condition" to "foreground")),
+        )
+
+        assertEquals(
+            setOf(ContextMonitor.APP_USAGE, ContextMonitor.PACKAGE_EVENTS),
+            requiredContextMonitors(installed + updated + uninstalled),
+        )
+        assertEquals(setOf(ContextMonitor.APP_USAGE), requiredContextMonitors(foregroundOnly))
+    }
+
+    @Test
     fun eventAndStateConfigsSelectOnlyTheirRequiredOsSources() {
         val profile = profile(
             1,
