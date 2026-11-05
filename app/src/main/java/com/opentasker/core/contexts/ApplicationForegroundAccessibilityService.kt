@@ -42,15 +42,13 @@ class ApplicationForegroundAccessibilityService : AccessibilityService() {
             packageName = event.packageName,
         ) ?: return
 
-        // Record every valid callback, including same-package UI events. UsageStats uses this
-        // timestamp to discard timeline entries already covered by the live listener while still
-        // recovering transitions that Android failed to send to Accessibility.
-        lastAccessibilityEventAtMs = System.currentTimeMillis()
-
         val previousPackage = ApplicationContextEvents.latestObservedPackage()
         // Content/focus notifications can be numerous. The app trigger is package-scoped, so
         // publishing only package changes avoids flooding every matcher with same-app UI updates.
+        // Advance the fallback arbitration timestamp only for a real package transition; a stream
+        // of same-app focus/content callbacks must not suppress a missed switch in UsageStats.
         if (previousPackage == packageName) return
+        lastAccessibilityEventAtMs = System.currentTimeMillis()
 
         ApplicationContextEvents.publishForeground(
             packageName = packageName,
