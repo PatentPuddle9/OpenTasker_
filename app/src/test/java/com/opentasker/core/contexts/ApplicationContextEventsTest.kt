@@ -18,10 +18,10 @@ class ApplicationContextEventsTest {
 
     @Test
     fun initialForegroundSnapshotDoesNotPretendTheAppWasJustOpened() = runBlocking {
-        // Seed the replay slot first so this test is independent of the order other singleton tests run.
+        // Seed the previous-package state; event pulses themselves are intentionally not replayed.
         ApplicationContextEvents.publishForeground("com.example.seed", initial = true)
         val nextEvent = async(start = CoroutineStart.UNDISPATCHED) {
-            ApplicationContextEvents.events.drop(2).first()
+            ApplicationContextEvents.events.drop(1).first()
         }
 
         assertTrue(ApplicationContextEvents.publishForeground("com.example.app", initial = true))
@@ -36,7 +36,7 @@ class ApplicationContextEventsTest {
     fun appSwitchPublishesPreviousAndCurrentPackages() = runBlocking {
         ApplicationContextEvents.publishForeground("com.example.previous", initial = true)
         val nextEvent = async(start = CoroutineStart.UNDISPATCHED) {
-            ApplicationContextEvents.events.drop(2).first()
+            ApplicationContextEvents.events.drop(1).first()
         }
 
         assertTrue(ApplicationContextEvents.publishForeground("com.example.next"))
@@ -51,7 +51,7 @@ class ApplicationContextEventsTest {
     fun leavingAllApplicationsPublishesAClosedTransition() = runBlocking {
         ApplicationContextEvents.publishForeground("com.example.app", initial = true)
         val nextEvent = async(start = CoroutineStart.UNDISPATCHED) {
-            ApplicationContextEvents.events.drop(2).first()
+            ApplicationContextEvents.events.drop(1).first()
         }
 
         assertTrue(ApplicationContextEvents.publishBackground())
