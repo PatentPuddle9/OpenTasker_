@@ -4,8 +4,10 @@ import android.app.AlertDialog
 import android.app.Service
 import android.content.DialogInterface
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.IBinder
 import android.provider.Settings
+import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.WindowManager
 import com.opentasker.core.external.AutomationTargetContract
@@ -44,7 +46,9 @@ class PopupDialogService : Service() {
         }
 
         dismissActiveDialog()
-        val builder = AlertDialog.Builder(this)
+        val deviceTheme = popupDialogThemeResource(resources.configuration.uiMode)
+        val themedContext = ContextThemeWrapper(this, deviceTheme)
+        val builder = AlertDialog.Builder(themedContext)
         if (title.isNotBlank()) builder.setTitle(title)
         if (message.isNotBlank()) builder.setMessage(message)
 
@@ -156,3 +160,14 @@ class PopupDialogService : Service() {
         }
     }
 }
+
+/**
+ * Uses the Android device's own dialog styling rather than OpenTasker's in-app palette.
+ * The service is not an Activity, so the dialog theme must be selected explicitly.
+ */
+internal fun popupDialogThemeResource(uiMode: Int): Int =
+    if ((uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES) {
+        android.R.style.Theme_DeviceDefault_Dialog_Alert
+    } else {
+        android.R.style.Theme_DeviceDefault_Light_Dialog_Alert
+    }
