@@ -11,8 +11,9 @@ import com.opentasker.core.logging.AppLogger
  * Event-driven foreground-app observation for Application contexts.
  *
  * Unlike UsageStatsManager this receives the window transition from Android as it happens.
- * The service requests only window-state/window-list events and explicitly disables window
- * content retrieval: it records the package and Activity class, never screen text or views.
+ * The service requests window-state, window-content-change, and view-focus notifications while
+ * explicitly disabling window-content retrieval. It records only the package and Activity class,
+ * never screen text, view labels, or window contents.
  */
 class ApplicationForegroundAccessibilityService : AccessibilityService() {
 
@@ -29,16 +30,19 @@ class ApplicationForegroundAccessibilityService : AccessibilityService() {
         ) ?: return
 
         val previousPackage = ApplicationContextEvents.latestObservedPackage()
+        // Content/focus notifications can be numerous. The app trigger is package-scoped, so
+        // publishing only package changes avoids flooding every matcher with same-app UI updates.
+        if (previousPackage == packageName) return
+
         ApplicationContextEvents.publishForeground(
             packageName = packageName,
             className = event.className?.toString(),
         )
-        if (previousPackage != packageName) {
-            AppLogger.debug(
-                TAG,
-                "Accessibility window transition: " + (previousPackage ?: "(none)") + " -> " + packageName,
-            )
-        }
+        AppLogger.debug(
+            TAG,
+            "Accessibility app transition: " + (previousPackage ?: "(none)") + " -> " + packageName +
+                " (eventType=${event.eventType})",
+        )
     }
 
     override fun onInterrupt() = Unit
@@ -63,7 +67,10 @@ class ApplicationForegroundAccessibilityService : AccessibilityService() {
 /** Small policy function kept independent of the Android service lifecycle for unit testing. */
 internal object ApplicationForegroundAccessibilityEventPolicy {
     fun packageName(eventType: Int, packageName: CharSequence?): String? {
-        if (eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return null
+        if (eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED &&
+            eventType != AccessibilityEvent.TYPE_VIEW_FOCUSED
+        ) return null
 
         return packageName
             ?.toString()
