@@ -130,13 +130,13 @@ class AppUsageMonitorTest {
     }
 
     @Test
-    fun applicationForegroundTransitionsArePolledAtNearRealTimeCadence() {
+    fun usageStatsPollingRemainsOnlyTheFallbackForEventDrivenDetection() {
         assertTrue(
-            "App launches should be detected within a fraction of a second",
-            AppUsageMonitor.POLL_INTERVAL_MS <= 250L,
+            "The callback-based accessibility listener handles instant transitions; polling stays lightweight",
+            AppUsageMonitor.POLL_INTERVAL_MS >= 1_000L,
         )
         assertTrue(
-            "A query overlap should cover timing jitter between system events and polling",
+            "The query overlap should cover at least one full fallback poll interval",
             AppUsageMonitor.QUERY_OVERLAP_MS >= AppUsageMonitor.POLL_INTERVAL_MS,
         )
     }
