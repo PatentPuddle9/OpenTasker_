@@ -226,6 +226,22 @@ class ContextInspectorTest {
     }
 
     @Test
+    fun applicationConfigSummaryShowsSelectedConditionAndPackage() {
+        assertEquals(
+            "Opens: com.example.app",
+            contextConfigSummary(
+                ContextSpec(ContextType.APPLICATION, mapOf("package" to "com.example.app", "condition" to "opened")),
+            ),
+        )
+        assertEquals(
+            "In foreground: com.example.app",
+            contextConfigSummary(
+                ContextSpec(ContextType.APPLICATION, mapOf("package" to "com.example.app")),
+            ),
+        )
+    }
+
+    @Test
     fun setupRequiredSourceDoesNotCountAsMatchingProfile() {
         val profile = Profile(
             id = 4,

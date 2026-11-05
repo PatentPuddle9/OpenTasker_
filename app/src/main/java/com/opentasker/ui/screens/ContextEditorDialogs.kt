@@ -54,11 +54,11 @@ import androidx.compose.ui.window.DialogProperties
 import com.opentasker.app.BuildConfig
 import com.opentasker.app.R
 import com.opentasker.core.actions.ActionField
+import com.opentasker.core.actions.ActionFieldOption
 import com.opentasker.core.actions.ActionFieldPolicy
 import com.opentasker.core.actions.FieldType
 import com.opentasker.core.contexts.CalendarSunEventPresets
 import com.opentasker.core.contexts.ApplicationContextEvents
-import com.opentasker.core.contexts.ApplicationComponentMatcher
 import com.opentasker.core.contexts.BluetoothEventPresets
 import com.opentasker.core.contexts.BroadcastContextEvents
 import com.opentasker.core.contexts.BroadcastEventPresets
@@ -424,10 +424,6 @@ internal fun contextInvalidFields(type: ContextType, config: Map<String, String>
     ) {
         issues["package"] = ActionFieldPolicy.Issue(ActionFieldPolicy.Error.INVALID_APP)
     }
-    val component = config["component"]?.trim().orEmpty()
-    if (type == ContextType.APPLICATION && component.isNotBlank() && !ApplicationComponentMatcher.isValidPattern(component)) {
-        issues["component"] = ActionFieldPolicy.Issue(ActionFieldPolicy.Error.INVALID_COMPONENT)
-    }
     when (type) {
         ContextType.TIME -> {
             checkClock("start")
@@ -450,7 +446,19 @@ internal fun contextInvalidFields(type: ContextType, config: Map<String, String>
 private fun contextFields(type: ContextType): List<ActionField> = when (type) {
     ContextType.APPLICATION -> listOf(
         ActionField("package", R.string.context_field_application_package_label, FieldType.APP, required = true, hintRes = R.string.context_field_application_package_hint),
-        ActionField("component", R.string.context_field_application_component_label, hintRes = R.string.context_field_application_component_hint),
+        ActionField(
+            key = "condition",
+            labelRes = R.string.context_field_application_condition_label,
+            fieldType = FieldType.DROPDOWN,
+            required = true,
+            hintRes = R.string.context_field_application_condition_hint,
+            options = listOf(
+                ActionFieldOption("foreground", R.string.context_app_condition_foreground),
+                ActionFieldOption("opened", R.string.context_app_condition_opened),
+                ActionFieldOption("closed", R.string.context_app_condition_closed),
+                ActionFieldOption("not_foreground", R.string.context_app_condition_not_foreground),
+            ),
+        ),
     )
     ContextType.TIME -> listOf(
         ActionField("start", R.string.context_field_time_start_label, required = true, hintRes = R.string.context_field_time_start_hint),
@@ -528,16 +536,20 @@ private fun contextConfigForSave(type: ContextType, config: Map<String, String>)
     return nonBlank
 }
 
-/** Canonicalize aliases used by imported bundles before the editor persists a context. */
+/** Drop the old activity-class filter; application conditions now operate at package level. */
 private fun canonicalContextConfig(type: ContextType, config: Map<String, String>): Map<String, String> {
-    if (type != ContextType.APPLICATION || config["component"].orEmpty().isNotBlank()) return config
-    val alias = listOf("activity", "class").firstNotNullOfOrNull { key ->
-        config[key]?.trim()?.takeIf(String::isNotBlank)
-    } ?: return config
-    return config + ("component" to alias)
+    if (type != ContextType.APPLICATION) return config
+    val withoutLegacyComponent = config - setOf("component", "activity", "class")
+    val supportedConditions = setOf("foreground", "opened", "closed", "not_foreground")
+    val condition = withoutLegacyComponent["condition"]
+        ?.trim()
+        ?.takeIf { it in supportedConditions }
+        ?: "foreground"
+    return withoutLegacyComponent + ("condition" to condition)
 }
 
 private fun defaultContextConfig(type: ContextType): Map<String, String> = when (type) {
+    ContextType.APPLICATION -> mapOf("condition" to "foreground")
     ContextType.TIME -> mapOf("start" to "09:00", "end" to "17:00")
     ContextType.DAY -> mapOf("days" to "MON,TUE,WED,THU,FRI")
     ContextType.LOCATION -> mapOf("radiusMeters" to "100")

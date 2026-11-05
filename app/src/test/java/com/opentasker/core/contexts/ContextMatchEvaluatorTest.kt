@@ -31,24 +31,74 @@ class ContextMatchEvaluatorTest {
     }
 
     @Test
-    fun applicationContextOptionallyMatchesExactOrGlobComponentWithoutDegrading() {
-        val exact = ContextSpec(
+    fun applicationForegroundConditionMatchesAnAppThatIsAlreadyVisible() {
+        val spec = ContextSpec(
             type = ContextType.APPLICATION,
-            config = mapOf("package" to "com.example.target", "component" to "com.example.PlayerActivity"),
+            config = mapOf("package" to "com.example.target", "condition" to "foreground"),
         )
-        val glob = exact.copy(config = exact.config + ("component" to "com.example.*"))
-        val packageOnly = exact.copy(config = mapOf("package" to "com.example.target"))
-        val matching = ContextEvent(
+        val initialObservation = ContextEvent(
             "app",
             matched = true,
-            metadata = mapOf("foreground" to "com.example.target", "component" to "com.example.PlayerActivity"),
+            metadata = mapOf("foreground" to "com.example.target", "transition" to "initial"),
         )
 
-        assertTrue(ContextMatchEvaluator.matches(exact, matching))
-        assertTrue(ContextMatchEvaluator.matches(glob, matching))
-        assertTrue(ContextMatchEvaluator.matches(packageOnly, matching.copy(metadata = mapOf("foreground" to "com.example.target"))))
-        assertFalse(ContextMatchEvaluator.matches(exact, matching.copy(metadata = mapOf("foreground" to "com.example.target"))))
-        assertFalse(ContextMatchEvaluator.matches(exact, matching.copy(metadata = mapOf("foreground" to "com.example.target", "component" to "com.example.OtherActivity"))))
+        assertTrue(ContextMatchEvaluator.matches(spec, initialObservation))
+    }
+
+    @Test
+    fun applicationOpenedConditionMatchesOnlyARealTransitionIntoTheSelectedApp() {
+        val spec = ContextSpec(
+            type = ContextType.APPLICATION,
+            config = mapOf("package" to "com.example.target", "condition" to "opened"),
+        )
+        val opened = ContextEvent(
+            "app",
+            matched = true,
+            metadata = mapOf(
+                "foreground" to "com.example.target",
+                "previous_foreground" to "com.example.launcher",
+                "transition" to "opened",
+            ),
+        )
+        val initial = opened.copy(metadata = opened.metadata + ("transition" to "initial"))
+
+        assertTrue(ContextMatchEvaluator.matches(spec, opened))
+        assertFalse(ContextMatchEvaluator.matches(spec, initial))
+    }
+
+    @Test
+    fun applicationClosedConditionMatchesWhenSelectedAppLeavesTheForeground() {
+        val spec = ContextSpec(
+            type = ContextType.APPLICATION,
+            config = mapOf("package" to "com.example.target", "condition" to "closed"),
+        )
+        val closed = ContextEvent(
+            "app",
+            matched = true,
+            metadata = mapOf(
+                "foreground" to "com.example.launcher",
+                "previous_foreground" to "com.example.target",
+                "transition" to "opened",
+            ),
+        )
+        val unrelatedSwitch = closed.copy(metadata = closed.metadata + ("previous_foreground" to "com.example.other"))
+
+        assertTrue(ContextMatchEvaluator.matches(spec, closed))
+        assertFalse(ContextMatchEvaluator.matches(spec, unrelatedSwitch))
+    }
+
+    @Test
+    fun applicationNotForegroundConditionAlsoMatchesWhenNoActivityIsResumed() {
+        val spec = ContextSpec(
+            type = ContextType.APPLICATION,
+            config = mapOf("package" to "com.example.target", "condition" to "not_foreground"),
+        )
+        val anotherApp = ContextEvent("app", true, mapOf("foreground" to "com.example.other"))
+        val noApp = ContextEvent("app", true, mapOf("foreground" to ""))
+
+        assertTrue(ContextMatchEvaluator.matches(spec, anotherApp))
+        assertTrue(ContextMatchEvaluator.matches(spec, noApp))
+        assertFalse(ContextMatchEvaluator.matches(spec, anotherApp.copy(metadata = mapOf("foreground" to "com.example.target"))))
     }
 
     @Test

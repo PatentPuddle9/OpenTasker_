@@ -7,11 +7,12 @@ import org.junit.Test
 
 class AppUsageMonitorTest {
     @Test
-    fun selectLatestForegroundPackageReturnsNewestNonBlankPackage() {
+    fun selectLatestForegroundPackageReturnsNewestNonBlankForegroundPackage() {
         val selected = AppUsageMonitor.selectLatestForegroundPackage(
             listOf(
                 ForegroundUsageEvent(packageName = "com.old", timestamp = 100L),
-                ForegroundUsageEvent(packageName = " ", timestamp = 300L),
+                ForegroundUsageEvent(packageName = "com.background", timestamp = 300L, isForeground = false),
+                ForegroundUsageEvent(packageName = " ", timestamp = 400L),
                 ForegroundUsageEvent(packageName = "com.new", timestamp = 200L),
             ),
         )
@@ -20,9 +21,12 @@ class AppUsageMonitorTest {
     }
 
     @Test
-    fun selectLatestForegroundPackageReturnsNullForNoUsableEvents() {
+    fun selectLatestForegroundPackageReturnsNullForNoUsableForegroundEvents() {
         val selected = AppUsageMonitor.selectLatestForegroundPackage(
-            listOf(ForegroundUsageEvent(packageName = "", timestamp = 100L)),
+            listOf(
+                ForegroundUsageEvent(packageName = "", timestamp = 100L),
+                ForegroundUsageEvent(packageName = "com.background", timestamp = 200L, isForeground = false),
+            ),
         )
 
         assertNull(selected)
@@ -38,6 +42,65 @@ class AppUsageMonitorTest {
         )
 
         assertEquals("com.example.NewActivity", selected?.className)
+    }
+
+    @Test
+    fun trackerReconstructsAnAppThatWasAlreadyInTheForegroundBeforePollingStarted() {
+        val tracker = ForegroundAppTracker()
+
+        val current = tracker.apply(
+            listOf(ForegroundUsageEvent("com.already.open", "com.already.open.MainActivity", 100L)),
+        )
+
+        assertEquals("com.already.open", current?.packageName)
+    }
+
+    @Test
+    fun trackerClearsForegroundWhenTheCurrentActivityIsPaused() {
+        val tracker = ForegroundAppTracker()
+        val current = tracker.apply(
+            listOf(
+                ForegroundUsageEvent("com.example", "com.example.MainActivity", 100L),
+                ForegroundUsageEvent("com.example", "com.example.MainActivity", 200L, isForeground = false),
+            ),
+        )
+
+        assertNull(current)
+    }
+
+    @Test
+    fun trackerSelectsTheMostRecentlyResumedAppAndRemovesItOnPause() {
+        val tracker = ForegroundAppTracker()
+        val current = tracker.apply(
+            listOf(
+                ForegroundUsageEvent("com.first", "com.first.MainActivity", 100L),
+                ForegroundUsageEvent("com.second", "com.second.MainActivity", 200L),
+            ),
+        )
+        assertEquals("com.second", current?.packageName)
+
+        val afterSecondPauses = tracker.apply(
+            listOf(ForegroundUsageEvent("com.second", "com.second.MainActivity", 300L, isForeground = false)),
+        )
+        // The state machine retains the first Activity if Android has not reported its pause yet.
+        assertEquals("com.first", afterSecondPauses?.packageName)
+    }
+
+    @Test
+    fun trackerPackageBackgroundEventClearsEveryActivityForThatPackage() {
+        val tracker = ForegroundAppTracker()
+        tracker.apply(
+            listOf(
+                ForegroundUsageEvent("com.example", "com.example.FirstActivity", 100L),
+                ForegroundUsageEvent("com.example", "com.example.SecondActivity", 200L),
+            ),
+        )
+
+        val current = tracker.apply(
+            listOf(ForegroundUsageEvent("com.example", timestamp = 300L, isForeground = false)),
+        )
+
+        assertNull(current)
     }
 
     @Test

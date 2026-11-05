@@ -259,6 +259,16 @@ private fun inspectContextForProfile(
 
 fun contextConfigSummary(spec: ContextSpec): String {
     val summary = when (spec.type) {
+        ContextType.APPLICATION -> {
+            val packageName = spec.config["package"].orEmpty().ifBlank { "No app selected" }
+            val condition = when (spec.config["condition"]?.trim()?.lowercase(Locale.US)) {
+                "opened" -> "Opens"
+                "closed" -> "Closes"
+                "not_foreground" -> "Not in foreground"
+                else -> "In foreground"
+            }
+            "$condition: $packageName"
+        }
         ContextType.DAY -> DaySchedule.displayLabel(spec.config["days"] ?: spec.config["day"].orEmpty())
         ContextType.PLUGIN -> {
             val pkg = spec.config["package"].orEmpty().ifBlank { "none" }

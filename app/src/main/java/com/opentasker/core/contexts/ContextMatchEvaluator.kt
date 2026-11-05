@@ -45,17 +45,22 @@ object ContextMatchEvaluator {
 
     private fun matchesApplication(spec: ContextSpec, event: ContextEvent): Boolean {
         val foreground = event.metadata["foreground"].orEmpty().ifBlank { event.metadata["package"].orEmpty() }
-        if (foreground.isBlank()) return false
+        val previousForeground = event.metadata["previous_foreground"].orEmpty()
         val configuredPackages = firstConfig(spec, "package", "packages", "apps")
             .splitCsv()
             .map { it.lowercase(Locale.US) }
+            .toSet()
         if (configuredPackages.isEmpty()) return false
-        if (foreground.lowercase(Locale.US) !in configuredPackages) return false
 
-        val configuredComponent = firstConfig(spec, "component", "activity", "class")
-        if (configuredComponent.isBlank()) return true
-        val observedComponent = event.metadata["component"].orEmpty()
-        return ApplicationComponentMatcher.matches(configuredComponent, observedComponent)
+        val currentMatches = foreground.lowercase(Locale.US) in configuredPackages
+        val previousMatches = previousForeground.lowercase(Locale.US) in configuredPackages
+        return when (spec.config["condition"]?.trim()?.lowercase(Locale.US)) {
+            "opened" -> currentMatches && event.metadata["transition"] == "opened"
+            "closed" -> previousMatches && !currentMatches
+            "not_foreground" -> !currentMatches
+            // The default also covers older saved profiles that do not have a condition key.
+            else -> currentMatches
+        }
     }
 
     private fun matchesTime(spec: ContextSpec, event: ContextEvent): Boolean {

@@ -93,8 +93,8 @@ class ContextValidationTest {
             ),
         )
         assertEquals(
-            setOf("package", "component"),
-            contextInvalidFields(ContextType.APPLICATION, mapOf("package" to "not a package", "component" to "bad name!")).keys,
+            setOf("package"),
+            contextInvalidFields(ContextType.APPLICATION, mapOf("package" to "not a package", "component" to "legacy component")).keys,
         )
         assertTrue(contextInvalidFields(ContextType.TIME, mapOf("start" to "08:30", "end" to "17:00")).isEmpty())
     }
