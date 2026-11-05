@@ -47,8 +47,8 @@ class AppUsageMonitor(
             while (isActive) {
                 val action = appUsagePollAction(
                     hasUsageAccess = UsageAccess.hasUsageStatsAccess(appContext),
-                    accessibilityServiceEnabled =
-                        ApplicationForegroundAccessibilityService.isEnabled(appContext),
+                    accessibilityServiceConnected =
+                        ApplicationForegroundAccessibilityService.isConnected(),
                 )
 
                 if (action != lastDetectionAction) {
@@ -58,11 +58,11 @@ class AppUsageMonitor(
                     lastDetectionAction = action
                     AppLogger.info(TAG, when (action) {
                         AppUsagePollAction.WAIT_FOR_ACCESSIBILITY_EVENTS ->
-                            "Instant app detection is enabled; UsageStats polling is suspended"
+                            "Instant app detection service is connected; UsageStats polling is suspended"
                         AppUsagePollAction.QUERY_FOREGROUND ->
-                            "Instant app detection is disabled; using UsageStats as the fallback"
+                            "Instant app detection service is not connected; using UsageStats as the fallback"
                         AppUsagePollAction.PAUSE_FOR_MISSING_ACCESS ->
-                            "Usage access is missing and instant app detection is disabled"
+                            "Usage access is missing and instant app detection is not connected"
                     })
                 }
 
@@ -214,7 +214,8 @@ class AppUsageMonitor(
         // Fallback only: the AccessibilityService receives the real window-transition callback.
         // Keep UsageStats polling at a lower frequency so it does not wake the engine four times a second.
         internal const val POLL_INTERVAL_MS = 1_000L
-        private const val MISSING_ACCESS_RETRY_MS = 30_000L
+        // Recheck quickly so a service that connects after the monitor starts takes over promptly.
+        private const val MISSING_ACCESS_RETRY_MS = 2_000L
         // Only checks whether the user switched detection providers; app transitions themselves
         // arrive directly from AccessibilityService and are not delayed by this interval.
         private const val ACCESSIBILITY_MODE_CHECK_INTERVAL_MS = 2_000L
