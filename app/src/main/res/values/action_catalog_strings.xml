@@ -4,6 +4,11 @@
     <string name="catalog_action_notify_show_name" formatted="false">Show Popup</string>
     <string name="catalog_action_notify_show_description" formatted="false">Show a popup dialog with optional task buttons; buttons without a task dismiss the dialog</string>
     <string name="catalog_category_notification" formatted="false">Notification</string>
+    <string name="catalog_category_scenes" formatted="false">Scenes</string>
+    <string name="catalog_action_scene_show_name" formatted="false">Show Scene</string>
+    <string name="catalog_action_scene_show_description" formatted="false">Display a saved scene as a floating overlay above other apps.</string>
+    <string name="catalog_action_scene_show_field_scene_label" formatted="false">Scene</string>
+    <string name="catalog_action_scene_show_field_scene_hint" formatted="false">Choose the saved scene to display.</string>
     <string name="catalog_action_notify_show_field_title_label" formatted="false">Title</string>
     <string name="catalog_action_notify_show_field_title_hint" formatted="false">Dialog title</string>
     <string name="catalog_action_notify_show_field_icon_label" formatted="false">Popup icon</string>
