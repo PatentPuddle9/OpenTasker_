@@ -42,6 +42,11 @@ class ApplicationForegroundAccessibilityService : AccessibilityService() {
             packageName = event.packageName,
         ) ?: return
 
+        // Record every valid callback, including same-package UI events. UsageStats uses this
+        // timestamp to discard timeline entries already covered by the live listener while still
+        // recovering transitions that Android failed to send to Accessibility.
+        lastAccessibilityEventAtMs = System.currentTimeMillis()
+
         val previousPackage = ApplicationContextEvents.latestObservedPackage()
         // Content/focus notifications can be numerous. The app trigger is package-scoped, so
         // publishing only package changes avoids flooding every matcher with same-app UI updates.
@@ -66,8 +71,14 @@ class ApplicationForegroundAccessibilityService : AccessibilityService() {
         @Volatile
         private var serviceConnected = false
 
+        @Volatile
+        private var lastAccessibilityEventAtMs = 0L
+
         /** True only after Android has actually bound and connected this service instance. */
         fun isConnected(): Boolean = serviceConnected
+
+        /** Wall-clock time of the most recent accepted callback, or zero if none has arrived. */
+        fun lastEventAtMillis(): Long = lastAccessibilityEventAtMs
 
         /** Reads the explicit user grant shown in Android's Accessibility settings. */
         fun isEnabled(context: Context): Boolean {
