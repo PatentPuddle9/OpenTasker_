@@ -110,6 +110,15 @@ internal class ProfileMatcher(
                     }
                     if (pulseObservation?.duplicate == true) return@scan previous
                     val matched = ContextMatchEvaluator.matches(spec, identityEvent)
+                    if (spec.type == ContextType.APPLICATION) {
+                        AppLogger.debug(
+                            tag,
+                            "Application context condition=${spec.config["condition"] ?: "foreground"} " +
+                                "foreground=${identityEvent.metadata["foreground"].orEmpty()} " +
+                                "previous=${identityEvent.metadata["previous_foreground"].orEmpty()} " +
+                                "transition=${identityEvent.metadata["transition"].orEmpty()} matched=$matched",
+                        )
+                    }
                     val effectiveMatched = if (spec.invert) !matched else matched
                     ContextMatchUpdate(
                         matched = effectiveMatched,
@@ -181,10 +190,11 @@ internal class ProfileMatcher(
         val updates = profile.contexts.mapIndexed { index, spec ->
             val event = events[index]
             val rawMatched = event?.let { ContextMatchEvaluator.matches(spec, it) } == true
+            val pulseContext = isPulseContext(spec)
             ContextMatchUpdate(
                 matched = if (spec.invert) !rawMatched else rawMatched,
-                pulseContext = spec.type == ContextType.EVENT,
-                pulseSequence = if (spec.type == ContextType.EVENT && rawMatched) 1L else 0L,
+                pulseContext = pulseContext,
+                pulseSequence = if (pulseContext && rawMatched) 1L else 0L,
                 event = event?.takeIf { rawMatched },
             )
         }
