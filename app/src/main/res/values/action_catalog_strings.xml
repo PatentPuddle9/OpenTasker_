@@ -45,7 +45,7 @@
     <string name="catalog_action_var_set_field_value_label" formatted="false">Value</string>
     <string name="catalog_action_var_set_field_value_hint" formatted="false">Supports %expansion</string>
     <string name="catalog_action_var_persist_name" formatted="false">Persist Variable</string>
-    <string name="catalog_action_var_persist_description" formatted="false">Copy a variable\'s current value into the global scope so it survives across task runs</string>
+    <string name="catalog_action_var_persist_description" formatted="false">Copy a variable’s current value into the global scope so it survives across task runs</string>
     <string name="catalog_action_var_persist_field_name_label" formatted="false">Source variable</string>
     <string name="catalog_action_var_persist_field_name_hint" formatted="false">local variable name</string>
     <string name="catalog_action_var_persist_field_global_name_label" formatted="false">Global name</string>
@@ -81,7 +81,7 @@
     <string name="catalog_action_datetime_format_name" formatted="false">Format Date/Time</string>
     <string name="catalog_action_datetime_format_description" formatted="false">Format an epoch-millis time (or now) into a string</string>
     <string name="catalog_action_datetime_format_field_time_label" formatted="false">Time</string>
-    <string name="catalog_action_datetime_format_field_time_hint" formatted="false">epoch millis or \'now\' (default)</string>
+    <string name="catalog_action_datetime_format_field_time_hint" formatted="false">epoch millis or ’now’ (default)</string>
     <string name="catalog_action_datetime_format_field_format_label" formatted="false">Pattern</string>
     <string name="catalog_action_datetime_format_field_format_hint" formatted="false">default yyyy-MM-dd HH:mm:ss</string>
     <string name="catalog_action_datetime_format_field_zone_label" formatted="false">Time zone</string>
@@ -101,7 +101,7 @@
     <string name="catalog_action_datetime_add_name" formatted="false">Add to Date/Time</string>
     <string name="catalog_action_datetime_add_description" formatted="false">Add or subtract a duration from an epoch-millis time</string>
     <string name="catalog_action_datetime_add_field_time_label" formatted="false">Time</string>
-    <string name="catalog_action_datetime_add_field_time_hint" formatted="false">epoch millis or \'now\' (default)</string>
+    <string name="catalog_action_datetime_add_field_time_hint" formatted="false">epoch millis or ’now’ (default)</string>
     <string name="catalog_action_datetime_add_field_amount_label" formatted="false">Amount</string>
     <string name="catalog_action_datetime_add_field_amount_hint" formatted="false">integer, may be negative</string>
     <string name="catalog_action_datetime_add_field_unit_label" formatted="false">Unit</string>
@@ -579,7 +579,7 @@
     <string name="catalog_action_auth_device_credential_name" formatted="false">Confirm Device Credential</string>
     <string name="catalog_action_auth_device_credential_description" formatted="false">Ask Android to confirm the device PIN, pattern, or password. If no credential is configured, continue. If it is not confirmed, run the fallback Action and stop the original sequence.</string>
     <string name="catalog_action_auth_device_credential_field_title_label" formatted="false">Prompt title</string>
-    <string name="catalog_action_auth_device_credential_field_title_hint" formatted="false">Title shown on Android&apos;s system credential screen</string>
+    <string name="catalog_action_auth_device_credential_field_title_hint" formatted="false">Title shown on Android’s system credential screen</string>
     <string name="catalog_action_auth_device_credential_field_description_label" formatted="false">Prompt description</string>
     <string name="catalog_action_auth_device_credential_field_description_hint" formatted="false">Explain why the device credential is needed</string>
     <string name="catalog_action_auth_device_credential_field_fallback_label" formatted="false">Fallback Action</string>
