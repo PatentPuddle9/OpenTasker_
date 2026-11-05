@@ -135,7 +135,7 @@
     <string name="status_detected">Detected</string>
     <string name="status_optional">Optional</string>
     <string name="status_needs_setup">Needs setup</string>
-    <string name="status_unavailable">Couldn\'t check</string>
+    <string name="status_unavailable">Couldn’t check</string>
     <string name="status_granted">Granted</string>
     <string name="status_required">Required</string>
     <string name="status_pending">%1$d pending</string>
@@ -190,7 +190,7 @@
     <string name="setup_section_reliability">Reliability</string>
     <string name="setup_progress_percent">%1$d%%</string>
     <string name="setup_progress_ready_count">%1$d of %2$d ready</string>
-    <string name="setup_progress_loading">Checking what\'s set up…</string>
+    <string name="setup_progress_loading">Checking what’s set up…</string>
     <string name="title_execution_history">Execution history</string>
     <string name="title_starter_templates">Starter templates</string>
 
@@ -268,7 +268,7 @@
     <string name="profile_lifecycle_one_shot_consumed">This one-shot action has already run.</string>
     <string name="profile_lifecycle_missing_expiry">This action has no valid expiry date.</string>
     <string name="profile_lifecycle_expired">This action expired on %1$s.</string>
-    <string name="profile_lifecycle_suppressed_by_priority">Suppressed by higher-priority action \'%1$s\'.</string>
+    <string name="profile_lifecycle_suppressed_by_priority">Suppressed by higher-priority action ’%1$s’.</string>
     <string name="profile_retrigger_label">Re-trigger behavior</string>
     <string name="profile_new">New action</string>
     <string name="profile_delete">Delete Action</string>
@@ -453,7 +453,7 @@
     <string name="capability_scene_overlay">Requires Display over other apps access to show scene overlays.</string>
     <string name="capability_device_credential_overlay">Requires Display over other apps access so background automations can open Android&apos;s device credential screen.</string>
     <string name="setup_install_unknown_apps_title">Install unknown apps</string>
-    <string name="setup_install_unknown_apps_body">Allows OpenTasker to launch Android\'s installer for a downloaded APK, such as an app update. Android still asks you to confirm the installation; this does not allow silent installs.</string>
+    <string name="setup_install_unknown_apps_body">Allows OpenTasker to launch Android’s installer for a downloaded APK, such as an app update. Android still asks you to confirm the installation; this does not allow silent installs.</string>
     <string name="setup_install_unknown_apps_required_for">Installing downloaded APK updates</string>
     <string name="ui_message_run_busy">Something is already running. Wait for it to finish.</string>
     <string name="action_run_alone_busy">Running…</string>
@@ -476,7 +476,7 @@
     <string name="setup_write_settings_body">Special access that lets tasks change screen brightness and the screen timeout. Without it, both actions refuse to run rather than half-work.</string>
     <string name="setup_write_settings_required_for">Set brightness, Set screen timeout</string>
     <string name="setup_foreground_location_title">Foreground location</string>
-    <string name="setup_foreground_location_body">Needed for Location contexts and for reading Wi-Fi network names. Choose Precise when Android asks. Approximate location blurs your position too much for small geofences, and Android won\'t show Wi-Fi names with it.</string>
+    <string name="setup_foreground_location_body">Needed for Location contexts and for reading Wi-Fi network names. Choose Precise when Android asks. Approximate location blurs your position too much for small geofences, and Android won’t show Wi-Fi names with it.</string>
     <string name="setup_foreground_location_body_approximate">Only approximate location is allowed right now. Wi-Fi network names and small geofences need precise location, so tap Request and choose Precise.</string>
     <string name="setup_foreground_location_required_for">Location and Wi-Fi contexts</string>
     <string name="setup_activity_recognition_title">Physical activity</string>
@@ -1278,8 +1278,8 @@
     <string name="diagnostics_status_healthy">Engine healthy</string>
     <string name="diagnostics_status_attention">Needs attention</string>
     <string name="diagnostics_status_checking">Checking engine health…</string>
-    <string name="diagnostics_status_unavailable">Couldn\'t check engine health</string>
-    <string name="diagnostics_load_failed_title">Diagnostics couldn\'t be read</string>
+    <string name="diagnostics_status_unavailable">Couldn’t check engine health</string>
+    <string name="diagnostics_load_failed_title">Diagnostics couldn’t be read</string>
     <string name="diagnostics_load_failed_body">The health check failed or took too long to answer. Retry, and if it keeps failing, restart the app.</string>
     <string name="diagnostics_refresh">Refresh diagnostics</string>
     <string name="diagnostics_share">Share redacted report</string>
@@ -1466,18 +1466,18 @@
     <string name="header_settings_detail">App-wide behavior and recovery</string>
     <string name="setup_update_title">Release update checks</string>
     <string name="setup_update_beta_badge">BETA</string>
-    <string name="setup_update_body">Checks the selected GitHub branch for its latest published build. Download and install verifies that branch\'s APK before Android\'s installer opens.</string>
+    <string name="setup_update_body">Checks the selected GitHub branch for its latest published build. Download and install verifies that branch’s APK before Android’s installer opens.</string>
     <string name="setup_update_branch_label">Update source branch</string>
     <string name="setup_update_branch_body">Choose which branch OpenTasker checks and installs updates from.</string>
     <string name="setup_update_branch_non_main_title">A non-main branch is selected</string>
     <string name="setup_update_branch_non_main_warning">Updates are coming from %1$s, not the main Experimental branch. It may contain unfinished features or unstable builds.</string>
     <string name="setup_update_branch_loading">Loading available branches…</string>
-    <string name="setup_update_branch_failed">Couldn\'t load branches.</string>
+    <string name="setup_update_branch_failed">Couldn’t load branches.</string>
     <string name="setup_update_branch_retry">Retry</string>
     <string name="setup_update_check_now">Check for updates</string>
     <string name="setup_update_checking">Checking for updates…</string>
     <string name="setup_update_status_checking">Checking GitHub for a newer build on %1$s</string>
-    <string name="setup_update_status_failed">Couldn\'t check for updates. Check your connection and try again.</string>
+    <string name="setup_update_status_failed">Couldn’t check for updates. Check your connection and try again.</string>
     <string name="setup_update_enabled">Release update checks enabled</string>
     <string name="setup_update_disabled">Release update checks disabled</string>
     <string name="setup_update_status_off">Off</string>
@@ -1542,7 +1542,7 @@
     <string name="import_document_tasker_xml">Tasker XML file</string>
     <string name="import_document_tasker_macrodroid">Tasker XML or MacroDroid file</string>
     <string name="import_document_opentasker_bundle">OpenTasker bundle</string>
-    <string name="ui_error_document_unreadable">Couldn\'t open the selected %1$s.</string>
+    <string name="ui_error_document_unreadable">Couldn’t open the selected %1$s.</string>
     <string name="ui_error_document_too_large">The selected %1$s is larger than %2$d MB.</string>
     <string name="ui_error_write_settings_required">This automation needs Modify system settings. Open Setup, grant it, then try again.</string>
     <string name="run_log_source_profile">Action</string>
@@ -1628,7 +1628,7 @@
     <string name="ui_message_restore_staged">Restore staged. Restart OpenTasker to apply it.</string>
     <string name="ui_message_restore_cancelled">Staged restore cancelled</string>
     <string name="ui_message_no_staged_restore">There is no staged restore to cancel</string>
-    <string name="ui_message_no_restore_rollback">There\'s no earlier database to go back to.</string>
+    <string name="ui_message_no_restore_rollback">There’s no earlier database to go back to.</string>
     <string name="ui_message_run_status">%1$s %2$s (%3$dms)</string>
     <string name="ui_message_action_run_status">%1$s %2$s (%3$dms)</string>
     <string name="ui_message_run_replayed">Replayed %1$s: %2$s (%3$dms)</string>
@@ -1796,7 +1796,7 @@
     <string name="setup_companion_failed">Unable to start companion device association.</string>
     <string name="setup_companion_association_label">Paired device %1$d</string>
     <string name="setup_companion_removed">Removed %1$s. Use Associate a device to add it back.</string>
-    <string name="setup_companion_remove_failed">Couldn\'t remove %1$s.</string>
+    <string name="setup_companion_remove_failed">Couldn’t remove %1$s.</string>
     <string name="setup_locale_grants_title">Locale execution grants</string>
     <string name="setup_locale_grants_body">These grants let Locale-compatible hosts run one selected Action. Revoke a grant to block future runs without deleting the Action.</string>
     <string name="setup_locale_grants_empty">No Locale execution grants are issued.</string>
