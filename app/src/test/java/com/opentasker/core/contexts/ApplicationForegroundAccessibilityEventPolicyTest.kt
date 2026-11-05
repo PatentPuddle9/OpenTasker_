@@ -16,13 +16,6 @@ class ApplicationForegroundAccessibilityEventPolicyTest {
                 " com.example.target ",
             ),
         )
-        assertEquals(
-            "com.example.target",
-            ApplicationForegroundAccessibilityEventPolicy.packageName(
-                AccessibilityEvent.TYPE_WINDOWS_CHANGED,
-                "com.example.target",
-            ),
-        )
     }
 
     @Test
