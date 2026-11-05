@@ -30,6 +30,7 @@ class ActionFieldPolicyTest {
                     FieldType.TASK -> "7"
                     FieldType.APP -> "com.example.app"
                     FieldType.FILE -> "folder/file.txt"
+                    FieldType.SCENE -> "7"
                 }
                 assertNull(
                     "${metadata.id}.${field.key} rejected its representative value",
@@ -50,6 +51,17 @@ class ActionFieldPolicyTest {
         assertEquals(ActionFileScope.DEVICE_OR_URI, field?.fileRule?.scope)
         assertNull(ActionFieldPolicy.validate(requireNotNull(field), ""))
         assertNull(ActionFieldPolicy.validate(requireNotNull(field), "content://media/external/images/media/42"))
+    }
+
+    @Test
+    fun sceneFieldRequiresAPositiveSavedSceneId() {
+        val field = ActionField("scene_id", 1, FieldType.SCENE, required = true)
+
+        assertEquals(ActionFieldPolicy.Error.REQUIRED, ActionFieldPolicy.validate(field, "")?.error)
+        assertEquals(ActionFieldPolicy.Error.INVALID_SCENE, ActionFieldPolicy.validate(field, "0")?.error)
+        assertEquals(ActionFieldPolicy.Error.INVALID_SCENE, ActionFieldPolicy.validate(field, "-3")?.error)
+        assertEquals(ActionFieldPolicy.Error.INVALID_SCENE, ActionFieldPolicy.validate(field, "not-a-scene")?.error)
+        assertNull(ActionFieldPolicy.validate(field, "12"))
     }
 
     @Test
