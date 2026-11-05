@@ -80,6 +80,11 @@ class TaskWidgetConfigPolishSourceTest {
 
         assertTrue("The shared icon picker should use a lazy grid", picker.contains("LazyVerticalGrid"))
         assertTrue("The picker should provide stable keys for catalog entries", picker.contains("items(filteredIcons, key = { it.key })"))
+        assertTrue("Picker thumbnails should be produced asynchronously", picker.contains("produceState<ImageBitmap?>"))
+        assertTrue("Vector rasterization must run off the UI thread", picker.contains("withContext(Dispatchers.Default)"))
+        assertTrue("Picker thumbnails should be cached across scrolling", picker.contains("LruCache<Int, ImageBitmap>"))
+        assertFalse("Picker cells must not inflate vector painters while scrolling", picker.contains("painterResource(option.drawableRes)"))
+        assertTrue("Picker cells should render cached bitmap thumbnails", picker.contains("bitmap = thumbnail!!"))
         assertFalse("Profile editing must not compose every icon into a FlowRow", profileEditor.contains("WidgetIconCatalog.all.forEach"))
         assertTrue("Profile editing should open the lazy icon picker", profileEditor.contains("ActionIconPickerDialog"))
         assertFalse("Widget editing must not eagerly filter and compose every vector icon", widgetConfig.contains("val visibleIcons = WidgetIconCatalog.all.filter"))
