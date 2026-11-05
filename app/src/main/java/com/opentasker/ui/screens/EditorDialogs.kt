@@ -95,7 +95,6 @@ import com.opentasker.feature.automation.AutomationBlueprintInputField
 import com.opentasker.feature.automation.AutomationInputKeyboard
 import com.opentasker.ui.theme.DesignSystem
 import com.opentasker.ui.theme.selectedContainerColor
-import com.opentasker.widget.CustomWidgetIconStore
 import com.opentasker.widget.WidgetIconCatalog
 import java.time.Instant
 import java.time.LocalDate
@@ -413,14 +412,11 @@ internal fun ProfileEditorDialog(
     var gracePeriod by rememberSaveable(profile?.id) { mutableStateOf((profile?.gracePeriodSec ?: 0).toString()) }
     var automationMode by rememberSaveable(profile?.id) { mutableStateOf(profile?.automationMode ?: AutomationMode.SINGLE) }
     var group by rememberSaveable(profile?.id) { mutableStateOf(profile?.group.orEmpty()) }
-    val customIcons by CustomWidgetIconStore.observe(LocalContext.current.applicationContext).collectAsState()
     var selectedIcon by rememberSaveable(profile?.id) {
         mutableStateOf(
             WidgetIconCatalog.resolveKey(profile?.icon),
         )
     }
-    val selectedIconLabel = customIcons.firstOrNull { it.key == selectedIcon }?.name
-        ?: WidgetIconCatalog.labelFor(selectedIcon)
     var showIconPicker by rememberSaveable(profile?.id) { mutableStateOf(false) }
     var lifetimeName by rememberSaveable(profile?.id) {
         mutableStateOf((profile?.lifetime ?: ProfileLifetime.NEVER).name)
@@ -549,7 +545,7 @@ internal fun ProfileEditorDialog(
                             modifier = Modifier.size(22.dp),
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text("Choose icon: $selectedIconLabel")
+                        Text("Choose icon: ${WidgetIconCatalog.labelFor(selectedIcon)}")
                     }
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),

@@ -88,41 +88,6 @@ object CustomWidgetIconStore {
 
     suspend fun add(
         context: Context,
-        croppedImage: Bitmap,
-        name: String,
-        recolorable: Boolean,
-    ): CustomWidgetIcon = withContext(Dispatchers.IO) {
-        require(croppedImage.width == croppedImage.height) {
-            "Custom icons must be cropped to a square before saving."
-        }
-        require(croppedImage.width in 1..2048) {
-            "Cropped icons must be 2048 pixels square or smaller."
-        }
-        val app = context.applicationContext
-        val cleanedName = name.trim().take(48)
-        require(cleanedName.isNotBlank()) { "Give the icon a name first." }
-        val icons = observe(app).value
-        require(icons.size < MAX_ICONS) { "You can save up to $MAX_ICONS custom icons." }
-        val id = UUID.randomUUID().toString()
-        val target = iconFile(app, id)
-        try {
-            target.outputStream().buffered().use { output ->
-                check(croppedImage.compress(Bitmap.CompressFormat.PNG, 100, output)) {
-                    "Could not encode the cropped icon."
-                }
-            }
-            val icon = CustomWidgetIcon(id = id, name = cleanedName, recolorable = recolorable)
-            save(app, icons + icon)
-            icon
-        } catch (error: Exception) {
-            target.delete()
-            throw error
-        }
-    }
-
-    /** Legacy image import path retained for older callers. */
-    suspend fun add(
-        context: Context,
         source: Uri,
         name: String,
         recolorable: Boolean,
@@ -132,7 +97,7 @@ object CustomWidgetIconStore {
         require(cleanedName.isNotBlank()) { "Give the icon a name first." }
 
         val icons = observe(app).value
-        require(icons.size < MAX_ICONS) { "You can save up to $MAX_ICONS custom icons." }
+        require(icons.size < MAX_ICONS) { "You can save up to $MAX_ICONS popup icons." }
 
         val id = UUID.randomUUID().toString()
         val target = iconFile(app, id)
@@ -252,7 +217,7 @@ object CustomWidgetIconStore {
 
     private fun iconDirectory(context: Context): File =
         File(context.applicationContext.filesDir, "custom_icons").apply {
-            if (!exists() && !mkdirs()) throw IOException("Could not create the custom icon folder.")
+            if (!exists() && !mkdirs()) throw IOException("Could not create the popup icon folder.")
         }
 
     private fun iconFile(context: Context, id: String): File =

@@ -24,7 +24,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -39,9 +38,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.opentasker.ui.icons.WidgetIconImage
-import com.opentasker.widget.CustomWidgetIcon
-import com.opentasker.widget.CustomWidgetIconStore
 import com.opentasker.widget.WidgetIconCatalog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -86,15 +82,6 @@ private object WidgetIconThumbnailCache {
  * thumbnail prepared off the main thread so quick flings do not inflate hundreds of vector files
  * during frame rendering.
  */
-
-private data class IconPickerChoice(
-    val key: String,
-    val label: String,
-    val drawableRes: Int? = null,
-    val customIcon: CustomWidgetIcon? = null,
-)
-
-/** One searchable chooser for the complete built-in and custom icon library. */
 @Composable
 internal fun ActionIconPickerDialog(
     selectedIcon: String,
@@ -103,31 +90,28 @@ internal fun ActionIconPickerDialog(
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val context = LocalContext.current.applicationContext
-    val customIcons by CustomWidgetIconStore.observe(context).collectAsState()
-    val choices = remember(customIcons, searchQuery) {
-        (WidgetIconCatalog.all.map { IconPickerChoice(it.key, it.label, drawableRes = it.drawableRes) } +
-            customIcons.map { IconPickerChoice(it.key, it.name, customIcon = it) })
-            .filter { choice ->
-                searchQuery.isBlank() ||
-                    choice.label.contains(searchQuery, ignoreCase = true) ||
-                    choice.key.contains(searchQuery, ignoreCase = true)
-            }
+    val filteredIcons = remember(searchQuery) {
+        WidgetIconCatalog.all.filter { option ->
+            searchQuery.isBlank() ||
+                option.label.contains(searchQuery, ignoreCase = true) ||
+                option.key.contains(searchQuery, ignoreCase = true)
+        }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Choose icon") },
+        title = { Text("Choose action icon") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Search icons") },
+                    label = { Text("Search all Coolicons") },
                     singleLine = true,
                 )
                 Text(
-                    "${choices.size} matching icons",
+                    "${filteredIcons.size} matching icons",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -138,17 +122,17 @@ internal fun ActionIconPickerDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(choices, key = { it.key }) { choice ->
-                        val selected = choice.key == selectedIcon
+                    items(filteredIcons, key = { it.key }) { option ->
+                        val selected = option.key == selectedIcon
                         val thumbnail by produceState<ImageBitmap?>(
                             initialValue = null,
-                            choice.drawableRes,
+                            option.drawableRes,
                         ) {
-                            value = choice.drawableRes?.let { WidgetIconThumbnailCache.get(context, it) }
+                            value = WidgetIconThumbnailCache.get(context, option.drawableRes)
                         }
                         Surface(
                             modifier = Modifier.size(48.dp).clickable {
-                                onIconSelected(choice.key)
+                                onIconSelected(option.key)
                                 onDismiss()
                             },
                             shape = RoundedCornerShape(12.dp),
@@ -161,18 +145,10 @@ internal fun ActionIconPickerDialog(
                             ),
                         ) {
                             androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
-                                if (choice.customIcon != null) {
-                                    WidgetIconImage(
-                                        iconKey = choice.key,
-                                        contentDescription = choice.label,
-                                        tint = if (selected) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.size(28.dp),
-                                    )
-                                } else if (thumbnail != null) {
+                                if (thumbnail != null) {
                                     Image(
                                         bitmap = thumbnail!!,
-                                        contentDescription = choice.label,
+                                        contentDescription = option.label,
                                         colorFilter = ColorFilter.tint(
                                             if (selected) MaterialTheme.colorScheme.primary
                                             else MaterialTheme.colorScheme.onSurface,
@@ -183,10 +159,13 @@ internal fun ActionIconPickerDialog(
                             }
                         }
                     }
+
                 }
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        },
     )
 }

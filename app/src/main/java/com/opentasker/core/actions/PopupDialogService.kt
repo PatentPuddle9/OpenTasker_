@@ -2,9 +2,7 @@ package com.opentasker.core.actions
 
 import android.app.AlertDialog
 import android.app.Service
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.content.DialogInterface
@@ -21,7 +19,6 @@ import com.opentasker.core.external.AutomationTargetContract
 import com.opentasker.core.external.InternalTaskRunSource
 import com.opentasker.core.logging.AppLogger
 import com.opentasker.widget.CustomWidgetIconStore
-import com.opentasker.widget.WidgetIconCatalog
 
 /**
  * Hosts a modal dialog as an application-overlay window.
@@ -131,21 +128,10 @@ class PopupDialogService : Service() {
      */
     private fun loadPopupIcon(rawUri: String?, themedContext: ContextThemeWrapper): BitmapDrawable? {
         val value = rawUri?.trim()?.takeIf { it.isNotEmpty() } ?: return null
-        val accent = TypedValue()
-        val tintColor = if (themedContext.theme.resolveAttribute(android.R.attr.colorAccent, accent, true)) accent.data else android.graphics.Color.WHITE
         if (CustomWidgetIconStore.idFromKey(value) != null) {
+            val accent = TypedValue()
+            val tintColor = if (themedContext.theme.resolveAttribute(android.R.attr.colorAccent, accent, true)) accent.data else android.graphics.Color.WHITE
             val bitmap = CustomWidgetIconStore.loadBitmapForPopup(this, value, tintColor, 96) ?: return null
-            return BitmapDrawable(resources, bitmap)
-        }
-        WidgetIconCatalog.findBuiltIn(value)?.let { option ->
-            val drawable = themedContext.getDrawable(option.drawableRes)?.mutate() ?: return null
-            drawable.setTint(tintColor)
-            val size = 96
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            Canvas(bitmap).also { canvas ->
-                drawable.setBounds(0, 0, size, size)
-                drawable.draw(canvas)
-            }
             return BitmapDrawable(resources, bitmap)
         }
         // Older actions may still contain a document URI from the former editor upload field.

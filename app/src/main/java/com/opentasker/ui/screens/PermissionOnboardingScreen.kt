@@ -901,7 +901,7 @@ fun PermissionOnboardingScreen(
                     onSelectAccent = setupViewModel::setAccentColor,
                 )
             }
-            item { CustomIconsSettingsCard() }
+            item { PopupIconsSettingsCard() }
             item {
                 ActionResultNotificationsCard(
                     enabled = actionResultNotificationsEnabled,

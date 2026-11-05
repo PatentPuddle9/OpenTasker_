@@ -3,7 +3,7 @@ package com.opentasker.widget
 import androidx.annotation.DrawableRes
 import com.opentasker.app.R
 
-/** One icon choice backed by a local vector drawable. */
+/** One icon choice backed by a local Coolicons vector drawable. */
 data class WidgetIconOption(
     val key: String,
     val label: String,
@@ -11,7 +11,7 @@ data class WidgetIconOption(
 )
 
 object WidgetIconCatalog {
-    /** The original OpenTasker bolt plus every one of the 442 bundled icons. */
+    /** The original OpenTasker bolt plus every one of the 442 Coolicons v4.1 icons. */
     val all: List<WidgetIconOption> = listOf(
         WidgetIconOption("bolt", "Bolt", R.drawable.ic_widget_bolt),
         WidgetIconOption("add-column", "Add Column", R.drawable.ic_coolicon_add_column),
@@ -484,18 +484,14 @@ object WidgetIconCatalog {
         "close" to "close-md",
     )
 
-    /** Preserves custom image keys while normalizing bundled and legacy icon values. */
-    fun resolveKey(value: String?): String =
-        value?.takeIf { CustomWidgetIconStore.idFromKey(it) != null } ?: resolve(value).key
+    /** Normalizes bundled and legacy values to a built-in Coolicons key. */
+    fun resolveKey(value: String?): String = resolve(value).key
 
-    fun labelFor(value: String?): String =
-        if (CustomWidgetIconStore.idFromKey(value) != null) "Custom icon" else resolve(value).label
+    fun labelFor(value: String?): String = resolve(value).label
 
-    fun findBuiltIn(value: String?): WidgetIconOption? {
+    /** Converts saved icon values from earlier OpenTasker builds to the matching Coolicons key. */
+    fun resolve(value: String?): WidgetIconOption {
         val key = value?.let { legacyKeys[it] ?: it }
-        return key?.let(iconsByKey::get)
+        return key?.let(iconsByKey::get) ?: default
     }
-
-    /** Converts saved icon values from earlier OpenTasker builds to the matching built-in key. */
-    fun resolve(value: String?): WidgetIconOption = findBuiltIn(value) ?: default
 }

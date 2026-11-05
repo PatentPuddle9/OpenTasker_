@@ -86,7 +86,7 @@ internal fun SquareImageCropDialog(
                         modifier = Modifier.size(248.dp)
                             .clip(RoundedCornerShape(16.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .pointerInput(bitmap, zoom) {
+                            .pointerInput(bitmap) {
                                 detectTransformGestures { _, pan, zoomChange, _ ->
                                     val nextZoom = (zoom * zoomChange).coerceIn(1f, 5f)
                                     zoom = nextZoom
