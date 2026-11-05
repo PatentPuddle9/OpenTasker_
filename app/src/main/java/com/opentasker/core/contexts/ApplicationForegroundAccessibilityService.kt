@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.provider.Settings
 import android.view.accessibility.AccessibilityEvent
+import com.opentasker.core.logging.AppLogger
 
 /**
  * Event-driven foreground-app observation for Application contexts.
@@ -15,6 +16,11 @@ import android.view.accessibility.AccessibilityEvent
  */
 class ApplicationForegroundAccessibilityService : AccessibilityService() {
 
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        AppLogger.info(TAG, "Instant app detection AccessibilityService connected")
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         event ?: return
         val packageName = ApplicationForegroundAccessibilityEventPolicy.packageName(
@@ -22,15 +28,24 @@ class ApplicationForegroundAccessibilityService : AccessibilityService() {
             packageName = event.packageName,
         ) ?: return
 
+        val previousPackage = ApplicationContextEvents.latestObservedPackage()
         ApplicationContextEvents.publishForeground(
             packageName = packageName,
             className = event.className?.toString(),
         )
+        if (previousPackage != packageName) {
+            AppLogger.debug(
+                TAG,
+                "Accessibility window transition: " + (previousPackage ?: "(none)") + " -> " + packageName,
+            )
+        }
     }
 
     override fun onInterrupt() = Unit
 
     companion object {
+        private const val TAG = "AppDetection"
+
         /** Reads the explicit user grant shown in Android's Accessibility settings. */
         fun isEnabled(context: Context): Boolean {
             val component = ComponentName(context, ApplicationForegroundAccessibilityService::class.java)
