@@ -9,10 +9,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -32,7 +32,7 @@ jobs:
       - name: Accept licenses and install packages
         run: |
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          sdkmanager "platform-tools" "build-tools;36.0.0"
+          sdkmanager "platform-tools" "platforms;android-37" "build-tools;36.0.0"
 
       - name: Calculate unique app version
         id: version
@@ -67,7 +67,7 @@ jobs:
           echo "This run will build OpenTasker v$version_name (Android versionCode $version_code)."
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
