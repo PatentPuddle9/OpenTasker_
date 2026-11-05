@@ -96,6 +96,7 @@ internal fun buildPermissionItems(
     val instantAppDetection = probes.granted("instant app detection") {
         ApplicationForegroundAccessibilityService.isEnabled(context)
     }
+    val instantAppDetectionConnected = ApplicationForegroundAccessibilityService.isConnected()
     val notificationAccess = probes.granted("notification access") { hasNotificationListenerAccess(context) }
     val overlay = probes.granted("display over other apps") { Settings.canDrawOverlays(context) }
     val installUnknownApps = probes.granted("install unknown apps") {
@@ -190,8 +191,14 @@ internal fun buildPermissionItems(
         ),
         PermissionSetupItem(
             title = context.getString(R.string.setup_app_detection_accessibility_title),
-            body = context.getString(R.string.setup_app_detection_accessibility_body),
-            granted = instantAppDetection == true,
+            body = context.getString(
+                if (instantAppDetection == true && !instantAppDetectionConnected) {
+                    R.string.setup_app_detection_accessibility_not_connected
+                } else {
+                    R.string.setup_app_detection_accessibility_body
+                },
+            ),
+            granted = instantAppDetection == true && instantAppDetectionConnected,
             unavailable = instantAppDetection == null,
             actionLabel = openSettings,
             action = PermissionAction.SettingsIntent(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)),
