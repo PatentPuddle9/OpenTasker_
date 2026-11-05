@@ -31,7 +31,8 @@ class TaskWidgetCustomizationTest {
     @Test
     fun customizationScreenIncludesActionNameIconColorGradientAndPreviewControls() {
         val source = sourceRoot.resolve("com/opentasker/widget/TaskWidgetConfigActivity.kt").readText()
-        assertTrue(source.contains("WidgetIconCatalog.all"))
+        assertTrue(source.contains("ActionIconPickerDialog"))
+        assertTrue(source.contains("WidgetIconCatalog.resolveKey"))
         assertTrue(source.contains("WidgetColorEditor"))
         assertTrue(source.contains("HEX color"))
         assertTrue(source.contains("Switch(checked = useGradient"))
