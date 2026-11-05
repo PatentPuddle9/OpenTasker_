@@ -102,6 +102,28 @@ class ContextMatchEvaluatorTest {
     }
 
     @Test
+    fun applicationInstallUpdateAndRemovalConditionsMatchSelectedPackage() {
+        val installed = ContextSpec(
+            ContextType.APPLICATION,
+            mapOf("package" to "com.example.target", "condition" to "installed"),
+        )
+        val updated = installed.copy(config = installed.config + ("condition" to "updated"))
+        val uninstalled = installed.copy(config = installed.config + ("condition" to "uninstalled"))
+
+        val installEvent = ContextEvent("app", true, mapOf("event" to "package_added", "package" to "com.example.target"))
+        val updateEvent = ContextEvent("app", true, mapOf("event" to "package_replaced", "package" to "com.example.target"))
+        val removeEvent = ContextEvent("app", true, mapOf("event" to "package_removed", "package" to "com.example.target"))
+        val otherPackage = installEvent.copy(metadata = installEvent.metadata + ("package" to "com.example.other"))
+
+        assertTrue(ContextMatchEvaluator.matches(installed, installEvent))
+        assertTrue(ContextMatchEvaluator.matches(updated, updateEvent))
+        assertTrue(ContextMatchEvaluator.matches(uninstalled, removeEvent))
+        assertFalse(ContextMatchEvaluator.matches(installed, otherPackage))
+        assertFalse(ContextMatchEvaluator.matches(updated, installEvent))
+        assertFalse(ContextMatchEvaluator.matches(uninstalled, updateEvent))
+    }
+
+    @Test
     fun timeContextHonorsConfiguredWindowIncludingOvernightRanges() {
         val daytime = ContextSpec(ContextType.TIME, config = mapOf("start" to "09:00", "end" to "17:30"))
         val overnight = ContextSpec(ContextType.TIME, config = mapOf("start" to "22:00", "end" to "06:00"))
