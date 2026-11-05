@@ -32,7 +32,7 @@ jobs:
       - name: Accept licenses and install packages
         run: |
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          sdkmanager "platform-tools" "platforms;android-37" "build-tools;36.0.0"
+          sdkmanager "platform-tools" "build-tools;36.0.0"
 
       - name: Calculate unique app version
         id: version
