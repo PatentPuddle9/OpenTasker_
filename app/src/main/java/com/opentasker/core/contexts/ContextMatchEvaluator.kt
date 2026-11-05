@@ -44,17 +44,29 @@ object ContextMatchEvaluator {
     }
 
     private fun matchesApplication(spec: ContextSpec, event: ContextEvent): Boolean {
-        val foreground = event.metadata["foreground"].orEmpty().ifBlank { event.metadata["package"].orEmpty() }
-        val previousForeground = event.metadata["previous_foreground"].orEmpty()
         val configuredPackages = firstConfig(spec, "package", "packages", "apps")
             .splitCsv()
             .map { it.lowercase(Locale.US) }
             .toSet()
         if (configuredPackages.isEmpty()) return false
 
+        val condition = spec.config["condition"]?.trim()?.lowercase(Locale.US)
+        val eventName = event.metadata["event"].orEmpty().lowercase(Locale.US)
+        val changedPackage = event.metadata["package"].orEmpty().lowercase(Locale.US)
+        when (condition) {
+            "installed" -> return eventName == "package_added" && changedPackage in configuredPackages
+            "updated" -> return eventName == "package_replaced" && changedPackage in configuredPackages
+            "uninstalled" -> return eventName == "package_removed" && changedPackage in configuredPackages
+        }
+
+        // Package lifecycle pulses share the Application source, but must never satisfy a
+        // foreground condition simply because they have no foreground package metadata.
+        if (eventName.isNotBlank() && eventName != "application") return false
+        val foreground = event.metadata["foreground"].orEmpty()
+        val previousForeground = event.metadata["previous_foreground"].orEmpty()
         val currentMatches = foreground.lowercase(Locale.US) in configuredPackages
         val previousMatches = previousForeground.lowercase(Locale.US) in configuredPackages
-        return when (spec.config["condition"]?.trim()?.lowercase(Locale.US)) {
+        return when (condition) {
             "opened" -> currentMatches && event.metadata["transition"] == "opened"
             "closed" -> previousMatches && !currentMatches
             "not_foreground" -> !currentMatches
