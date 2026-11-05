@@ -233,6 +233,24 @@
             </intent-filter>
         </service>
 
+        <!--
+            Optional event-driven app-switch listener. It receives only window transition events;
+            its XML explicitly disables access to window content.
+        -->
+        <service
+            android:name="com.opentasker.core.contexts.ApplicationForegroundAccessibilityService"
+            android:description="@string/application_foreground_accessibility_service_description"
+            android:exported="true"
+            android:label="@string/application_foreground_accessibility_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/application_foreground_accessibility_service" />
+        </service>
+
         <service
             android:name="com.opentasker.core.contexts.CompanionPresenceService"
             android:exported="true"
