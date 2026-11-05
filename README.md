@@ -64,7 +64,7 @@
 
 - Time/day schedules with presets, aliases, and ranges
 - Device state (battery, charging, headphones, screen, media playback, airplane, power save, Wi-Fi SSID, orientation, proximity, physical activity, speed, roaming, tethering, and phone-call state); sensor/GPS/phone callbacks are demand-gated per profile
-- App foreground detection via UsageStats, with optional exact/glob Activity component matching and explicit unavailable-component reporting
+- App foreground detection via direct Accessibility window events, with UsageStats recovery polling when Usage Access is granted; optional exact/glob Activity component matching and explicit unavailable-component reporting
 - Wi-Fi and data/internet connectivity via NetworkCallback
 - Notification listener with package/title/body filters
 - NFC tag scans with normalized ID matching and a one-time NDEF write helper
