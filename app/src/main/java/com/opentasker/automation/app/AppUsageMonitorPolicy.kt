@@ -7,15 +7,15 @@ internal enum class AppUsagePollAction {
 }
 
 /**
- * There must be exactly one foreground-app authority at a time. When the user enables the
- * Accessibility listener, its real window callbacks take precedence over the UsageStats fallback.
- * Otherwise the fallback can overwrite a just-received "opened" transition with a stale snapshot.
+ * There must be exactly one foreground-app authority at a time. Only a live, system-connected
+ * AccessibilityService takes precedence over UsageStats. A setting that merely says "enabled"
+ * does not prove Android has actually bound the service.
  */
 internal fun appUsagePollAction(
     hasUsageAccess: Boolean,
-    accessibilityServiceEnabled: Boolean = false,
+    accessibilityServiceConnected: Boolean = false,
 ): AppUsagePollAction = when {
-    accessibilityServiceEnabled -> AppUsagePollAction.WAIT_FOR_ACCESSIBILITY_EVENTS
+    accessibilityServiceConnected -> AppUsagePollAction.WAIT_FOR_ACCESSIBILITY_EVENTS
     hasUsageAccess -> AppUsagePollAction.QUERY_FOREGROUND
     else -> AppUsagePollAction.PAUSE_FOR_MISSING_ACCESS
 }
