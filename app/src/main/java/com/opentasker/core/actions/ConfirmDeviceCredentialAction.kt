@@ -20,11 +20,9 @@ class ConfirmDeviceCredentialAction : DeclaredAction(ActionCatalog.require(ACTIO
         } catch (error: Exception) {
             return ActionResult.Failure(
                 "Could not check the device's security settings: ${error.message}",
-                fallbackTaskId = fallbackTaskId,
             )
         } ?: return ActionResult.Failure(
             "Android's device security service is unavailable.",
-            fallbackTaskId = fallbackTaskId,
         )
 
         val hasDeviceCredential = try {
@@ -32,7 +30,6 @@ class ConfirmDeviceCredentialAction : DeclaredAction(ActionCatalog.require(ACTIO
         } catch (error: Exception) {
             return ActionResult.Failure(
                 "Could not check whether a device credential is configured: ${error.message}",
-                fallbackTaskId = fallbackTaskId,
             )
         }
 
@@ -49,13 +46,11 @@ class ConfirmDeviceCredentialAction : DeclaredAction(ActionCatalog.require(ACTIO
         } catch (error: Exception) {
             return ActionResult.Failure(
                 "Could not check Display over other apps access: ${error.message}",
-                fallbackTaskId = fallbackTaskId,
             )
         }
         if (!canStartSystemPrompt) {
             return ActionResult.Failure(
                 "Display over other apps access is required to request device credential confirmation from an automation.",
-                fallbackTaskId = fallbackTaskId,
             )
         }
 
@@ -69,6 +64,9 @@ class ConfirmDeviceCredentialAction : DeclaredAction(ActionCatalog.require(ACTIO
             is DeviceCredentialPromptResult.Rejected -> ActionResult.Failure(
                 "Device credential was not confirmed: ${outcome.reason}",
                 fallbackTaskId = fallbackTaskId,
+            )
+            is DeviceCredentialPromptResult.Unavailable -> ActionResult.Failure(
+                "Android could not present the device credential prompt: ${outcome.reason}",
             )
         }
     }
