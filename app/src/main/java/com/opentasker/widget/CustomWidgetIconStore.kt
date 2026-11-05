@@ -264,12 +264,11 @@ object CustomWidgetIconStore {
         if (!file.isFile) return null
         val targetSize = maxDimensionPx.coerceIn(32, 512)
         val cacheKey = "${icon.id}:${file.lastModified()}:$targetSize"
-        synchronized(bitmapCache) {
-            bitmapCache.get(cacheKey)?.let { return it }
-            val decoded = decodeFileSampled(file, targetSize) ?: return null
-            bitmapCache.put(cacheKey, decoded)
-            return decoded
-        }
+        // LruCache synchronizes get/put internally. Decode outside its lock so opening a
+        // Custom category with several icons does not serialize file reads and bitmap decoding.
+        bitmapCache.get(cacheKey)?.let { return it }
+        val decoded = decodeFileSampled(file, targetSize) ?: return null
+        return bitmapCache.get(cacheKey) ?: decoded.also { bitmapCache.put(cacheKey, it) }
     }
 
     private fun decodeFileSampled(file: File, maxDimensionPx: Int): Bitmap? {
