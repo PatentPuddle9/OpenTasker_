@@ -61,15 +61,15 @@ internal class ProfileMatcher(
             return emptyFlow()
         }
 
-        val pulseContextCount = profile.contexts.count { it.type == ContextType.EVENT }
+        val pulseContextCount = profile.contexts.count(::isPulseContext)
         val hasPulseContexts = pulseContextCount > 0
         if (!hasPulseContexts) monitorSubscriptionsReady.complete(Unit)
         val flows = profile.contexts.mapIndexed { index, spec ->
             val sourceType = ContextMatchEvaluator.sourceKey(spec.type)
             val source = sourceType?.let(ContextSourceRegistry::get)
             if (source != null) {
-                val isPulseContext = spec.type == ContextType.EVENT
-                val sourceEvents = if (isPulseContext && source is EventDemandContextSource) {
+                val pulseContext = isPulseContext(spec)
+                val sourceEvents = if (pulseContext && source is EventDemandContextSource) {
                     source.events(app, spec.config["event"]) {
                         markPulseContextSubscribed(index, pulseContextCount)
                     }
@@ -78,16 +78,16 @@ internal class ProfileMatcher(
                     // key, subscribe to nothing physical rather than everything - null here means
                     // "the Inspector wants all keys".
                     source.events(app, stateContextKey(spec) ?: UNRESOLVED_STATE_KEY)
-                } else if (isPulseContext && source is SubscriptionReadyContextSource) {
+                } else if (pulseContext && source is SubscriptionReadyContextSource) {
                     source.events(app) { markPulseContextSubscribed(index, pulseContextCount) }
                 } else {
-                    if (isPulseContext) markPulseContextSubscribed(index, pulseContextCount)
+                    if (pulseContext) markPulseContextSubscribed(index, pulseContextCount)
                     source.events(app)
                 }
                 sourceEvents.scan(
                     ContextMatchUpdate.initial(
-                        pulseContext = isPulseContext,
-                        pulseSequence = if (isPulseContext) pulseContinuity.currentSequence() else 0L,
+                        pulseContext = pulseContext,
+                        pulseSequence = if (pulseContext) pulseContinuity.currentSequence() else 0L,
                     ),
                 ) { previous, event ->
                     if (spec.type == ContextType.PLUGIN &&
@@ -103,7 +103,7 @@ internal class ProfileMatcher(
                         event
                     }
                     val identityEvent = ContextMatchEvaluator.withStablePulseIdentity(spec, preparedEvent)
-                    val pulseObservation = if (isPulseContext) {
+                    val pulseObservation = if (pulseContext) {
                         pulseContinuity.observe(index, identityEvent)
                     } else {
                         null
@@ -113,21 +113,21 @@ internal class ProfileMatcher(
                     val effectiveMatched = if (spec.invert) !matched else matched
                     ContextMatchUpdate(
                         matched = effectiveMatched,
-                        pulseContext = isPulseContext,
+                        pulseContext = pulseContext,
                         pulseSequence = pulseSequenceAfterObservation(
                             matched = matched,
                             observedSequence = pulseObservation?.sequence,
                             previousSequence = previous.pulseSequence,
                         ),
-                        event = if (isPulseContext && effectiveMatched) identityEvent else null,
+                        event = if (pulseContext && effectiveMatched) identityEvent else null,
                     )
                 }.onEach { update ->
                     AutomationLiveConditionState.updateContext(profile.id, index, update.matched)
                 }
             } else {
                 AppLogger.warn(tag, "No context source registered for ${spec.type}; treating as non-matching")
-                if (spec.type == ContextType.EVENT) markPulseContextSubscribed(index, pulseContextCount)
-                flowOf(ContextMatchUpdate.initial(spec.type == ContextType.EVENT)).onEach { update ->
+                if (isPulseContext(spec)) markPulseContextSubscribed(index, pulseContextCount)
+                flowOf(ContextMatchUpdate.initial(isPulseContext(spec))).onEach { update ->
                     AutomationLiveConditionState.updateContext(profile.id, index, update.matched)
                 }
             }
@@ -251,6 +251,19 @@ internal fun stabilizeProfileSnapshots(
     } else {
         lifecycleSnapshots
     }
+}
+
+/**
+ * Application "Opens" and "Closes" are edge events, not persistent foreground levels.
+ * They use pulse semantics so a new app transition can activate an Action even when another
+ * context already keeps the profile's aggregate expression true.
+ */
+internal fun isPulseContext(spec: ContextSpec): Boolean {
+    if (spec.type == ContextType.EVENT) return true
+    if (spec.type != ContextType.APPLICATION) return false
+    val condition = spec.config["condition"]?.trim()
+    return condition.equals("opened", ignoreCase = true) ||
+        condition.equals("closed", ignoreCase = true)
 }
 
 internal data class ContextMatchUpdate(
