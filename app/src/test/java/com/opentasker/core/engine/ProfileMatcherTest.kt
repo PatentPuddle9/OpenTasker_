@@ -16,6 +16,35 @@ import org.junit.Test
 
 class ProfileMatcherTest {
     @Test
+    fun syntheticApplicationOpenAndCloseContextsUsePulseSemantics() {
+        val matcher = ProfileMatcher(
+            app = android.test.mock.MockContext(),
+            profile = com.opentasker.core.model.Profile(
+                id = 50,
+                name = "Application pulse",
+                enterTaskId = 1,
+                contexts = listOf(
+                    ContextSpec(ContextType.APPLICATION, mapOf("package" to "com.example", "condition" to "opened")),
+                ),
+            ),
+        )
+        val event = ContextEvent(
+            type = "app",
+            matched = true,
+            metadata = mapOf(
+                "foreground" to "com.example",
+                "previous_foreground" to "com.launcher",
+                "transition" to "opened",
+            ),
+        )
+
+        val snapshot = matcher.evaluateSyntheticEvents(mapOf(0 to event))
+
+        assertEquals(1L, snapshot.pulseSequence)
+        assertTrue(snapshot.allMatched)
+    }
+
+    @Test
     fun applicationOpenAndCloseConditionsArePulseContexts() {
         assertTrue(
             isPulseContext(ContextSpec(ContextType.APPLICATION, mapOf("condition" to "opened"))),
