@@ -178,6 +178,8 @@
     <string name="about_report">Report a problem</string>
     <string name="about_report_body">Opens a new issue with your build and device already filled in. If you can, paste in the report from the Diagnostics screen too.</string>
     <string name="scenes_search_hint">Search scenes</string>
+    <string name="action_scene_picker_select">Choose a scene</string>
+    <string name="action_scene_picker_empty">Create a scene in the Scenes section before using this action.</string>
     <string name="scenes_no_matches_title">No matching scenes</string>
     <string name="scenes_no_matches_body">Try another search or clear the current query.</string>
     <string name="diagnostics_show_details">Show details</string>
@@ -448,6 +450,7 @@
     <string name="setup_overlay_access_body">Needed for scene overlays, popup dialogs and controls displayed over other apps.</string>
     <string name="setup_overlay_access_required_for">Scenes, popup dialogs, overlay UI</string>
     <string name="capability_popup_dialog_overlay">Requires Display over other apps access to show popup dialogs.</string>
+    <string name="capability_scene_overlay">Requires Display over other apps access to show scene overlays.</string>
     <string name="setup_install_unknown_apps_title">Install unknown apps</string>
     <string name="setup_install_unknown_apps_body">Allows OpenTasker to launch Android\'s installer for a downloaded APK, such as an app update. Android still asks you to confirm the installation; this does not allow silent installs.</string>
     <string name="setup_install_unknown_apps_required_for">Installing downloaded APK updates</string>
@@ -1400,6 +1403,7 @@
     <string name="action_field_error_invalid_time">Use a 24-hour time such as 07:30.</string>
     <string name="action_field_error_invalid_component">Use an activity name such as com.example.app.PlayerActivity, or end it with * to match a group.</string>
     <string name="action_field_error_invalid_file">Enter or choose a valid file path.</string>
+    <string name="action_field_error_invalid_scene">Choose a saved scene.</string>
     <string name="action_field_error_conflicting_value">This field cannot be combined with the other selected input.</string>
     <string name="action_field_error_body_not_allowed">The selected HTTP method does not accept a request body.</string>
     <string name="action_field_error_invalid_definition">This field is not configured correctly.</string>
