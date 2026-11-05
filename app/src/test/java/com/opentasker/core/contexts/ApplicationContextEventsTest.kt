@@ -12,6 +12,20 @@ import org.junit.Test
 
 class ApplicationContextEventsTest {
     @Test
+    fun applicationObservationsCarryStablePulseIdentity() = runBlocking {
+        ApplicationContextEvents.publishForeground("com.example.seed", initial = true)
+        val nextEvent = async(start = CoroutineStart.UNDISPATCHED) {
+            ApplicationContextEvents.events.drop(1).first()
+        }
+
+        ApplicationContextEvents.publishForeground("com.example.target")
+        val event = nextEvent.await()
+
+        assertEquals("application", event.metadata["event"])
+        assertTrue(event.metadata["eventId"].orEmpty().isNotBlank())
+    }
+
+    @Test
     fun blankForegroundPackageIsIgnored() {
         assertFalse(ApplicationContextEvents.publishForeground(" "))
     }
