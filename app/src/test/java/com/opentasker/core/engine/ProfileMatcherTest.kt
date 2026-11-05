@@ -16,16 +16,13 @@ import org.junit.Test
 
 class ProfileMatcherTest {
     @Test
-    fun syntheticApplicationOpenAndCloseContextsUsePulseSemantics() {
-        val matcher = ProfileMatcher(
-            app = android.test.mock.MockContext(),
-            profile = com.opentasker.core.model.Profile(
-                id = 50,
-                name = "Application pulse",
-                enterTaskId = 1,
-                contexts = listOf(
-                    ContextSpec(ContextType.APPLICATION, mapOf("package" to "com.example", "condition" to "opened")),
-                ),
+    fun syntheticApplicationOpenContextsUsePulseSemantics() {
+        val profile = com.opentasker.core.model.Profile(
+            id = 50,
+            name = "Application pulse",
+            enterTaskId = 1,
+            contexts = listOf(
+                ContextSpec(ContextType.APPLICATION, mapOf("package" to "com.example", "condition" to "opened")),
             ),
         )
         val event = ContextEvent(
@@ -38,10 +35,11 @@ class ProfileMatcherTest {
             ),
         )
 
-        val snapshot = matcher.evaluateSyntheticEvents(mapOf(0 to event))
+        val updates = syntheticContextUpdates(profile, mapOf(0 to event))
 
-        assertEquals(1L, snapshot.pulseSequence)
-        assertTrue(snapshot.allMatched)
+        assertEquals(1L, updates.single().pulseSequence)
+        assertTrue(updates.single().pulseContext)
+        assertTrue(updates.single().matched)
     }
 
     @Test
