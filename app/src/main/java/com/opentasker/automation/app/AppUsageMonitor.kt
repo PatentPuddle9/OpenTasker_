@@ -176,10 +176,13 @@ class AppUsageMonitor(
 
     companion object {
         private const val TAG = "AppUsageMonitor"
-        private const val POLL_INTERVAL_MS = 2_000L
+        // UsageStatsManager exposes foreground transitions as a queryable event timeline, not a callback.
+        // Poll four times per second so app-open/close Actions react near the actual Activity transition.
+        internal const val POLL_INTERVAL_MS = 250L
         private const val MISSING_ACCESS_RETRY_MS = 30_000L
         private const val INITIAL_LOOKBACK_MS = 7L * 24 * 60 * 60 * 1_000
-        private const val QUERY_OVERLAP_MS = 2_000L
+        // Re-read a short overlap to cover events committed just after a query boundary; event keys dedupe repeats.
+        internal const val QUERY_OVERLAP_MS = 1_000L
         private const val MAX_SEEN_EVENTS = 1_024
 
         @Suppress("DEPRECATION")
