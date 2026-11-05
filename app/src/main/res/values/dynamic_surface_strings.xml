@@ -2,7 +2,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <!-- Dynamic context catalog. Stable context/config keys remain in Kotlin; presentation lives here. -->
     <string name="context_type_application_title" formatted="false">Application</string>
-    <string name="context_type_application_description" formatted="false">Choose whether to match when an app is in the foreground, opens, closes, or is not in the foreground.</string>
+    <string name="context_type_application_description" formatted="false">Choose an app and match when it is in the foreground, opens, closes, installs, updates, or is removed.</string>
     <string name="context_type_time_title" formatted="false">Time</string>
     <string name="context_type_time_description" formatted="false">Matches during a clock time window.</string>
     <string name="context_type_day_title" formatted="false">Day</string>
@@ -24,6 +24,9 @@
     <string name="context_app_condition_opened" formatted="false">App opens</string>
     <string name="context_app_condition_closed" formatted="false">App closes</string>
     <string name="context_app_condition_not_foreground" formatted="false">App is not in the foreground</string>
+    <string name="context_app_condition_installed" formatted="false">App is installed</string>
+    <string name="context_app_condition_updated" formatted="false">App is updated</string>
+    <string name="context_app_condition_uninstalled" formatted="false">App is uninstalled</string>
     <string name="context_field_time_start_label" formatted="false">Start HH:mm</string>
     <string name="context_field_time_start_hint" formatted="false">09:00</string>
     <string name="context_field_time_end_label" formatted="false">End HH:mm</string>
