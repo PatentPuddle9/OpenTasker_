@@ -16,6 +16,38 @@ import org.junit.Test
 
 class ProfileMatcherTest {
     @Test
+    fun applicationOpenAndCloseConditionsArePulseContexts() {
+        assertTrue(
+            isPulseContext(ContextSpec(ContextType.APPLICATION, mapOf("condition" to "opened"))),
+        )
+        assertTrue(
+            isPulseContext(ContextSpec(ContextType.APPLICATION, mapOf("condition" to "closed"))),
+        )
+        assertFalse(
+            isPulseContext(ContextSpec(ContextType.APPLICATION, mapOf("condition" to "foreground"))),
+        )
+        assertFalse(
+            isPulseContext(ContextSpec(ContextType.APPLICATION, mapOf("condition" to "not_foreground"))),
+        )
+    }
+
+    @Test
+    fun applicationOpenPulseCanRetriggerWhileAnotherContextKeepsProfileMatched() = runBlocking {
+        val changes = profileStateChangesFromSnapshots(
+            snapshots = flowOf(
+                ProfileMatchSnapshot(allMatched = true, pulseSequence = 10),
+                ProfileMatchSnapshot(allMatched = true, pulseSequence = 11),
+                ProfileMatchSnapshot(allMatched = true, pulseSequence = 12),
+            ),
+            hasPulseContexts = true,
+            initialPulseSequence = 10,
+        ).toList()
+
+        assertEquals(2, changes.size)
+        assertTrue(changes.all { it is ProfileStateChange.Activated })
+    }
+
+    @Test
     fun repeatedMatchingEventPulsesActivateEachTime() = runBlocking {
         val changes = profileStateChangesFromSnapshots(
             snapshots = flowOf(
