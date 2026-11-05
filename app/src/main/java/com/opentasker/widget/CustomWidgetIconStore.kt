@@ -42,7 +42,6 @@ object CustomWidgetIconStore {
     private const val PREFERENCES_KEY = "icons_v1"
     private const val MAX_ICONS = 100
     private const val MAX_IMAGE_BYTES = 15L * 1024L * 1024L
-    private const val MAX_SOURCE_DIMENSION = 12_000
     private const val THUMBNAIL_CACHE_BYTES = 12 * 1024 * 1024
 
     private val state = MutableStateFlow<List<CustomWidgetIcon>>(emptyList())
@@ -86,15 +85,25 @@ object CustomWidgetIconStore {
         return observe(context).value.firstOrNull { it.id == id }
     }
 
+    /**
+     * Stores only a user-approved square crop. Keeping the crop requirement here as well as in
+     * the Settings UI prevents another caller from accidentally saving an uncropped source image.
+     */
     suspend fun add(
         context: Context,
-        source: Uri,
+        croppedImage: Bitmap,
         name: String,
         recolorable: Boolean,
     ): CustomWidgetIcon = withContext(Dispatchers.IO) {
         val app = context.applicationContext
         val cleanedName = name.trim().take(48)
         require(cleanedName.isNotBlank()) { "Give the icon a name first." }
+        require(croppedImage.width == croppedImage.height) {
+            "Crop the image to a square before saving it as an icon."
+        }
+        require(croppedImage.width in 1..2048) {
+            "The cropped icon dimensions are too large."
+        }
 
         val icons = observe(app).value
         require(icons.size < MAX_ICONS) { "You can save up to $MAX_ICONS popup icons." }
@@ -102,7 +111,14 @@ object CustomWidgetIconStore {
         val id = UUID.randomUUID().toString()
         val target = iconFile(app, id)
         try {
-            copyImage(app, source, target)
+            target.outputStream().buffered().use { output ->
+                check(croppedImage.compress(Bitmap.CompressFormat.PNG, 100, output)) {
+                    "Could not encode the cropped icon."
+                }
+            }
+            require(target.length() in 1..MAX_IMAGE_BYTES) {
+                "The cropped icon could not be saved within the 15 MB limit."
+            }
             val icon = CustomWidgetIcon(id = id, name = cleanedName, recolorable = recolorable)
             save(app, icons + icon)
             icon
@@ -222,34 +238,6 @@ object CustomWidgetIconStore {
 
     private fun iconFile(context: Context, id: String): File =
         File(iconDirectory(context), "$id.img")
-
-    private fun copyImage(context: Context, source: Uri, target: File) {
-        val input = context.contentResolver.openInputStream(source)
-            ?: throw IOException("The selected image could not be opened.")
-        input.use { sourceStream ->
-            target.outputStream().buffered().use { destination ->
-                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                var total = 0L
-                while (true) {
-                    val count = sourceStream.read(buffer)
-                    if (count < 0) break
-                    total += count
-                    require(total <= MAX_IMAGE_BYTES) { "Images must be 15 MB or smaller." }
-                    destination.write(buffer, 0, count)
-                }
-            }
-        }
-        require(target.length() > 0L) { "The selected file is empty." }
-
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(target.absolutePath, bounds)
-        require(bounds.outWidth > 0 && bounds.outHeight > 0) {
-            "That file could not be read as an image. Choose a PNG, JPG, WebP, or another supported image."
-        }
-        require(bounds.outWidth <= MAX_SOURCE_DIMENSION && bounds.outHeight <= MAX_SOURCE_DIMENSION) {
-            "The image dimensions are too large."
-        }
-    }
 
     private fun decodeIconCached(
         context: Context,
