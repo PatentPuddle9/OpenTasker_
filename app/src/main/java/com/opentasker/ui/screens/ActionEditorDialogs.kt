@@ -120,6 +120,16 @@ internal fun filterActionPickerItemsByCategory(
 ): List<LocalizedActionMetadata> =
     if (category == "All") items else items.filter { it.category == category }
 
+internal fun selectableFallbackActionBlocks(
+    actions: List<ActionSpec>,
+    currentActionId: Long?,
+): List<ActionSpec> = actions.filter { action ->
+    action.id > 0L &&
+        action.id != currentActionId &&
+        action.type != "auth.device_credential" &&
+        !FlowControl.isControl(action.type)
+}
+
 internal const val ACTION_CONTINUE_ON_ERROR_TAG = "action_continue_on_error"
 internal const val ACTION_WAIT_FOR_FINISH_TAG = "action_wait_for_finish"
 internal const val ACTION_VARIABLE_PICKER_TAG = "action_variable_picker"
@@ -390,7 +400,16 @@ internal fun ActionConfigDialog(
     val taskBindingIssues = initialTaskBindingIssues.filterKeys { it !in addressedTaskBindingKeys }
     val capability = remember(state.metadata.id) { ActionCapabilityRegistry.get(state.metadata.id) }
     val availableActionIds = remember(actionBindings) { actionBindings.mapTo(mutableSetOf()) { it.execution.id } }
-    val validationIssues = ActionFieldPolicy.validateForm(state.metadata, values, availableActionIds)
+    val availableActionBlockIds = remember(enclosingActions, state.existing?.id, state.metadata.id) {
+        selectableFallbackActionBlocks(enclosingActions, state.existing?.id)
+            .mapTo(mutableSetOf()) { it.id }
+    }
+    val validationIssues = ActionFieldPolicy.validateForm(
+        metadata = state.metadata,
+        values = values,
+        availableTaskIds = availableActionIds,
+        availableActionBlockIds = availableActionBlockIds,
+    )
     val variableOptions = remember(enclosingActions, state.index, globalVariables, eventVariables) {
         typedVariableOptions(
             actions = enclosingActions,
@@ -582,6 +601,8 @@ internal fun ActionConfigDialog(
                             }
                         },
                         actionBindings = actionBindings,
+                        actionBlocks = enclosingActions,
+                        excludedActionBlockId = state.existing?.id,
                         issue = validationIssues[field.key],
                         variableOptions = variableOptions.filter { option -> field.acceptsVariableType(option.type) },
                     )
@@ -629,6 +650,8 @@ internal fun ActionFieldInput(
     value: String,
     onChange: (String) -> Unit,
     actionBindings: List<ActionExecutionBinding> = emptyList(),
+    actionBlocks: List<ActionSpec> = emptyList(),
+    excludedActionBlockId: Long? = null,
     suggestedPackage: String? = null,
     issue: ActionFieldPolicy.Issue? = null,
     variableOptions: List<VariableChipOption> = emptyList(),
@@ -719,6 +742,15 @@ internal fun ActionFieldInput(
             onChange = onChange,
         )
 
+        FieldType.ACTION_BLOCK -> ActionBlockSelectionFieldInput(
+            label = label,
+            hint = hint,
+            value = value,
+            actionBlocks = selectableFallbackActionBlocks(actionBlocks, excludedActionBlockId),
+            issue = issue,
+            onChange = onChange,
+        )
+
         FieldType.APP -> InstalledAppFieldInput(
             label = label,
             hint = hint,
@@ -758,7 +790,14 @@ internal fun ActionFieldInput(
         )
     }
 
-    if (issue != null && field.fieldType in setOf(FieldType.TASK, FieldType.APP, FieldType.CHECKBOX, FieldType.SCENE)) {
+    if (issue != null && field.fieldType in setOf(
+            FieldType.TASK,
+            FieldType.ACTION_BLOCK,
+            FieldType.APP,
+            FieldType.CHECKBOX,
+            FieldType.SCENE,
+        )
+    ) {
         ActionFieldErrorText(issue)
     }
 }
@@ -958,6 +997,7 @@ private fun ActionFieldErrorText(issue: ActionFieldPolicy.Issue) {
         ActionFieldPolicy.Error.INVALID_OPTION -> stringResource(R.string.action_field_error_invalid_option)
         ActionFieldPolicy.Error.INVALID_BOOLEAN -> stringResource(R.string.action_field_error_invalid_boolean)
         ActionFieldPolicy.Error.INVALID_TASK -> stringResource(R.string.action_field_error_invalid_task)
+        ActionFieldPolicy.Error.INVALID_ACTION_BLOCK -> stringResource(R.string.action_field_error_invalid_action_block)
         ActionFieldPolicy.Error.INVALID_APP -> stringResource(R.string.action_field_error_invalid_app)
         ActionFieldPolicy.Error.INVALID_FILE -> stringResource(R.string.action_field_error_invalid_file)
         ActionFieldPolicy.Error.INVALID_SCENE -> stringResource(R.string.action_field_error_invalid_scene)
@@ -1201,6 +1241,68 @@ private fun ActionFileFieldInput(
                 }
             }
         }
+    }
+}
+
+@Composable
+internal fun ActionBlockSelectionFieldInput(
+    label: String,
+    hint: String?,
+    value: String,
+    actionBlocks: List<ActionSpec>,
+    issue: ActionFieldPolicy.Issue? = null,
+    onChange: (String) -> Unit,
+) {
+    val context = LocalContext.current
+    var expanded by rememberSaveable(label) { mutableStateOf(false) }
+    val selectedId = value.toLongOrNull()
+    val selectedBlock = actionBlocks.firstOrNull { it.id == selectedId }
+
+    fun displayName(action: ActionSpec): String {
+        action.label?.takeIf(String::isNotBlank)?.let { return it }
+        val metadata = ActionMetadataRegistry.get(action.type)
+        return metadata?.let { context.getString(it.nameRes) } ?: action.type
+    }
+
+    val selectedLabel = when {
+        value.isBlank() -> stringResource(R.string.label_none)
+        selectedBlock != null -> displayName(selectedBlock)
+        else -> stringResource(R.string.action_binding_unavailable)
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = { expanded = true },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(label, style = MaterialTheme.typography.labelLarge)
+                    Text(selectedLabel, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    hint?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.label_none)) },
+                    onClick = {
+                        onChange("")
+                        expanded = false
+                    },
+                )
+                actionBlocks.forEach { action ->
+                    DropdownMenuItem(
+                        text = { Text(displayName(action), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        onClick = {
+                            onChange(action.id.toString())
+                            expanded = false
+                        },
+                    )
+                }
+            }
+        }
+        issue?.let { ActionFieldErrorText(it) }
     }
 }
 
