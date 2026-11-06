@@ -114,6 +114,12 @@ internal fun filterActionPickerItems(
     }
 }
 
+internal fun filterActionPickerItemsByCategory(
+    items: List<LocalizedActionMetadata>,
+    category: String,
+): List<LocalizedActionMetadata> =
+    if (category == "All") items else items.filter { it.category == category }
+
 internal const val ACTION_CONTINUE_ON_ERROR_TAG = "action_continue_on_error"
 internal const val ACTION_WAIT_FOR_FINISH_TAG = "action_wait_for_finish"
 internal const val ACTION_VARIABLE_PICKER_TAG = "action_variable_picker"
@@ -154,9 +160,10 @@ internal fun ActionPickerDialog(
         } + localizedActions.map { it.category }.distinct().filterNot { it in categoryOrder }.sorted()
     }
     val filteredActions = remember(localizedActions, query, selectedCategory) {
-        filterActionPickerItems(localizedActions, query).filter { localized ->
-            selectedCategory == "All" || localized.category == selectedCategory
-        }
+        filterActionPickerItemsByCategory(
+            filterActionPickerItems(localizedActions, query),
+            selectedCategory,
+        )
     }
     val actionGroups = remember(filteredActions) {
         filteredActions
