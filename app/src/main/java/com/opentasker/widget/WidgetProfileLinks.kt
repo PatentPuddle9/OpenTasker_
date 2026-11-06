@@ -97,7 +97,7 @@ object WidgetProfileLinks {
                     projectId = projectId,
                     icon = WidgetIconCatalog.resolve(style.icon).key,
                     widgetId = widgetId,
-                    group = "Shortcuts",
+                    group = "Widgets",
                 )
                 profileDao.insert(action.toEntity())
             }
