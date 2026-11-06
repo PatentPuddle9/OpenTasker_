@@ -101,6 +101,7 @@ private fun declaredActionSummaryRes(actionId: String): Int = when (actionId) {
     "notify.show",
     "toast.show",
     "scene.show",
+    "widget.display.control",
     "auth.device_credential",
     "notify.progress",
     "notify.cancel",
@@ -273,6 +274,43 @@ fun registerActionMetadata() {
             categoryRes = R.string.catalog_category_scenes,
             fields = listOf(
                 ActionField("scene_id", R.string.catalog_action_scene_show_field_scene_label, FieldType.SCENE, required = true, hintRes = R.string.catalog_action_scene_show_field_scene_hint),
+            ),
+        ),
+    )
+
+    ActionMetadataRegistry.register(
+        ActionMetadata(
+            id = "widget.display.control",
+            nameRes = R.string.catalog_action_widget_display_control_name,
+            descriptionRes = R.string.catalog_action_widget_display_control_description,
+            categoryRes = R.string.catalog_category_system,
+            fields = listOf(
+                ActionField(
+                    "widget_id",
+                    R.string.catalog_action_widget_display_control_field_widget_id_label,
+                    FieldType.NUMBER,
+                    required = true,
+                    hintRes = R.string.catalog_action_widget_display_control_field_widget_id_hint,
+                    numberRule = integerRule(1, Int.MAX_VALUE.toLong()),
+                ),
+                ActionField(
+                    "operation",
+                    R.string.catalog_action_widget_display_control_field_operation_label,
+                    FieldType.DROPDOWN,
+                    required = true,
+                    options = listOf(
+                        option("next", R.string.action_option_widget_display_next),
+                        option("previous", R.string.action_option_widget_display_previous),
+                        option("show", R.string.action_option_widget_display_show),
+                    ),
+                ),
+                ActionField(
+                    "state_index",
+                    R.string.catalog_action_widget_display_control_field_state_index_label,
+                    FieldType.NUMBER,
+                    hintRes = R.string.catalog_action_widget_display_control_field_state_index_hint,
+                    numberRule = integerRule(1, 75),
+                ),
             ),
         ),
     )
