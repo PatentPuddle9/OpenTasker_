@@ -18,7 +18,11 @@ class ConfirmDeviceCredentialAction : DeclaredAction(ActionCatalog.require(ACTIO
             return ActionResult.Failure("The selected fallback action block is no longer valid.")
         }
 
-        val fallbackRaw = args["fallback_action_id"]?.trim()?.takeIf(String::isNotEmpty)
+        val fallbackRaw = if (fallbackActionSpecId == null) {
+            args["fallback_action_id"]?.trim()?.takeIf(String::isNotEmpty)
+        } else {
+            null
+        }
         val fallbackTaskId = fallbackRaw?.toLongOrNull()?.takeIf { it > 0L }
         if (fallbackRaw != null && fallbackTaskId == null) {
             return ActionResult.Failure("The saved legacy fallback Action is no longer valid.")
