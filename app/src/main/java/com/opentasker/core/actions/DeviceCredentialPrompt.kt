@@ -3,9 +3,11 @@ package com.opentasker.core.actions
 import android.app.Activity
 import android.app.KeyguardManager
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricPrompt
+import android.hardware.fingerprint.FingerprintManager
 import android.os.Build
 import android.os.Bundle
 import android.os.CancellationSignal
@@ -21,9 +23,23 @@ internal sealed interface DeviceCredentialPromptResult {
     data class Unavailable(val reason: String) : DeviceCredentialPromptResult
 }
 
+internal enum class DeviceSignInPromptMode {
+    DEVICE_CREDENTIAL_ONLY,
+    BIOMETRIC_WITH_CREDENTIAL_FALLBACK,
+    BIOMETRIC_OR_DEVICE_CREDENTIAL,
+}
+
+internal fun deviceSignInPromptModeForApi(apiLevel: Int): DeviceSignInPromptMode = when {
+    apiLevel >= Build.VERSION_CODES.R -> DeviceSignInPromptMode.BIOMETRIC_OR_DEVICE_CREDENTIAL
+    apiLevel >= Build.VERSION_CODES.Q -> DeviceSignInPromptMode.BIOMETRIC_OR_DEVICE_CREDENTIAL
+    apiLevel >= Build.VERSION_CODES.P -> DeviceSignInPromptMode.BIOMETRIC_WITH_CREDENTIAL_FALLBACK
+    else -> DeviceSignInPromptMode.DEVICE_CREDENTIAL_ONLY
+}
+
 /**
- * Bridges a foreground system credential Activity back to the suspended automation action.
- * The system receives and verifies the credential; OpenTasker only receives the final outcome.
+ * Bridges a foreground system sign-in Activity back to the suspended automation action.
+ * Android verifies the fingerprint or screen-lock credential; OpenTasker only receives the
+ * authentication result and never receives biometric data.
  */
 internal object DeviceCredentialPromptRequests {
     private const val PROMPT_TIMEOUT_MS = 9 * 60 * 1000L
@@ -49,12 +65,12 @@ internal object DeviceCredentialPromptRequests {
                 },
             )
             withTimeoutOrNull(PROMPT_TIMEOUT_MS) { result.await() }
-                ?: DeviceCredentialPromptResult.Rejected("The device credential prompt timed out.")
+                ?: DeviceCredentialPromptResult.Rejected("The sign-in prompt timed out.")
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
             DeviceCredentialPromptResult.Unavailable(
-                "Android could not open the device credential prompt: ${error.message ?: error.javaClass.simpleName}",
+                "Android could not open the sign-in prompt: ${error.message ?: error.javaClass.simpleName}",
             )
         } finally {
             pending.remove(requestId, result)
@@ -67,13 +83,14 @@ internal object DeviceCredentialPromptRequests {
 }
 
 /**
- * A tiny, private Activity is required because Android's credential challenge is an Activity/
- * system prompt, not an API that a background Service can show or inspect directly.
+ * A private Activity is required because Android's biometric and device-credential prompts are
+ * Activity/system UI, not APIs that a background Service can display or inspect directly.
  */
 @Suppress("DEPRECATION")
 class DeviceCredentialPromptActivity : Activity() {
     private var requestId: String? = null
     private var completed = false
+    private var keyguard: KeyguardManager? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,10 +99,10 @@ class DeviceCredentialPromptActivity : Activity() {
             finish()
             return
         }
-        // The credential screen is already owned by the system if this Activity is recreated.
+        // The system owns the authentication UI if this Activity is recreated.
         if (savedInstanceState != null) return
 
-        val keyguard = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        keyguard = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
         if (keyguard?.isDeviceSecure != true) {
             complete(DeviceCredentialPromptResult.Authenticated)
             return
@@ -95,50 +112,151 @@ class DeviceCredentialPromptActivity : Activity() {
             ?: DEFAULT_TITLE
         val description = intent.getStringExtra(EXTRA_DESCRIPTION).orEmpty()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            showDeviceCredentialPrompt(title, description)
-        } else {
-            showLegacyDeviceCredentialPrompt(keyguard, title, description)
+        when (deviceSignInPromptModeForApi(Build.VERSION.SDK_INT)) {
+            DeviceSignInPromptMode.DEVICE_CREDENTIAL_ONLY -> {
+                showLegacyDeviceCredentialPrompt(requireNotNull(keyguard), title, description)
+            }
+            DeviceSignInPromptMode.BIOMETRIC_WITH_CREDENTIAL_FALLBACK -> {
+                showFingerprintWithCredentialFallback(title, description)
+            }
+            DeviceSignInPromptMode.BIOMETRIC_OR_DEVICE_CREDENTIAL -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    showBiometricOrDeviceCredentialPrompt(title, description)
+                } else {
+                    showBiometricWithDeviceCredentialOption(title, description)
+                }
+            }
         }
     }
 
+    /**
+     * Android 11+ presents fingerprint and device credential in one system prompt. The system
+     * automatically offers the PIN/pattern/password fallback when the user needs it.
+     */
     @androidx.annotation.RequiresApi(Build.VERSION_CODES.R)
-    private fun showDeviceCredentialPrompt(title: String, description: String) {
+    private fun showBiometricOrDeviceCredentialPrompt(title: String, description: String) {
         try {
             val builder = BiometricPrompt.Builder(this)
                 .setTitle(title)
-                .setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                .setAllowedAuthenticators(
+                    BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                        BiometricManager.Authenticators.DEVICE_CREDENTIAL,
+                )
             if (description.isNotBlank()) builder.setDescription(description)
 
             builder.build().authenticate(
                 CancellationSignal(),
                 mainExecutor,
-                object : BiometricPrompt.AuthenticationCallback() {
-                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                        complete(DeviceCredentialPromptResult.Authenticated)
-                    }
-
-                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                        if (errorCode == BiometricPrompt.BIOMETRIC_ERROR_NO_DEVICE_CREDENTIAL) {
-                            // The user may have removed their lock credential after the action's
-                            // initial isDeviceSecure check. Treat that exactly like no password.
-                            complete(DeviceCredentialPromptResult.Authenticated)
-                        } else {
-                            complete(
-                                DeviceCredentialPromptResult.Rejected(
-                                    errString.toString().ifBlank { "Device credential was not confirmed." },
-                                ),
-                            )
-                        }
-                    }
-                },
+                biometricCallback(title, description, fallbackToDeviceCredentialOnBiometricError = true),
             )
         } catch (error: Exception) {
             complete(
                 DeviceCredentialPromptResult.Unavailable(
-                    "Android could not show the device credential prompt: ${error.message ?: error.javaClass.simpleName}",
+                    "Android could not show the fingerprint or screen-lock prompt: ${error.message ?: error.javaClass.simpleName}",
                 ),
             )
+        }
+    }
+
+    /**
+     * Android 10 has the biometric prompt plus the built-in device-credential fallback switch.
+     * This API was replaced by setAllowedAuthenticators on Android 11.
+     */
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
+    private fun showBiometricWithDeviceCredentialOption(title: String, description: String) {
+        try {
+            val builder = BiometricPrompt.Builder(this)
+                .setTitle(title)
+                .setDeviceCredentialAllowed(true)
+            if (description.isNotBlank()) builder.setDescription(description)
+
+            builder.build().authenticate(
+                CancellationSignal(),
+                mainExecutor,
+                biometricCallback(title, description, fallbackToDeviceCredentialOnBiometricError = true),
+            )
+        } catch (error: Exception) {
+            complete(
+                DeviceCredentialPromptResult.Unavailable(
+                    "Android could not show the fingerprint or screen-lock prompt: ${error.message ?: error.javaClass.simpleName}",
+                ),
+            )
+        }
+    }
+
+    /**
+     * Android 9 introduced BiometricPrompt but not its combined authenticator selector. Offer
+     * fingerprint first and use the system's older screen-credential Activity as the explicit
+     * fallback. If no fingerprint is enrolled, go straight to the screen credential.
+     */
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.P)
+    private fun showFingerprintWithCredentialFallback(title: String, description: String) {
+        val fingerprintManager = getSystemService(FingerprintManager::class.java)
+        val fingerprintReady = runCatching {
+            fingerprintManager?.isHardwareDetected == true &&
+                fingerprintManager.hasEnrolledFingerprints()
+        }.getOrDefault(false)
+        if (!fingerprintReady) {
+            showLegacyDeviceCredentialPrompt(requireNotNull(keyguard), title, description)
+            return
+        }
+
+        try {
+            val builder = BiometricPrompt.Builder(this)
+                .setTitle(title)
+                .setNegativeButton(
+                    "Use device PIN, pattern, or password",
+                    mainExecutor,
+                    DialogInterface.OnClickListener { _, _ ->
+                        showLegacyDeviceCredentialPrompt(requireNotNull(keyguard), title, description)
+                    },
+                )
+            if (description.isNotBlank()) builder.setDescription(description)
+
+            builder.build().authenticate(
+                CancellationSignal(),
+                mainExecutor,
+                biometricCallback(title, description, fallbackToDeviceCredentialOnBiometricError = true),
+            )
+        } catch (error: Exception) {
+            complete(
+                DeviceCredentialPromptResult.Unavailable(
+                    "Android could not show the fingerprint prompt: ${error.message ?: error.javaClass.simpleName}",
+                ),
+            )
+        }
+    }
+
+    private fun biometricCallback(
+        title: String,
+        description: String,
+        fallbackToDeviceCredentialOnBiometricError: Boolean,
+    ) = object : BiometricPrompt.AuthenticationCallback() {
+        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+            complete(DeviceCredentialPromptResult.Authenticated)
+        }
+
+        override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+            when {
+                errorCode == BiometricPrompt.BIOMETRIC_ERROR_NO_DEVICE_CREDENTIAL -> {
+                    // The user may have removed their screen lock after the action's initial check.
+                    // With no device credential remaining, preserve the action's no-lock behavior.
+                    complete(DeviceCredentialPromptResult.Authenticated)
+                }
+                fallbackToDeviceCredentialOnBiometricError && errorCode in DEVICE_CREDENTIAL_FALLBACK_ERRORS -> {
+                    showLegacyDeviceCredentialPrompt(requireNotNull(keyguard), title, description)
+                }
+                else -> complete(
+                    DeviceCredentialPromptResult.Rejected(
+                        errString.toString().ifBlank { "Sign-in was not completed." },
+                    ),
+                )
+            }
+        }
+
+        override fun onAuthenticationFailed() {
+            // An unrecognized fingerprint is not a completed cancellation. Android keeps the
+            // system prompt open so the user can try again or choose the credential fallback.
         }
     }
 
@@ -173,7 +291,7 @@ class DeviceCredentialPromptActivity : Activity() {
         if (resultCode == RESULT_OK) {
             complete(DeviceCredentialPromptResult.Authenticated)
         } else {
-            complete(DeviceCredentialPromptResult.Rejected("Device credential was not confirmed."))
+            complete(DeviceCredentialPromptResult.Rejected("Device sign-in was not completed."))
         }
     }
 
@@ -190,6 +308,13 @@ class DeviceCredentialPromptActivity : Activity() {
         const val EXTRA_DESCRIPTION = "com.opentasker.extra.DEVICE_CREDENTIAL_DESCRIPTION"
 
         private const val REQUEST_CONFIRM_DEVICE_CREDENTIAL = 7204
-        private const val DEFAULT_TITLE = "Confirm your identity"
+        private const val DEFAULT_TITLE = "Sign in to continue"
+
+        private val DEVICE_CREDENTIAL_FALLBACK_ERRORS = setOf(
+            BiometricPrompt.BIOMETRIC_ERROR_HW_UNAVAILABLE,
+            BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT,
+            BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT_PERMANENT,
+            BiometricPrompt.BIOMETRIC_ERROR_NO_BIOMETRICS,
+        )
     }
 }
