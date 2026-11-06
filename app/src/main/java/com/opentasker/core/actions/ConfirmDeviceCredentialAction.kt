@@ -5,7 +5,7 @@ import android.provider.Settings
 import com.opentasker.core.engine.ActionContext
 import com.opentasker.core.engine.ActionResult
 
-/** Requires the device owner to confirm with Android's system-managed screen credential. */
+/** Requires the device owner to sign in with an Android biometric or screen-lock credential. */
 class ConfirmDeviceCredentialAction : DeclaredAction(ActionCatalog.require(ACTION_ID)) {
 
     override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
@@ -58,7 +58,7 @@ class ConfirmDeviceCredentialAction : DeclaredAction(ActionCatalog.require(ACTIO
         val description = args["description"]?.trim()?.takeIf(String::isNotEmpty) ?: DEFAULT_DESCRIPTION
         return when (val outcome = DeviceCredentialPromptRequests.request(ctx.app, title, description)) {
             DeviceCredentialPromptResult.Authenticated -> {
-                ctx.logger("Device credential confirmed; continuing.")
+                ctx.logger("Sign-in completed; continuing.")
                 ActionResult.Success
             }
             is DeviceCredentialPromptResult.Rejected -> ActionResult.Failure(
@@ -66,7 +66,7 @@ class ConfirmDeviceCredentialAction : DeclaredAction(ActionCatalog.require(ACTIO
                 fallbackTaskId = fallbackTaskId,
             )
             is DeviceCredentialPromptResult.Unavailable -> ActionResult.Failure(
-                "Android could not present the device credential prompt: ${outcome.reason}",
+                "Android could not present the sign-in prompt: ${outcome.reason}",
             )
         }
     }
