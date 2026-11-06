@@ -36,6 +36,7 @@ class ActionPickerCategoryFilterTest {
             ActionSpec(id = 1, type = "auth.device_credential"),
             ActionSpec(id = 2, type = "notify.show"),
             ActionSpec(id = 3, type = FlowControl.TRY),
+            ActionSpec(id = 6, type = "task.run"),
             ActionSpec(id = 0, type = "toast.show"),
             ActionSpec(id = 4, type = "toast.show"),
             ActionSpec(id = 5, type = "log"),
