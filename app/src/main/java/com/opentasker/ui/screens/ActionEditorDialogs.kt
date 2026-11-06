@@ -129,6 +129,7 @@ internal fun ActionPickerDialog(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     var query by rememberSaveable { mutableStateOf("") }
+    var selectedCategory by rememberSaveable { mutableStateOf("All") }
     val localizedActions = remember(configuration) {
         ActionMetadataRegistry.all()
             .asSequence()
@@ -143,7 +144,20 @@ internal fun ActionPickerDialog(
             }
             .toList()
     }
-    val filteredActions = remember(localizedActions, query) { filterActionPickerItems(localizedActions, query) }
+    val categories = remember(localizedActions) {
+        val categoryOrder = listOf(
+            "App", "Notification", "Media", "File", "Network", "System",
+            "Settings", "Variable", "Flow", "Scenes", "Plugin", "Script", "Import",
+        )
+        listOf("All") + categoryOrder.filter { category ->
+            localizedActions.any { it.category == category }
+        } + localizedActions.map { it.category }.distinct().filterNot { it in categoryOrder }.sorted()
+    }
+    val filteredActions = remember(localizedActions, query, selectedCategory) {
+        filterActionPickerItems(localizedActions, query).filter { localized ->
+            selectedCategory == "All" || localized.category == selectedCategory
+        }
+    }
     val actionGroups = remember(filteredActions) {
         filteredActions
             .groupBy { it.category }
@@ -171,6 +185,20 @@ internal fun ActionPickerDialog(
                         null
                     },
                     singleLine = true,
+                )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(categories, key = { it }) { category ->
+                        FilterChip(
+                            selected = selectedCategory == category,
+                            onClick = { selectedCategory = category },
+                            label = { Text(category) },
+                        )
+                    }
+                }
+                Text(
+                    "${filteredActions.size} actions",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (actionGroups.isEmpty()) {
                     Text(
