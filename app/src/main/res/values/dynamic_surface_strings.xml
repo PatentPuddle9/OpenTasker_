@@ -10,7 +10,7 @@
     <string name="context_type_location_title" formatted="false">Location</string>
     <string name="context_type_location_description" formatted="false">Matches near a latitude/longitude radius with optional accuracy and dwell checks.</string>
     <string name="context_type_state_title" formatted="false">State</string>
-    <string name="context_type_state_description" formatted="false">Matches battery, charging, media, orientation, proximity, activity, speed, roaming, tethering, or phone-call state.</string>
+    <string name="context_type_state_description" formatted="false">Matches battery, charging, media, ambient light, orientation, proximity, activity, speed, roaming, tethering, or phone-call state.</string>
     <string name="context_type_event_title" formatted="false">Event</string>
     <string name="context_type_event_description" formatted="false">Matches a one-shot event such as boot, notification, NFC, Bluetooth connect/disconnect/security, calendar, sun, shake, or Locale plugin queries.</string>
     <string name="context_type_plugin_title" formatted="false">Plugin</string>
@@ -49,6 +49,7 @@
     <string name="context_field_state_operator_hint" formatted="false">=, &gt;=, &lt;=, &gt;, &lt;</string>
     <string name="context_field_state_value_label" formatted="false">Expected value</string>
     <string name="context_field_state_value_hint" formatted="false">portrait, near, walking, 10, true, ringing, or an existing state value</string>
+    <string name="context_field_state_light_value_hint" formatted="false">Ambient light in lux, for example 50. Use ≥ or ≤ to match a light threshold.</string>
     <string name="context_state_preset_orientation" formatted="false">Portrait</string>
     <string name="context_state_preset_proximity" formatted="false">Nearby</string>
     <string name="context_state_preset_activity" formatted="false">Walking</string>
