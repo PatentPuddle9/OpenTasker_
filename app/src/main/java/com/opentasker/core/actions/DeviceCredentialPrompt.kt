@@ -193,8 +193,9 @@ class DeviceCredentialPromptActivity : Activity() {
     private fun showFingerprintWithCredentialFallback(title: String, description: String) {
         val fingerprintManager = getSystemService(FingerprintManager::class.java)
         val fingerprintReady = runCatching {
-            fingerprintManager?.isHardwareDetected == true &&
-                fingerprintManager.hasEnrolledFingerprints()
+            fingerprintManager?.let { manager ->
+                manager.isHardwareDetected && manager.hasEnrolledFingerprints()
+            } == true
         }.getOrDefault(false)
         if (!fingerprintReady) {
             showLegacyDeviceCredentialPrompt(requireNotNull(keyguard), title, description)
