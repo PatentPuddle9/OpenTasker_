@@ -30,6 +30,31 @@ class TaskEntityTest {
     }
 
     @Test
+    fun legacyActionBlocksReceiveStableUniqueIdsWhenDecoded() {
+        val entity = TaskEntity(
+            id = 10,
+            name = "Legacy actions",
+            priority = 5,
+            collisionMode = CollisionMode.ABORT_NEW.name,
+            actionsJson = StorageJson.encodeToString(
+                listOf(
+                    ActionSpec(type = "notify.show"),
+                    ActionSpec(type = "toast.show"),
+                    ActionSpec(id = 42, type = "log"),
+                    ActionSpec(id = 42, type = "vibrate"),
+                ),
+            ),
+        )
+
+        val first = entity.toDomain().actions
+        val second = entity.toDomain().actions
+
+        assertEquals(listOf(43L, 44L, 42L, 45L), first.map { it.id })
+        assertEquals(first, second)
+        assertEquals(first.size, first.map { it.id }.distinct().size)
+    }
+
+    @Test
     fun malformedActionsJsonReturnsFallbackWithDecodeIssue() {
         val entity = TaskEntity(
             id = 9,
