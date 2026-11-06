@@ -39,7 +39,7 @@
 - **Profiles, contexts, tasks, actions**. a complete Room-backed automation pipeline with a Compose UI
 - **Companion presence triggers**. user-confirmed CompanionDeviceManager associations emit low-power present/absent events without a scanning loop, with setup-time revocation
 - **7 context families**. Application, Time, Day, Location, State, Event, and Plugin (Locale/Tasker condition)
-- **81 built-in actions** plus engine-handled flow control (`task.run`, `if`/`else`/`end if`, `for each`/`end for`, `try`/`catch`/`end try`, `stop`)
+- **84 built-in actions** plus engine-handled flow control (`task.run`, `if`/`else`/`end if`, `for each`/`end for`, `try`/`catch`/`end try`, `stop`)
 - **USB device contexts**. attach/detach event pulses expose bounded device, vendor, product, and class fields for local input-device automations
 - **Template expressions**. bounded `{{ ... }}` expansion with scoped variables, arrays, JSON paths, string/math/date functions, traces, and strict regex policy
 - **Side-effect-free preflight reviews**. preview a task or profile with synthetic event variables, expanded inputs, branch decisions, setup gaps, intended effects, and explicit blockers before any action runs
@@ -82,17 +82,17 @@
 - Locale/Tasker condition plugins. polled as first-class context predicates with last-known-state caching
 - Home Assistant bridge proof of concept. bounded outbound JSON webhooks with HTTPS-by-default policy, redacted webhook secrets, and transient retry/backoff
 
-### Actions (78 registered + 10 engine-handled)
+### Actions (84 registered + 10 engine-handled)
 
 | Category | Count | Examples |
 |----------|------:|---------|
-| Settings | 19 | Wi-Fi, Wi-Fi scan, Bluetooth, brightness, volume, airplane, mobile data, always-on display, screen timeout, write setting, DND, Zen rule set/clear, ringer mode, torch, tile state, temporary state, keyboard info, keyboard picker |
+| Settings | 24 | Wi-Fi, Wi-Fi scan, Bluetooth, brightness, volume, airplane, mobile data, always-on display, screen timeout, write setting, DND, Zen rule set/clear, ringer mode, torch, tile state, temporary state, keyboard info, keyboard picker |
 | App | 10 | launch intent, launch app, publish shortcut, kill, archive, unarchive, go home, open URL, SMS, screenshot |
 | File | 5 | read, write, append, delete, list |
 | Network | 8 | HTTP Request, Home Assistant webhook, MQTT publish, legacy GET/POST aliases, ping, download, Wake-on-LAN |
 | Media | 6 | play, stop, pause, next, previous, mute |
 | System | 7 | vibrate, clipboard set, reboot, lock, screen off, wake, log |
-| Notification | 4 | Show Popup dialog, progress notification, cancel notification, TTS speak |
+| Notification | 5 | Show Popup dialog, progress notification, cancel notification, TTS speak |
 | Variable | 13 | set variable, clipboard get, contacts lookup, read data (JSON/CSV/XML/HTML), date-time (format/parse/add), text (match/replace/split/join/substring) |
 | Flow | 1+10 | wait; engine: task.run, if/else/end if, for each/end for, try/catch/end try, stop |
 | Plugin | 2 | Locale setting dispatch, Locale condition query |
