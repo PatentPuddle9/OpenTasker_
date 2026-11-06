@@ -81,7 +81,7 @@ internal fun ShortcutsScreen(
     }
     // Android can deliver the widget-pinned callback just after the app resumes. Recheck
     // briefly so a new widget appears on this visit instead of requiring the user to reopen
-    // Shortcuts. The ID is enough to show a pending row; its name/icon fill in when saved.
+    // Widgets. The ID is enough to show a pending row; its name/icon fill in when saved.
     LaunchedEffect(refreshKey) {
         repeat(12) {
             delay(250L)
@@ -107,7 +107,7 @@ internal fun ShortcutsScreen(
                 tint = MaterialTheme.colorScheme.primary,
             )
             Spacer(Modifier.size(16.dp))
-            Text("No shortcuts yet", style = MaterialTheme.typography.titleLarge)
+            Text("No widgets yet", style = MaterialTheme.typography.titleLarge)
             Text(
                 "Create a home-screen widget that looks like an app icon and runs one of your Actions when tapped.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -135,9 +135,9 @@ internal fun ShortcutsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Home-screen shortcuts", style = MaterialTheme.typography.titleMedium)
+                    Text("Widgets on your home screen", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Each shortcut has its own icon and appearance.",
+                        "Each widget has its own icon and appearance.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -197,7 +197,7 @@ internal fun ShortcutsScreen(
             title = { Text("Delete widget?") },
             text = {
                 Text(
-                    "This deletes the widget's protected Action and removes it from OpenTasker's Shortcuts list. Android's launcher still owns the home-screen widget itself, so you'll also need to remove that leftover icon from your home screen.",
+                    "This deletes the widget's protected Action and removes it from OpenTasker's Widgets list. Android's launcher still owns the home-screen widget itself, so you'll also need to remove that leftover icon from your home screen.",
                 )
             },
             confirmButton = {
