@@ -442,6 +442,7 @@ internal fun ProfileEditorDialog(
     var draftContextExpression by remember(profile?.id) { mutableStateOf(profile?.contextExpression) }
     var draftTriggerPickerOpen by rememberSaveable(profile?.id) { mutableStateOf(false) }
     var draftContextTypeName by rememberSaveable(profile?.id) { mutableStateOf<String?>(null) }
+    var draftContextInitialConfig by remember(profile?.id) { mutableStateOf(emptyMap<String, String>()) }
     var draftContextIndex by rememberSaveable(profile?.id) { mutableStateOf<Int?>(null) }
     var draftContextLogicOpen by rememberSaveable(profile?.id) { mutableStateOf(false) }
     val parsedCooldown = cooldown.toIntOrNull()
@@ -497,6 +498,7 @@ internal fun ProfileEditorDialog(
                     type = type,
                     index = draftContextIndex,
                     existing = draftContextIndex?.let(draftContexts::getOrNull),
+                    initialConfig = draftContextInitialConfig,
                 )
             }
         }
@@ -604,6 +606,7 @@ internal fun ProfileEditorDialog(
                                 onEdit = {
                                     if (profile == null) {
                                         draftContextTypeName = context.type.name
+                                        draftContextInitialConfig = emptyMap()
                                         draftContextIndex = index
                                     } else {
                                         onEditContext(index, context)
@@ -969,9 +972,10 @@ internal fun ProfileEditorDialog(
     if (profile == null && draftTriggerPickerOpen) {
         ContextTypePickerDialog(
             onDismiss = { draftTriggerPickerOpen = false },
-            onSelect = { type ->
+            onSelect = { localized ->
                 draftTriggerPickerOpen = false
-                draftContextTypeName = type.name
+                draftContextTypeName = localized.type.name
+                draftContextInitialConfig = localized.initialConfig
                 draftContextIndex = null
             },
         )
@@ -982,6 +986,7 @@ internal fun ProfileEditorDialog(
             state = state,
             onDismiss = {
                 draftContextTypeName = null
+                draftContextInitialConfig = emptyMap()
                 draftContextIndex = null
             },
             onSave = { context ->
@@ -997,6 +1002,7 @@ internal fun ProfileEditorDialog(
                     draftContextExpression = draftContextExpression?.appendLeaf(draftContexts.lastIndex)
                 }
                 draftContextTypeName = null
+                draftContextInitialConfig = emptyMap()
                 draftContextIndex = null
             },
         )
