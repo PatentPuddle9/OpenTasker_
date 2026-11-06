@@ -182,7 +182,7 @@ class ReleaseTruthContractTest {
             )
         }
         assertEquals(
-            Regex("(?m)^\\s*define\\(\\\"").findAll(actionCatalog).count().toString(),
+            Regex("(?m)^\\s*define\\(").findAll(actionCatalog).count().toString(),
             jsonValue(truth, "registeredActions"),
         )
         val flowBody = gradleValue(flowStructure, """(?s)\bval\s+ALL\s*=\s*setOf\(([^)]*)\)""")
