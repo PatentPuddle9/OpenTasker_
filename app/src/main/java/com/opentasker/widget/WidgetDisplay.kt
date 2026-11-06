@@ -226,9 +226,14 @@ object WidgetDisplayRenderer {
                             com.opentasker.app.R.layout.widget_display_button_item
                         }
                         RemoteViews(context.packageName, layout).apply {
-                            val icon = WidgetIconCatalog.resolve(element.icon)
-                            setImageViewResource(com.opentasker.app.R.id.widget_display_action_icon, icon.drawableRes)
-                            setInt(com.opentasker.app.R.id.widget_display_action_icon, "setColorFilter", state.accentColor)
+                            val customIcon = CustomWidgetIconStore.loadBitmapForWidget(context, element.icon, state.accentColor)
+                            if (customIcon != null) {
+                                setImageViewBitmap(com.opentasker.app.R.id.widget_display_action_icon, customIcon)
+                            } else {
+                                val icon = WidgetIconCatalog.resolve(element.icon)
+                                setImageViewResource(com.opentasker.app.R.id.widget_display_action_icon, icon.drawableRes)
+                                setInt(com.opentasker.app.R.id.widget_display_action_icon, "setColorFilter", state.accentColor)
+                            }
                             setTextViewText(com.opentasker.app.R.id.widget_display_action_label, element.text)
                             setTextColor(com.opentasker.app.R.id.widget_display_action_label, foreground)
                             element.actionProfileId?.takeIf { it > 0L }?.let { profileId ->
@@ -254,9 +259,14 @@ object WidgetDisplayRenderer {
                         }
                     }
                     WidgetDisplayElementType.ICON -> RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display_icon_item).apply {
-                        val icon = WidgetIconCatalog.resolve(element.icon)
-                        setImageViewResource(com.opentasker.app.R.id.widget_display_large_icon, icon.drawableRes)
-                        setInt(com.opentasker.app.R.id.widget_display_large_icon, "setColorFilter", state.accentColor)
+                        val customIcon = CustomWidgetIconStore.loadBitmapForWidget(context, element.icon, state.accentColor)
+                        if (customIcon != null) {
+                            setImageViewBitmap(com.opentasker.app.R.id.widget_display_large_icon, customIcon)
+                        } else {
+                            val icon = WidgetIconCatalog.resolve(element.icon)
+                            setImageViewResource(com.opentasker.app.R.id.widget_display_large_icon, icon.drawableRes)
+                            setInt(com.opentasker.app.R.id.widget_display_large_icon, "setColorFilter", state.accentColor)
+                        }
                         setTextViewText(com.opentasker.app.R.id.widget_display_icon_label, element.text)
                         setTextColor(com.opentasker.app.R.id.widget_display_icon_label, foreground)
                     }
