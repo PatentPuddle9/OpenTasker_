@@ -252,7 +252,12 @@ fun registerActionMetadata() {
             fields = listOf(
                 ActionField("title", R.string.catalog_action_auth_device_credential_field_title_label, hintRes = R.string.catalog_action_auth_device_credential_field_title_hint),
                 ActionField("description", R.string.catalog_action_auth_device_credential_field_description_label, FieldType.MULTILINE, hintRes = R.string.catalog_action_auth_device_credential_field_description_hint),
-                ActionField("fallback_action_id", R.string.catalog_action_auth_device_credential_field_fallback_label, FieldType.TASK, hintRes = R.string.catalog_action_auth_device_credential_field_fallback_hint),
+                ActionField(
+                    "fallback_action_spec_id",
+                    R.string.catalog_action_auth_device_credential_field_fallback_action_label,
+                    FieldType.ACTION_BLOCK,
+                    hintRes = R.string.catalog_action_auth_device_credential_field_fallback_action_hint,
+                ),
             ),
         ),
     )
