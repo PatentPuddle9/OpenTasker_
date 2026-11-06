@@ -10,9 +10,8 @@ import com.opentasker.core.engine.ActionResult
 class ConfirmDeviceCredentialAction : DeclaredAction(ActionCatalog.require(ACTION_ID)) {
 
     override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
-        // New Sign In blocks point to an individual ActionSpec in the same setup. Keep
-        // reading the older top-level Action reference so already-saved automations still run.
-        val fallbackActionSpecRaw = args["fallback_action_spec_id"]?.trim()?.takeIf(String::isNotEmpty)
+        // Keep reading the older top-level Action reference so saved automations still run.
+        val fallbackActionSpecRaw = args[FALLBACK_ACTION_BLOCK_ARGUMENT]?.trim()?.takeIf(String::isNotEmpty)
         val fallbackActionSpecId = fallbackActionSpecRaw?.toLongOrNull()?.takeIf { it > 0L }
         if (fallbackActionSpecRaw != null && fallbackActionSpecId == null) {
             return ActionResult.Failure("The selected fallback action block is no longer valid.")
