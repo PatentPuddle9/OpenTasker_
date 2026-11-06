@@ -144,6 +144,7 @@ class TaskRunActivity : Activity() {
         const val EXTRA_PROFILE_ID = "com.opentasker.widget.PROFILE_ID"
         const val EXTRA_SOURCE = "com.opentasker.widget.SOURCE"
         const val SOURCE_WIDGET = "Widget"
+        const val SOURCE_WIDGET_DISPLAY = "Widget Display"
         const val SOURCE_SHORTCUT = "Shortcut"
         private const val TAG = "TaskRunActivity"
     }
