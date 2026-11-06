@@ -85,7 +85,7 @@ class ActionsShortcutsNavigationTest {
         val strings = source("app/src/main/res/values/strings.xml")
         val widgets = source("app/src/main/java/com/opentasker/ui/screens/ShortcutsScreen.kt")
 
-        assertTrue(strings.contains("<string name=\\\"nav_shortcuts\\\">Widgets</string>"))
+        assertTrue(strings.contains("<string name=\"nav_shortcuts\">Widgets</string>"))
         assertTrue(strings.contains("Delete the widget from Widgets to remove it."))
         assertTrue(widgets.contains("No widgets yet"))
         assertTrue(widgets.contains("Widgets on your home screen"))
