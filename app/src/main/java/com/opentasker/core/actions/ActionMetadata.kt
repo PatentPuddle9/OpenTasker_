@@ -3,6 +3,9 @@ package com.opentasker.core.actions
 import androidx.annotation.StringRes
 import com.opentasker.app.R
 
+/** Shared argument used by every action-level fallback block picker. */
+const val FALLBACK_ACTION_BLOCK_ARGUMENT = "fallback_action_spec_id"
+
 /**
  * Metadata describing the arguments required/optional for an Action.
  * Used to build dynamic forms in the UI.
@@ -253,10 +256,10 @@ fun registerActionMetadata() {
                 ActionField("title", R.string.catalog_action_auth_device_credential_field_title_label, hintRes = R.string.catalog_action_auth_device_credential_field_title_hint),
                 ActionField("description", R.string.catalog_action_auth_device_credential_field_description_label, FieldType.MULTILINE, hintRes = R.string.catalog_action_auth_device_credential_field_description_hint),
                 ActionField(
-                    "fallback_action_spec_id",
-                    R.string.catalog_action_auth_device_credential_field_fallback_action_label,
+                    FALLBACK_ACTION_BLOCK_ARGUMENT,
+                    R.string.action_field_fallback_action_label,
                     FieldType.ACTION_BLOCK,
-                    hintRes = R.string.catalog_action_auth_device_credential_field_fallback_action_hint,
+                    hintRes = R.string.action_field_fallback_action_hint,
                 ),
             ),
         ),
