@@ -3,6 +3,21 @@
     <!-- Generated from stable action catalog keys; values are the translatable presentation layer. -->
     <string name="catalog_action_notify_show_name" formatted="false">Show Popup</string>
     <string name="catalog_action_notify_show_description" formatted="false">Show a popup dialog with optional task buttons; buttons without a task dismiss the dialog</string>
+    <string name="catalog_action_toast_show_name" formatted="false">Show Toast</string>
+    <string name="catalog_action_toast_show_description" formatted="false">Show a brief toast message with an optional selectable icon.</string>
+    <string name="catalog_action_toast_show_field_text_label" formatted="false">Message</string>
+    <string name="catalog_action_toast_show_field_text_hint" formatted="false">Text to display; supports variable expansion</string>
+    <string name="catalog_action_toast_show_field_icon_label" formatted="false">Toast icon</string>
+    <string name="catalog_action_toast_show_field_icon_hint" formatted="false">Optional icon from built-in or uploaded icons. Custom icons appear while OpenTasker is in the foreground.</string>
+    <string name="catalog_action_toast_show_field_duration_label" formatted="false">Duration</string>
+    <string name="catalog_action_toast_show_field_duration_hint" formatted="false">How long the toast stays visible</string>
+    <string name="catalog_action_toast_show_duration_short" formatted="false">Short</string>
+    <string name="catalog_action_toast_show_duration_long" formatted="false">Long</string>
+    <string name="action_icon_picker_no_icon" formatted="false">No icon</string>
+    <string name="action_icon_picker_previous_image" formatted="false">Previously selected image</string>
+    <string name="action_icon_picker_unavailable" formatted="false">Saved icon unavailable</string>
+    <string name="action_icon_picker_helper" formatted="false">Choose from built-in and custom icons. Add custom icons in Settings &gt; General &gt; Custom icons.</string>
+    <string name="action_icon_picker_remove" formatted="false">Remove icon</string>
     <string name="catalog_category_notification" formatted="false">Notification</string>
     <string name="catalog_category_scenes" formatted="false">Scenes</string>
     <string name="catalog_action_scene_show_name" formatted="false">Show Scene</string>
