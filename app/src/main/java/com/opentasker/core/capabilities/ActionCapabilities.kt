@@ -94,6 +94,7 @@ object ActionCapabilityRegistry {
         "download",
         // Device feedback covered by normal manifest permissions.
         "vibrate",
+        "toast.show",
         "log",
     )
 
