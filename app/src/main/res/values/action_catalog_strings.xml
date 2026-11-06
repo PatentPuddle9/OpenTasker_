@@ -597,8 +597,9 @@
     <string name="catalog_action_auth_device_credential_field_title_hint" formatted="false">Title shown on Android’s system sign-in prompt</string>
     <string name="catalog_action_auth_device_credential_field_description_label" formatted="false">Prompt description</string>
     <string name="catalog_action_auth_device_credential_field_description_hint" formatted="false">Explain why the user needs to sign in</string>
-    <string name="catalog_action_auth_device_credential_field_fallback_label" formatted="false">Fallback Action</string>
-    <string name="catalog_action_auth_device_credential_field_fallback_hint" formatted="false">Optional top-level Action to run when sign-in is cancelled or not completed. Actions after this step will be skipped.</string>
+    <string name="catalog_action_auth_device_credential_field_fallback_action_label" formatted="false">Fallback action</string>
+    <string name="catalog_action_auth_device_credential_field_fallback_action_hint" formatted="false">Choose an individual action block in this setup, such as Show Popup or Show Toast. It runs if sign-in is not completed, and the remaining steps are skipped.</string>
+    <string name="action_field_error_invalid_action_block" formatted="false">Choose an existing action block in this setup.</string>
     <string name="catalog_action_vibrate_field_millis_label" formatted="false">Duration (ms)</string>
     <string name="catalog_action_reboot_name" formatted="false">Reboot Device</string>
     <string name="catalog_action_reboot_description" formatted="false">Reboot the device</string>
