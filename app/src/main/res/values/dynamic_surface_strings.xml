@@ -49,6 +49,7 @@
     <string name="context_field_state_operator_hint" formatted="false">=, &gt;=, &lt;=, &gt;, &lt;</string>
     <string name="context_field_state_value_label" formatted="false">Expected value</string>
     <string name="context_field_state_value_hint" formatted="false">portrait, near, walking, 10, true, ringing, or an existing state value</string>
+    <string name="context_field_state_light_value_label" formatted="false">Lux threshold</string>
     <string name="context_field_state_light_value_hint" formatted="false">Ambient light in lux, for example 50. Use ≥ or ≤ to match a light threshold.</string>
     <string name="context_state_preset_orientation" formatted="false">Portrait</string>
     <string name="context_state_preset_proximity" formatted="false">Nearby</string>
