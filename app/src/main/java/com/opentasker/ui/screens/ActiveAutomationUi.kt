@@ -835,7 +835,7 @@ fun ActiveAutomationUi(
                             onComplete(true)
                             snackbarHostState.showSnackbar(
                                 if (widget.type == OpenTaskerWidgetType.DISPLAY) {
-                                    "Widget Display deleted."
+                                    "Widget Display removed from OpenTasker. Remove the leftover placeholder from your home screen."
                                 } else {
                                     "Widget Action deleted. Remove the leftover widget icon from your home screen."
                                 },
