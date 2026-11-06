@@ -338,7 +338,10 @@ internal fun ContextConfigDialog(
     var nfcWriteMessage by rememberSaveable(state.profile.id, state.index, state.type) { mutableStateOf<String?>(null) }
     val fields = contextFields(state.type, config)
     val saveConfig = contextConfigForSave(state.type, config)
+    val selectedStateKey = config["key"]?.trim().orEmpty()
+    val missingStateKey = state.type == ContextType.STATE && selectedStateKey.isBlank()
     val missingRequired = fields.any { it.required && config[it.key].isNullOrBlank() } ||
+        missingStateKey ||
         (state.type == ContextType.DAY && saveConfig["days"].isNullOrBlank())
     // Block saving contexts that parse to a spec that can never match: a garbled TIME window
     // or an out-of-range coordinate would otherwise save silently and fail only at runtime.
@@ -405,6 +408,37 @@ internal fun ContextConfigDialog(
                     }
                     HorizontalDivider()
                 }
+                if (state.type == ContextType.STATE) {
+                    item("state-key-lock") {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
+                            shape = RoundedCornerShape(DesignSystem.Radii.lg),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f)),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text("Selected state", style = MaterialTheme.typography.labelLarge)
+                                Text(
+                                    stateContextDisplayName(selectedStateKey),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    if (missingStateKey) {
+                                        "This older trigger has no selected state. Remove it and add a specific state from the trigger picker."
+                                    } else {
+                                        "This trigger stays locked to this state. Add another trigger to monitor a different state."
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
                 if (state.type == ContextType.DAY) {
                     item("day-schedule") {
                         DayScheduleInput(
@@ -425,14 +459,6 @@ internal fun ContextConfigDialog(
                                 null
                             },
                         )
-                    }
-                    if (state.type == ContextType.STATE) {
-                        item("state-presets") {
-                            StateContextPresetRow(
-                                presets = StateContextPresets.all,
-                                onApply = { preset -> config = StateContextPresets.apply(config, preset) },
-                            )
-                        }
                     }
                     if (state.type == ContextType.EVENT && config["event"].equals("nfc", ignoreCase = true)) {
                         item("nfc-write-helper") {
@@ -603,6 +629,37 @@ internal fun contextInvalidFields(type: ContextType, config: Map<String, String>
     return issues
 }
 
+internal fun stateContextDisplayName(key: String?): String {
+    val normalized = key?.trim()?.lowercase().orEmpty()
+    return when (normalized) {
+        "" -> "No state selected"
+        "battery_level" -> "Battery level"
+        "charging" -> "Charging"
+        "screen" -> "Screen state"
+        "unlocked" -> "Lock state"
+        "power_save" -> "Power saving mode"
+        "headphones" -> "Headphones"
+        "airplane" -> "Airplane mode"
+        "media_active" -> "Media playback"
+        "media_package" -> "Media app"
+        "call_state" -> "Phone call state"
+        "orientation" -> "Orientation"
+        "proximity" -> "Proximity"
+        "activity" -> "Physical activity"
+        "speed" -> "Movement speed"
+        "wifi" -> "Wi-Fi connection"
+        "internet" -> "Internet access"
+        "network_type" -> "Network type"
+        "vpn" -> "VPN connection"
+        "roaming" -> "Data roaming"
+        "tethering" -> "Hotspot / tethering"
+        else -> normalized
+            .replace('_', ' ')
+            .split(' ')
+            .joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
+    }
+}
+
 private fun contextFields(type: ContextType, config: Map<String, String> = emptyMap()): List<ActionField> = when (type) {
     ContextType.APPLICATION -> listOf(
         ActionField("package", R.string.context_field_application_package_label, FieldType.APP, required = true, hintRes = R.string.context_field_application_package_hint),
@@ -637,7 +694,6 @@ private fun contextFields(type: ContextType, config: Map<String, String> = empty
         ActionField("outside", R.string.context_field_location_outside_label, FieldType.CHECKBOX, hintRes = R.string.context_field_location_outside_hint),
     )
     ContextType.STATE -> listOf(
-        ActionField("key", R.string.context_field_state_key_label, required = true, hintRes = R.string.context_field_state_key_hint),
         ActionField("operator", R.string.context_field_state_operator_label, hintRes = R.string.context_field_state_operator_hint),
         ActionField("value", R.string.context_field_state_value_label, required = true, hintRes = R.string.context_field_state_value_hint),
     )
