@@ -1219,7 +1219,7 @@ class AutomationService : Service() {
         val builder = NotificationCompat.Builder(this, channel.id)
             .setContentTitle(title)
             .setContentText(text)
-            .setSmallIcon(R.mipmap.ic_launcher_monochrome)
+            .setSmallIcon(R.drawable.ic_notification_mark)
             .setColor(ContextCompat.getColor(this, R.color.notification_accent))
             .setContentIntent(pendingIntent)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
