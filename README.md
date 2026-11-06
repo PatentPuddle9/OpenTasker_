@@ -24,7 +24,7 @@ The app is developed on the [Experimental branch](https://github.com/PatentPuddl
 
 ## Features
 
-### Actions
+### Actions (85 registered + 10 engine-handled)
 
 Actions are the main way to build automations in OpenTasker. An Action has a name, icon, trigger conditions, and the ordered steps that should run when those conditions match.
 
@@ -62,7 +62,7 @@ App-open and app-close detection depends on the Android services and permissions
 | File | 5 | Read, write, append, delete, list |
 | Network | 8 | HTTP Request, Home Assistant webhook, MQTT publish, ping, download, Wake-on-LAN |
 | Media | 6 | Play, stop, pause, next, previous, mute |
-| System | 7 | Vibrate, clipboard set, reboot, lock, screen off, wake, log |
+| System | 8 | Widget Display state control, vibrate, clipboard set, reboot, lock, screen off, wake, log |
 | Notification | 5 | Toast, Show Popup dialog, progress notification, cancel notification, text-to-speech |
 | Variable | 13 | Set variable, clipboard read, contact lookup, JSON/CSV/XML/HTML data, date-time and text operations |
 | Flow | 1 + 10 | Wait; engine commands for running flows, conditions, loops, try/catch, and stopping |
@@ -97,7 +97,7 @@ The **Widgets** area lists home-screen Widget Shortcuts and Widget Displays. Wid
 - Widgets are designed to look like app icons and support a **1 × 1** starting size.
 - Android can resize them horizontally and vertically.
 - Choose the icon, icon color, background color, optional gradient, and app-icon shape.
-- Each widget is tied to its own Action configuration. Remove the widget from Shortcuts to remove that widget-owned Action.
+- Each widget is tied to its own Action configuration. Remove the widget from Widgets to remove that widget-owned Action.
 - A widget tap runs its configured Action; it does not ask you to select a task at runtime.
 
 ### Icons and customization
