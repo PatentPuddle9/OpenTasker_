@@ -2,6 +2,7 @@ package com.opentasker.core.engine
 
 import android.content.ContextWrapper
 import com.opentasker.core.actions.ConfirmDeviceCredentialAction
+import com.opentasker.core.actions.FALLBACK_ACTION_BLOCK_ARGUMENT
 import com.opentasker.core.model.ActionSpec
 import com.opentasker.core.model.Task
 import kotlinx.coroutines.runBlocking
@@ -184,6 +185,39 @@ class TaskRunnerFailureRecoveryTest {
                             id = 11,
                             type = "auth.device_credential",
                             args = mapOf("fallback_action_spec_id" to "22"),
+                        ),
+                        ActionSpec(id = 22, type = "test.signin.fallback"),
+                        ActionSpec(id = 33, type = "test.signin.after"),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(report.success)
+        assertEquals(1, fallbackBlockCalls)
+        assertEquals(0, afterFallbackCalls)
+        assertTrue(report.traces.single().message.contains("fallback action block"))
+    }
+
+    @Test
+    fun anyActionCanRunItsConfiguredFallbackBlockAndStopTheOriginalSequence() {
+        ActionRegistry.register(object : Action {
+            override val id = "test.action.with.fallback"
+            override val category = ActionCategory.FLOW
+            override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult =
+                ActionResult.Failure("The action failed")
+        })
+
+        val report = runBlocking {
+            TaskRunner(ActionContext(ContextWrapper(null), VariableStore())).run(
+                Task(
+                    name = "Generic action fallback",
+                    actions = listOf(
+                        ActionSpec(
+                            id = 11,
+                            type = "test.action.with.fallback",
+                            args = mapOf(FALLBACK_ACTION_BLOCK_ARGUMENT to "22"),
+                            waitForCompletion = false,
                         ),
                         ActionSpec(id = 22, type = "test.signin.fallback"),
                         ActionSpec(id = 33, type = "test.signin.after"),
