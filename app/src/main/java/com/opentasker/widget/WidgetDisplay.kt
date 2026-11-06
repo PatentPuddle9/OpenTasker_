@@ -55,6 +55,7 @@ object WidgetDisplayStore {
     private const val PREFS = "opentasker_widget_display_prefs"
     fun key(widgetId: Int) = "widget_display_${widgetId}_config"
     private fun activeStateKey(widgetId: Int) = "widget_display_${widgetId}_active_state"
+    private fun removedKey(widgetId: Int) = "widget_display_${widgetId}_removed"
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -79,6 +80,7 @@ object WidgetDisplayStore {
             .edit()
             .putString(key(widgetId), json.encodeToString(config))
             .putInt(activeStateKey(widgetId), activeIndex(context, widgetId, config.states.size))
+            .putBoolean(removedKey(widgetId), false)
             .apply()
     }
 
@@ -106,10 +108,23 @@ object WidgetDisplayStore {
         return setActiveState(context, widgetId, next)
     }
 
+    fun isRemoved(context: Context, widgetId: Int): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(removedKey(widgetId), false)
+
+    /** Remove the configuration from OpenTasker while leaving a clear launcher placeholder. */
+    fun markRemoved(context: Context, widgetId: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .remove(key(widgetId))
+            .remove(activeStateKey(widgetId))
+            .putBoolean(removedKey(widgetId), true)
+            .apply()
+    }
+
     fun clear(context: Context, widgetId: Int) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .remove(key(widgetId))
             .remove(activeStateKey(widgetId))
+            .remove(removedKey(widgetId))
             .apply()
     }
 }
@@ -153,6 +168,30 @@ class WidgetDisplayStateReceiver : BroadcastReceiver() {
  */
 object WidgetDisplayRenderer {
         fun updateWidget(context: Context, manager: AppWidgetManager, widgetId: Int) {
+        if (WidgetDisplayStore.isRemoved(context, widgetId)) {
+            val placeholder = RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display)
+            placeholder.setImageViewBitmap(
+                com.opentasker.app.R.id.widget_display_background,
+                WidgetBackgroundRenderer.render(
+                    backgroundColor = 0xFF30243F.toInt(),
+                    gradient = true,
+                    width = 720,
+                    height = 520,
+                    shape = "rounded_square",
+                ),
+            )
+            placeholder.setTextViewText(com.opentasker.app.R.id.widget_display_title, "Widget removed")
+            placeholder.setTextViewText(
+                com.opentasker.app.R.id.widget_display_subtitle,
+                "Remove this widget from your home screen",
+            )
+            placeholder.setTextColor(com.opentasker.app.R.id.widget_display_title, android.graphics.Color.WHITE)
+            placeholder.setTextColor(com.opentasker.app.R.id.widget_display_subtitle, android.graphics.Color.WHITE)
+            placeholder.removeAllViews(com.opentasker.app.R.id.widget_display_content)
+            placeholder.setViewVisibility(com.opentasker.app.R.id.widget_display_navigation, View.GONE)
+            manager.updateAppWidget(widgetId, placeholder)
+            return
+        }
         val config = WidgetDisplayStore.load(context, widgetId)
         val stateIndex = WidgetDisplayStore.activeIndex(context, widgetId, config.states.size)
         val state = config.states[stateIndex]
