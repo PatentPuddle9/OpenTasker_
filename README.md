@@ -37,7 +37,7 @@ Actions are the main way to build automations in OpenTasker. An Action has a nam
 - Optional per-Action or global fallback handling can catch unhandled failures.
 - Undo and redo recent edits to Actions, steps, and scenes.
 
-The execution engine currently includes **84 registered actions** plus **10 engine-handled flow commands**. See the catalogue below.
+The execution engine currently includes **85 registered actions** plus **10 engine-handled flow commands**. See the catalogue below.
 
 ### Triggers
 
