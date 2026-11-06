@@ -221,7 +221,7 @@ internal fun WidgetDisplayConfigEditor(
                             Box {
                                 IconButton(onClick = { stateMenuFor = state.id }) {
                                     Icon(
-                                        imageVector = androidx.compose.material.icons.Icons.Default.MoreVert,
+                                        imageVector = Icons.Filled.MoreVert,
                                         contentDescription = "State options",
                                     )
                                 }
