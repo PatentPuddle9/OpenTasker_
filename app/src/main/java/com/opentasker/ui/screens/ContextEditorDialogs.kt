@@ -160,6 +160,7 @@ internal fun ContextTypePickerDialog(
             // Display and motion sensors
             state("orientation", "Orientation", "Match portrait, landscape, or face-up/down orientation.", "orientation", "Display & Sensors")
             state("proximity", "Proximity", "Match when the proximity sensor reports near or far.", "proximity", "Display & Sensors")
+            state("light-level", "Ambient light level", "Match when the phone's ambient light sensor reaches a lux threshold.", "light_lux", "Display & Sensors")
             state("activity", "Physical activity", "Match stationary, walking, or running activity.", "activity", "Display & Sensors")
             state("speed", "Movement speed", "Match a speed threshold using location updates.", "speed", "Display & Sensors")
 
@@ -645,6 +646,7 @@ internal fun stateContextDisplayName(key: String?): String {
         "call_state" -> "Phone call state"
         "orientation" -> "Orientation"
         "proximity" -> "Proximity"
+        "light_lux" -> "Ambient light level"
         "activity" -> "Physical activity"
         "speed" -> "Movement speed"
         "wifi" -> "Wi-Fi connection"
@@ -695,7 +697,16 @@ private fun contextFields(type: ContextType, config: Map<String, String> = empty
     )
     ContextType.STATE -> listOf(
         ActionField("operator", R.string.context_field_state_operator_label, hintRes = R.string.context_field_state_operator_hint),
-        ActionField("value", R.string.context_field_state_value_label, required = true, hintRes = R.string.context_field_state_value_hint),
+        ActionField(
+            "value",
+            R.string.context_field_state_value_label,
+            required = true,
+            hintRes = if (config["key"] == "light_lux") {
+                R.string.context_field_state_light_value_hint
+            } else {
+                R.string.context_field_state_value_hint
+            },
+        ),
     )
     ContextType.EVENT -> {
         val allFields = listOf(
