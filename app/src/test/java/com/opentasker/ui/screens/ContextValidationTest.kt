@@ -76,6 +76,34 @@ class ContextValidationTest {
     }
 
     @Test
+    fun ambientLightThresholdRequiresANonNegativeFiniteLuxValue() {
+        assertTrue(
+            contextHasInvalidValues(
+                ContextType.STATE,
+                mapOf("key" to "light_lux", "operator" to ">=", "value" to "bright"),
+            ),
+        )
+        assertTrue(
+            contextHasInvalidValues(
+                ContextType.STATE,
+                mapOf("key" to "light_lux", "operator" to ">=", "value" to "-1"),
+            ),
+        )
+        assertTrue(
+            contextHasInvalidValues(
+                ContextType.STATE,
+                mapOf("key" to "light_lux", "operator" to ">=", "value" to "NaN"),
+            ),
+        )
+        assertFalse(
+            contextHasInvalidValues(
+                ContextType.STATE,
+                mapOf("key" to "light_lux", "operator" to ">=", "value" to "125.5"),
+            ),
+        )
+    }
+
+    @Test
     fun packageBearingContextsRejectMalformedManualEntries() {
         assertFalse(contextHasInvalidValues(ContextType.APPLICATION, mapOf("package" to "com.example.app")))
         assertTrue(contextHasInvalidValues(ContextType.APPLICATION, mapOf("package" to "not a package")))
