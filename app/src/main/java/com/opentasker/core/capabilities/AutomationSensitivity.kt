@@ -101,6 +101,7 @@ object AutomationSensitivityRegistry {
         "notify.show",
         "notify.cancel",
         "notify.progress",
+        "toast.show",
         "tts.speak",
         "intent.launch",
         "plugin.locale.fire",
