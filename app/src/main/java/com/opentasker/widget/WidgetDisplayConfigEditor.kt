@@ -81,7 +81,7 @@ internal fun WidgetDisplayConfigEditor(
                     .mapNotNull { entity ->
                         val decoded = entity.toDomainDecodeResult()
                         decoded.value.takeIf {
-                            decoded.issue == null && it.widgetId == null && it.enterTaskId > 0L
+                            decoded.issue == null && it.enterTaskId > 0L
                         }
                     }
                     .sortedBy { it.name.lowercase() }
