@@ -248,7 +248,7 @@ object StateSensorEvents {
 
         fun ensure() {
             if (manager == null) {
-                emitSetup(emit, "light_lux", "Open Setup to review ambient light sensor support; Android did not expose a sensor service on this device.")
+                emitSetup(emit, "light_lux", "Android did not expose its sensor service, so ambient-light triggers are unavailable on this device.")
                 return
             }
             if (listener != null) return
@@ -277,7 +277,7 @@ object StateSensorEvents {
                 listener = candidate
                 emitReady(emit, "light_lux")
             } else {
-                emitSetup(emit, "light_lux", "Open Setup to review ambient light sensor support; Android could not register the available sensor.")
+                emitSetup(emit, "light_lux", "Android could not start the ambient light sensor. Reopen OpenTasker and try again.")
             }
         }
 
