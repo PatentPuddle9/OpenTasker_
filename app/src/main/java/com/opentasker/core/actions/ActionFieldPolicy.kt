@@ -5,7 +5,7 @@ import java.util.LinkedHashMap
 
 /** Shared rendering and validation contract for metadata-driven action fields. */
 object ActionFieldPolicy {
-    enum class Renderer { TEXT, NUMBER, DROPDOWN, CHECKBOX, MULTILINE, TASK, APP, FILE, SCENE }
+    enum class Renderer { TEXT, NUMBER, DROPDOWN, CHECKBOX, MULTILINE, TASK, ACTION_BLOCK, APP, FILE, SCENE }
 
     enum class Error {
         REQUIRED,
@@ -15,6 +15,7 @@ object ActionFieldPolicy {
         INVALID_OPTION,
         INVALID_BOOLEAN,
         INVALID_TASK,
+        INVALID_ACTION_BLOCK,
         INVALID_APP,
         INVALID_FILE,
         INVALID_SCENE,
@@ -35,6 +36,7 @@ object ActionFieldPolicy {
         FieldType.MULTILINE -> Renderer.MULTILINE
         FieldType.CHECKBOX -> Renderer.CHECKBOX
         FieldType.TASK -> Renderer.TASK
+        FieldType.ACTION_BLOCK -> Renderer.ACTION_BLOCK
         FieldType.APP -> Renderer.APP
         FieldType.NUMBER -> if (validNumberRule(field.numberRule)) Renderer.NUMBER else null
         FieldType.DROPDOWN -> if (validOptions(field.options)) Renderer.DROPDOWN else null
@@ -46,6 +48,7 @@ object ActionFieldPolicy {
         field: ActionField,
         rawValue: String,
         availableTaskIds: Set<Long> = emptySet(),
+        availableActionBlockIds: Set<Long> = emptySet(),
     ): Issue? {
         if (rawValue.isBlank()) return if (field.required) Issue(Error.REQUIRED) else null
         return when (field.fieldType) {
@@ -66,6 +69,14 @@ object ActionFieldPolicy {
                 val taskId = rawValue.toLongOrNull()
                 if (taskId != null && taskId in availableTaskIds) null else Issue(Error.INVALID_TASK)
             }
+            FieldType.ACTION_BLOCK -> {
+                val actionBlockId = rawValue.toLongOrNull()
+                if (actionBlockId != null && actionBlockId > 0L && actionBlockId in availableActionBlockIds) {
+                    null
+                } else {
+                    Issue(Error.INVALID_ACTION_BLOCK)
+                }
+            }
             FieldType.SCENE -> {
                 val sceneId = rawValue.toLongOrNull()
                 if (sceneId != null && sceneId > 0L) null else Issue(Error.INVALID_SCENE)
@@ -83,10 +94,16 @@ object ActionFieldPolicy {
         metadata: ActionMetadata,
         values: Map<String, String>,
         availableTaskIds: Set<Long> = emptySet(),
+        availableActionBlockIds: Set<Long> = emptySet(),
     ): Map<String, Issue> {
         val issues = LinkedHashMap<String, Issue>()
         metadata.fields.forEach { field ->
-            validate(field, values[field.key].orEmpty(), availableTaskIds)?.let { issues[field.key] = it }
+            validate(
+                field,
+                values[field.key].orEmpty(),
+                availableTaskIds = availableTaskIds,
+                availableActionBlockIds = availableActionBlockIds,
+            )?.let { issues[field.key] = it }
         }
         if (metadata.id == "http.request") {
             val hasBody = values["body"].isPresent()
