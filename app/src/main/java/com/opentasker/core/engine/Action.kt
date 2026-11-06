@@ -49,7 +49,7 @@ sealed class ActionResult {
          */
         val fallbackTaskId: Long? = null,
         /**
-         * Optional individual action-block ID from the current task to run as the Sign In
+         * Optional individual action-block ID from the current task to run as this action's
          * recovery branch. The TaskRunner executes that block directly and stops the original
          * sequence afterward.
          */
