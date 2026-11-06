@@ -13,7 +13,7 @@ class ContextValidationTest {
         assertEquals("Battery level", stateContextDisplayName("battery_level"))
         assertEquals("Wi-Fi connection", stateContextDisplayName("wifi"))
         assertEquals("No state selected", stateContextDisplayName(null))
-        assertEquals("Custom sensor", stateContextDisplayName("custom_sensor"))
+        assertEquals("Custom Sensor", stateContextDisplayName("custom_sensor"))
     }
 
     @Test
