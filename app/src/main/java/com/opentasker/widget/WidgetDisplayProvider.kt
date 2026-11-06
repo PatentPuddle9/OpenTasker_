@@ -51,7 +51,9 @@ open class WidgetDisplayProvider : AppWidgetProvider() {
         fun instances(context: Context): List<Instance> {
             val manager = AppWidgetManager.getInstance(context)
             return Size.entries.flatMap { size ->
-                manager.getAppWidgetIds(ComponentName(context, size.providerClass)).map { Instance(it, size) }
+                manager.getAppWidgetIds(ComponentName(context, size.providerClass))
+                    .filterNot { WidgetDisplayStore.isRemoved(context, it) }
+                    .map { Instance(it, size) }
             }
         }
 
@@ -63,8 +65,8 @@ open class WidgetDisplayProvider : AppWidgetProvider() {
         }
 
         fun deleteWidget(context: Context, widgetId: Int) {
-            WidgetDisplayStore.clear(context, widgetId)
-            AppWidgetManager.getInstance(context).deleteAppWidgetId(widgetId)
+            WidgetDisplayStore.markRemoved(context, widgetId)
+            updateWidget(context, widgetId)
         }
 
         fun requestRefresh(context: Context) {
