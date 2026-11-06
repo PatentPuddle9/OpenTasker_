@@ -133,6 +133,8 @@ internal fun createDeviceToastContext(context: Context): Context {
     return ContextThemeWrapper(context, themeRes)
 }
 
+internal fun toastOverlayAnimationStyle(): Int = android.R.style.Animation_Toast
+
 internal fun resolveToastThemeColor(
     context: Context,
     attribute: Int,
@@ -312,7 +314,7 @@ private object ToastOverlayWindow {
             gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
             y = bottomOffset
             // Reuse Android's own toast enter/exit window animation rather than approximating it.
-            windowAnimations = android.R.style.Animation_Toast
+            windowAnimations = toastOverlayAnimationStyle()
         }
 
         if (!runCatching { manager.addView(view, params) }.isSuccess) return false
