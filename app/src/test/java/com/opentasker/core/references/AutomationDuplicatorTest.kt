@@ -70,6 +70,28 @@ class AutomationDuplicatorTest {
     }
 
     @Test
+    fun duplicatedTaskRebindsSignInFallbackToTheDuplicatedActionBlock() {
+        val source = Task(
+            id = 10,
+            name = "Secure flow",
+            actions = listOf(
+                ActionSpec(
+                    id = 4,
+                    type = "auth.device_credential",
+                    args = mapOf("fallback_action_spec_id" to "5"),
+                ),
+                ActionSpec(id = 5, type = "toast.show", args = mapOf("text" to "Sign-in cancelled")),
+            ),
+        )
+
+        val duplicate = AutomationDuplicator.taskPayload(source, "Secure flow (copy)")
+
+        assertEquals(listOf(6L, 7L), duplicate.actions.map { it.id })
+        assertEquals("7", duplicate.actions.first().args["fallback_action_spec_id"])
+        assertEquals("5", source.actions.first().args["fallback_action_spec_id"])
+    }
+
+    @Test
     fun profileCopiesAreDisabledResetAndDeepCopied() {
         val source = Profile(
             id = 10,
