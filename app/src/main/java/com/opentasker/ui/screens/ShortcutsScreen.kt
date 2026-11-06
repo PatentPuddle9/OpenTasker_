@@ -39,62 +39,69 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import com.opentasker.ui.icons.WidgetIconImage
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import kotlinx.coroutines.delay
 import com.opentasker.widget.TaskWidgetConfigActivity
 import com.opentasker.widget.TaskWidgetProvider
+import com.opentasker.widget.WidgetDisplayConfigActivity
+import com.opentasker.widget.WidgetDisplayProvider
+import com.opentasker.widget.WidgetDisplayStore
 import com.opentasker.widget.WidgetIconCatalog
+import com.opentasker.ui.icons.WidgetIconImage
+import kotlinx.coroutines.delay
 
-private data class ShortcutWidgetRow(
+internal enum class OpenTaskerWidgetType { ACTION_SHORTCUT, DISPLAY }
+
+internal data class OpenTaskerWidgetEntry(
     val widgetId: Int,
-    val actionName: String,
+    val name: String,
     val icon: String,
+    val type: OpenTaskerWidgetType,
+    val variantLabel: String,
 )
 
-/** A list of pinned home-screen Action widgets, with direct access to their configuration editor. */
+/** All OpenTasker home-screen widgets, with direct access to their editors. */
 @Composable
 internal fun ShortcutsScreen(
     contentPadding: PaddingValues,
     onCreateNew: () -> Unit,
-    onDeleteWidget: (Int, (Boolean) -> Unit) -> Unit,
+    onCreateWidgetDisplay: (WidgetDisplayProvider.Size) -> Unit,
+    onDeleteWidget: (OpenTaskerWidgetEntry, (Boolean) -> Unit) -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var refreshKey by remember { mutableIntStateOf(0) }
-    var shortcuts by remember { mutableStateOf(loadShortcutWidgets(context)) }
-    var pendingDelete by remember { mutableStateOf<ShortcutWidgetRow?>(null) }
+    var widgets by remember { mutableStateOf(loadOpenTaskerWidgets(context)) }
+    var pendingDelete by remember { mutableStateOf<OpenTaskerWidgetEntry?>(null) }
+    var showDisplaySizes by remember { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 refreshKey += 1
-                shortcuts = loadShortcutWidgets(context)
+                widgets = loadOpenTaskerWidgets(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    // Android can deliver the widget-pinned callback just after the app resumes. Recheck
-    // briefly so a new widget appears on this visit instead of requiring the user to reopen
-    // Widgets. The ID is enough to show a pending row; its name/icon fill in when saved.
+    // Android can deliver the widget-pinned callback just after the app resumes. Recheck briefly
+    // so newly pinned widgets appear without requiring the user to reopen this screen.
     LaunchedEffect(refreshKey) {
         repeat(12) {
             delay(250L)
-            val refreshed = loadShortcutWidgets(context)
-            if (refreshed != shortcuts) shortcuts = refreshed
+            val refreshed = loadOpenTaskerWidgets(context)
+            if (refreshed != widgets) widgets = refreshed
         }
     }
 
-    // Keep the state read explicit so a return from the widget editor refreshes this list.
     @Suppress("UNUSED_VARIABLE")
     val observedRefresh = refreshKey
 
-    if (shortcuts.isEmpty()) {
+    if (widgets.isEmpty()) {
         Column(
             modifier = Modifier.fillMaxSize().padding(contentPadding).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -109,7 +116,7 @@ internal fun ShortcutsScreen(
             Spacer(Modifier.size(16.dp))
             Text("No widgets yet", style = MaterialTheme.typography.titleLarge)
             Text(
-                "Create a home-screen widget that looks like an app icon and runs one of your Actions when tapped.",
+                "Create a one-tap Action widget or build a multi-state Widget Display dashboard.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -117,102 +124,151 @@ internal fun ShortcutsScreen(
             Button(onClick = onCreateNew) {
                 Icon(Icons.Filled.Add, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Create new")
+                Text("Create Widget Shortcut")
+            }
+            OutlinedButton(onClick = { showDisplaySizes = true }) {
+                Icon(Icons.Outlined.Widgets, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Create Widget Display")
             }
         }
-        return
-    }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(contentPadding),
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("Widgets on your home screen", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Each widget has its own icon and appearance.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-        items(shortcuts, key = { it.widgetId }) { shortcut ->
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                shape = RoundedCornerShape(16.dp),
-            ) {
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(contentPadding),
+            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Box(
-                        modifier = Modifier.size(48.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        WidgetIconImage(
-                            iconKey = shortcut.icon,
-                            contentDescription = shortcut.actionName,
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(28.dp),
+                    Column(Modifier.weight(1f)) {
+                        Text("Widgets on your home screen", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "Action shortcuts and customizable multi-state displays.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    Column(Modifier.weight(1f)) {
-                        Text(shortcut.actionName, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text("Home screen widget", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedButton(onClick = { showDisplaySizes = true }) {
+                        Icon(Icons.Outlined.Widgets, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Widget Display")
                     }
-                    OutlinedButton(
-                        onClick = {
-                            context.startActivity(
-                                Intent(context, TaskWidgetConfigActivity::class.java)
-                                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, shortcut.widgetId)
-                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                            )
-                        },
+                }
+            }
+            items(widgets, key = { "${it.type.name}_${it.widgetId}" }) { widget ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    shape = RoundedCornerShape(16.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(5.dp))
-                        Text("Edit")
-                    }
-                    TextButton(onClick = { pendingDelete = shortcut }) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                        Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                            WidgetIconImage(
+                                iconKey = widget.icon,
+                                contentDescription = widget.name,
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(28.dp),
+                            )
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(widget.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                "${widget.variantLabel} · ID ${widget.widgetId}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                val target = if (widget.type == OpenTaskerWidgetType.DISPLAY) {
+                                    WidgetDisplayConfigActivity::class.java
+                                } else {
+                                    TaskWidgetConfigActivity::class.java
+                                }
+                                context.startActivity(
+                                    Intent(context, target)
+                                        .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widget.widgetId)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                )
+                            },
+                        ) {
+                            Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(5.dp))
+                            Text("Edit")
+                        }
+                        TextButton(onClick = { pendingDelete = widget }) {
+                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
             }
         }
     }
 
-    pendingDelete?.let { shortcut ->
+    if (showDisplaySizes) {
+        AlertDialog(
+            onDismissRequest = { showDisplaySizes = false },
+            title = { Text("Create Widget Display") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "Choose a fixed layout size or a resizable custom widget.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    WidgetDisplayProvider.Size.entries.forEach { size ->
+                        TextButton(
+                            onClick = {
+                                showDisplaySizes = false
+                                onCreateWidgetDisplay(size)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(size.label, modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDisplaySizes = false }) { Text("Cancel") }
+            },
+        )
+    }
+
+    pendingDelete?.let { widget ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text("Delete widget?") },
             text = {
                 Text(
-                    "This deletes the widget's protected Action and removes it from OpenTasker's Widgets list. Android's launcher still owns the home-screen widget itself, so you'll also need to remove that leftover icon from your home screen.",
+                    if (widget.type == OpenTaskerWidgetType.DISPLAY) {
+                        "This removes the Widget Display, its saved states, and its home-screen placement."
+                    } else {
+                        "This deletes the widget's protected Action and removes it from OpenTasker's Widgets list. Android's launcher still owns the home-screen widget itself, so you'll also need to remove that leftover icon from your home screen."
+                    },
                 )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onDeleteWidget(shortcut.widgetId) { deleted ->
-                            if (deleted) {
-                                shortcuts = shortcuts.filterNot { it.widgetId == shortcut.widgetId }
+                        onDeleteWidget(widget) { deleted ->
+                            if (deleted) widgets = widgets.filterNot {
+                                it.widgetId == widget.widgetId && it.type == widget.type
                             }
                             pendingDelete = null
                         }
                     },
-                ) {
-                    Text("Delete widget", color = MaterialTheme.colorScheme.error)
-                }
+                ) { Text("Delete widget", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
                 TextButton(onClick = { pendingDelete = null }) { Text("Cancel") }
@@ -227,38 +283,39 @@ internal fun requestNewTaskWidget(context: Context): Boolean {
     return manager.requestPinAppWidget(provider, null, null)
 }
 
-internal fun taskWidgetCount(context: Context): Int {
-    val prefs = context.getSharedPreferences(TaskWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
-    // The installed AppWidget IDs are the source of truth. A new widget is listed
-    // immediately, even while its provider callback is still creating the backing Action.
-    return AppWidgetManager.getInstance(context)
-        .getAppWidgetIds(ComponentName(context, TaskWidgetProvider::class.java))
-        .count { widgetId ->
-            !prefs.getBoolean(TaskWidgetProvider.keyRemoved(widgetId), false)
-        }
-}
+internal fun taskWidgetCount(context: Context): Int = loadOpenTaskerWidgets(context).size
 
-private fun loadShortcutWidgets(context: Context): List<ShortcutWidgetRow> {
+private fun loadOpenTaskerWidgets(context: Context): List<OpenTaskerWidgetEntry> {
     val manager = AppWidgetManager.getInstance(context)
-    val ids = manager.getAppWidgetIds(ComponentName(context, TaskWidgetProvider::class.java))
     val prefs = context.getSharedPreferences(TaskWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
-    return ids.toList().mapNotNull { widgetId ->
-        // Do not hide freshly pinned widgets while onUpdate is still creating their Action.
-        if (prefs.getBoolean(TaskWidgetProvider.keyRemoved(widgetId), false)) {
-            return@mapNotNull null
-        }
-        ShortcutWidgetRow(
-            widgetId = widgetId,
-            actionName = prefs.getString(
-                TaskWidgetProvider.keyActionName(widgetId),
-                "Widget $widgetId",
-            ) ?: "Widget $widgetId",
-            icon = WidgetIconCatalog.resolveKey(
-                prefs.getString(
-                    TaskWidgetProvider.keyIcon(widgetId),
-                    WidgetIconCatalog.default.key,
+    val shortcuts = manager.getAppWidgetIds(ComponentName(context, TaskWidgetProvider::class.java))
+        .toList()
+        .filterNot { prefs.getBoolean(TaskWidgetProvider.keyRemoved(it), false) }
+        .map { widgetId ->
+            OpenTaskerWidgetEntry(
+                widgetId = widgetId,
+                name = prefs.getString(TaskWidgetProvider.keyActionName(widgetId), "Widget $widgetId")
+                    ?: "Widget $widgetId",
+                icon = WidgetIconCatalog.resolveKey(
+                    prefs.getString(TaskWidgetProvider.keyIcon(widgetId), WidgetIconCatalog.default.key),
                 ),
-            ),
+                type = OpenTaskerWidgetType.ACTION_SHORTCUT,
+                variantLabel = "Widget Shortcut",
+            )
+        }
+    val displays = WidgetDisplayProvider.instances(context).map { instance ->
+        val config = WidgetDisplayStore.load(context, instance.widgetId)
+        val state = config.states.firstOrNull()
+        OpenTaskerWidgetEntry(
+            widgetId = instance.widgetId,
+            name = state?.title?.takeIf { it.isNotBlank() }
+                ?: state?.name?.takeIf { it.isNotBlank() }
+                ?: "Widget Display ${instance.widgetId}",
+            icon = state?.elements?.firstOrNull { it.type == com.opentasker.widget.WidgetDisplayElementType.ICON }?.icon
+                ?: WidgetIconCatalog.default.key,
+            type = OpenTaskerWidgetType.DISPLAY,
+            variantLabel = instance.size.label,
         )
-    }.sortedBy { it.actionName.lowercase() }
+    }
+    return (shortcuts + displays).sortedBy { it.name.lowercase() }
 }
