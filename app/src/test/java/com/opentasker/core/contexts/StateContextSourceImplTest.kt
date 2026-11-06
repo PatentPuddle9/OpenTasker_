@@ -151,6 +151,20 @@ class StateContextSourceImplTest {
         assertEquals("airplane", normalizeStateKey("airplane_mode"))
         assertEquals("airplane", normalizeStateKey("flight_mode"))
         assertEquals("unlocked", normalizeStateKey("device_unlocked"))
+        assertEquals("light_lux", normalizeStateKey("light"))
+        assertEquals("light_lux", normalizeStateKey("ambient_light"))
+        assertEquals("light_lux", normalizeStateKey("lux"))
+    }
+
+    @Test
+    fun ambientLightPredicatesCompareLuxThresholds() {
+        val state = mapOf("light_lux" to "75.3")
+
+        assertTrue(stateMatches("light_lux>=50", state))
+        assertTrue(stateMatches("ambient_light<80", state))
+        assertTrue(stateMatches("lux>75", state))
+        assertFalse(stateMatches("light_lux<50", state))
+        assertFalse(stateMatches("light_lux>80", state))
     }
 
     @Test
