@@ -163,6 +163,7 @@ class StateContextSourceImplTest {
         assertTrue(stateMatches("light_lux>=50", state))
         assertTrue(stateMatches("ambient_light<80", state))
         assertTrue(stateMatches("lux>75", state))
+        assertTrue(stateMatches("light_lux=75.30", state))
         assertFalse(stateMatches("light_lux<50", state))
         assertFalse(stateMatches("light_lux>80", state))
     }
