@@ -9,6 +9,14 @@ import org.junit.Test
 
 class ContextValidationTest {
     @Test
+    fun selectedStateKeyIsPresentedAsItsFixedTriggerName() {
+        assertEquals("Battery level", stateContextDisplayName("battery_level"))
+        assertEquals("Wi-Fi connection", stateContextDisplayName("wifi"))
+        assertEquals("No state selected", stateContextDisplayName(null))
+        assertEquals("Custom sensor", stateContextDisplayName("custom_sensor"))
+    }
+
+    @Test
     fun validTimeWindowIsAccepted() {
         assertFalse(
             contextHasInvalidValues(ContextType.TIME, mapOf("start" to "08:30", "end" to "17:00")),
