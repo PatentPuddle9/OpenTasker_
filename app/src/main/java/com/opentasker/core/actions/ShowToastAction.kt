@@ -33,15 +33,17 @@ class ShowToastAction : DeclaredAction(ActionCatalog.require("toast.show")) {
         val message = args["text"].orEmpty()
         if (message.isBlank()) return ActionResult.Failure("Toast message is required")
 
-        val iconKey = args["icon_key"]?.trim().orEmpty()
-        val icon = if (iconKey.isBlank()) {
-            null
-        } else {
-            withContext(Dispatchers.IO) { resolveToastIcon(ctx.app, iconKey) }
-        }
-        val duration = toastDurationForKey(args["duration"])
-
         return try {
+            val iconKey = args["icon_key"]?.trim().orEmpty()
+            val icon = if (iconKey.isBlank()) {
+                null
+            } else {
+                withContext(Dispatchers.IO) {
+                    runCatching { resolveToastIcon(ctx.app, iconKey) }.getOrNull()
+                }
+            }
+            val duration = toastDurationForKey(args["duration"])
+
             withContext(Dispatchers.Main.immediate) {
                 val processInfo = ActivityManager.RunningAppProcessInfo()
                 ActivityManager.getMyMemoryState(processInfo)
