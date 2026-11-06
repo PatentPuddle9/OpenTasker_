@@ -81,6 +81,20 @@ class ActionsShortcutsNavigationTest {
     }
 
     @Test
+    fun widgetsDestinationUsesWidgetTerminology() {
+        val strings = source("app/src/main/res/values/strings.xml")
+        val widgets = source("app/src/main/java/com/opentasker/ui/screens/ShortcutsScreen.kt")
+
+        assertTrue(strings.contains("<string name=\\\"nav_shortcuts\\\">Widgets</string>"))
+        assertTrue(strings.contains("Delete the widget from Widgets to remove it."))
+        assertTrue(widgets.contains("No widgets yet"))
+        assertTrue(widgets.contains("Widgets on your home screen"))
+        assertTrue(widgets.contains("OpenTasker's Widgets list"))
+        assertFalse(widgets.contains("No shortcuts yet"))
+        assertFalse(widgets.contains("Home-screen shortcuts"))
+    }
+
+    @Test
     fun profileSchemaRegistersBothWidgetOwnershipMigrations() {
         val model = source("core/model/src/main/kotlin/com/opentasker/core/model/Profile.kt")
         val database = source("core/storage/src/main/kotlin/com/opentasker/core/storage/DatabaseMigrations.kt")
