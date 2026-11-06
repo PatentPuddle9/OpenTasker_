@@ -7,7 +7,6 @@ import android.content.DialogInterface
 import android.content.Intent
 import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricPrompt
-import android.hardware.fingerprint.FingerprintManager
 import android.os.Build
 import android.os.Bundle
 import android.os.CancellationSignal
@@ -30,7 +29,6 @@ internal enum class DeviceSignInPromptMode {
 }
 
 internal fun deviceSignInPromptModeForApi(apiLevel: Int): DeviceSignInPromptMode = when {
-    apiLevel >= Build.VERSION_CODES.R -> DeviceSignInPromptMode.BIOMETRIC_OR_DEVICE_CREDENTIAL
     apiLevel >= Build.VERSION_CODES.Q -> DeviceSignInPromptMode.BIOMETRIC_OR_DEVICE_CREDENTIAL
     apiLevel >= Build.VERSION_CODES.P -> DeviceSignInPromptMode.BIOMETRIC_WITH_CREDENTIAL_FALLBACK
     else -> DeviceSignInPromptMode.DEVICE_CREDENTIAL_ONLY
@@ -117,7 +115,7 @@ class DeviceCredentialPromptActivity : Activity() {
                 showLegacyDeviceCredentialPrompt(requireNotNull(keyguard), title, description)
             }
             DeviceSignInPromptMode.BIOMETRIC_WITH_CREDENTIAL_FALLBACK -> {
-                showFingerprintWithCredentialFallback(title, description)
+                showBiometricWithCredentialFallback(title, description)
             }
             DeviceSignInPromptMode.BIOMETRIC_OR_DEVICE_CREDENTIAL -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -185,23 +183,13 @@ class DeviceCredentialPromptActivity : Activity() {
     }
 
     /**
-     * Android 9 introduced BiometricPrompt but not its combined authenticator selector. Offer
-     * fingerprint first and use the system's older screen-credential Activity as the explicit
-     * fallback. If no fingerprint is enrolled, go straight to the screen credential.
+     * Android 9 introduced BiometricPrompt but not its combined authenticator selector. Offer the
+     * system biometric first and use the older screen-credential Activity as the explicit fallback.
+     * If no biometric is enrolled or the hardware is unavailable, the callback opens the screen
+     * credential prompt directly.
      */
     @androidx.annotation.RequiresApi(Build.VERSION_CODES.P)
-    private fun showFingerprintWithCredentialFallback(title: String, description: String) {
-        val fingerprintManager = getSystemService(FingerprintManager::class.java)
-        val fingerprintReady = runCatching {
-            fingerprintManager?.let { manager ->
-                manager.isHardwareDetected && manager.hasEnrolledFingerprints()
-            } == true
-        }.getOrDefault(false)
-        if (!fingerprintReady) {
-            showLegacyDeviceCredentialPrompt(requireNotNull(keyguard), title, description)
-            return
-        }
-
+    private fun showBiometricWithCredentialFallback(title: String, description: String) {
         try {
             val builder = BiometricPrompt.Builder(this)
                 .setTitle(title)
@@ -312,6 +300,7 @@ class DeviceCredentialPromptActivity : Activity() {
         private const val DEFAULT_TITLE = "Sign in to continue"
 
         private val DEVICE_CREDENTIAL_FALLBACK_ERRORS = setOf(
+            BiometricPrompt.BIOMETRIC_ERROR_HW_NOT_PRESENT,
             BiometricPrompt.BIOMETRIC_ERROR_HW_UNAVAILABLE,
             BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT,
             BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT_PERMANENT,
