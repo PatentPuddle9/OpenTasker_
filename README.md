@@ -37,7 +37,7 @@ Actions are the main way to build automations in OpenTasker. An Action has a nam
 - Optional per-Action or global fallback handling can catch unhandled failures.
 - Undo and redo recent edits to Actions, steps, and scenes.
 
-The execution engine currently includes **85 registered actions** plus **10 engine-handled flow commands**. See the catalogue below.
+The catalogue currently includes **85 built-in actions** (**85 registered actions**) plus **10 engine-handled flow commands**. See the catalogue below.
 
 ### Triggers
 
@@ -90,15 +90,25 @@ The **Temporary State** action applies a bounded reversible setting, such as bri
 
 Keyboard actions report the current and enabled input methods. The keyboard picker opens Android's own selection UI; ordinary apps cannot silently switch the active keyboard.
 
-### Shortcuts and widgets
+### Widgets
 
-The **Widgets** area lists home-screen Widget Shortcuts and Widget Displays. Widget Shortcuts run one Action with a tap. Widget Display is a resizable or fixed-size dashboard with multiple editable states, text, images, icons, progress bars, and buttons or widget shortcuts that run existing Actions. Use the display's on-widget arrows or the **Control Widget Display** Action to move between states.
+The **Widgets** area manages two home-screen widget types:
 
-- Widgets are designed to look like app icons and support a **1 × 1** starting size.
-- Android can resize them horizontally and vertically.
-- Choose the icon, icon color, background color, optional gradient, and app-icon shape.
-- Each widget is tied to its own Action configuration. Remove the widget from Widgets to remove that widget-owned Action.
-- A widget tap runs its configured Action; it does not ask you to select a task at runtime.
+**Widget Shortcut** is the compact, app-icon-style widget. Tapping it runs its own protected Action.
+
+- Starts at **1 × 1** and can be resized by the launcher.
+- Customize its icon, icon color, background color, optional gradient, and app-icon shape.
+- Its backing Action is created automatically; the widget never asks the user to choose a task at runtime.
+- Removing it from OpenTasker also removes its widget-owned Action. Remove the leftover placeholder from the launcher separately.
+
+**Widget Display** is a larger dashboard with a slideshow of independently designed states.
+
+- Choose a fixed **2 × 1**, **2 × 2**, **4 × 2**, or **4 × 4** size, or select **Custom** to resize it horizontally and vertically.
+- Create, edit, duplicate, reorder, and delete states. Each state has its own title, subtitle, layout, colors, and content.
+- Add text, images, icons, progress bars, Action buttons, Widget Shortcut buttons, dividers, and spacing.
+- Buttons can launch existing Actions, including Actions owned by Widget Shortcuts.
+- Move between states with the on-widget previous/next controls, or use the **Control Widget Display** Action to show a particular state or move forward/back.
+- The widget ID is shown in the Widgets list for use in Control Widget Display actions.
 
 ### Icons and customization
 
