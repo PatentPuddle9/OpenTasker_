@@ -195,8 +195,22 @@ object WidgetDisplayRenderer {
         val config = WidgetDisplayStore.load(context, widgetId)
         val stateIndex = WidgetDisplayStore.activeIndex(context, widgetId, config.states.size)
         val state = config.states[stateIndex]
+        val options = manager.getAppWidgetOptions(widgetId)
+        val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
+        val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
+        val compactHeight = minHeight in 1..109
+        val veryCompactHeight = minHeight in 1..69
+        val narrowWidth = minWidth in 1..149
         val views = RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display)
         val foreground = state.textColor
+        val panelPadding = if (compactHeight) 6 else 12
+        views.setViewPadding(
+            com.opentasker.app.R.id.widget_display_panel,
+            panelPadding,
+            panelPadding,
+            panelPadding,
+            panelPadding,
+        )
         views.setImageViewBitmap(
             com.opentasker.app.R.id.widget_display_background,
             WidgetBackgroundRenderer.render(
@@ -211,12 +225,23 @@ object WidgetDisplayRenderer {
         views.setTextViewText(com.opentasker.app.R.id.widget_display_subtitle, state.subtitle)
         views.setTextColor(com.opentasker.app.R.id.widget_display_title, foreground)
         views.setTextColor(com.opentasker.app.R.id.widget_display_subtitle, foreground)
-        views.setViewVisibility(com.opentasker.app.R.id.widget_display_title, if (state.title.isBlank()) View.GONE else View.VISIBLE)
-        views.setViewVisibility(com.opentasker.app.R.id.widget_display_subtitle, if (state.subtitle.isBlank()) View.GONE else View.VISIBLE)
+        views.setTextViewTextSize(
+            com.opentasker.app.R.id.widget_display_title,
+            android.util.TypedValue.COMPLEX_UNIT_SP,
+            if (narrowWidth) 13f else 17f,
+        )
+        views.setViewVisibility(
+            com.opentasker.app.R.id.widget_display_title,
+            if (state.title.isBlank() || veryCompactHeight) View.GONE else View.VISIBLE,
+        )
+        views.setViewVisibility(
+            com.opentasker.app.R.id.widget_display_subtitle,
+            if (state.subtitle.isBlank() || compactHeight) View.GONE else View.VISIBLE,
+        )
         views.setInt(
             com.opentasker.app.R.id.widget_display_content,
             "setOrientation",
-            if (state.horizontal) android.widget.LinearLayout.HORIZONTAL else android.widget.LinearLayout.VERTICAL,
+            if (state.horizontal || compactHeight) android.widget.LinearLayout.HORIZONTAL else android.widget.LinearLayout.VERTICAL,
         )
         views.removeAllViews(com.opentasker.app.R.id.widget_display_content)
 
@@ -321,7 +346,7 @@ object WidgetDisplayRenderer {
             }
         }
 
-        val navigationVisible = config.states.size > 1
+        val navigationVisible = config.states.size > 1 && minHeight >= 70
         views.setViewVisibility(com.opentasker.app.R.id.widget_display_navigation, if (navigationVisible) View.VISIBLE else View.GONE)
         if (navigationVisible) {
             views.setTextViewText(
