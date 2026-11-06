@@ -51,7 +51,8 @@ enum class FieldType {
     DROPDOWN,       // select from predefined values
     CHECKBOX,       // boolean toggle
     MULTILINE,      // multi-line text area
-    TASK,           // stable task-ID picker
+    TASK,           // stable top-level Action/setup picker
+    ACTION_BLOCK,   // selects an individual action block in the current action setup
     APP,            // validated package input with scoped installed-app picker
     FILE,           // file/URI input with a dedicated picker
     SCENE,          // saved Scene picker backed by the Scene library
