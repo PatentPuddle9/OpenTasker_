@@ -80,6 +80,7 @@ import com.opentasker.core.actions.typedVariableOptions
 import com.opentasker.core.capabilities.ActionCapabilityRegistry
 import com.opentasker.core.capabilities.CapabilityLevel
 import com.opentasker.core.engine.FlowControl
+import com.opentasker.core.engine.SUB_TASK_ACTION_ID
 import com.opentasker.core.model.ActionExecutionBinding
 import com.opentasker.core.model.ActionSpec
 import com.opentasker.core.model.Scene
@@ -127,6 +128,7 @@ internal fun selectableFallbackActionBlocks(
     action.id > 0L &&
         action.id != currentActionId &&
         action.type != "auth.device_credential" &&
+        action.type != SUB_TASK_ACTION_ID &&
         !FlowControl.isControl(action.type)
 }
 
