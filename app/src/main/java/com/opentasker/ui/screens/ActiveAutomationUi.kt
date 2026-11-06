@@ -119,6 +119,7 @@ import com.opentasker.core.engine.executeAndLogTask
 import com.opentasker.widget.TaskShortcutHelper
 import com.opentasker.widget.TaskWidgetProvider
 import com.opentasker.widget.WidgetProfileLinks
+import com.opentasker.widget.WidgetDisplayProvider
 import com.opentasker.core.flow.AutomationFlowTarget
 import com.opentasker.core.location.LocationDwellStateStore
 import com.opentasker.core.model.ActionExecutionBinding
@@ -808,25 +809,40 @@ fun ActiveAutomationUi(
                         scope.launch { snackbarHostState.showSnackbar("Your launcher couldn't create a home-screen widget.") }
                     }
                 },
-                onDeleteWidget = { widgetId, onComplete ->
+                onCreateWidgetDisplay = { size ->
+                    if (!WidgetDisplayProvider.requestPinWidget(context, size)) {
+                        scope.launch { snackbarHostState.showSnackbar("Your launcher couldn't create a Widget Display.") }
+                    }
+                },
+                onDeleteWidget = { widget, onComplete ->
                     scope.launch {
                         runCatching {
                             withContext(Dispatchers.IO) {
-                                WidgetProfileLinks.removeFromShortcuts(context, widgetId)
+                                if (widget.type == OpenTaskerWidgetType.DISPLAY) {
+                                    WidgetDisplayProvider.deleteWidget(context, widget.widgetId)
+                                } else {
+                                    WidgetProfileLinks.removeFromShortcuts(context, widget.widgetId)
+                                }
                             }
                         }.onSuccess {
-                            TaskWidgetProvider.updateWidget(
-                                context,
-                                android.appwidget.AppWidgetManager.getInstance(context),
-                                widgetId,
-                            )
+                            if (widget.type == OpenTaskerWidgetType.ACTION_SHORTCUT) {
+                                TaskWidgetProvider.updateWidget(
+                                    context,
+                                    android.appwidget.AppWidgetManager.getInstance(context),
+                                    widget.widgetId,
+                                )
+                            }
                             onComplete(true)
                             snackbarHostState.showSnackbar(
-                                "Widget Action deleted. Remove the leftover widget icon from your home screen.",
+                                if (widget.type == OpenTaskerWidgetType.DISPLAY) {
+                                    "Widget Display deleted."
+                                } else {
+                                    "Widget Action deleted. Remove the leftover widget icon from your home screen."
+                                },
                             )
                         }.onFailure { error ->
                             snackbarHostState.showSnackbar(
-                                "Couldn't delete widget Action: ${error.message ?: "Unknown error"}",
+                                "Couldn't delete widget: ${error.message ?: "Unknown error"}",
                             )
                             onComplete(false)
                         }
