@@ -1,6 +1,7 @@
 package com.opentasker.core.engine
 
 import com.opentasker.core.actions.ActionArgumentSensitivity
+import com.opentasker.core.actions.FALLBACK_ACTION_BLOCK_ARGUMENT
 import com.opentasker.core.capabilities.AutomationSensitivityRegistry
 import com.opentasker.core.capabilities.ActionCapabilityRegistry
 import com.opentasker.core.diagnostics.ExportRedactionPolicy
@@ -174,8 +175,11 @@ class TaskRunner(
                 onStep?.invoke(actionIndex, stepLabel)
                 // Retrying blocks and foreach iterations depend on strict action ordering. Keep
                 // those scopes sequential even when an action's saved preference is turned off.
+                val hasConfiguredFallbackActionBlock =
+                    spec.args[FALLBACK_ACTION_BLOCK_ARGUMENT]?.isNotBlank() == true
                 val mustWait = spec.waitForCompletion ||
                     spec.type == DEVICE_CREDENTIAL_ACTION_ID ||
+                    hasConfiguredFallbackActionBlock ||
                     tryStack.isNotEmpty() || loopStack.isNotEmpty()
                 val result: ActionResult? = if (mustWait) {
                     val (actionResult, trace) = runOne(actionIndex, spec)
@@ -202,13 +206,21 @@ class TaskRunner(
                 ) {
                     clearRetryVariables()
                 }
-                if (result is ActionResult.Failure && spec.type == DEVICE_CREDENTIAL_ACTION_ID) {
-                    // Authentication is a hard branch: never let continueOnError or an enclosing
-                    // try/catch release the original actions after the user did not authenticate.
-                    // New Sign In blocks point directly to one of the current task's ActionSpecs.
-                    // This is intentionally resolved from the same list, not through the
-                    // top-level Action/setup resolver used by legacy fallbackTaskId values.
+                if (result is ActionResult.Failure && (
+                        spec.type == DEVICE_CREDENTIAL_ACTION_ID ||
+                            result.fallbackActionSpecId != null ||
+                            hasConfiguredFallbackActionBlock
+                    )
+                ) {
+                    // Action-block fallbacks are handled here for every action type. Resolve the
+                    // selected block from this setup, never through the top-level Action resolver.
+                    // Any action with a configured fallback block must finish before later steps
+                    // are allowed to start, so this alternate branch can stop the original list.
                     val fallbackActionSpecId = result.fallbackActionSpecId
+                        ?: spec.args[FALLBACK_ACTION_BLOCK_ARGUMENT]
+                            ?.trim()
+                            ?.toLongOrNull()
+                            ?.takeIf { it > 0L }
                     if (fallbackActionSpecId != null) {
                         val fallbackEntry = task.actions.withIndex()
                             .filter { (_, action) -> action.id == fallbackActionSpecId }
@@ -274,7 +286,7 @@ class TaskRunner(
                                 results[results.lastIndex] = ActionResult.Success
                                 traces[traces.lastIndex] = previousTrace.copy(
                                     status = ActionTraceStatus.SUCCESS,
-                                    message = "Sign-in was not completed; ran fallback action block '$fallbackLabel'. Remaining actions in the original sequence were skipped.",
+                                    message = "Action '$stepLabel' failed; ran fallback action block '$fallbackLabel'. Remaining actions in the original sequence were skipped.",
                                 )
                             }
                         }
