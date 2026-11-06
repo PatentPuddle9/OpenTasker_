@@ -45,6 +45,7 @@ object ActionCatalog {
         define("notify.show", ActionCategory.NOTIFICATION, ActionRetrySafety.NEVER, ::ShowPopupAction),
         define("toast.show", ActionCategory.NOTIFICATION, ActionRetrySafety.NEVER, ::ShowToastAction),
         define("scene.show", ActionCategory.SYSTEM, ActionRetrySafety.NEVER, ::ShowSceneAction),
+        define(WidgetDisplayControlAction.ACTION_ID, ActionCategory.SYSTEM, ActionRetrySafety.NEVER, ::WidgetDisplayControlAction),
         define(ConfirmDeviceCredentialAction.ACTION_ID, ActionCategory.SYSTEM, ActionRetrySafety.NEVER, ::ConfirmDeviceCredentialAction),
         define("notify.cancel", ActionCategory.NOTIFICATION, ActionRetrySafety.IDEMPOTENT, ::NotifyCancelAction),
         define("notify.progress", ActionCategory.NOTIFICATION, ActionRetrySafety.NEVER, ::ProgressNotificationAction),
