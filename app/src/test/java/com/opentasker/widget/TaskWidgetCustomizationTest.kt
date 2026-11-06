@@ -83,4 +83,65 @@ class TaskWidgetCustomizationTest {
         assertTrue(compactLayout.contains("android:layout_width=\"32dp\""))
         assertTrue(compactLayout.contains("android:visibility=\"gone\""))
     }
+    @Test
+    fun widgetDisplaySupportsSlideshowStatesImagesAndActionShortcuts() {
+        val display = sourceRoot.resolve("com/opentasker/widget/WidgetDisplay.kt").readText()
+        val editor = sourceRoot.resolve("com/opentasker/widget/WidgetDisplayConfigEditor.kt").readText()
+        val action = sourceRoot.resolve("com/opentasker/core/actions/WidgetDisplayControlAction.kt").readText()
+        val catalog = sourceRoot.resolve("com/opentasker/core/actions/ActionCatalog.kt").readText()
+        val metadata = sourceRoot.resolve("com/opentasker/core/actions/ActionMetadata.kt").readText()
+
+        assertTrue(display.contains("data class WidgetDisplayState"))
+        assertTrue(display.contains("MAX_STATES = 75"))
+        assertTrue(display.contains("WidgetDisplayStateReceiver"))
+        assertTrue(display.contains("WidgetDisplayStateController"))
+        assertTrue(display.contains("WidgetDisplayElementType.IMAGE"))
+        assertTrue(display.contains("WidgetDisplayElementType.PROGRESS"))
+        assertTrue(display.contains("TaskRunActivity.EXTRA_PROFILE_ID"))
+        assertTrue(editor.contains("Text(\"New state\")"))
+        assertTrue(editor.contains("Text(\"Duplicate\")"))
+        assertTrue(editor.contains("Text(\"Delete\")"))
+        assertTrue(editor.contains("ActivityResultContracts.OpenDocument()"))
+        assertTrue(editor.contains("ActionIconPickerDialog"))
+        assertTrue(action.contains("WidgetDisplayStateController.control"))
+        assertTrue(catalog.contains("define(\"widget.display.control\""))
+        assertTrue(metadata.contains("id = \"widget.display.control\""))
+    }
+
+    @Test
+    fun widgetDisplayAnnouncesTheSeventyFiveStateLimitOnlyAfterTheLimitIsReached() {
+        val editor = sourceRoot.resolve("com/opentasker/widget/WidgetDisplayConfigEditor.kt").readText()
+        assertTrue(editor.contains("states.size >= WidgetDisplayStore.MAX_STATES"))
+        assertTrue(editor.contains("showStateLimitDialog = true"))
+        assertTrue(editor.contains("A Widget Display can contain up to 75 states."))
+        assertTrue(editor.contains("if (showStateLimitDialog)"))
+        assertTrue(editor.contains("New state"))
+        assertFalse(editor.substringBefore("if (showStateLimitDialog)").contains("up to 75 states"))
+    }
+
+    @Test
+    fun widgetDisplayOffersFourLockedSizesAndOneResizableCustomVariant() {
+        val provider = sourceRoot.resolve("com/opentasker/widget/WidgetDisplayProvider.kt").readText()
+        val manifest = sourceRoot.resolve("../AndroidManifest.xml").readText()
+        assertTrue(provider.contains("COMPACT"))
+        assertTrue(provider.contains("SQUARE"))
+        assertTrue(provider.contains("WIDE"))
+        assertTrue(provider.contains("LARGE"))
+        assertTrue(provider.contains("CUSTOM"))
+
+        val sizes = listOf("compact", "square", "wide", "large", "custom")
+        sizes.forEach { size ->
+            val info = resRoot.resolve("xml/widget_display_${size}_info.xml").readText()
+            assertTrue(info.contains("@layout/widget_display"))
+        }
+        listOf("compact", "square", "wide", "large").forEach { size ->
+            val info = resRoot.resolve("xml/widget_display_${size}_info.xml").readText()
+            assertTrue(info.contains("android:resizeMode=\"none\""))
+        }
+        val custom = resRoot.resolve("xml/widget_display_custom_info.xml").readText()
+        assertTrue(custom.contains("android:resizeMode=\"horizontal|vertical\""))
+        assertTrue(manifest.contains("WidgetDisplayCustomProvider"))
+        assertTrue(manifest.contains("WidgetDisplayConfigActivity"))
+    }
+
 }
