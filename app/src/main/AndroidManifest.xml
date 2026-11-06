@@ -438,6 +438,68 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_task_info" />
         </receiver>
+        <activity
+            android:name="com.opentasker.widget.WidgetDisplayConfigActivity"
+            android:exported="true"
+            android:theme="@style/Theme.OpenTasker">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name="com.opentasker.widget.WidgetDisplayStateReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name="com.opentasker.widget.WidgetDisplayCompactProvider"
+            android:label="@string/widget_display_variant_compact"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_display_compact_info" />
+        </receiver>
+
+        <receiver
+            android:name="com.opentasker.widget.WidgetDisplaySquareProvider"
+            android:label="@string/widget_display_variant_square"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_display_square_info" />
+        </receiver>
+
+        <receiver
+            android:name="com.opentasker.widget.WidgetDisplayWideProvider"
+            android:label="@string/widget_display_variant_wide"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_display_wide_info" />
+        </receiver>
+
+        <receiver
+            android:name="com.opentasker.widget.WidgetDisplayLargeProvider"
+            android:label="@string/widget_display_variant_large"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_display_large_info" />
+        </receiver>
+
+        <receiver
+            android:name="com.opentasker.widget.WidgetDisplayCustomProvider"
+            android:label="@string/widget_display_variant_custom"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_display_custom_info" />
+        </receiver>
 
         <receiver
             android:name="com.opentasker.core.actions.NotificationActionReceiver"
