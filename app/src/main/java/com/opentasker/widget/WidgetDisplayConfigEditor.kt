@@ -126,7 +126,11 @@ internal fun WidgetDisplayConfigEditor(
         val index = states.indexOfFirst { it.id == stateId }
         if (index < 0) return
         val source = states[index]
-        val duplicate = source.copy(id = UUID.randomUUID().toString(), name = "${source.name} copy")
+        val duplicate = source.copy(
+            id = UUID.randomUUID().toString(),
+            name = "${source.name} copy",
+            elements = source.elements.map { it.copy(id = UUID.randomUUID().toString()) },
+        )
         states = states.toMutableList().apply { add(index + 1, duplicate) }
         stateMenuFor = null
         editingStateId = duplicate.id
