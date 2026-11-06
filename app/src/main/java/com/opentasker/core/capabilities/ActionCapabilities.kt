@@ -43,6 +43,7 @@ object ActionCapabilityRegistry {
      */
     private val ordinaryActionIds = setOf(
         // Variables, text/date-time transforms, and read-only device-state snapshots.
+        "widget.display.control",
         "var.set",
         "var.persist",
         "clipboard.get",
