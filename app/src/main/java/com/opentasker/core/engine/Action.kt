@@ -44,10 +44,16 @@ sealed class ActionResult {
         /** Child task failures retain their original structured location when they bubble up. */
         val structuredError: StructuredTaskError? = null,
         /**
-         * Optional top-level Action execution to run as a recovery branch. The TaskRunner handles
-         * this only for the device-credential gate and stops the original sequence afterward.
+         * Legacy optional top-level Action setup to run as a recovery branch. Kept for saved
+         * Sign In blocks created before fallback action-block selection was introduced.
          */
         val fallbackTaskId: Long? = null,
+        /**
+         * Optional individual action-block ID from the current task to run as the Sign In
+         * recovery branch. The TaskRunner executes that block directly and stops the original
+         * sequence afterward.
+         */
+        val fallbackActionSpecId: Long? = null,
     ) : ActionResult()
     data object Skip : ActionResult()
 }
