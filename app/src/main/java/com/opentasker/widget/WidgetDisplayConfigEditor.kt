@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -53,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.opentasker.app.OpenTaskerApp_NoHilt
 import com.opentasker.app.R
+import com.opentasker.ui.icons.Icons
 import com.opentasker.core.model.Profile
 import com.opentasker.core.scenes.SceneImageLoader
 import com.opentasker.core.storage.toDomainDecodeResult
@@ -62,6 +64,7 @@ import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun WidgetDisplayConfigEditor(
     widgetId: Int,
@@ -254,6 +257,7 @@ internal fun WidgetDisplayConfigEditor(
             WidgetDisplayStateEditor(
                 state = draft,
                 actions = availableActions,
+                contentPadding = padding,
                 onStateChange = { draft = it },
                 onSaveState = {
                     states = states.map { if (it.id == draft.id) draft else it }
@@ -308,10 +312,12 @@ private fun BoxCenterIcon(state: WidgetDisplayState) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun WidgetDisplayStateEditor(
     state: WidgetDisplayState,
     actions: List<Profile>,
+    contentPadding: androidx.compose.foundation.layout.PaddingValues,
     onStateChange: (WidgetDisplayState) -> Unit,
     onSaveState: () -> Unit,
 ) {
@@ -319,6 +325,7 @@ private fun WidgetDisplayStateEditor(
     var selectingActionFor by rememberSaveable(state.id) { mutableStateOf<String?>(null) }
     var selectingIconFor by rememberSaveable(state.id) { mutableStateOf<String?>(null) }
 
+    var selectingImageFor by rememberSaveable(state.id) { mutableStateOf<String?>(null) }
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching {
@@ -334,7 +341,6 @@ private fun WidgetDisplayStateEditor(
             }
         }
     }
-    var selectingImageFor by rememberSaveable(state.id) { mutableStateOf<String?>(null) }
 
     fun addElement(type: WidgetDisplayElementType) {
         val item = WidgetDisplayElement(
@@ -361,7 +367,7 @@ private fun WidgetDisplayStateEditor(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+        modifier = Modifier.fillMaxSize().padding(contentPadding).verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp).padding(bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -665,12 +671,7 @@ private fun WidgetDisplayPreviewItem(item: WidgetDisplayElement, state: WidgetDi
     when (item.type) {
         WidgetDisplayElementType.TEXT -> Text(item.text, color = foreground, fontSize = item.textSizeSp.sp)
         WidgetDisplayElementType.IMAGE -> Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                androidx.compose.material.icons.Icons.Default.Image,
-                contentDescription = null,
-                tint = accent,
-                modifier = Modifier.size(24.dp),
-            )
+            Text("IMAGE", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.size(7.dp))
             Text(item.text.ifBlank { "Image" }, color = foreground)
         }
