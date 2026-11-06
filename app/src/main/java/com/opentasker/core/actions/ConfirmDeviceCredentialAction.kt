@@ -1,6 +1,7 @@
 package com.opentasker.core.actions
 
 import android.app.KeyguardManager
+import android.os.Build
 import android.provider.Settings
 import com.opentasker.core.engine.ActionContext
 import com.opentasker.core.engine.ActionResult
@@ -55,7 +56,12 @@ class ConfirmDeviceCredentialAction : DeclaredAction(ActionCatalog.require(ACTIO
         }
 
         val title = args["title"]?.trim()?.takeIf(String::isNotEmpty) ?: DEFAULT_TITLE
-        val description = args["description"]?.trim()?.takeIf(String::isNotEmpty) ?: DEFAULT_DESCRIPTION
+        val defaultDescription = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            BIOMETRIC_DEFAULT_DESCRIPTION
+        } else {
+            DEVICE_CREDENTIAL_DEFAULT_DESCRIPTION
+        }
+        val description = args["description"]?.trim()?.takeIf(String::isNotEmpty) ?: defaultDescription
         return when (val outcome = DeviceCredentialPromptRequests.request(ctx.app, title, description)) {
             DeviceCredentialPromptResult.Authenticated -> {
                 ctx.logger("Sign-in completed; continuing.")
@@ -74,6 +80,7 @@ class ConfirmDeviceCredentialAction : DeclaredAction(ActionCatalog.require(ACTIO
     companion object {
         const val ACTION_ID = "auth.device_credential"
         private const val DEFAULT_TITLE = "Sign in to continue"
-        private const val DEFAULT_DESCRIPTION = "Use your fingerprint or device PIN, pattern, or password to continue."
+        private const val BIOMETRIC_DEFAULT_DESCRIPTION = "Use your fingerprint or device PIN, pattern, or password to continue."
+        private const val DEVICE_CREDENTIAL_DEFAULT_DESCRIPTION = "Enter your device PIN, pattern, or password to continue."
     }
 }
