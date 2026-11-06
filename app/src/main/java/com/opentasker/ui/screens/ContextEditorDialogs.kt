@@ -598,7 +598,7 @@ internal fun contextInvalidFields(type: ContextType, config: Map<String, String>
         if (raw.isBlank()) return
         val value = raw.toDoubleOrNull()
         issues[key] = when {
-            value == null -> ActionFieldPolicy.Issue(ActionFieldPolicy.Error.INVALID_NUMBER)
+            value == null || !value.isFinite() -> ActionFieldPolicy.Issue(ActionFieldPolicy.Error.INVALID_NUMBER)
             value < min -> ActionFieldPolicy.Issue(ActionFieldPolicy.Error.BELOW_MINIMUM, min)
             value > max -> ActionFieldPolicy.Issue(ActionFieldPolicy.Error.ABOVE_MAXIMUM, max)
             else -> return
@@ -624,6 +624,9 @@ internal fun contextInvalidFields(type: ContextType, config: Map<String, String>
         ContextType.EVENT -> {
             checkRange("latitude", -90.0, 90.0)
             checkRange("longitude", -180.0, 180.0)
+        }
+        ContextType.STATE -> if (config["key"] == "light_lux") {
+            checkRange("value", 0.0, Double.MAX_VALUE)
         }
         else -> Unit
     }
