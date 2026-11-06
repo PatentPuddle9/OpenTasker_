@@ -699,7 +699,12 @@ private fun contextFields(type: ContextType, config: Map<String, String> = empty
         ActionField("operator", R.string.context_field_state_operator_label, hintRes = R.string.context_field_state_operator_hint),
         ActionField(
             "value",
-            R.string.context_field_state_value_label,
+            labelRes = if (config["key"] == "light_lux") {
+                R.string.context_field_state_light_value_label
+            } else {
+                R.string.context_field_state_value_label
+            },
+            fieldType = if (config["key"] == "light_lux") FieldType.NUMBER else FieldType.TEXT,
             required = true,
             hintRes = if (config["key"] == "light_lux") {
                 R.string.context_field_state_light_value_hint
