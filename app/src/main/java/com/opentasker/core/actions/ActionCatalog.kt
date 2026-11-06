@@ -43,6 +43,7 @@ class ActionDefinition(
 object ActionCatalog {
     val all: List<ActionDefinition> = listOf(
         define("notify.show", ActionCategory.NOTIFICATION, ActionRetrySafety.NEVER, ::ShowPopupAction),
+        define("toast.show", ActionCategory.NOTIFICATION, ActionRetrySafety.NEVER, ::ShowToastAction),
         define("scene.show", ActionCategory.SYSTEM, ActionRetrySafety.NEVER, ::ShowSceneAction),
         define(ConfirmDeviceCredentialAction.ACTION_ID, ActionCategory.SYSTEM, ActionRetrySafety.NEVER, ::ConfirmDeviceCredentialAction),
         define("notify.cancel", ActionCategory.NOTIFICATION, ActionRetrySafety.IDEMPOTENT, ::NotifyCancelAction),
