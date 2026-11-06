@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
  *
  * Matches predicates like:
  *   - "battery_level>=80" (battery percentage)
+ *   - "light_lux<50" (ambient illuminance in lux)
  *   - "charging=true" (is device charging)
  *   - "headphones=connected" or "headphones=true" (headphones plugged in)
  *   - "screen=on" (display state)
