@@ -20,6 +20,16 @@
     <string name="action_icon_picker_remove" formatted="false">Remove icon</string>
     <string name="catalog_category_notification" formatted="false">Notification</string>
     <string name="catalog_category_scenes" formatted="false">Scenes</string>
+    <string name="catalog_action_widget_display_control_name" formatted="false">Control Widget Display</string>
+    <string name="catalog_action_widget_display_control_description" formatted="false">Change the visible slideshow state of a home-screen Widget Display.</string>
+    <string name="catalog_action_widget_display_control_field_widget_id_label" formatted="false">Widget ID</string>
+    <string name="catalog_action_widget_display_control_field_widget_id_hint" formatted="false">The ID shown beside the Widget Display in Widgets.</string>
+    <string name="catalog_action_widget_display_control_field_operation_label" formatted="false">Operation</string>
+    <string name="catalog_action_widget_display_control_field_state_index_label" formatted="false">State number</string>
+    <string name="catalog_action_widget_display_control_field_state_index_hint" formatted="false">Required for Show; state numbers start at 1.</string>
+    <string name="action_option_widget_display_next" formatted="false">Next state</string>
+    <string name="action_option_widget_display_previous" formatted="false">Previous state</string>
+    <string name="action_option_widget_display_show" formatted="false">Show a specific state</string>
     <string name="catalog_action_scene_show_name" formatted="false">Show Scene</string>
     <string name="catalog_action_scene_show_description" formatted="false">Display a saved scene as a floating overlay above other apps.</string>
     <string name="catalog_action_scene_show_field_scene_label" formatted="false">Scene</string>
