@@ -66,6 +66,22 @@ class ActionFieldPolicyTest {
     }
 
     @Test
+    fun showToastHasARequiredMessageAndOptionalSelectableIcon() {
+        val metadata = requireNotNull(ActionMetadataRegistry.get("toast.show"))
+        val message = metadata.fields.first { it.key == "text" }
+        val icon = metadata.fields.first { it.key == "icon_key" }
+        val duration = metadata.fields.first { it.key == "duration" }
+
+        assertEquals(FieldType.MULTILINE, message.fieldType)
+        assertEquals(true, message.required)
+        assertEquals(FieldType.TEXT, icon.fieldType)
+        assertEquals(false, icon.required)
+        assertNull(ActionFieldPolicy.validate(icon, "bolt"))
+        assertEquals(FieldType.DROPDOWN, duration.fieldType)
+        assertEquals(setOf("short", "long"), duration.options.map { it.value }.toSet())
+    }
+
+    @Test
     fun sceneFieldRequiresAPositiveSavedSceneId() {
         val field = ActionField("scene_id", 1, FieldType.SCENE, required = true)
 
