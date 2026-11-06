@@ -14,10 +14,14 @@ import org.junit.Test
 class TaskRunnerFailureRecoveryTest {
 
     private var calls = 0
+    private var fallbackBlockCalls = 0
+    private var afterFallbackCalls = 0
 
     @Before
     fun setUp() {
         calls = 0
+        fallbackBlockCalls = 0
+        afterFallbackCalls = 0
         ActionRegistry.register(object : Action {
             override val id = "test.flow.flaky"
             override val category = ActionCategory.FLOW
@@ -135,6 +139,82 @@ class TaskRunnerFailureRecoveryTest {
         assertEquals(41L, error.originatingProfileId)
         assertEquals("Work profile", error.originatingProfileName)
         assertTrue(variables.globalSnapshot()[TaskFailureVariables.JSON].orEmpty().contains("test.flow.fail"))
+    }
+
+    @Test
+    fun signInFailureRunsTheSelectedActionBlockAndStopsTheOriginalSequence() {
+        ActionRegistry.register(object : Action {
+            override val id = "auth.device_credential"
+            override val category = ActionCategory.SYSTEM
+            override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult =
+                ActionResult.Failure(
+                    "Sign-in was not completed",
+                    fallbackActionSpecId = args["fallback_action_spec_id"]?.toLongOrNull(),
+                )
+        })
+        ActionRegistry.register(object : Action {
+            override val id = "test.signin.fallback"
+            override val category = ActionCategory.NOTIFICATION
+            override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
+                fallbackBlockCalls++
+                return ActionResult.Success
+            }
+        })
+        ActionRegistry.register(object : Action {
+            override val id = "test.signin.after"
+            override val category = ActionCategory.FLOW
+            override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
+                afterFallbackCalls++
+                return ActionResult.Success
+            }
+        })
+
+        val report = runBlocking {
+            TaskRunner(ActionContext(ContextWrapper(null), VariableStore())).run(
+                Task(
+                    name = "Sign In fallback",
+                    actions = listOf(
+                        ActionSpec(
+                            id = 11,
+                            type = "auth.device_credential",
+                            args = mapOf("fallback_action_spec_id" to "22"),
+                        ),
+                        ActionSpec(id = 22, type = "test.signin.fallback"),
+                        ActionSpec(id = 33, type = "test.signin.after"),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(report.success)
+        assertEquals(1, fallbackBlockCalls)
+        assertEquals(0, afterFallbackCalls)
+        assertTrue(report.traces.single().message.contains("fallback action block"))
+    }
+
+    @Test
+    fun signInFallbackRejectsMissingOrNonActionBlockTargets() {
+        ActionRegistry.register(object : Action {
+            override val id = "auth.device_credential"
+            override val category = ActionCategory.SYSTEM
+            override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult =
+                ActionResult.Failure("Sign-in was not completed", fallbackActionSpecId = 999L)
+        })
+        val report = runBlocking {
+            TaskRunner(ActionContext(ContextWrapper(null), VariableStore())).run(
+                Task(
+                    name = "Missing fallback action",
+                    actions = listOf(
+                        ActionSpec(id = 11, type = "auth.device_credential"),
+                        ActionSpec(id = 22, type = "test.signin.fallback"),
+                    ),
+                ),
+            )
+        }
+
+        assertFalse(report.success)
+        assertTrue(report.traces.single().message.contains("could not be used"))
+        assertEquals(0, fallbackBlockCalls)
     }
 
     @Test
