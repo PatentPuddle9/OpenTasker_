@@ -4,10 +4,16 @@ import android.app.ActivityManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.PixelFormat
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import android.text.TextUtils
 import android.view.Gravity
+import android.view.View
+import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -23,9 +29,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Shows a short Android toast. A selected icon is rendered in a custom toast only while the app
- * has a foreground activity; Android blocks custom toast views from background apps on API 30+.
- * Background runs still show a normal system text toast rather than silently losing the message.
+ * Shows a toast with an optional selected icon.
+ *
+ * Android 11+ does not display app-provided custom Toast views from the background. When the app
+ * is backgrounded and Display over other apps is already granted, use a short-lived, non-touchable
+ * TYPE_APPLICATION_OVERLAY window that looks like the same toast. Otherwise fall back to Android's
+ * standard text toast; Android supplies the app icon in that case.
  */
 class ShowToastAction : DeclaredAction(ActionCatalog.require("toast.show")) {
 
@@ -47,9 +56,21 @@ class ShowToastAction : DeclaredAction(ActionCatalog.require("toast.show")) {
             withContext(Dispatchers.Main.immediate) {
                 val processInfo = ActivityManager.RunningAppProcessInfo()
                 ActivityManager.getMyMemoryState(processInfo)
-                if (icon != null && canShowCustomIconToast(processInfo.importance)) {
-                    showCustomIconToast(ctx.app, message, duration, icon)
-                } else {
+                val isForeground = canShowCustomIconToast(processInfo.importance)
+                var customIconShown = false
+
+                if (icon != null && isForeground) {
+                    customIconShown = showCustomIconToast(ctx.app, message, duration, icon)
+                } else if (icon != null && canUseBackgroundToastOverlay(ctx.app, isForeground)) {
+                    customIconShown = showCustomIconToastOverlay(ctx.app, message, duration, icon)
+                    if (!customIconShown) {
+                        ctx.logger("Background toast overlay could not be shown; using Android's standard toast")
+                    }
+                } else if (icon != null && !isForeground) {
+                    ctx.logger("Selected toast icon needs Display over other apps access when OpenTasker is in the background")
+                }
+
+                if (!customIconShown) {
                     Toast.makeText(ctx.app, message, duration).show()
                 }
             }
@@ -64,8 +85,16 @@ class ShowToastAction : DeclaredAction(ActionCatalog.require("toast.show")) {
 internal fun toastDurationForKey(value: String?): Int =
     if (value.equals("long", ignoreCase = true)) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
 
+internal fun toastDurationMillisForKey(value: String?): Long =
+    if (value.equals("long", ignoreCase = true)) 3_500L else 2_000L
+
 internal fun canShowCustomIconToast(processImportance: Int): Boolean =
     processImportance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+
+internal fun canUseBackgroundToastOverlay(
+    context: Context,
+    isForeground: Boolean,
+): Boolean = !isForeground && runCatching { Settings.canDrawOverlays(context) }.getOrDefault(false)
 
 private data class ResolvedToastIcon(
     val bitmap: Bitmap? = null,
@@ -89,31 +118,35 @@ private fun resolveToastIcon(context: Context, key: String): ResolvedToastIcon? 
     return ResolvedToastIcon(drawableRes = builtIn.drawableRes)
 }
 
-@Suppress("DEPRECATION")
-private fun showCustomIconToast(
-    context: Context,
-    message: String,
-    duration: Int,
-    icon: ResolvedToastIcon,
-) {
+private fun resolveToastIconDrawable(context: Context, icon: ResolvedToastIcon): Drawable? {
     val tint = ContextCompat.getColor(context, R.color.notification_accent)
-    val iconDrawable: Drawable = icon.bitmap?.let { BitmapDrawable(context.resources, it) }
+    return icon.bitmap?.let { BitmapDrawable(context.resources, it) }
         ?: icon.drawableRes?.let { resource ->
             ContextCompat.getDrawable(context, resource)?.mutate()?.apply { setTint(tint) }
         }
-        ?: return Toast.makeText(context, message, duration).show()
+}
 
+private fun buildCustomToastView(
+    context: Context,
+    message: String,
+    icon: ResolvedToastIcon,
+): View? {
+    val iconDrawable = resolveToastIconDrawable(context, icon) ?: return null
     val density = context.resources.displayMetrics.density
     fun dp(value: Int): Int = (value * density).toInt()
+
     val view = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         setBackgroundResource(android.R.drawable.toast_frame)
         setPadding(dp(16), dp(10), dp(16), dp(10))
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        contentDescription = message
     }
     val iconView = ImageView(context).apply {
         scaleType = ImageView.ScaleType.FIT_CENTER
         setImageDrawable(iconDrawable)
+        contentDescription = null
     }
     view.addView(
         iconView,
@@ -134,6 +167,7 @@ private fun showCustomIconToast(
         maxLines = 2
         maxWidth = dp(280)
         ellipsize = TextUtils.TruncateAt.END
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
     }
     view.addView(
         messageView,
@@ -142,10 +176,89 @@ private fun showCustomIconToast(
             LinearLayout.LayoutParams.WRAP_CONTENT,
         ),
     )
+    return view
+}
 
+private fun showCustomIconToast(
+    context: Context,
+    message: String,
+    duration: Int,
+    icon: ResolvedToastIcon,
+): Boolean {
+    val view = buildCustomToastView(context, message, icon) ?: return false
+    @Suppress("DEPRECATION")
     Toast(context).apply {
         setDuration(duration)
         setView(view)
         show()
+    }
+    return true
+}
+
+private fun showCustomIconToastOverlay(
+    context: Context,
+    message: String,
+    duration: Int,
+    icon: ResolvedToastIcon,
+): Boolean {
+    val view = buildCustomToastView(context, message, icon) ?: return false
+    return ToastOverlayWindow.show(context, view, toastDurationMillisForKey(if (duration == Toast.LENGTH_LONG) "long" else "short"))
+}
+
+/**
+ * Background Toast replacement. It is deliberately non-touchable and is only used when the user
+ * has already granted Android's explicit Display over other apps special access.
+ */
+private object ToastOverlayWindow {
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var currentView: View? = null
+    private var currentWindowManager: WindowManager? = null
+    private var dismissRunnable: Runnable? = null
+
+    fun show(context: Context, view: View, durationMillis: Long): Boolean {
+        val appContext = context.applicationContext
+        if (!runCatching { Settings.canDrawOverlays(appContext) }.getOrDefault(false)) return false
+        val manager = appContext.getSystemService(WindowManager::class.java) ?: return false
+
+        removeCurrent()
+        val density = appContext.resources.displayMetrics.density
+        val bottomOffset = (64 * density).toInt()
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+            y = bottomOffset
+        }
+
+        if (!runCatching { manager.addView(view, params) }.isSuccess) return false
+        currentView = view
+        currentWindowManager = manager
+        val dismiss = Runnable {
+            if (currentView === view) removeCurrent()
+        }
+        dismissRunnable = dismiss
+        mainHandler.postDelayed(dismiss, durationMillis)
+        return true
+    }
+
+    private fun removeCurrent() {
+        dismissRunnable?.let(mainHandler::removeCallbacks)
+        dismissRunnable = null
+        val view = currentView
+        val manager = currentWindowManager
+        currentView = null
+        currentWindowManager = null
+        if (view != null && manager != null) {
+            runCatching {
+                if (view.isAttachedToWindow) manager.removeViewImmediate(view)
+            }
+        }
     }
 }
