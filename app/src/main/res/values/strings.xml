@@ -49,9 +49,9 @@
     <string name="locale_condition_operator_starts_with">starts with</string>
     <string name="locale_condition_operator_ends_with">ends with</string>
     <string name="nav_actions">Actions</string>
-    <string name="nav_shortcuts">Shortcuts</string>
+    <string name="nav_shortcuts">Widgets</string>
     <string name="action_binding_unavailable">Linked Action unavailable</string>
-    <string name="widget_profile_owned">This Action belongs to its widget. Delete the widget from Shortcuts to remove it.</string>
+    <string name="widget_profile_owned">This Action belongs to its widget. Delete the widget from Widgets to remove it.</string>
     <string name="nav_run_log">Run Log</string>
     <string name="nav_setup">Setup</string>
     <string name="nav_settings">Settings</string>
