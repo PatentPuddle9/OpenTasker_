@@ -591,14 +591,14 @@
     <string name="catalog_action_vibrate_name" formatted="false">Vibrate</string>
     <string name="catalog_action_vibrate_description" formatted="false">Vibrate the device</string>
     <string name="catalog_category_system" formatted="false">System</string>
-    <string name="catalog_action_auth_device_credential_name" formatted="false">Confirm Device Credential</string>
-    <string name="catalog_action_auth_device_credential_description" formatted="false">Ask Android to confirm the device PIN, pattern, or password. If no credential is configured, continue. If it is not confirmed, run the fallback Action and stop the original sequence.</string>
+    <string name="catalog_action_auth_device_credential_name" formatted="false">Sign In</string>
+    <string name="catalog_action_auth_device_credential_description" formatted="false">Ask Android to verify the user with a fingerprint or device screen lock (PIN, pattern, or password). If no device lock is configured, continue. If sign-in is not completed, run the fallback Action and stop the original sequence.</string>
     <string name="catalog_action_auth_device_credential_field_title_label" formatted="false">Prompt title</string>
-    <string name="catalog_action_auth_device_credential_field_title_hint" formatted="false">Title shown on Android’s system credential screen</string>
+    <string name="catalog_action_auth_device_credential_field_title_hint" formatted="false">Title shown on Android’s system sign-in prompt</string>
     <string name="catalog_action_auth_device_credential_field_description_label" formatted="false">Prompt description</string>
-    <string name="catalog_action_auth_device_credential_field_description_hint" formatted="false">Explain why the device credential is needed</string>
+    <string name="catalog_action_auth_device_credential_field_description_hint" formatted="false">Explain why the user needs to sign in</string>
     <string name="catalog_action_auth_device_credential_field_fallback_label" formatted="false">Fallback Action</string>
-    <string name="catalog_action_auth_device_credential_field_fallback_hint" formatted="false">Optional top-level Action to run when the system prompt is cancelled or not completed. Actions after this step will be skipped.</string>
+    <string name="catalog_action_auth_device_credential_field_fallback_hint" formatted="false">Optional top-level Action to run when sign-in is cancelled or not completed. Actions after this step will be skipped.</string>
     <string name="catalog_action_vibrate_field_millis_label" formatted="false">Duration (ms)</string>
     <string name="catalog_action_reboot_name" formatted="false">Reboot Device</string>
     <string name="catalog_action_reboot_description" formatted="false">Reboot the device</string>
