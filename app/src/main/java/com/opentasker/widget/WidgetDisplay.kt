@@ -101,7 +101,7 @@ object WidgetDisplayStore {
     fun moveState(context: Context, widgetId: Int, delta: Int): Boolean {
         val config = load(context, widgetId)
         val current = activeIndex(context, widgetId, config.states.size)
-        val next = (current + delta).coerceIn(0, config.states.lastIndex)
+        val next = (current + delta + config.states.size) % config.states.size
         if (next == current) return false
         return setActiveState(context, widgetId, next)
     }
@@ -152,9 +152,7 @@ class WidgetDisplayStateReceiver : BroadcastReceiver() {
  * Each button/shortcut targets a top-level Action (Profile ID), never an Action block.
  */
 object WidgetDisplayRenderer {
-    private const val MAX_RENDERED_ELEMENTS = 40
-
-    fun updateWidget(context: Context, manager: AppWidgetManager, widgetId: Int) {
+        fun updateWidget(context: Context, manager: AppWidgetManager, widgetId: Int) {
         val config = WidgetDisplayStore.load(context, widgetId)
         val stateIndex = WidgetDisplayStore.activeIndex(context, widgetId, config.states.size)
         val state = config.states[stateIndex]
@@ -183,7 +181,7 @@ object WidgetDisplayRenderer {
         )
         views.removeAllViews(com.opentasker.app.R.id.widget_display_content)
 
-        val elements = state.elements.take(MAX_RENDERED_ELEMENTS)
+        val elements = state.elements
         if (elements.isEmpty()) {
             val empty = RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display_text_item)
             empty.setTextViewText(com.opentasker.app.R.id.widget_display_text, "Edit this state to add content and Action shortcuts.")
