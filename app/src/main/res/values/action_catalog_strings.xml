@@ -8,7 +8,7 @@
     <string name="catalog_action_toast_show_field_text_label" formatted="false">Message</string>
     <string name="catalog_action_toast_show_field_text_hint" formatted="false">Text to display; supports variable expansion</string>
     <string name="catalog_action_toast_show_field_icon_label" formatted="false">Toast icon</string>
-    <string name="catalog_action_toast_show_field_icon_hint" formatted="false">Optional icon from built-in or uploaded icons. Custom icons appear while OpenTasker is in the foreground.</string>
+    <string name="catalog_action_toast_show_field_icon_hint" formatted="false">Optional built-in or uploaded icon. In the background, the selected icon uses a temporary overlay when Display over other apps is allowed; otherwise Android shows its standard app-branded text toast.</string>
     <string name="catalog_action_toast_show_field_duration_label" formatted="false">Duration</string>
     <string name="catalog_action_toast_show_field_duration_hint" formatted="false">How long the toast stays visible</string>
     <string name="catalog_action_toast_show_duration_short" formatted="false">Short</string>
