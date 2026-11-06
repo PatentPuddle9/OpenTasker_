@@ -1,6 +1,7 @@
 package com.opentasker.core.engine
 
 import android.content.ContextWrapper
+import com.opentasker.core.actions.ConfirmDeviceCredentialAction
 import com.opentasker.core.model.ActionSpec
 import com.opentasker.core.model.Task
 import kotlinx.coroutines.runBlocking
@@ -8,6 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
@@ -43,6 +45,27 @@ class TaskRunnerFailureRecoveryTest {
             override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult =
                 ActionResult.Failure("permanent failure")
         })
+        ActionRegistry.register(object : Action {
+            override val id = "test.signin.fallback"
+            override val category = ActionCategory.NOTIFICATION
+            override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
+                fallbackBlockCalls++
+                return ActionResult.Success
+            }
+        })
+        ActionRegistry.register(object : Action {
+            override val id = "test.signin.after"
+            override val category = ActionCategory.FLOW
+            override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
+                afterFallbackCalls++
+                return ActionResult.Success
+            }
+        })
+    }
+
+    @After
+    fun restoreSignInAction() {
+        ActionRegistry.register(ConfirmDeviceCredentialAction())
     }
 
     private fun run(vararg actions: ActionSpec): TaskRunReport = runBlocking {
@@ -152,23 +175,6 @@ class TaskRunnerFailureRecoveryTest {
                     fallbackActionSpecId = args["fallback_action_spec_id"]?.toLongOrNull(),
                 )
         })
-        ActionRegistry.register(object : Action {
-            override val id = "test.signin.fallback"
-            override val category = ActionCategory.NOTIFICATION
-            override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
-                fallbackBlockCalls++
-                return ActionResult.Success
-            }
-        })
-        ActionRegistry.register(object : Action {
-            override val id = "test.signin.after"
-            override val category = ActionCategory.FLOW
-            override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
-                afterFallbackCalls++
-                return ActionResult.Success
-            }
-        })
-
         val report = runBlocking {
             TaskRunner(ActionContext(ContextWrapper(null), VariableStore())).run(
                 Task(
