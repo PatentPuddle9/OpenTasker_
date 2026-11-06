@@ -74,6 +74,7 @@ object StateSensorEvents {
     private val physicalKeys = setOf(
         "orientation",
         "proximity",
+        "light_lux",
         "activity",
         "speed",
         "roaming",
@@ -97,6 +98,9 @@ object StateSensorEvents {
         }
         if (wanted("proximity")) {
             registrations += proximityRegistration(app, ::emitPatch).also { it.start(this) }
+        }
+        if (wanted("light_lux")) {
+            registrations += lightRegistration(app, ::emitPatch).also { it.start(this) }
         }
         if (wanted("activity")) {
             registrations += activityRegistration(app, ::emitPatch).also { it.start(this) }
@@ -217,6 +221,63 @@ object StateSensorEvents {
                 emitReady(emit, "proximity")
             } else {
                 emitSetup(emit, "proximity", "Open Setup to review proximity sensor support; Android could not register the available sensor.")
+            }
+        }
+
+        return RecheckingRegistration(::ensure, ::stop, RECHECK_MS)
+    }
+
+    /**
+     * Ambient illuminance from Android's TYPE_LIGHT sensor, measured in lux. No runtime
+     * permission is required; devices without a dedicated light sensor fail closed and publish
+     * a Setup marker rather than fabricating a value from the camera or screen brightness.
+     */
+    private fun lightRegistration(
+        app: Context,
+        emit: (Map<String, String>) -> Unit,
+    ): RecheckingRegistration {
+        val manager = app.getSystemService(SensorManager::class.java)
+        var listener: SensorEventListener? = null
+        var lastLux: String? = null
+
+        fun stop() {
+            listener?.let { manager?.unregisterListener(it) }
+            listener = null
+            lastLux = null
+        }
+
+        fun ensure() {
+            if (manager == null) {
+                emitSetup(emit, "light_lux", "Open Setup to review ambient light sensor support; Android did not expose a sensor service on this device.")
+                return
+            }
+            if (listener != null) return
+            val sensor = manager.getDefaultSensor(Sensor.TYPE_LIGHT)
+            if (sensor == null) {
+                emitSetup(emit, "light_lux", "This device does not expose an ambient light sensor, so light-level triggers are unavailable.")
+                return
+            }
+            val candidate = object : SensorEventListener {
+                override fun onSensorChanged(event: SensorEvent) {
+                    val lux = event.values.firstOrNull()?.toDouble() ?: return
+                    if (!lux.isFinite() || lux < 0.0) return
+                    val value = lux.trimForState()
+                    if (value != lastLux) {
+                        lastLux = value
+                        emitReady(emit, "light_lux", mapOf("light_lux" to value))
+                    }
+                }
+
+                override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+            }
+            if (runCatching {
+                    manager.registerListener(candidate, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+                }.getOrDefault(false)
+            ) {
+                listener = candidate
+                emitReady(emit, "light_lux")
+            } else {
+                emitSetup(emit, "light_lux", "Open Setup to review ambient light sensor support; Android could not register the available sensor.")
             }
         }
 
