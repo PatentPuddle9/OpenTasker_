@@ -94,7 +94,7 @@ $truth = [ordered]@{
         work = Match-Value $Versions '(?m)^work\s*=\s*"([^"]+)"' "WorkManager version"
     }
     capabilities = [ordered]@{
-        registeredActions = ([regex]::Matches($ActionCatalog, '(?m)^\s*define\("')).Count
+        registeredActions = ([regex]::Matches($ActionCatalog, '(?m)^\s*define\(')).Count
         engineHandledActions = $engineHandledActionCount
         contextFamilies = ([regex]::Match($ContextSpec, '(?s)enum class ContextType\s*\{(.*?)\}')).Groups[1].Value.Split("`n") |
             Where-Object { $_ -match '^\s+[A-Z][A-Z_]+\s*(,|//)' } | Measure-Object | Select-Object -ExpandProperty Count
