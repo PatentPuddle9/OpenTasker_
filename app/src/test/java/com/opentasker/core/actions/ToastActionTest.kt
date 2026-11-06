@@ -42,6 +42,11 @@ class ToastActionTest {
     }
 
     @Test
+    fun toastOverlayUsesThePlatformToastWindowAnimation() {
+        assertEquals(android.R.style.Animation_Toast, toastOverlayAnimationStyle())
+    }
+
+    @Test
     fun toastOverlayDurationMatchesTheSelectedToastDuration() {
         assertEquals(2_000L, toastDurationMillisForKey(null))
         assertEquals(2_000L, toastDurationMillisForKey("short"))
