@@ -47,11 +47,12 @@ class ActionFieldPolicyTest {
     }
 
     @Test
-    fun signInFallbackSelectsAnExistingActionBlockInsteadOfAnActionSetup() {
+    fun fallbackFieldSelectsAnExistingActionBlockInsteadOfAnActionSetup() {
         val field = requireNotNull(ActionMetadataRegistry.get("auth.device_credential"))
             .fields.firstOrNull { it.key == "fallback_action_spec_id" }
 
         assertNotNull(field)
+        assertEquals(FALLBACK_ACTION_BLOCK_ARGUMENT, field?.key)
         assertEquals(FieldType.ACTION_BLOCK, field?.fieldType)
         assertNull(
             ActionFieldPolicy.validate(
