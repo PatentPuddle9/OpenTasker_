@@ -252,7 +252,7 @@ internal fun ShortcutsScreen(
             text = {
                 Text(
                     if (widget.type == OpenTaskerWidgetType.DISPLAY) {
-                        "This removes the Widget Display, its saved states, and its home-screen placement."
+                        "This removes the Widget Display and its saved states from OpenTasker. Android’s launcher still owns the home-screen widget, so remove the leftover placeholder from your home screen too."
                     } else {
                         "This deletes the widget's protected Action and removes it from OpenTasker's Widgets list. Android's launcher still owns the home-screen widget itself, so you'll also need to remove that leftover icon from your home screen."
                     },
