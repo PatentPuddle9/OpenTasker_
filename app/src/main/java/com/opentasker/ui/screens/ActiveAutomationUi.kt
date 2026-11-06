@@ -632,8 +632,8 @@ fun ActiveAutomationUi(
                     shape = RoundedCornerShape(DesignSystem.Radii.lg),
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
-                    icon = { Icon(Icons.Filled.Add, contentDescription = "Create new shortcut") },
-                    text = { Text("Create new") },
+                    icon = { Icon(Icons.Filled.Add, contentDescription = "Create Widget Shortcut") },
+                    text = { Text("Widget Shortcut") },
                 )
 
                 OpenTaskerScreen.Vars,
