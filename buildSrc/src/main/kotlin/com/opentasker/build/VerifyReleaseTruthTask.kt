@@ -138,7 +138,7 @@ abstract class VerifyReleaseTruthTask : DefaultTask() {
             "room" to catalogValue(versions, "room"),
             "composeBom" to catalogValue(versions, "composeBom"),
             "work" to catalogValue(versions, "work"),
-            "registeredActions" to Regex("(?m)^\\s*define\\(\\\"")
+            "registeredActions" to Regex("(?m)^\\s*define\\(")
                 .findAll(actionCatalog)
                 .count()
                 .toString(),
