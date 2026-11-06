@@ -12,6 +12,7 @@ class ContextValidationTest {
     fun selectedStateKeyIsPresentedAsItsFixedTriggerName() {
         assertEquals("Battery level", stateContextDisplayName("battery_level"))
         assertEquals("Wi-Fi connection", stateContextDisplayName("wifi"))
+        assertEquals("Ambient light level", stateContextDisplayName("light_lux"))
         assertEquals("No state selected", stateContextDisplayName(null))
         assertEquals("Custom Sensor", stateContextDisplayName("custom_sensor"))
     }
