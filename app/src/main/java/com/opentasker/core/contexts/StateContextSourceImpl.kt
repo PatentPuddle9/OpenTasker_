@@ -248,6 +248,7 @@ internal fun normalizeStateKey(key: String): String = when (key.trim().lowercase
     "device_unlocked" -> "unlocked"
     "device_orientation", "orientation_state" -> "orientation"
     "proximity_state" -> "proximity"
+    "light", "lux", "ambient_light", "illuminance", "light_level" -> "light_lux"
     "activity_detection", "physical_activity", "motion" -> "activity"
     "velocity", "speed_mps" -> "speed"
     "roaming_state" -> "roaming"
