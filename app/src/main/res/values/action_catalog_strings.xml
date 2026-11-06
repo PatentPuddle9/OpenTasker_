@@ -592,7 +592,7 @@
     <string name="catalog_action_vibrate_description" formatted="false">Vibrate the device</string>
     <string name="catalog_category_system" formatted="false">System</string>
     <string name="catalog_action_auth_device_credential_name" formatted="false">Sign In</string>
-    <string name="catalog_action_auth_device_credential_description" formatted="false">Ask Android to verify the user with a fingerprint or device screen lock (PIN, pattern, or password). If no device lock is configured, continue. If sign-in is not completed, run the fallback Action and stop the original sequence.</string>
+    <string name="catalog_action_auth_device_credential_description" formatted="false">On Android 9 and newer, ask Android to verify the user with a fingerprint or device screen lock (PIN, pattern, or password). Older Android versions use the device screen lock. If no device lock is configured, continue. If sign-in is not completed, run the fallback Action and stop the original sequence.</string>
     <string name="catalog_action_auth_device_credential_field_title_label" formatted="false">Prompt title</string>
     <string name="catalog_action_auth_device_credential_field_title_hint" formatted="false">Title shown on Android’s system sign-in prompt</string>
     <string name="catalog_action_auth_device_credential_field_description_label" formatted="false">Prompt description</string>
