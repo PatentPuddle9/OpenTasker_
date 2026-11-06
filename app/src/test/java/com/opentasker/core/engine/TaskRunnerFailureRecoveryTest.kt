@@ -224,6 +224,32 @@ class TaskRunnerFailureRecoveryTest {
     }
 
     @Test
+    fun signInFallbackCannotLaunchAnotherTopLevelSetupThroughTaskRun() {
+        ActionRegistry.register(object : Action {
+            override val id = "auth.device_credential"
+            override val category = ActionCategory.SYSTEM
+            override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult =
+                ActionResult.Failure("Sign-in was not completed", fallbackActionSpecId = 22L)
+        })
+
+        val report = runBlocking {
+            TaskRunner(ActionContext(ContextWrapper(null), VariableStore())).run(
+                Task(
+                    name = "Fallback cannot launch setup",
+                    actions = listOf(
+                        ActionSpec(id = 11, type = "auth.device_credential"),
+                        ActionSpec(id = 22, type = SUB_TASK_ACTION_ID, args = mapOf("task" to "42")),
+                    ),
+                ),
+            )
+        }
+
+        assertFalse(report.success)
+        assertTrue(report.traces.single().message.contains("could not be used"))
+        assertEquals(0, fallbackBlockCalls)
+    }
+
+    @Test
     fun retrySuccessClearsRetryingFlag() {
         val variables = VariableStore()
         val report = runBlocking {
