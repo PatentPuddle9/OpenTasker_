@@ -33,4 +33,18 @@ class ToastActionTest {
             canShowCustomIconToast(ActivityManager.RunningAppProcessInfo.IMPORTANCE_BACKGROUND),
         )
     }
+
+    @Test
+    fun backgroundCustomToastUsesAnOverlayOnlyWhenPermissionIsGranted() {
+        assertTrue(shouldUseBackgroundToastOverlay(isForeground = false, canDrawOverlays = true))
+        assertFalse(shouldUseBackgroundToastOverlay(isForeground = false, canDrawOverlays = false))
+        assertFalse(shouldUseBackgroundToastOverlay(isForeground = true, canDrawOverlays = true))
+    }
+
+    @Test
+    fun toastOverlayDurationMatchesTheSelectedToastDuration() {
+        assertEquals(2_000L, toastDurationMillisForKey(null))
+        assertEquals(2_000L, toastDurationMillisForKey("short"))
+        assertEquals(3_500L, toastDurationMillisForKey("long"))
+    }
 }
