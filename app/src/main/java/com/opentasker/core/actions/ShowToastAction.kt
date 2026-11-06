@@ -91,10 +91,18 @@ internal fun toastDurationMillisForKey(value: String?): Long =
 internal fun canShowCustomIconToast(processImportance: Int): Boolean =
     processImportance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
 
+internal fun shouldUseBackgroundToastOverlay(
+    isForeground: Boolean,
+    canDrawOverlays: Boolean,
+): Boolean = !isForeground && canDrawOverlays
+
 internal fun canUseBackgroundToastOverlay(
     context: Context,
     isForeground: Boolean,
-): Boolean = !isForeground && runCatching { Settings.canDrawOverlays(context) }.getOrDefault(false)
+): Boolean = shouldUseBackgroundToastOverlay(
+    isForeground = isForeground,
+    canDrawOverlays = !isForeground && runCatching { Settings.canDrawOverlays(context) }.getOrDefault(false),
+)
 
 private data class ResolvedToastIcon(
     val bitmap: Bitmap? = null,
