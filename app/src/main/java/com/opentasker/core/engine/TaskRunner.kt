@@ -216,6 +216,7 @@ class TaskRunner(
                         val fallbackAction = fallbackEntry?.value?.takeIf { fallback ->
                             fallback.id != spec.id &&
                                 fallback.type != DEVICE_CREDENTIAL_ACTION_ID &&
+                                fallback.type != SUB_TASK_ACTION_ID &&
                                 !FlowControl.isControl(fallback.type)
                         }
                         val previousTrace = requireNotNull(traces.last())
