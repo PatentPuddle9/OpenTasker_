@@ -20,6 +20,13 @@
     <string name="permission_automation_description">Allows same-signer integrations to run OpenTasker actions and query automation status through documented intents.</string>
     <string name="error_prefix">Error: %1$s</string>
     <string name="success_prefix">Success: %1$s</string>
+    <string name="widget_display_description">A customizable Widget Display dashboard with multiple states and Action shortcuts</string>
+    <string name="widget_display_custom_description">A resizable customizable Widget Display dashboard</string>
+    <string name="widget_display_variant_compact">Widget Display · Compact</string>
+    <string name="widget_display_variant_square">Widget Display · Square</string>
+    <string name="widget_display_variant_wide">Widget Display · Wide</string>
+    <string name="widget_display_variant_large">Widget Display · Large</string>
+    <string name="widget_display_variant_custom">Widget Display · Custom</string>
     <string name="widget_task_description">Run an OpenTasker Action with one tap</string>
     <string name="widget_task_already_running">That Action is already running</string>
     <string name="widget_task_missing">Action unavailable. Tap to choose another.</string>
