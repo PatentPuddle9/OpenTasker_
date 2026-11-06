@@ -120,7 +120,14 @@ internal fun ContextTypePickerDialog(
                 ),
             )
 
-            fun state(id: String, title: String, description: String, key: String, category: String) {
+            fun state(
+                id: String,
+                title: String,
+                description: String,
+                key: String,
+                category: String,
+                operator: String = "=",
+            ) {
                 add(
                     LocalizedContextType(
                         type = ContextType.STATE,
@@ -128,7 +135,7 @@ internal fun ContextTypePickerDialog(
                         description = description,
                         category = category,
                         id = id,
-                        initialConfig = mapOf("key" to key, "operator" to "="),
+                        initialConfig = mapOf("key" to key, "operator" to operator),
                     ),
                 )
             }
@@ -160,7 +167,7 @@ internal fun ContextTypePickerDialog(
             // Display and motion sensors
             state("orientation", "Orientation", "Match portrait, landscape, or face-up/down orientation.", "orientation", "Display & Sensors")
             state("proximity", "Proximity", "Match when the proximity sensor reports near or far.", "proximity", "Display & Sensors")
-            state("light-level", "Ambient light level", "Match when the phone's ambient light sensor reaches a lux threshold.", "light_lux", "Display & Sensors")
+            state("light-level", "Ambient light level", "Match when the phone's ambient light sensor reaches a lux threshold.", "light_lux", "Display & Sensors", "<=")
             state("activity", "Physical activity", "Match stationary, walking, or running activity.", "activity", "Display & Sensors")
             state("speed", "Movement speed", "Match a speed threshold using location updates.", "speed", "Display & Sensors")
 
