@@ -50,7 +50,7 @@ class ConfirmDeviceCredentialAction : DeclaredAction(ActionCatalog.require(ACTIO
         }
         if (!canStartSystemPrompt) {
             return ActionResult.Failure(
-                "Display over other apps access is required to request device credential confirmation from an automation.",
+                "Display over other apps access is required to show the Sign In prompt from an automation.",
             )
         }
 
@@ -62,7 +62,7 @@ class ConfirmDeviceCredentialAction : DeclaredAction(ActionCatalog.require(ACTIO
                 ActionResult.Success
             }
             is DeviceCredentialPromptResult.Rejected -> ActionResult.Failure(
-                "Device credential was not confirmed: ${outcome.reason}",
+                "Sign-in was not completed: ${outcome.reason}",
                 fallbackTaskId = fallbackTaskId,
             )
             is DeviceCredentialPromptResult.Unavailable -> ActionResult.Failure(
@@ -73,7 +73,7 @@ class ConfirmDeviceCredentialAction : DeclaredAction(ActionCatalog.require(ACTIO
 
     companion object {
         const val ACTION_ID = "auth.device_credential"
-        private const val DEFAULT_TITLE = "Confirm your identity"
-        private const val DEFAULT_DESCRIPTION = "Enter your device PIN, pattern, or password to continue."
+        private const val DEFAULT_TITLE = "Sign in to continue"
+        private const val DEFAULT_DESCRIPTION = "Use your fingerprint or device PIN, pattern, or password to continue."
     }
 }
