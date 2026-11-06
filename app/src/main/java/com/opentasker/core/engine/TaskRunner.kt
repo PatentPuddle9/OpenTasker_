@@ -205,6 +205,82 @@ class TaskRunner(
                 if (result is ActionResult.Failure && spec.type == DEVICE_CREDENTIAL_ACTION_ID) {
                     // Authentication is a hard branch: never let continueOnError or an enclosing
                     // try/catch release the original actions after the user did not authenticate.
+                    // New Sign In blocks point directly to one of the current task's ActionSpecs.
+                    // This is intentionally resolved from the same list, not through the
+                    // top-level Action/setup resolver used by legacy fallbackTaskId values.
+                    val fallbackActionSpecId = result.fallbackActionSpecId
+                    if (fallbackActionSpecId != null) {
+                        val fallbackEntry = task.actions.withIndex()
+                            .filter { (_, action) -> action.id == fallbackActionSpecId }
+                            .singleOrNull()
+                        val fallbackAction = fallbackEntry?.value?.takeIf { fallback ->
+                            fallback.id != spec.id &&
+                                fallback.type != DEVICE_CREDENTIAL_ACTION_ID &&
+                                !FlowControl.isControl(fallback.type)
+                        }
+                        val previousTrace = requireNotNull(traces.last())
+                        if (fallbackEntry == null || fallbackAction == null) {
+                            val fallbackFailure = ActionResult.Failure(
+                                "Selected fallback action block (ID $fallbackActionSpecId) no longer exists or cannot be used as a fallback.",
+                            )
+                            results[results.lastIndex] = fallbackFailure
+                            traces[traces.lastIndex] = previousTrace.copy(
+                                status = ActionTraceStatus.FAILURE,
+                                message = "${previousTrace.message}; fallback action block $fallbackActionSpecId could not be used.",
+                            )
+                            if (structuredFailure == null) {
+                                structuredFailure = setFailureVariables(
+                                    task = task,
+                                    pc = pc,
+                                    spec = spec,
+                                    failure = fallbackFailure,
+                                    attempt = 1,
+                                    retrying = false,
+                                    retryReason = null,
+                                )
+                                ctx.variables.set(FLOW_ERROR_CAUGHT, "false")
+                            }
+                            unhandledFailure = true
+                        } else {
+                            val fallbackIndex = fallbackEntry.index
+                            val fallbackLabel = fallbackAction.label?.takeIf(String::isNotBlank)
+                                ?: fallbackAction.type
+                            onStep?.invoke(fallbackIndex, fallbackLabel)
+                            val (fallbackResult, _) = runOne(fallbackIndex, fallbackAction)
+                            onStepCompleted?.invoke(fallbackIndex, fallbackLabel)
+                            if (fallbackResult is ActionResult.Failure) {
+                                results[results.lastIndex] = fallbackResult
+                                traces[traces.lastIndex] = previousTrace.copy(
+                                    status = ActionTraceStatus.FAILURE,
+                                    message = "${previousTrace.message}; fallback action block '$fallbackLabel' failed: ${fallbackResult.message}",
+                                )
+                                if (structuredFailure == null) {
+                                    structuredFailure = setFailureVariables(
+                                        task = task,
+                                        pc = pc,
+                                        spec = spec,
+                                        failure = fallbackResult,
+                                        attempt = 1,
+                                        retrying = false,
+                                        retryReason = null,
+                                    )
+                                    ctx.variables.set(FLOW_ERROR_CAUGHT, "false")
+                                }
+                                unhandledFailure = true
+                            } else {
+                                // A conditional fallback that evaluates to Skip is still a
+                                // completed alternate branch; never resume the original sequence.
+                                results[results.lastIndex] = ActionResult.Success
+                                traces[traces.lastIndex] = previousTrace.copy(
+                                    status = ActionTraceStatus.SUCCESS,
+                                    message = "Sign-in was not completed; ran fallback action block '$fallbackLabel'. Remaining actions in the original sequence were skipped.",
+                                )
+                            }
+                        }
+                        break
+                    }
+
+                    // Kept for Sign In blocks saved before individual action-block fallback support.
                     val fallbackTaskId = result.fallbackTaskId
                     if (fallbackTaskId == null) {
                         if (structuredFailure == null) {
@@ -786,6 +862,7 @@ class TaskRunner(
                     message = redactedMessage,
                     structuredError = rawResult.structuredError,
                     fallbackTaskId = rawResult.fallbackTaskId,
+                    fallbackActionSpecId = rawResult.fallbackActionSpecId,
                 )
             } else {
                 rawResult
