@@ -155,6 +155,9 @@ fun stateMatches(predicate: String, state: Map<String, String>): Boolean {
     if (normalizedKey == "orientation" && op == "=") {
         return orientationMatches(actualValue, expectedValue)
     }
+    if (normalizedKey == "light_lux" && op == "=") {
+        return numericCompare(actualValue, expectedValue) { actual, expected -> actual == expected }
+    }
 
     return when (op) {
         "=" -> actualValue == expectedValue
