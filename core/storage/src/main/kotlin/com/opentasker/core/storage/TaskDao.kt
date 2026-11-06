@@ -40,7 +40,7 @@ data class TaskEntity(
                 )
             }
 
-        val actions = runCatching { StorageJson.decodeFromString<List<ActionSpec>>(actionsJson) }
+        val decodedActions = runCatching { StorageJson.decodeFromString<List<ActionSpec>>(actionsJson) }
             .getOrElse { error ->
                 return StorageDecodeResult(
                     value = Task(id, name, priority, mode, emptyList(), projectId),
@@ -53,10 +53,37 @@ data class TaskEntity(
                     ),
                 )
             }
+        // Action IDs are per-task identities used by action-block references (for example,
+        // Sign In fallback actions). Older tasks may have been saved before those identities
+        // existed and contain zero/duplicate IDs. Normalize them deterministically on decode so
+        // editors and the runtime resolve the same block, and the next edit persists the IDs.
+        val actions = normalizeActionSpecIds(decodedActions)
 
         return StorageDecodeResult(
             value = Task(id, name, priority, mode, actions, projectId),
         )
+    }
+}
+
+private fun normalizeActionSpecIds(actions: List<ActionSpec>): List<ActionSpec> {
+    val usedIds = mutableSetOf<Long>()
+    var candidate = actions.mapNotNull { it.id.takeIf { id -> id > 0L } }.maxOrNull() ?: 0L
+
+    fun nextId(): Long {
+        do {
+            candidate = if (candidate == Long.MAX_VALUE) 1L else candidate + 1L
+        } while (candidate <= 0L || candidate in usedIds)
+        return candidate
+    }
+
+    return actions.map { action ->
+        if (action.id > 0L && usedIds.add(action.id)) {
+            action
+        } else {
+            val id = nextId()
+            usedIds += id
+            action.copy(id = id)
+        }
     }
 }
 
