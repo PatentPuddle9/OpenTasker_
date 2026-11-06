@@ -40,7 +40,7 @@ private fun deriveSourceValue(file: java.io.File, pattern: String, name: String)
         ?: error("Could not derive $name from ${file.path}.")
 
 private fun deriveRegisteredActionCount(file: java.io.File): Int =
-    Regex("(?m)^\\s*define\\(\\\"").findAll(file.readText()).count()
+    Regex("(?m)^\\s*define\\(").findAll(file.readText()).count()
 
 private fun deriveContextFamilyCount(file: java.io.File): Int {
     val body = deriveSourceValue(
