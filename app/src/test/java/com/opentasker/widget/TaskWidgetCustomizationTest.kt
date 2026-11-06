@@ -104,6 +104,8 @@ class TaskWidgetCustomizationTest {
         assertTrue(editor.contains("Text(\"Delete\")"))
         assertTrue(editor.contains("ActivityResultContracts.OpenDocument()"))
         assertTrue(editor.contains("ActionIconPickerDialog"))
+        assertTrue("Widget Displays can select Actions owned by Widget Shortcuts", editor.contains("decoded.issue == null && it.enterTaskId > 0L"))
+        assertFalse("Widget shortcut-owned Actions must remain selectable here", editor.contains("it.widgetId == null && it.enterTaskId > 0L"))
         assertTrue(action.contains("WidgetDisplayStateController.control"))
         assertTrue(catalog.contains("define(\"widget.display.control\""))
         assertTrue(metadata.contains("id = \"widget.display.control\""))
