@@ -95,6 +95,7 @@ object ActionMetadataRegistry {
  */
 private fun declaredActionSummaryRes(actionId: String): Int = when (actionId) {
     "notify.show",
+    "toast.show",
     "scene.show",
     "auth.device_credential",
     "notify.progress",
@@ -286,6 +287,29 @@ fun registerActionMetadata() {
             )
         )
     )
+    ActionMetadataRegistry.register(
+        ActionMetadata(
+            id = "toast.show",
+            nameRes = R.string.catalog_action_toast_show_name,
+            descriptionRes = R.string.catalog_action_toast_show_description,
+            categoryRes = R.string.catalog_category_notification,
+            fields = listOf(
+                ActionField("text", R.string.catalog_action_toast_show_field_text_label, FieldType.MULTILINE, required = true, hintRes = R.string.catalog_action_toast_show_field_text_hint),
+                ActionField("icon_key", R.string.catalog_action_toast_show_field_icon_label, FieldType.TEXT, sensitive = false, hintRes = R.string.catalog_action_toast_show_field_icon_hint),
+                ActionField(
+                    "duration",
+                    R.string.catalog_action_toast_show_field_duration_label,
+                    FieldType.DROPDOWN,
+                    hintRes = R.string.catalog_action_toast_show_field_duration_hint,
+                    options = listOf(
+                        option("short", R.string.catalog_action_toast_show_duration_short),
+                        option("long", R.string.catalog_action_toast_show_duration_long),
+                    ),
+                ),
+            ),
+        ),
+    )
+
     ActionMetadataRegistry.register(
         ActionMetadata(
             id = "notify.progress",
