@@ -5,12 +5,17 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.content.res.Configuration
 import android.text.TextUtils
+import android.util.TypedValue
+import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -43,12 +48,13 @@ class ShowToastAction : DeclaredAction(ActionCatalog.require("toast.show")) {
         if (message.isBlank()) return ActionResult.Failure("Toast message is required")
 
         return try {
+            val toastContext = createDeviceToastContext(ctx.app)
             val iconKey = args["icon_key"]?.trim().orEmpty()
             val icon = if (iconKey.isBlank()) {
                 null
             } else {
                 withContext(Dispatchers.IO) {
-                    runCatching { resolveToastIcon(ctx.app, iconKey) }.getOrNull()
+                    runCatching { resolveToastIcon(toastContext, iconKey) }.getOrNull()
                 }
             }
             val duration = toastDurationForKey(args["duration"])
@@ -60,9 +66,9 @@ class ShowToastAction : DeclaredAction(ActionCatalog.require("toast.show")) {
                 var customIconShown = false
 
                 if (icon != null && isForeground) {
-                    customIconShown = showCustomIconToast(ctx.app, message, duration, icon)
-                } else if (icon != null && canUseBackgroundToastOverlay(ctx.app, isForeground)) {
-                    customIconShown = showCustomIconToastOverlay(ctx.app, message, duration, icon)
+                    customIconShown = showCustomIconToast(toastContext, message, duration, icon)
+                } else if (icon != null && canUseBackgroundToastOverlay(toastContext, isForeground)) {
+                    customIconShown = showCustomIconToastOverlay(toastContext, message, duration, icon)
                     if (!customIconShown) {
                         ctx.logger("Background toast overlay could not be shown; using Android's standard toast")
                     }
@@ -109,10 +115,48 @@ private data class ResolvedToastIcon(
     @DrawableRes val drawableRes: Int? = null,
 )
 
+/**
+ * Use Android's device-default day/night palette for a toast, independent of OpenTasker's
+ * Compose-only theme selection. API 29+ has a native DayNight device theme; older supported
+ * versions select its light or dark counterpart from the current system UI mode.
+ */
+internal fun createDeviceToastContext(context: Context): Context {
+    val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+        Configuration.UI_MODE_NIGHT_YES
+    val themeRes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        android.R.style.Theme_DeviceDefault_DayNight
+    } else if (isNight) {
+        android.R.style.Theme_DeviceDefault
+    } else {
+        android.R.style.Theme_DeviceDefault_Light
+    }
+    return ContextThemeWrapper(context, themeRes)
+}
+
+internal fun resolveToastThemeColor(
+    context: Context,
+    attribute: Int,
+    fallback: Int,
+): Int {
+    val value = TypedValue()
+    if (!context.theme.resolveAttribute(attribute, value, true)) return fallback
+    return when {
+        value.resourceId != 0 -> runCatching {
+            ContextCompat.getColor(context, value.resourceId)
+        }.getOrDefault(fallback)
+        value.type in TypedValue.TYPE_FIRST_COLOR_INT..TypedValue.TYPE_LAST_COLOR_INT -> value.data
+        else -> fallback
+    }
+}
+
 private fun resolveToastIcon(context: Context, key: String): ResolvedToastIcon? {
+    val tint = resolveToastThemeColor(
+        context,
+        android.R.attr.colorAccent,
+        ContextCompat.getColor(context, R.color.notification_accent),
+    )
     val customIcon = CustomWidgetIconStore.find(context, key)
     if (customIcon != null) {
-        val tint = ContextCompat.getColor(context, R.color.notification_accent)
         val bitmap = CustomWidgetIconStore.loadBitmapForDisplay(
             context = context,
             key = key,
@@ -127,7 +171,11 @@ private fun resolveToastIcon(context: Context, key: String): ResolvedToastIcon? 
 }
 
 private fun resolveToastIconDrawable(context: Context, icon: ResolvedToastIcon): Drawable? {
-    val tint = ContextCompat.getColor(context, R.color.notification_accent)
+    val tint = resolveToastThemeColor(
+        context,
+        android.R.attr.colorAccent,
+        ContextCompat.getColor(context, R.color.notification_accent),
+    )
     return icon.bitmap?.let { BitmapDrawable(context.resources, it) }
         ?: icon.drawableRes?.let { resource ->
             ContextCompat.getDrawable(context, resource)?.mutate()?.apply { setTint(tint) }
@@ -143,11 +191,29 @@ private fun buildCustomToastView(
     val density = context.resources.displayMetrics.density
     fun dp(value: Int): Int = (value * density).toInt()
 
+    val fallbackSurface = ContextCompat.getColor(
+        context,
+        if ((context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES) {
+            android.R.color.background_dark
+        } else {
+            android.R.color.background_light
+        },
+    )
+    val surfaceColor = resolveToastThemeColor(
+        context,
+        android.R.attr.colorBackgroundFloating,
+        fallbackSurface,
+    )
     val view = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setBackgroundResource(android.R.drawable.toast_frame)
-        setPadding(dp(16), dp(10), dp(16), dp(10))
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(surfaceColor)
+            cornerRadius = dp(28).toFloat()
+        }
+        elevation = dp(8).toFloat()
+        setPadding(dp(16), dp(12), dp(18), dp(12))
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
         contentDescription = message
     }
@@ -161,13 +227,15 @@ private fun buildCustomToastView(
         LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginEnd = dp(12) },
     )
 
-    val textColor = context.obtainStyledAttributes(intArrayOf(android.R.attr.textColorPrimary)).let { attributes ->
-        try {
-            attributes.getColor(0, Color.WHITE)
-        } finally {
-            attributes.recycle()
-        }
-    }
+    val textColor = resolveToastThemeColor(
+        context,
+        android.R.attr.textColorPrimary,
+        if ((context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES) {
+            Color.WHITE
+        } else {
+            Color.BLACK
+        },
+    )
     val messageView = TextView(context).apply {
         text = message
         textSize = 14f
@@ -243,6 +311,8 @@ private object ToastOverlayWindow {
         ).apply {
             gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
             y = bottomOffset
+            // Reuse Android's own toast enter/exit window animation rather than approximating it.
+            windowAnimations = android.R.style.Animation_Toast
         }
 
         if (!runCatching { manager.addView(view, params) }.isSuccess) return false
@@ -265,7 +335,7 @@ private object ToastOverlayWindow {
         currentWindowManager = null
         if (view != null && manager != null) {
             runCatching {
-                if (view.isAttachedToWindow) manager.removeViewImmediate(view)
+                if (view.isAttachedToWindow) manager.removeView(view)
             }
         }
     }
