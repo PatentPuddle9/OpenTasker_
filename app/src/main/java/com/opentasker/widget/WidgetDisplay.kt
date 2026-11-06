@@ -354,14 +354,12 @@ object WidgetDisplayRenderer {
                 "${stateIndex + 1} / ${config.states.size}",
             )
             views.setTextColor(com.opentasker.app.R.id.widget_display_state_counter, foreground)
-            val canPrevious = stateIndex > 0
-            val canNext = stateIndex < config.states.lastIndex
             val previous = stateChangePendingIntent(context, widgetId, "previous", 100_000 + widgetId * 2)
             val next = stateChangePendingIntent(context, widgetId, "next", 100_001 + widgetId * 2)
             views.setOnClickPendingIntent(com.opentasker.app.R.id.widget_display_previous, previous)
             views.setOnClickPendingIntent(com.opentasker.app.R.id.widget_display_next, next)
-            views.setBoolean(com.opentasker.app.R.id.widget_display_previous, "setEnabled", canPrevious)
-            views.setBoolean(com.opentasker.app.R.id.widget_display_next, "setEnabled", canNext)
+            views.setBoolean(com.opentasker.app.R.id.widget_display_previous, "setEnabled", true)
+            views.setBoolean(com.opentasker.app.R.id.widget_display_next, "setEnabled", true)
             views.setTextColor(com.opentasker.app.R.id.widget_display_previous, foreground)
             views.setTextColor(com.opentasker.app.R.id.widget_display_next, foreground)
         }
