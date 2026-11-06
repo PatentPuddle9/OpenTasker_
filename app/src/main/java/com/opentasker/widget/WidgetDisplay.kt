@@ -290,8 +290,8 @@ object WidgetDisplayRenderer {
             views.setOnClickPendingIntent(com.opentasker.app.R.id.widget_display_next, next)
             views.setBoolean(com.opentasker.app.R.id.widget_display_previous, "setEnabled", canPrevious)
             views.setBoolean(com.opentasker.app.R.id.widget_display_next, "setEnabled", canNext)
-            views.setInt(com.opentasker.app.R.id.widget_display_previous, "setColorFilter", foreground)
-            views.setInt(com.opentasker.app.R.id.widget_display_next, "setColorFilter", foreground)
+            views.setTextColor(com.opentasker.app.R.id.widget_display_previous, foreground)
+            views.setTextColor(com.opentasker.app.R.id.widget_display_next, foreground)
         }
         manager.updateAppWidget(widgetId, views)
     }
