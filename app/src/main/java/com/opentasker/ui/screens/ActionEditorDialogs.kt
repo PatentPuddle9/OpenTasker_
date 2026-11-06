@@ -118,6 +118,7 @@ internal const val ACTION_CONTINUE_ON_ERROR_TAG = "action_continue_on_error"
 internal const val ACTION_WAIT_FOR_FINISH_TAG = "action_wait_for_finish"
 internal const val ACTION_VARIABLE_PICKER_TAG = "action_variable_picker"
 private const val POPUP_ICON_FIELD_KEY = "icon_uri"
+private const val TOAST_ICON_FIELD_KEY = "icon_key"
 
 @Composable
 @SuppressLint("LocalContextGetResourceValueCall")
@@ -597,8 +598,8 @@ internal fun ActionFieldInput(
     issue: ActionFieldPolicy.Issue? = null,
     variableOptions: List<VariableChipOption> = emptyList(),
 ) {
-    if (field.key == POPUP_ICON_FIELD_KEY) {
-        PopupIconFieldInput(
+    if (field.key == POPUP_ICON_FIELD_KEY || field.key == TOAST_ICON_FIELD_KEY) {
+        SelectableIconFieldInput(
             label = stringResource(field.labelRes),
             hint = field.hintRes?.let { stringResource(it) },
             value = value,
@@ -942,7 +943,7 @@ private fun formatActionNumberLimit(limit: Double?): String = when {
 
 
 @Composable
-private fun PopupIconFieldInput(
+private fun SelectableIconFieldInput(
     label: String,
     hint: String?,
     value: String,
@@ -957,9 +958,9 @@ private fun PopupIconFieldInput(
     val selectedLabel = when {
         selectedCustomIcon != null -> selectedCustomIcon.name
         selectedBuiltIn != null -> selectedBuiltIn.label
-        legacyImageSelected -> "Previously selected image"
-        value.isNotBlank() -> "Saved icon unavailable"
-        else -> "No icon"
+        legacyImageSelected -> stringResource(R.string.action_icon_picker_previous_image)
+        value.isNotBlank() -> stringResource(R.string.action_icon_picker_unavailable)
+        else -> stringResource(R.string.action_icon_picker_no_icon)
     }
     var showPicker by rememberSaveable { mutableStateOf(false) }
 
@@ -977,12 +978,12 @@ private fun PopupIconFieldInput(
             Text(selectedLabel, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text(
-            "Choose from built-in and custom icons. Add custom icons in Settings > General > Custom icons.",
+            stringResource(R.string.action_icon_picker_helper),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (value.isNotBlank()) {
-            TextButton(onClick = { onChange("") }) { Text("Remove icon") }
+            TextButton(onClick = { onChange("") }) { Text(stringResource(R.string.action_icon_picker_remove)) }
         }
         hint?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         issue?.let { ActionFieldErrorText(it) }
