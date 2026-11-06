@@ -56,7 +56,7 @@ class ProgressNotificationAction : DeclaredAction(ActionCatalog.require("notify.
                 style.setProgressSegments(segments.map { Notification.ProgressStyle.Segment(it) })
             }
             val builder = Notification.Builder(ctx.app, channelDef.id)
-                .setSmallIcon(R.drawable.ic_notification)
+                .setSmallIcon(R.drawable.ic_notification_mark)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setCategory(Notification.CATEGORY_PROGRESS)
@@ -73,7 +73,7 @@ class ProgressNotificationAction : DeclaredAction(ActionCatalog.require("notify.
             )
         } else {
             NotificationCompat.Builder(ctx.app, channelDef.id)
-                .setSmallIcon(R.drawable.ic_notification)
+                .setSmallIcon(R.drawable.ic_notification_mark)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setProgress(100, progress, false)
