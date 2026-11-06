@@ -28,27 +28,46 @@ class ActionFieldPolicyTest {
                     FieldType.DROPDOWN -> field.options.first().value
                     FieldType.CHECKBOX -> "true"
                     FieldType.TASK -> "7"
+                    FieldType.ACTION_BLOCK -> "7"
                     FieldType.APP -> "com.example.app"
                     FieldType.FILE -> "folder/file.txt"
                     FieldType.SCENE -> "7"
                 }
                 assertNull(
                     "${metadata.id}.${field.key} rejected its representative value",
-                    ActionFieldPolicy.validate(field, representativeValue, setOf(7)),
+                    ActionFieldPolicy.validate(
+                        field,
+                        representativeValue,
+                        availableTaskIds = setOf(7),
+                        availableActionBlockIds = setOf(7),
+                    ),
                 )
             }
         }
     }
 
     @Test
-    fun deviceCredentialFallbackSelectsAnExistingTopLevelAction() {
+    fun signInFallbackSelectsAnExistingActionBlockInsteadOfAnActionSetup() {
         val field = requireNotNull(ActionMetadataRegistry.get("auth.device_credential"))
-            .fields.firstOrNull { it.key == "fallback_action_id" }
+            .fields.firstOrNull { it.key == "fallback_action_spec_id" }
 
         assertNotNull(field)
-        assertEquals(FieldType.TASK, field?.fieldType)
-        assertNull(ActionFieldPolicy.validate(requireNotNull(field), "42", setOf(42)))
-        assertEquals(ActionFieldPolicy.Error.INVALID_TASK, ActionFieldPolicy.validate(requireNotNull(field), "99", setOf(42))?.error)
+        assertEquals(FieldType.ACTION_BLOCK, field?.fieldType)
+        assertNull(
+            ActionFieldPolicy.validate(
+                requireNotNull(field),
+                "42",
+                availableActionBlockIds = setOf(42),
+            ),
+        )
+        assertEquals(
+            ActionFieldPolicy.Error.INVALID_ACTION_BLOCK,
+            ActionFieldPolicy.validate(
+                requireNotNull(field),
+                "99",
+                availableActionBlockIds = setOf(42),
+            )?.error,
+        )
         assertNull(ActionFieldPolicy.validate(requireNotNull(field), ""))
     }
 
