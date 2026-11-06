@@ -747,7 +747,6 @@ internal fun ActionFieldInput(
             hint = hint,
             value = value,
             actionBlocks = selectableFallbackActionBlocks(actionBlocks, excludedActionBlockId),
-            issue = issue,
             onChange = onChange,
         )
 
@@ -1250,7 +1249,6 @@ internal fun ActionBlockSelectionFieldInput(
     hint: String?,
     value: String,
     actionBlocks: List<ActionSpec>,
-    issue: ActionFieldPolicy.Issue? = null,
     onChange: (String) -> Unit,
 ) {
     val context = LocalContext.current
@@ -1302,7 +1300,6 @@ internal fun ActionBlockSelectionFieldInput(
                 }
             }
         }
-        issue?.let { ActionFieldErrorText(it) }
     }
 }
 
