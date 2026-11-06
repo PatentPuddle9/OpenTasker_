@@ -406,7 +406,7 @@ class SceneOverlayService : Service() {
         )
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.scene_overlay_notification_title))
-            .setSmallIcon(R.mipmap.ic_launcher_monochrome)
+            .setSmallIcon(R.drawable.ic_notification_mark)
             .setOngoing(true)
             .build()
         if (Build.VERSION.SDK_INT >= 34) {
