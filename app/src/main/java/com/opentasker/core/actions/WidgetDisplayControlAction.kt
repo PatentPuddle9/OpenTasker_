@@ -3,7 +3,6 @@ package com.opentasker.core.actions
 import com.opentasker.core.engine.ActionContext
 import com.opentasker.core.engine.ActionResult
 import com.opentasker.widget.WidgetDisplayStateController
-import com.opentasker.core.engine.ActionRetrySafety
 
 /** Changes the currently visible page of a selected Widget Display. */
 class WidgetDisplayControlAction : DeclaredAction(ActionCatalog.require(ACTION_ID)) {
