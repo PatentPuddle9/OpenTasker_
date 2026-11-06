@@ -92,7 +92,7 @@ Keyboard actions report the current and enabled input methods. The keyboard pick
 
 ### Shortcuts and widgets
 
-The **Shortcuts** area lists home-screen shortcuts and widgets created from Actions. Create a new shortcut, choose its Action, and customize its appearance.
+The **Widgets** area lists home-screen Widget Shortcuts and Widget Displays. Widget Shortcuts run one Action with a tap. Widget Display is a resizable or fixed-size dashboard with multiple editable states, text, images, icons, progress bars, and buttons or widget shortcuts that run existing Actions. Use the display's on-widget arrows or the **Control Widget Display** Action to move between states.
 
 - Widgets are designed to look like app icons and support a **1 × 1** starting size.
 - Android can resize them horizontally and vertically.
