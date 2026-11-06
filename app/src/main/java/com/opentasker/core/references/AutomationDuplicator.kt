@@ -28,9 +28,21 @@ object AutomationDuplicator {
 
     fun taskPayload(source: Task, name: String): Task {
         var nextActionId = source.actions.maxOfOrNull { it.id.coerceAtLeast(0L) } ?: 0L
-        val actions = source.actions.map { action ->
+        val newIdsByOriginalId = linkedMapOf<Long, Long>()
+        val assignedIds = source.actions.map { action ->
             nextActionId = nextFreshId(nextActionId)
-            action.copy(id = nextActionId, args = action.args.toMap())
+            if (action.id > 0L) newIdsByOriginalId.putIfAbsent(action.id, nextActionId)
+            nextActionId
+        }
+        val actions = source.actions.mapIndexed { index, action ->
+            val args = action.args.toMutableMap()
+            // A Sign In fallback references a sibling ActionSpec, not a top-level Action/task.
+            // Rebind that reference to the matching sibling in the duplicate so it doesn't point
+            // back into the original setup after the copied steps receive fresh IDs.
+            args["fallback_action_spec_id"]?.toLongOrNull()?.let(newIdsByOriginalId::get)?.let { newId ->
+                args["fallback_action_spec_id"] = newId.toString()
+            }
+            action.copy(id = assignedIds[index], args = args)
         }
         return source.copy(id = 0L, name = name, actions = actions)
     }
