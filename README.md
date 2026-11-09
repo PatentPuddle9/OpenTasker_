@@ -1,6 +1,6 @@
 # OpenTasker
 
-[![Version](https://img.shields.io/badge/version-0.2.94-blue.svg)](https://github.com/PatentPuddle9/OpenTasker_/releases)
+[![Latest release](https://img.shields.io/github/v/release/PatentPuddle9/OpenTasker_?label=latest%20release)](https://github.com/PatentPuddle9/OpenTasker_/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%208.0%2B-brightgreen.svg)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/kotlin-2.4.20-7f52ff.svg)](https://kotlinlang.org)
@@ -9,6 +9,8 @@
 **OpenTasker** is an open-source, on-device Android automation app. Build **Actions** by connecting triggers to ordered steps, then run them automatically or from a home-screen shortcut. Automations and their data stay on your device; no account or cloud service is required.
 
 The app is developed on the [Experimental branch](https://github.com/PatentPuddle9/OpenTasker_/tree/Experimental). See the [changelog](CHANGELOG.md) for recent changes.
+
+**In this guide:** [Triggers](#triggers) · [Action catalogue](#complete-action-catalogue) · [Widgets](#widgets) · [Icons and theming](#icons-and-customization) · [Privacy and diagnostics](#reliability-privacy-and-diagnostics) · [Integrations](#interoperability) · [Install](#install) · [Build](#build--run)
 
 ---
 
@@ -26,49 +28,78 @@ The app is developed on the [Experimental branch](https://github.com/PatentPuddl
 
 ### Actions (85 registered + 10 engine-handled)
 
-Actions are the main way to build automations in OpenTasker. An Action has a name, icon, trigger conditions, and the ordered steps that should run when those conditions match.
+Actions are OpenTasker's automation units. Each Action has a name, icon, trigger conditions, and an ordered sequence of action blocks. You can run an Action from the app, let its triggers run it automatically, or expose it through a launcher shortcut or widget.
 
-- Create, edit, enable, disable, group, and search Actions from the Actions area.
-- Give Actions their own icons and keep related automations organized in named groups.
-- Add triggers independently. The trigger picker groups related choices without silently combining them; you decide which conditions belong together.
-- Use nested ALL, ANY, and NOT logic when an Action needs more than one trigger condition.
-- Review an Action before enabling it. Preflight previews show expanded inputs, branch decisions, required setup, intended effects, and blockers without running the automation.
-- Simulate trigger events to inspect matching, conditions, cooldowns, and admission decisions without creating a real run.
-- Optional per-Action or global fallback handling can catch unhandled failures.
-- Undo and redo recent edits to Actions, steps, and scenes.
+- Create, rename, edit, enable, disable, group, search, duplicate, and delete Actions.
+- Give each Action its own icon and organize related work into named groups and Projects.
+- Add triggers one at a time. The picker groups related choices into categories, but never silently combines separate triggers; you decide the logic.
+- Combine trigger conditions with nested **ALL**, **ANY**, and **NOT** groups.
+- Tap the Action's run control to test it directly. The overflow menu also provides run/test, preflight, duplicate, undo/redo, and delete options.
+- Review an Action before enabling it. Preflight shows resolved inputs, expected branches, required permissions, intended effects, and blockers without executing the automation.
+- Simulate trigger events to inspect matching, conditions, cooldowns, and execution-admission decisions without creating a real run.
+- Configure fallback handling for failed blocks. A fallback can target a specific action block in the current Action; it is not a separate Action setup that has to be selected as a whole. A global fallback can also be configured.
+- Undo and redo recent edits to Actions, blocks, triggers, and scenes.
+- Control step concurrency with **Wait for this action to finish**. It is enabled by default; turn it off when the next step may start while the previous action is still running. Retry and foreach processing remain sequential.
 
-The catalogue currently includes **85 built-in actions** (**85 registered actions**) plus **10 engine-handled flow commands**. See the catalogue below.
+Actions are project-scoped for organization. Use the project selector to switch between a single Project or **All**, then create, rename, reorder, or delete Projects from the project manager.
+
+The runtime catalogue contains **85 registered action entries**, plus **10 engine-handled flow commands**. Two registered entries are explicit unsupported placeholders for imported Tasker and MacroDroid actions; they report that the imported action is unsupported rather than pretending to execute it. The complete index is below.
 
 ### Triggers
 
-The trigger picker is searchable and organized into related categories. Related events stay together where that makes them easier to find, but each trigger remains a distinct choice. For example, the Apps category keeps app-opened, app-closed, app-installed, app-updated, and app-uninstalled events together.
+The trigger picker is searchable and grouped into ten categories. The category is only an organizing aid: separate triggers remain separate entries, and you choose whether to combine them with ALL/ANY/NOT logic.
 
-- **Apps:** app opened and closed events, plus app installed, updated, and uninstalled events. Foreground detection uses Android window events from OpenTasker's Accessibility service, with Usage Access polling as a fallback until the service is connected. Setup reports the service connection state. App detection observes package/activity transitions; it does not read on-screen content or generate taps.
-- **Time and date:** time and day schedules, ranges, presets, aliases, and calendar windows.
-- **Device and sensors:** battery, charging, headphones, screen, media playback, airplane mode, power saving, Wi-Fi name, orientation, proximity, physical activity, speed, roaming, tethering, phone-call state, USB attach/detach, and ambient light level. The ambient-light condition uses a numeric lux threshold.
-- **Connectivity:** Wi-Fi and internet/data connectivity, Bluetooth connections, and Bluetooth security or bond-state changes. Related Bluetooth connection and security choices are kept together in the picker.
-- **Notifications and events:** notification listener filters, NFC tags, shake events, SMS/MMS receipt, received broadcasts, screen-recording visibility, boot, Quick Settings tile taps, and Android Sharesheet events.
-- **Location and presence:** GPS/geofence conditions, sunrise and sunset windows, and low-power Companion Device presence/absence events.
-- **Integrations:** Locale and Tasker condition plugins, plus the UnifiedPush event bridge for compatible distributors.
+| Category | Trigger choices |
+|---|---|
+| **Apps** | **App opened**, **App closed**, **App installed**, **App updated**, and **App removed/uninstalled**. Choose the app to watch. |
+| **Device** | Battery level, charging state, screen on/off, locked/unlocked state, battery-saver mode, headphones connected/disconnected, airplane mode, media playback active/inactive, current media app, and phone-call state (ringing, active, idle). |
+| **Display & Sensors** | Orientation (portrait, landscape, face-up/down), proximity (near/far), ambient light level with a numeric **lux** threshold, physical activity (stationary/walking/running), and movement speed. |
+| **Connectivity** | Wi-Fi connected/disconnected or network name, internet availability, active network type, VPN connected/disconnected, mobile data roaming, hotspot/tethering, Bluetooth device events, and companion-device presence. |
+| **Time & Date** | Time schedules and ranges, day-of-week schedules, calendar events, local sunrise, and local sunset. Calendar presets include in-progress, 15-minute/30-minute upcoming, and all-day cases; sunrise/sunset presets support offsets and windows. |
+| **Location** | GPS location/geofence conditions with a selectable point and radius. Search for an address or place, tap the map to set a point, or drag the pin to refine it. |
+| **Notifications** | Notification received (with app and text filters), SMS/MMS received (where enabled by the build and Android permissions), and push message received (including topic/event metadata). |
+| **Hardware** | NFC tag scanned, shake detected, USB device attached/detached, camera in use, and microphone in use. |
+| **System** | Device startup/boot complete, screen recording visible/stopped, Android Advanced Protection changes, OpenTasker Quick Settings tile tapped, an external broadcast received, and content shared to OpenTasker from Android's Sharesheet. |
+| **Plugins** | Locale and Tasker-compatible condition plugins. UnifiedPush is exposed as a push-event source in the Notifications category. |
 
-App-open and app-close detection depends on the Android services and permissions shown in Setup. Android versions and device manufacturers can affect event delivery. Usage Access polling is a recovery path and may be less immediate than live window events.
+**App lifecycle detection:** OpenTasker listens for Android window/activity transitions through its Accessibility service. It does not read screen contents, inspect text on screen, or generate taps. Usage Access polling is a fallback if live window events are not available. Setup reports the service state and explains the required access. Android versions and device manufacturers can affect event delivery.
 
-### Action catalogue
+**Bluetooth presets** include all devices disconnected, some devices connected, pairing-key unavailable, and encrypted/unencrypted connection states. **Notification and SMS filters** can narrow matches to the source app/sender and message text. **External broadcasts** let another app send a named event. **Shared content** can carry text, links, or files into a trigger.
 
-| Category | Count | Examples |
+**Location map picker:** The location editor includes an OpenStreetMap map, address/place search through Nominatim, a movable trigger pin, and a radius circle that reflects the configured geofence radius. Map tiles are cached while panning to reduce repeated downloads. Place search and tiles that are not already cached require a network connection. Location and background-location access are explained in Setup; Android may limit background delivery based on OS version and battery policy.
+
+### Complete action catalogue
+
+These are the current registered action IDs, grouped by their runtime category. The IDs are stable identifiers used in saved automations and import/export files.
+
+| Category | Count | Registered action blocks |
 |---|---:|---|
-| Settings | 24 | Wi-Fi, Bluetooth, brightness, volume, airplane mode, mobile data, DND, screen timeout, torch, temporary state |
-| App | 10 | Launch app or intent, publish shortcut, archive, unarchive, open URL, SMS, screenshot |
-| File | 5 | Read, write, append, delete, list |
-| Network | 8 | HTTP Request, Home Assistant webhook, MQTT publish, ping, download, Wake-on-LAN |
-| Media | 6 | Play, stop, pause, next, previous, mute |
-| System | 8 | Widget Display state control, vibrate, clipboard set, reboot, lock, screen off, wake, log |
-| Notification | 5 | Toast, Show Popup dialog, progress notification, cancel notification, text-to-speech |
-| Variable | 13 | Set variable, clipboard read, contact lookup, JSON/CSV/XML/HTML data, date-time and text operations |
-| Flow | 1 + 10 | Wait; engine commands for running flows, conditions, loops, try/catch, and stopping |
-| Plugin | 2 | Locale setting dispatch and Locale condition query |
-| Script | 1 | SHA-256-pinned Termux command with bounded result capture |
-| Import | 2 | Explicit unsupported placeholders for imported Tasker and MacroDroid actions |
+| **Settings and device control** | 24 | \`wifi.toggle\`, \`wifi.scan\`, \`bluetooth.toggle\`, \`brightness.read\`, \`brightness.set\`, \`volume.read\`, \`volume.set\`, \`airplane.toggle\`, \`mobile.toggle\`, \`aod.set\`, \`screen.timeout\`, \`settings.write\`, \`dnd.set\`, \`zen.rule.set\`, \`zen.rule.clear\`, \`ringer.set\`, \`torch.read\`, \`torch.set\`, \`tile.set\`, \`state.temporary\`, \`ime.info\`, \`ime.set\`, \`screen.off\`, \`wake\` |
+| **Apps and shortcuts** | 11 | \`intent.launch\`, \`app.launch\`, \`app.archive\`, \`app.unarchive\`, \`shortcut.publish\`, \`plugin.locale.fire\`, \`app.kill\`, \`home.go\`, \`url.open\`, \`sms.send\`, \`screenshot.take\` |
+| **Files** | 5 | \`file.read\`, \`file.write\`, \`file.append\`, \`file.delete\`, \`file.list\` |
+| **Network and integrations** | 8 | \`http.request\`, \`http.get\`, \`http.post\`, \`integration.home_assistant.webhook\`, \`mqtt.publish\`, \`ping\`, \`download\`, \`wol\` |
+| **Media** | 6 | \`sound.play\`, \`sound.stop\`, \`sound.pause\`, \`track.next\`, \`track.previous\`, \`media.mute\` |
+| **System, scenes, and widgets** | 9 | \`scene.show\`, \`widget.display.control\`, \`auth.device_credential\`, \`clipboard.set\`, \`reboot\`, \`lock\`, \`log\`, \`tasker.unsupported\`, \`macrodroid.unsupported\` |
+| **Notifications and prompts** | 6 | \`notify.show\`, \`toast.show\`, \`notify.cancel\`, \`notify.progress\`, \`tts.speak\`, \`vibrate\` |
+| **Variables and data** | 13 | \`var.set\`, \`var.persist\`, \`clipboard.get\`, \`contacts.lookup\`, \`data.read\`, \`datetime.format\`, \`datetime.parse\`, \`datetime.add\`, \`text.match\`, \`text.replace\`, \`text.split\`, \`text.join\`, \`text.substring\` |
+| **Flow** | 1 runnable + 10 engine commands | Runnable: \`flow.wait\`. Engine commands: \`task.run\`, \`flow.if\`, \`flow.else\`, \`flow.endif\`, \`flow.foreach\`, \`flow.endfor\`, \`flow.stop\`, \`flow.try\`, \`flow.catch\`, \`flow.endtry\`. |
+| **Plugins and scripts** | 2 | \`plugin.locale.query\`, \`script.termux.run\` |
+
+**Sign In** (\`auth.device_credential\`) requests Android's biometric sign-in prompt, such as fingerprint when enrolled and available, with device PIN, pattern, or password as the device-credential fallback. If the device has no secure lock configured, Android reports that no credential is needed. Showing the prompt from a background automation requires Display over other apps access.
+
+**Brightness, volume, and torch status** can be read into variables with \`brightness.read\`, \`volume.read\`, and \`torch.read\`. Their corresponding setting blocks can change supported values. Other settings writes are checked against the capability and Android-version requirements for that operation.
+
+**Temporary State** supports reversible brightness, volume, ringer, and Do Not Disturb changes. It captures the previous value, applies the temporary value, and schedules restoration after the selected duration. The restore job survives an app-process restart.
+
+**Quick Settings tiles** have four app-owned slots. Configure each tile's label, subtitle, icon, and state, then use \`tile.set\` to control it. A tile tap can also be used as a trigger. Tile-triggered runs wait for the device to be unlocked.
+
+**Widget Display control** (\`widget.display.control\`) selects a display widget and shows a specific state or advances/rewinds its slideshow. **Show Scene** (\`scene.show\`) displays a saved Scene as a floating overlay.
+
+**Show Popup** opens a real Android dialog above other apps instead of posting a notification. It uses the Display over other apps access in Setup. Up to three buttons can be configured; a button without a selected action block simply dismisses the dialog.
+
+**Toast** displays a short message with a selectable icon. Toast overlays follow the device's light or dark appearance and use Android's native toast-window animation. Action-result messages can also be enabled or disabled in Settings, including results from widget and shortcut runs.
+
+**Show Popup**
 
 **Show Popup** opens a real Android dialog above other apps instead of posting a notification. It uses the Display over other apps access in Setup. Up to three buttons can be configured; a button without a selected flow simply dismisses the dialog.
 
@@ -92,12 +123,12 @@ Keyboard actions report the current and enabled input methods. The keyboard pick
 
 ### Widgets
 
-The **Widgets** area manages two home-screen widget types:
+The **Widgets** area manages two home-screen widget types. Widgets launch or display Actions directly; they do not ask you to select an obsolete separate Task at run time:
 
 **Widget Shortcut** is the compact, app-icon-style widget. Tapping it runs its own protected Action.
 
 - Starts at **1 × 1** and can be resized by the launcher.
-- Customize its icon, icon color, background color, optional gradient, and app-icon shape.
+- Customize its icon, icon color, background color, optional gradient, and launcher-style shape: squircle, rounded square, circle, square, or teardrop.
 - Its backing Action is created automatically; the widget never asks the user to choose a task at runtime.
 - Removing it from OpenTasker also removes its widget-owned Action. Remove the leftover placeholder from the launcher separately.
 
@@ -113,7 +144,7 @@ The **Widgets** area manages two home-screen widget types:
 
 ### Icons and customization
 
-The shared built-in icon picker includes the original OpenTasker bolt plus **all 442 Coolicons v4.1 icons**.
+The shared built-in icon picker includes the original OpenTasker **bolt** plus **all 442 Coolicons v4.1 Line icons** from the Coolicons Line Oval collection.
 
 - Search and browse the built-in icons in the shared picker.
 - Upload custom images from Settings. OpenTasker guides you through cropping each image into a square.
@@ -150,9 +181,12 @@ Untrusted imports are preflighted before database changes. OpenTasker and MacroD
 ### UI and theming
 
 - Five primary destinations keep the most-used areas visible, with advanced workspaces available from the app navigation.
-- Dark and light palettes, high-contrast mode, and edge-to-edge system-bar styling.
+- System, Dark, AMOLED, Light, High Contrast, and Android 12+ Dynamic (Material You) theme modes, plus a user-selected six-digit HEX accent color that drives the app's generated color shades.
+- Edge-to-edge system-bar styling and accessible contrast choices.
 - Shared installed-app picker with app labels, package search, icons, and validated manual entry.
-- Metadata-driven action forms with bounded number validation, task/app/file pickers, typed output-variable chips, and summaries for configured parameters.
+- Metadata-driven action forms with bounded number validation, Action/block/app/file/scene pickers, typed output-variable chips, and summaries for configured parameters.
+- Projects for organizing Actions and switching between one Project or the combined All view.
+- A dedicated Context Inspector for current trigger values, source health, and the reason an Action is or is not matching.
 - Flow graphs provide zooming, panning, branch and subflow markers, and links back to the relevant editor.
 - Scenes support drag-to-move, resize handles, multi-select, alignment guides, overlay launch, and tap/long-press bindings.
 - Global search covers Actions, triggers, variables, and scenes.
@@ -161,9 +195,11 @@ Untrusted imports are preflighted before database changes. OpenTasker and MacroD
 ### Distribution and updates
 
 - The app supports standard, F-Droid-compatible, and Play distribution build profiles. There is no official F-Droid or IzzyOnDroid listing yet.
-- Settings can select a published update source branch other than master. The app checks that branch's update channel and can download and verify the APK before opening Android's installer. Android still asks you to confirm installation.
-- Update checks can run automatically and can also be started manually from Setup.
-- Every successful non-master branch build can publish a rolling prerelease update channel. Experimental and BETA also publish immutable versioned releases.
+- Settings can select any published update-source branch except master. Experimental is the default; BETA has its own prerelease channel. Selecting a non-default branch is clearly warned as a development build.
+- The version picker lists published versions for the selected branch, identifies the latest build, and compares historical action catalogues with the action blocks used by enabled Actions. It warns when a version is missing action types required by those Actions; older releases without enough metadata are marked as unknown rather than assumed compatible.
+- The app checks the selected branch's update channel and can download and verify the APK before opening Android's installer. Android still asks you to confirm installation.
+- Optional automatic update checks run every 24 hours on the standard distribution. You can also start a check manually from Setup or Settings.
+- Every successful non-master branch build can publish a rolling prerelease update channel. Experimental publishes stable versioned releases; BETA publishes separately tagged prereleases. The rolling channel is what the automatic checker follows, while the immutable version history powers the version picker.
 - The updater verifies the APK digest and package/version metadata before offering installation.
 - Release signing material is kept outside the repository. F-Droid builds are unsigned so F-Droid can sign the APK it builds.
 
