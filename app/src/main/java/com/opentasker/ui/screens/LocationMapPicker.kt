@@ -622,7 +622,7 @@ private fun locationPickerHtml(
               var centerLon = CENTER_LON;
               var zoom = ZOOM;
               var selected = HAS_POINT ? { lat:CENTER_LAT, lon:CENTER_LON } : null;
-              var activeRadius = RADIUS;
+              var activeRadius = MAP_RADIUS;
               var pointer = null;
               var tileCache = Object.create(null);
               var visibleTileKeys = [];
@@ -849,7 +849,7 @@ private fun locationPickerHtml(
           </script>
         </body>
         </html>
-    """.replace("RADIUS", radiusMeters.toString())
+    """.replace("MAP_RADIUS", radiusMeters.toString())
         .replace("CENTER_LAT", centerLatitude.toString())
         .replace("CENTER_LON", centerLongitude.toString())
         .replace("ZOOM", zoom.toString())
