@@ -46,6 +46,13 @@ def main() -> int:
         # Re-running the script starts from the visible changelog rather than nesting details.
         if DETAILS_OPEN in original:
             changelog = original.split("\n\n" + DETAILS_OPEN, 1)[0].strip()
+            # The install note sits above the collapsed details in cleaned notes.
+            changelog = re.sub(
+                r"\n\n---\n\n\*\*Install note:\*\*.*$",
+                "",
+                changelog,
+                flags=re.DOTALL,
+            ).strip()
         elif "\n\n---\n\n" in original:
             changelog = original.split("\n\n---\n\n", 1)[0].strip()
         else:
