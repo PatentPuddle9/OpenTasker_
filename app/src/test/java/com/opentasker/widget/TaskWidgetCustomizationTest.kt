@@ -224,6 +224,8 @@ class TaskWidgetCustomizationTest {
         assertTrue(canvas.contains("designWidthDp: Int"))
         assertTrue(canvas.contains("designHeightDp: Int"))
         assertTrue(canvas.contains("canvasHeight = designHeightDp * scale"))
+        assertTrue(model.contains("val scale = minOf("))
+        assertTrue(model.contains("val canvasOffsetX = (contentWidthDp - scaledCanvasWidth) / 2f"))
         assertTrue(model.contains("val canvasWidthDp: Int = WidgetDisplayCanvasMetrics.WIDTH_DP"))
         assertTrue(model.contains("val canvasHeightDp: Int = WidgetDisplayCanvasMetrics.HEIGHT_DP"))
         assertTrue(editor.contains("SceneSelectionAlignment.CENTER_ON_CANVAS"))
@@ -297,9 +299,13 @@ class TaskWidgetCustomizationTest {
         }
         val custom = resRoot.resolve("xml/widget_display_custom_info.xml").readText()
         assertTrue(custom.contains("android:resizeMode=\"none\""))
+        assertTrue(custom.contains("android:minWidth=\"180dp\""))
+        assertTrue(custom.contains("android:minHeight=\"180dp\""))
+        assertTrue(custom.contains("android:targetCellWidth=\"3\""))
+        assertTrue(custom.contains("android:targetCellHeight=\"3\""))
         assertFalse(custom.contains("android:minResizeWidth"))
         assertFalse(custom.contains("android:minResizeHeight"))
-        assertTrue(provider.contains("Custom · set size in editor"))
+        assertTrue(provider.contains("Custom · 3 × 3 · set size in editor"))
         assertTrue(manifest.contains("WidgetDisplayCustomProvider"))
         assertTrue(manifest.contains("WidgetDisplayConfigActivity"))
     }
