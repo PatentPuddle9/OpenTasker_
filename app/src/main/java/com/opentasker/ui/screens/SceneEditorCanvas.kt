@@ -90,8 +90,10 @@ internal fun ScenePreviewBox(
                         TextButton(onClick = { onAlignSelected(SceneSelectionAlignment.TOP) }) { Text("Top") }
                         TextButton(onClick = { onAlignSelected(SceneSelectionAlignment.CENTER_VERTICAL) }) { Text("Center V") }
                         TextButton(onClick = { onAlignSelected(SceneSelectionAlignment.BOTTOM) }) { Text("Bottom") }
-                        TextButton(onClick = { onAlignSelected(SceneSelectionAlignment.DISTRIBUTE_HORIZONTAL) }) { Text("Equal H gaps") }
-                        TextButton(onClick = { onAlignSelected(SceneSelectionAlignment.DISTRIBUTE_VERTICAL) }) { Text("Equal V gaps") }
+                        if (selectedIndices.size >= 3) {
+                            TextButton(onClick = { onAlignSelected(SceneSelectionAlignment.DISTRIBUTE_HORIZONTAL) }) { Text("Equal H gaps") }
+                            TextButton(onClick = { onAlignSelected(SceneSelectionAlignment.DISTRIBUTE_VERTICAL) }) { Text("Equal V gaps") }
+                        }
                     }
                 }
             }
