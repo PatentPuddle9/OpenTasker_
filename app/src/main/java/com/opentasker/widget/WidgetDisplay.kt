@@ -151,9 +151,8 @@ object WidgetDisplayStateController {
  */
 object WidgetDisplayRenderer {
     /**
-     * Uses one pre-inflated RemoteViews hierarchy. Building and inserting arbitrary child
-     * RemoteViews at update time proved too fragile across launchers and Android versions.
-     * Keeping all slots in XML means updates only change text, visibility, images and progress.
+     * Every widget uses one fixed XML view tree. Updates only change existing text, visibility,
+     * image and progress properties; no child RemoteViews are inserted or resized at runtime.
      */
     private const val MAX_SLOTS = 8
     private const val MAX_REMOTE_BITMAP_BYTES = 480 * 1024
@@ -167,15 +166,10 @@ object WidgetDisplayRenderer {
         val root: Int,
         val text: Int,
         val image: Int,
-        val imageFallback: Int,
-        val imageCaption: Int,
         val action: Int,
         val actionIcon: Int,
         val actionLabel: Int,
         val progress: Int,
-        val progressLabel: Int,
-        val progressValue: Int,
-        val progressBar: Int,
         val divider: Int,
         val spacer: Int,
     )
@@ -185,15 +179,10 @@ object WidgetDisplayRenderer {
             com.opentasker.app.R.id.widget_display_slot_1_root,
             com.opentasker.app.R.id.widget_display_slot_1_text,
             com.opentasker.app.R.id.widget_display_slot_1_image,
-            com.opentasker.app.R.id.widget_display_slot_1_image_fallback,
-            com.opentasker.app.R.id.widget_display_slot_1_image_caption,
             com.opentasker.app.R.id.widget_display_slot_1_action,
             com.opentasker.app.R.id.widget_display_slot_1_action_icon,
             com.opentasker.app.R.id.widget_display_slot_1_action_label,
             com.opentasker.app.R.id.widget_display_slot_1_progress,
-            com.opentasker.app.R.id.widget_display_slot_1_progress_label,
-            com.opentasker.app.R.id.widget_display_slot_1_progress_value,
-            com.opentasker.app.R.id.widget_display_slot_1_progress_bar,
             com.opentasker.app.R.id.widget_display_slot_1_divider,
             com.opentasker.app.R.id.widget_display_slot_1_spacer,
         ),
@@ -201,15 +190,10 @@ object WidgetDisplayRenderer {
             com.opentasker.app.R.id.widget_display_slot_2_root,
             com.opentasker.app.R.id.widget_display_slot_2_text,
             com.opentasker.app.R.id.widget_display_slot_2_image,
-            com.opentasker.app.R.id.widget_display_slot_2_image_fallback,
-            com.opentasker.app.R.id.widget_display_slot_2_image_caption,
             com.opentasker.app.R.id.widget_display_slot_2_action,
             com.opentasker.app.R.id.widget_display_slot_2_action_icon,
             com.opentasker.app.R.id.widget_display_slot_2_action_label,
             com.opentasker.app.R.id.widget_display_slot_2_progress,
-            com.opentasker.app.R.id.widget_display_slot_2_progress_label,
-            com.opentasker.app.R.id.widget_display_slot_2_progress_value,
-            com.opentasker.app.R.id.widget_display_slot_2_progress_bar,
             com.opentasker.app.R.id.widget_display_slot_2_divider,
             com.opentasker.app.R.id.widget_display_slot_2_spacer,
         ),
@@ -217,15 +201,10 @@ object WidgetDisplayRenderer {
             com.opentasker.app.R.id.widget_display_slot_3_root,
             com.opentasker.app.R.id.widget_display_slot_3_text,
             com.opentasker.app.R.id.widget_display_slot_3_image,
-            com.opentasker.app.R.id.widget_display_slot_3_image_fallback,
-            com.opentasker.app.R.id.widget_display_slot_3_image_caption,
             com.opentasker.app.R.id.widget_display_slot_3_action,
             com.opentasker.app.R.id.widget_display_slot_3_action_icon,
             com.opentasker.app.R.id.widget_display_slot_3_action_label,
             com.opentasker.app.R.id.widget_display_slot_3_progress,
-            com.opentasker.app.R.id.widget_display_slot_3_progress_label,
-            com.opentasker.app.R.id.widget_display_slot_3_progress_value,
-            com.opentasker.app.R.id.widget_display_slot_3_progress_bar,
             com.opentasker.app.R.id.widget_display_slot_3_divider,
             com.opentasker.app.R.id.widget_display_slot_3_spacer,
         ),
@@ -233,15 +212,10 @@ object WidgetDisplayRenderer {
             com.opentasker.app.R.id.widget_display_slot_4_root,
             com.opentasker.app.R.id.widget_display_slot_4_text,
             com.opentasker.app.R.id.widget_display_slot_4_image,
-            com.opentasker.app.R.id.widget_display_slot_4_image_fallback,
-            com.opentasker.app.R.id.widget_display_slot_4_image_caption,
             com.opentasker.app.R.id.widget_display_slot_4_action,
             com.opentasker.app.R.id.widget_display_slot_4_action_icon,
             com.opentasker.app.R.id.widget_display_slot_4_action_label,
             com.opentasker.app.R.id.widget_display_slot_4_progress,
-            com.opentasker.app.R.id.widget_display_slot_4_progress_label,
-            com.opentasker.app.R.id.widget_display_slot_4_progress_value,
-            com.opentasker.app.R.id.widget_display_slot_4_progress_bar,
             com.opentasker.app.R.id.widget_display_slot_4_divider,
             com.opentasker.app.R.id.widget_display_slot_4_spacer,
         ),
@@ -249,15 +223,10 @@ object WidgetDisplayRenderer {
             com.opentasker.app.R.id.widget_display_slot_5_root,
             com.opentasker.app.R.id.widget_display_slot_5_text,
             com.opentasker.app.R.id.widget_display_slot_5_image,
-            com.opentasker.app.R.id.widget_display_slot_5_image_fallback,
-            com.opentasker.app.R.id.widget_display_slot_5_image_caption,
             com.opentasker.app.R.id.widget_display_slot_5_action,
             com.opentasker.app.R.id.widget_display_slot_5_action_icon,
             com.opentasker.app.R.id.widget_display_slot_5_action_label,
             com.opentasker.app.R.id.widget_display_slot_5_progress,
-            com.opentasker.app.R.id.widget_display_slot_5_progress_label,
-            com.opentasker.app.R.id.widget_display_slot_5_progress_value,
-            com.opentasker.app.R.id.widget_display_slot_5_progress_bar,
             com.opentasker.app.R.id.widget_display_slot_5_divider,
             com.opentasker.app.R.id.widget_display_slot_5_spacer,
         ),
@@ -265,15 +234,10 @@ object WidgetDisplayRenderer {
             com.opentasker.app.R.id.widget_display_slot_6_root,
             com.opentasker.app.R.id.widget_display_slot_6_text,
             com.opentasker.app.R.id.widget_display_slot_6_image,
-            com.opentasker.app.R.id.widget_display_slot_6_image_fallback,
-            com.opentasker.app.R.id.widget_display_slot_6_image_caption,
             com.opentasker.app.R.id.widget_display_slot_6_action,
             com.opentasker.app.R.id.widget_display_slot_6_action_icon,
             com.opentasker.app.R.id.widget_display_slot_6_action_label,
             com.opentasker.app.R.id.widget_display_slot_6_progress,
-            com.opentasker.app.R.id.widget_display_slot_6_progress_label,
-            com.opentasker.app.R.id.widget_display_slot_6_progress_value,
-            com.opentasker.app.R.id.widget_display_slot_6_progress_bar,
             com.opentasker.app.R.id.widget_display_slot_6_divider,
             com.opentasker.app.R.id.widget_display_slot_6_spacer,
         ),
@@ -281,15 +245,10 @@ object WidgetDisplayRenderer {
             com.opentasker.app.R.id.widget_display_slot_7_root,
             com.opentasker.app.R.id.widget_display_slot_7_text,
             com.opentasker.app.R.id.widget_display_slot_7_image,
-            com.opentasker.app.R.id.widget_display_slot_7_image_fallback,
-            com.opentasker.app.R.id.widget_display_slot_7_image_caption,
             com.opentasker.app.R.id.widget_display_slot_7_action,
             com.opentasker.app.R.id.widget_display_slot_7_action_icon,
             com.opentasker.app.R.id.widget_display_slot_7_action_label,
             com.opentasker.app.R.id.widget_display_slot_7_progress,
-            com.opentasker.app.R.id.widget_display_slot_7_progress_label,
-            com.opentasker.app.R.id.widget_display_slot_7_progress_value,
-            com.opentasker.app.R.id.widget_display_slot_7_progress_bar,
             com.opentasker.app.R.id.widget_display_slot_7_divider,
             com.opentasker.app.R.id.widget_display_slot_7_spacer,
         ),
@@ -297,15 +256,10 @@ object WidgetDisplayRenderer {
             com.opentasker.app.R.id.widget_display_slot_8_root,
             com.opentasker.app.R.id.widget_display_slot_8_text,
             com.opentasker.app.R.id.widget_display_slot_8_image,
-            com.opentasker.app.R.id.widget_display_slot_8_image_fallback,
-            com.opentasker.app.R.id.widget_display_slot_8_image_caption,
             com.opentasker.app.R.id.widget_display_slot_8_action,
             com.opentasker.app.R.id.widget_display_slot_8_action_icon,
             com.opentasker.app.R.id.widget_display_slot_8_action_label,
             com.opentasker.app.R.id.widget_display_slot_8_progress,
-            com.opentasker.app.R.id.widget_display_slot_8_progress_label,
-            com.opentasker.app.R.id.widget_display_slot_8_progress_value,
-            com.opentasker.app.R.id.widget_display_slot_8_progress_bar,
             com.opentasker.app.R.id.widget_display_slot_8_divider,
             com.opentasker.app.R.id.widget_display_slot_8_spacer,
         )
@@ -340,13 +294,7 @@ object WidgetDisplayRenderer {
         val views = RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display)
         val foreground = state.textColor
         val padding = ((if (compact) 7 else 12) * context.resources.displayMetrics.density).toInt()
-        views.setViewPadding(
-            com.opentasker.app.R.id.widget_display_panel,
-            padding,
-            padding,
-            padding,
-            padding,
-        )
+        views.setViewPadding(com.opentasker.app.R.id.widget_display_panel, padding, padding, padding, padding)
 
         val background = WidgetBackgroundRenderer.render(
             backgroundColor = state.backgroundColor,
@@ -396,23 +344,12 @@ object WidgetDisplayRenderer {
                 textSizeSp = 12,
             )
             bindElement(context, views, slots.first(), empty, state, widgetId, foreground, bitmapBytes, compact)
-            views.setOnClickPendingIntent(
-                slots.first().root,
-                configPendingIntent(context, widgetId),
-            )
+            views.setOnClickPendingIntent(slots.first().root, configPendingIntent(context, widgetId))
         } else {
             visibleElements.forEachIndexed { index, element ->
                 slots.getOrNull(index)?.let { slot ->
                     bitmapBytes = bindElement(
-                        context,
-                        views,
-                        slot,
-                        element,
-                        state,
-                        widgetId,
-                        foreground,
-                        bitmapBytes,
-                        compact,
+                        context, views, slot, element, state, widgetId, foreground, bitmapBytes, compact,
                     )
                 }
             }
@@ -435,7 +372,6 @@ object WidgetDisplayRenderer {
         views.setViewVisibility(slot.root, View.VISIBLE)
         return when (element.type) {
             WidgetDisplayElementType.TEXT -> {
-                views.setViewVisibility(slot.text, View.VISIBLE)
                 views.setTextViewText(slot.text, element.text)
                 views.setTextColor(slot.text, foreground)
                 views.setTextViewTextSize(
@@ -443,6 +379,7 @@ object WidgetDisplayRenderer {
                     android.util.TypedValue.COMPLEX_UNIT_SP,
                     element.textSizeSp.coerceIn(10, 36).toFloat(),
                 )
+                views.setViewVisibility(slot.text, View.VISIBLE)
                 alreadyUsedBitmapBytes
             }
 
@@ -458,18 +395,16 @@ object WidgetDisplayRenderer {
                 if (canDisplayImage) {
                     views.setImageViewBitmap(slot.image, image!!)
                     views.setViewVisibility(slot.image, View.VISIBLE)
+                    if (element.text.isNotBlank()) {
+                        views.setTextViewText(slot.text, element.text)
+                        views.setTextColor(slot.text, foreground)
+                        views.setViewVisibility(slot.text, View.VISIBLE)
+                    }
                 } else {
-                    views.setTextViewText(
-                        slot.imageFallback,
-                        if (image == null) "Image unavailable" else "Image hidden to keep this widget stable",
-                    )
-                    views.setTextColor(slot.imageFallback, foreground)
-                    views.setViewVisibility(slot.imageFallback, View.VISIBLE)
-                }
-                if (element.text.isNotBlank()) {
-                    views.setTextViewText(slot.imageCaption, element.text)
-                    views.setTextColor(slot.imageCaption, foreground)
-                    views.setViewVisibility(slot.imageCaption, View.VISIBLE)
+                    val message = if (image == null) "Image unavailable" else "Image omitted to keep widget stable"
+                    views.setTextViewText(slot.text, listOf(message, element.text).filter { it.isNotBlank() }.joinToString(" · "))
+                    views.setTextColor(slot.text, foreground)
+                    views.setViewVisibility(slot.text, View.VISIBLE)
                 }
                 alreadyUsedBitmapBytes + if (canDisplayImage) image!!.byteCount else 0
             }
@@ -478,10 +413,7 @@ object WidgetDisplayRenderer {
             WidgetDisplayElementType.SHORTCUT,
             WidgetDisplayElementType.ICON -> {
                 val customIcon = CustomWidgetIconStore.loadBitmapForWidget(
-                    context,
-                    element.icon,
-                    state.accentColor,
-                    maxDimensionPx = ICON_MAX_DIMENSION_PX,
+                    context, element.icon, state.accentColor, maxDimensionPx = ICON_MAX_DIMENSION_PX,
                 )
                 val canDisplayIcon = customIcon != null &&
                     alreadyUsedBitmapBytes + customIcon.byteCount <= MAX_REMOTE_BITMAP_BYTES
@@ -520,16 +452,15 @@ object WidgetDisplayRenderer {
                         views.setOnClickPendingIntent(slot.action, pending)
                     }
                 }
-
                 alreadyUsedBitmapBytes + if (canDisplayIcon) customIcon!!.byteCount else 0
             }
 
             WidgetDisplayElementType.PROGRESS -> {
-                views.setTextViewText(slot.progressLabel, element.text)
-                views.setTextColor(slot.progressLabel, foreground)
-                views.setTextViewText(slot.progressValue, "${element.progress.coerceIn(0, 100)}%")
-                views.setTextColor(slot.progressValue, foreground)
-                views.setProgressBar(slot.progressBar, 100, element.progress.coerceIn(0, 100), false)
+                val progress = element.progress.coerceIn(0, 100)
+                views.setTextViewText(slot.text, element.text + " · " + progress + "%")
+                views.setTextColor(slot.text, foreground)
+                views.setViewVisibility(slot.text, View.VISIBLE)
+                views.setProgressBar(slot.progress, 100, progress, false)
                 views.setViewVisibility(slot.progress, View.VISIBLE)
                 alreadyUsedBitmapBytes
             }
@@ -574,10 +505,12 @@ object WidgetDisplayRenderer {
             if (removed) "Remove this widget from your home screen"
             else "Tap here to reopen setup and repair it",
         )
-        recovery.setOnClickPendingIntent(
-            com.opentasker.app.R.id.widget_display_fallback_root,
-            configPendingIntent(context, widgetId),
-        )
+        if (!removed) {
+            recovery.setOnClickPendingIntent(
+                com.opentasker.app.R.id.widget_display_fallback_root,
+                configPendingIntent(context, widgetId),
+            )
+        }
         return recovery
     }
 }
