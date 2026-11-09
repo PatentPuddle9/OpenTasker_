@@ -285,6 +285,7 @@ object WidgetDisplayRenderer {
                             setViewVisibility(com.opentasker.app.R.id.widget_display_image, View.VISIBLE)
                         } else {
                             setViewVisibility(com.opentasker.app.R.id.widget_display_image, View.GONE)
+                            setViewVisibility(com.opentasker.app.R.id.widget_display_image_fallback, View.VISIBLE)
                             setTextViewText(com.opentasker.app.R.id.widget_display_image_fallback, "Image unavailable")
                         }
                         setTextViewText(com.opentasker.app.R.id.widget_display_image_caption, element.text)
