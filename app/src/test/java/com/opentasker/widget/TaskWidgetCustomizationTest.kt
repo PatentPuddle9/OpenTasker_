@@ -132,7 +132,9 @@ class TaskWidgetCustomizationTest {
         assertFalse(display.contains("WidgetDisplayStateReceiver"))
         assertTrue(display.contains("Build.VERSION.SDK_INT >= Build.VERSION_CODES.S"))
         assertTrue(display.contains("elements.filterNot"))
-        assertTrue(display.contains("WidgetDisplayElementType.SPACER || it.type == WidgetDisplayElementType.DIVIDER"))
+        assertTrue(display.contains("it.type == WidgetDisplayElementType.SPACER"))
+        assertTrue(display.contains("it.type == WidgetDisplayElementType.DIVIDER"))
+        assertTrue(display.contains("state.horizontal || veryCompactHeight"))
         assertTrue(display.contains("child.setViewLayoutWidth"))
     }
 
