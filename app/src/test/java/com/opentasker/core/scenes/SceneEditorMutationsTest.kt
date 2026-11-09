@@ -38,6 +38,64 @@ class SceneEditorMutationsTest {
     }
 
     @Test
+    fun alignSelectionCentersObjectsOnOneSharedAxis() {
+        val first = element(id = 1, x = 10, y = 20, width = 20, height = 30)
+        val second = element(id = 2, x = 90, y = 80, width = 40, height = 20)
+        val scene = Scene(1, "Align", 300, 200, listOf(first, second))
+
+        val aligned = SceneEditorMutations.alignSelected(
+            scene,
+            setOf(0, 1),
+            SceneSelectionAlignment.CENTER_HORIZONTAL,
+        )
+
+        assertEquals(70, aligned.elements[0].xDp + aligned.elements[0].widthDp / 2)
+        assertEquals(70, aligned.elements[1].xDp + aligned.elements[1].widthDp / 2)
+        assertEquals(first.yDp, aligned.elements[0].yDp)
+        assertEquals(second.yDp, aligned.elements[1].yDp)
+    }
+
+    @Test
+    fun centerSelectionOnCanvasAsOneRigidGroup() {
+        val first = element(id = 1, x = 10, y = 20, width = 20, height = 30)
+        val second = element(id = 2, x = 90, y = 80, width = 40, height = 20)
+        val scene = Scene(1, "Center", 300, 200, listOf(first, second))
+
+        val centered = SceneEditorMutations.alignSelected(
+            scene,
+            setOf(0, 1),
+            SceneSelectionAlignment.CENTER_ON_CANVAS,
+        )
+
+        val left = centered.elements.minOf { it.xDp }
+        val right = centered.elements.maxOf { it.xDp + it.widthDp }
+        val top = centered.elements.minOf { it.yDp }
+        val bottom = centered.elements.maxOf { it.yDp + it.heightDp }
+        assertEquals(150, (left + right) / 2)
+        assertEquals(100, (top + bottom) / 2)
+    }
+
+    @Test
+    fun distributeSelectedObjectsWithEqualHorizontalGaps() {
+        val first = element(id = 1, x = 0, y = 10, width = 20, height = 20)
+        val second = element(id = 2, x = 90, y = 30, width = 30, height = 20)
+        val third = element(id = 3, x = 180, y = 50, width = 20, height = 20)
+        val scene = Scene(1, "Distribute", 300, 120, listOf(first, second, third))
+
+        val distributed = SceneEditorMutations.alignSelected(
+            scene,
+            setOf(0, 1, 2),
+            SceneSelectionAlignment.DISTRIBUTE_HORIZONTAL,
+        )
+
+        val gap1 = distributed.elements[1].xDp -
+            (distributed.elements[0].xDp + distributed.elements[0].widthDp)
+        val gap2 = distributed.elements[2].xDp -
+            (distributed.elements[1].xDp + distributed.elements[1].widthDp)
+        assertEquals(gap1, gap2)
+    }
+
+    @Test
     fun portraitCanvasResizeUsesIndependentAxisScales() {
         val original = element(id = 1, x = 20, y = 40, width = 100, height = 100)
         val scene = Scene(1, "Portrait", 400, 800, listOf(original))
