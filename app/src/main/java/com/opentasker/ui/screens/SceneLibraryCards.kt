@@ -43,6 +43,7 @@ import com.opentasker.core.model.SceneElement
 import com.opentasker.core.model.SceneElementType
 import com.opentasker.core.model.Task
 import com.opentasker.core.scenes.SceneEditorMutations
+import com.opentasker.core.scenes.SceneSelectionAlignment
 import com.opentasker.core.scenes.SceneElementConfigResolver
 import com.opentasker.core.scenes.SceneIssue
 import com.opentasker.core.scenes.SceneIssueSeverity
@@ -232,6 +233,12 @@ internal fun SceneCard(
                 },
                 onMoveSelected = { dx, dy ->
                     val updatedScene = SceneEditorMutations.moveSelected(scene, selectedIndices, dx, dy)
+                    if (updatedScene != scene) {
+                        onUpdateScene(updatedScene, R.string.ui_message_elements_moved)
+                    }
+                },
+                onAlignSelected = { alignment ->
+                    val updatedScene = SceneEditorMutations.alignSelected(scene, selectedIndices, alignment)
                     if (updatedScene != scene) {
                         onUpdateScene(updatedScene, R.string.ui_message_elements_moved)
                     }
