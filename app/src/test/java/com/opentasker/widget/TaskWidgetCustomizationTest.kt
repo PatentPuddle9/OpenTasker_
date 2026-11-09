@@ -151,10 +151,7 @@ class TaskWidgetCustomizationTest {
 
     @Test
     fun appLaunchRefreshesExistingWidgetDisplaysAfterAnUpgrade() {
-        val main = sourceRoot.resolve("../java/com/opentasker/app/MainActivity.kt")
-            .takeIf(Files::exists)
-            ?.readText()
-            ?: sourceRoot.resolve("com/opentasker/app/MainActivity.kt").readText()
+        val main = sourceRoot.resolve("com/opentasker/app/MainActivity.kt").readText()
         assertTrue(main.contains("WidgetDisplayProvider.requestRefresh(applicationContext)"))
     }
 
