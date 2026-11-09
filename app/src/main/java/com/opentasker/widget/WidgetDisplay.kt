@@ -5,7 +5,6 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.view.Gravity
 import android.view.View
 import android.widget.RemoteViews
 import com.opentasker.core.scenes.SceneImageLoader
@@ -536,8 +535,8 @@ object WidgetDisplayRenderer {
             val top = (compactIndex / columns) * cellHeight + 2f
             views.setViewLayoutWidth(rootId, width, unit)
             views.setViewLayoutHeight(rootId, height, unit)
-            views.setViewLayoutMargin(rootId, Gravity.LEFT, left, unit)
-            views.setViewLayoutMargin(rootId, Gravity.TOP, top, unit)
+            views.setViewLayoutMargin(rootId, RemoteViews.MARGIN_LEFT, left, unit)
+            views.setViewLayoutMargin(rootId, RemoteViews.MARGIN_TOP, top, unit)
             return
         }
 
@@ -549,8 +548,8 @@ object WidgetDisplayRenderer {
         val top = (element.yDp * scaleY).coerceIn(0f, (contentHeightDp - height).coerceAtLeast(0f))
         views.setViewLayoutWidth(rootId, width, unit)
         views.setViewLayoutHeight(rootId, height, unit)
-        views.setViewLayoutMargin(rootId, Gravity.LEFT, left, unit)
-        views.setViewLayoutMargin(rootId, Gravity.TOP, top, unit)
+        views.setViewLayoutMargin(rootId, RemoteViews.MARGIN_LEFT, left, unit)
+        views.setViewLayoutMargin(rootId, RemoteViews.MARGIN_TOP, top, unit)
     }
 
     private fun bindElement(
