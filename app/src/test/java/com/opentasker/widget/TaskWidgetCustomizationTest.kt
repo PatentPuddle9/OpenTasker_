@@ -117,25 +117,36 @@ class TaskWidgetCustomizationTest {
         val root = resRoot.resolve("layout/widget_display.xml").readText()
         val fallback = resRoot.resolve("layout/widget_display_fallback.xml").readText()
 
-        assertTrue("A fixed layout should define eight independently-addressable slots",
+        assertTrue("The fixed layout should define eight content slots",
             (1..8).all { root.contains("@+id/widget_display_slot_${it}_root") })
-        assertTrue("The renderer should use only the pre-inflated widget layout",
+        assertTrue("The renderer should use one pre-inflated layout",
             display.contains("R.layout.widget_display"))
-        assertFalse("RemoteViews must not create nested child trees at update time",
+        assertFalse("RemoteViews must not add dynamic child trees",
             display.contains("views.addView"))
         assertFalse("RemoteViews must not clear and rebuild the content tree",
             display.contains("views.removeAllViews"))
-        assertFalse("Avoid API-specific dynamic layout-size changes",
+        assertFalse("Avoid API-specific dynamic child sizing",
             display.contains("setViewLayoutWidth") || display.contains("setViewLayoutHeight"))
-        assertTrue("Text, image, action, progress, divider and spacer slots are static",
+        assertTrue("The content types must be represented by static slots",
             listOf("_text", "_image", "_action", "_progress", "_divider", "_spacer")
                 .all { root.contains(it) })
-        assertTrue("Rendering errors should switch to a recovery layout",
+        assertTrue("The renderer catches errors and installs a recovery view",
             display.contains("createRecoveryViews"))
-        assertTrue("The recovery layout should tell the user how to repair the widget",
+        assertTrue("The recovery view explains how to repair the widget",
             fallback.contains("Tap here to reopen setup and repair it"))
-        assertTrue("Recovery view should be clickable",
+        assertTrue("The recovery view has a clickable root",
             fallback.contains("@+id/widget_display_fallback_root"))
+
+        assertTrue("Bitmap data is bounded well below the Binder transaction limit",
+            display.contains("MAX_REMOTE_BITMAP_BYTES = 480 * 1024"))
+        assertTrue("Widget background bitmaps stay small",
+            display.contains("BACKGROUND_WIDTH_PX = 192") &&
+                display.contains("BACKGROUND_HEIGHT_PX = 144"))
+        assertTrue("Widget image bitmaps are sampled before they are sent to the launcher",
+            display.contains("IMAGE_WIDTH_PX = 160") &&
+                display.contains("IMAGE_HEIGHT_PX = 90"))
+        assertTrue("Uploaded icons are sampled to compact dimensions",
+            display.contains("ICON_MAX_DIMENSION_PX = 40"))
     }
 
     @Test
