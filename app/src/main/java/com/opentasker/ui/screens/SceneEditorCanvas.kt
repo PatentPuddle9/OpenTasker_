@@ -1,7 +1,6 @@
 package com.opentasker.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,8 +25,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -45,7 +42,6 @@ import com.opentasker.app.R
 import com.opentasker.core.model.Scene
 import com.opentasker.core.model.SceneElementType
 import com.opentasker.core.scenes.AlignmentGuide
-import com.opentasker.core.scenes.GuideOrientation
 import com.opentasker.core.scenes.SceneAlignmentGuides
 import com.opentasker.core.scenes.SceneCanvasElementProjection
 import com.opentasker.core.scenes.SceneCanvasProjector
@@ -88,7 +84,6 @@ internal fun ScenePreviewBox(
                         maxHeight = 280f,
                     )
                     val projections = SceneCanvasProjector.project(scene, canvasWidth, canvasHeight)
-                    val guideColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.50f)
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
