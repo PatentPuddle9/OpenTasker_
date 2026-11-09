@@ -125,7 +125,10 @@ The **Widgets** area manages two home-screen widget types. Widgets launch or dis
 **Widget Display** is a larger dashboard with a slideshow of independently designed states.
 
 - Choose a fixed **2 × 1**, **2 × 2**, **4 × 2**, or **4 × 4** size, or select **Custom** to resize it horizontally and vertically.
-- Create, edit, duplicate, reorder, and delete states. Each state has its own title, subtitle, layout, colors, and content.
+- Create, edit, duplicate, reorder, and delete states. Each state has its own title, subtitle, colors, and content.
+- Edit each state on a draggable design canvas. Drag to position items, resize from the corner handle, or enter exact X/Y/width/height values.
+- Items snap to canvas centers and edges, line up with other items, and show matching horizontal or vertical gap guides while dragging. Center and edge-align a selected item with one tap.
+- Small 2 × 2 and 4 × 2 widgets automatically use compact grids; larger widgets preserve the authored canvas positions.
 - Add text, images, icons, progress bars, Action buttons, Widget Shortcut buttons, dividers, and spacing. Each state displays up to eight items.
 - Uses a fixed, launcher-safe RemoteViews layout rather than dynamically inserting views. A lightweight initial placeholder protects widget creation, and rendering errors leave a tappable recovery view.
 - Buttons can launch existing Actions, including Actions owned by Widget Shortcuts.
@@ -178,7 +181,7 @@ Untrusted imports are preflighted before database changes. OpenTasker and MacroD
 - Projects for organizing Actions and switching between one Project or the combined All view.
 - A dedicated Context Inspector for current trigger values, source health, and the reason an Action is or is not matching.
 - Flow graphs provide zooming, panning, branch and subflow markers, and links back to the relevant editor.
-- Scenes support drag-to-move, resize handles, multi-select, alignment guides, overlay launch, and tap/long-press bindings.
+- Scenes support drag-to-move, resize handles, multi-select, live snapping to canvas and object edges/centers, equal-gap spacing guides, center/edge alignment, equal distribution, overlay launch, and tap/long-press bindings.
 - Global search covers Actions, triggers, variables, and scenes.
 - Editor and dialog state is retained across rotation and window resizing.
 
