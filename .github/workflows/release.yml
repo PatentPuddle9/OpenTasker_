@@ -280,14 +280,17 @@ jobs:
           {
             cat "$DESCRIPTION_PATH"
             printf '\n\n---\n\n'
+            printf '%s\n\n' '**Install note:** This is a debug-signed APK. It can update an existing OpenTasker installation signed with the same persistent debug key. An installation signed with a different key must be uninstalled first.'
+            printf '<details>\n<summary>Build details and version-picker compatibility data</summary>\n\n'
             printf 'Release channel: **%s**\n\n' "$release_channel"
+            printf 'Version: **%s**\n\n' "$VERSION"
             printf 'Version code: **%s**\n\n' "$VERSION_CODE"
             printf 'APK: **%s**\n\n' "$ASSET_NAME"
             printf 'In-app updates: **available**\n\n'
             printf 'Action catalog: `%s`\n\n' "$supported_actions"
             printf 'Built by [successful build.yml run #%s](%s) from commit `%s`.\n\n' "$BUILD_RUN_NUMBER" "$run_url" "$BUILD_SHA"
-            printf '%s\n' '**Install note:** This is a debug-signed APK. It can update an existing OpenTasker installation signed with the same persistent debug key. An installation signed with a different key must be uninstalled first.'
-            printf '\n\n%s\n' "$marker"
+            printf '%s\n' "$marker"
+            printf '\n</details>\n'
           } > "$notes_file"
 
           gh release create "$TAG" "$APK_PATH" \
