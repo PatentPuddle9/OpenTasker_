@@ -448,10 +448,6 @@
         </activity>
 
         <receiver
-            android:name="com.opentasker.widget.WidgetDisplayStateReceiver"
-            android:exported="false" />
-
-        <receiver
             android:name="com.opentasker.widget.WidgetDisplayCompactProvider"
             android:label="@string/widget_display_variant_compact"
             android:exported="false">
