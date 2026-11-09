@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -52,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.opentasker.app.OpenTaskerApp_NoHilt
@@ -95,6 +97,18 @@ internal fun WidgetDisplayConfigEditor(
             listOf(WidgetDisplayState(name = "State 1"))
         })
     }
+    var canvasWidthDp by remember(widgetId) {
+        mutableStateOf(WidgetDisplayCanvasMetrics.normalizeWidth(initialConfig.canvasWidthDp))
+    }
+    var canvasHeightDp by remember(widgetId) {
+        mutableStateOf(WidgetDisplayCanvasMetrics.normalizeHeight(initialConfig.canvasHeightDp))
+    }
+    var canvasWidthText by rememberSaveable(widgetId) {
+        mutableStateOf(initialConfig.canvasWidthDp.toString())
+    }
+    var canvasHeightText by rememberSaveable(widgetId) {
+        mutableStateOf(initialConfig.canvasHeightDp.toString())
+    }
     var editingStateId by rememberSaveable(widgetId) { mutableStateOf<String?>(null) }
     var stateMenuFor by rememberSaveable(widgetId) { mutableStateOf<String?>(null) }
     var deleteStateId by rememberSaveable(widgetId) { mutableStateOf<String?>(null) }
@@ -103,6 +117,22 @@ internal fun WidgetDisplayConfigEditor(
     val activeState = states.firstOrNull { it.id == editingStateId }
     var draft by remember(editingStateId, activeState) {
         mutableStateOf(activeState ?: WidgetDisplayState())
+    }
+
+    fun updateCanvasSize(width: Int = canvasWidthDp, height: Int = canvasHeightDp) {
+        val safeWidth = WidgetDisplayCanvasMetrics.normalizeWidth(width)
+        val safeHeight = WidgetDisplayCanvasMetrics.normalizeHeight(height)
+        canvasWidthDp = safeWidth
+        canvasHeightDp = safeHeight
+        states = states.map { state ->
+            state.copy(
+                elements = WidgetDisplayCanvasMetrics.normalize(
+                    state.elements,
+                    safeWidth,
+                    safeHeight,
+                ),
+            )
+        }
     }
 
     fun createNewState() {
@@ -184,6 +214,53 @@ internal fun WidgetDisplayConfigEditor(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    shape = RoundedCornerShape(16.dp),
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text("Design canvas size", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "Enter the layout width and height in dp. The editor will resize its canvas to match; the launcher still controls the physical widget slot.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = canvasWidthText,
+                                onValueChange = { raw ->
+                                    canvasWidthText = raw
+                                    raw.toIntOrNull()?.takeIf {
+                                        it in WidgetDisplayCanvasMetrics.MIN_WIDTH_DP..WidgetDisplayCanvasMetrics.MAX_WIDTH_DP
+                                    }?.let { updateCanvasSize(width = it) }
+                                },
+                                label = { Text("Width (dp)") },
+                                supportingText = { Text("110–1000") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                            )
+                            OutlinedTextField(
+                                value = canvasHeightText,
+                                onValueChange = { raw ->
+                                    canvasHeightText = raw
+                                    raw.toIntOrNull()?.takeIf {
+                                        it in WidgetDisplayCanvasMetrics.MIN_HEIGHT_DP..WidgetDisplayCanvasMetrics.MAX_HEIGHT_DP
+                                    }?.let { updateCanvasSize(height = it) }
+                                },
+                                label = { Text("Height (dp)") },
+                                supportingText = { Text("80–1000") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
                 Button(onClick = ::createNewState, modifier = Modifier.fillMaxWidth()) {
                     Text("New state")
                 }
@@ -253,14 +330,27 @@ internal fun WidgetDisplayConfigEditor(
                 Spacer(Modifier.height(4.dp))
                 Button(
                     onClick = {
-                        onSave(WidgetDisplayConfig(states = states))
+                        onSave(
+                            WidgetDisplayConfig(
+                                states = states,
+                                canvasWidthDp = canvasWidthDp,
+                                canvasHeightDp = canvasHeightDp,
+                            ),
+                        )
                     },
+                    enabled = canvasWidthText.toIntOrNull()?.let {
+                        it in WidgetDisplayCanvasMetrics.MIN_WIDTH_DP..WidgetDisplayCanvasMetrics.MAX_WIDTH_DP
+                    } == true && canvasHeightText.toIntOrNull()?.let {
+                        it in WidgetDisplayCanvasMetrics.MIN_HEIGHT_DP..WidgetDisplayCanvasMetrics.MAX_HEIGHT_DP
+                    } == true,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("Save Widget Display") }
             }
         } else {
             WidgetDisplayStateEditor(
                 state = draft,
+                canvasWidthDp = canvasWidthDp,
+                canvasHeightDp = canvasHeightDp,
                 actions = availableActions,
                 contentPadding = padding,
                 onStateChange = { draft = it },
@@ -321,6 +411,8 @@ private fun BoxCenterIcon(state: WidgetDisplayState) {
 @Composable
 private fun WidgetDisplayStateEditor(
     state: WidgetDisplayState,
+    canvasWidthDp: Int,
+    canvasHeightDp: Int,
     actions: List<Profile>,
     contentPadding: androidx.compose.foundation.layout.PaddingValues,
     onStateChange: (WidgetDisplayState) -> Unit,
@@ -353,7 +445,11 @@ private fun WidgetDisplayStateEditor(
 
     fun addElement(type: WidgetDisplayElementType) {
         if (state.elements.size >= WidgetDisplayCanvasMetrics.MAX_ELEMENTS) return
-        val bounds = WidgetDisplayCanvasMetrics.defaultBounds(state.elements.size)
+        val bounds = WidgetDisplayCanvasMetrics.defaultBounds(
+            state.elements.size,
+            canvasWidthDp,
+            canvasHeightDp,
+        )
         val item = WidgetDisplayElement(
             type = type,
             text = when (type) {
@@ -387,19 +483,19 @@ private fun WidgetDisplayStateEditor(
             com.opentasker.core.scenes.SceneSelectionAlignment.LEFT ->
                 selected.copy(xDp = 0)
             com.opentasker.core.scenes.SceneSelectionAlignment.CENTER_HORIZONTAL ->
-                selected.copy(xDp = (WidgetDisplayCanvasMetrics.WIDTH_DP - selected.widthDp) / 2)
+                selected.copy(xDp = (canvasWidthDp - selected.widthDp) / 2)
             com.opentasker.core.scenes.SceneSelectionAlignment.RIGHT ->
-                selected.copy(xDp = WidgetDisplayCanvasMetrics.WIDTH_DP - selected.widthDp)
+                selected.copy(xDp = canvasWidthDp - selected.widthDp)
             com.opentasker.core.scenes.SceneSelectionAlignment.TOP ->
                 selected.copy(yDp = 0)
             com.opentasker.core.scenes.SceneSelectionAlignment.CENTER_VERTICAL ->
-                selected.copy(yDp = (WidgetDisplayCanvasMetrics.HEIGHT_DP - selected.heightDp) / 2)
+                selected.copy(yDp = (canvasHeightDp - selected.heightDp) / 2)
             com.opentasker.core.scenes.SceneSelectionAlignment.BOTTOM ->
-                selected.copy(yDp = WidgetDisplayCanvasMetrics.HEIGHT_DP - selected.heightDp)
+                selected.copy(yDp = canvasHeightDp - selected.heightDp)
             com.opentasker.core.scenes.SceneSelectionAlignment.CENTER_ON_CANVAS ->
                 selected.copy(
-                    xDp = (WidgetDisplayCanvasMetrics.WIDTH_DP - selected.widthDp) / 2,
-                    yDp = (WidgetDisplayCanvasMetrics.HEIGHT_DP - selected.heightDp) / 2,
+                    xDp = (canvasWidthDp - selected.widthDp) / 2,
+                    yDp = (canvasHeightDp - selected.heightDp) / 2,
                 )
             else -> selected
         }
@@ -491,6 +587,8 @@ private fun WidgetDisplayStateEditor(
 
         WidgetDisplayCanvas(
             state = state,
+            designWidthDp = canvasWidthDp,
+            designHeightDp = canvasHeightDp,
             selectedElementId = selectedElementId,
             guides = activeGuides,
             onSelect = { selectedElementId = it },
@@ -537,7 +635,7 @@ private fun WidgetDisplayStateEditor(
                             value = selected.xDp.toString(),
                             onValueChange = { raw ->
                                 raw.toIntOrNull()?.let { x ->
-                                    updateBounds(selected.id) { it.copy(xDp = x.coerceIn(0, WidgetDisplayCanvasMetrics.WIDTH_DP - selected.widthDp)) }
+                                    updateBounds(selected.id) { it.copy(xDp = x.coerceIn(0, canvasWidthDp - selected.widthDp)) }
                                 }
                             },
                             label = { Text("X") },
@@ -548,7 +646,7 @@ private fun WidgetDisplayStateEditor(
                             value = selected.yDp.toString(),
                             onValueChange = { raw ->
                                 raw.toIntOrNull()?.let { y ->
-                                    updateBounds(selected.id) { it.copy(yDp = y.coerceIn(0, WidgetDisplayCanvasMetrics.HEIGHT_DP - selected.heightDp)) }
+                                    updateBounds(selected.id) { it.copy(yDp = y.coerceIn(0, canvasHeightDp - selected.heightDp)) }
                                 }
                             },
                             label = { Text("Y") },
@@ -559,7 +657,7 @@ private fun WidgetDisplayStateEditor(
                             value = selected.widthDp.toString(),
                             onValueChange = { raw ->
                                 raw.toIntOrNull()?.let { width ->
-                                    val safeWidth = width.coerceIn(32, WidgetDisplayCanvasMetrics.WIDTH_DP - selected.xDp)
+                                    val safeWidth = width.coerceIn(32, canvasWidthDp - selected.xDp)
                                     updateBounds(selected.id) { it.copy(widthDp = safeWidth) }
                                 }
                             },
@@ -571,7 +669,7 @@ private fun WidgetDisplayStateEditor(
                             value = selected.heightDp.toString(),
                             onValueChange = { raw ->
                                 raw.toIntOrNull()?.let { height ->
-                                    val safeHeight = height.coerceIn(24, WidgetDisplayCanvasMetrics.HEIGHT_DP - selected.yDp)
+                                    val safeHeight = height.coerceIn(24, canvasHeightDp - selected.yDp)
                                     updateBounds(selected.id) { it.copy(heightDp = safeHeight) }
                                 }
                             },
