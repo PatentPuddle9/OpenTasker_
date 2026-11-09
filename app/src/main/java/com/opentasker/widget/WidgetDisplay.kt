@@ -4,6 +4,8 @@ import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.view.Gravity
 import android.view.View
 import android.widget.RemoteViews
 import com.opentasker.core.scenes.SceneImageLoader
@@ -344,13 +346,26 @@ object WidgetDisplayRenderer {
         val stateIndex = WidgetDisplayStore.activeIndex(context, widgetId, config.states.size)
         val state = config.states[stateIndex]
         val options = manager.getAppWidgetOptions(widgetId)
-        val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
-        val compact = minHeight in 1..109
-
-        val views = RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display)
+        val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 220).coerceAtLeast(110)
+        val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 140).coerceAtLeast(40)
+        val compact = minHeight <= 69
+        val modernCanvas = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+        val layoutId = if (modernCanvas) {
+            com.opentasker.app.R.layout.widget_display
+        } else {
+            com.opentasker.app.R.layout.widget_display_legacy
+        }
+        val views = RemoteViews(context.packageName, layoutId)
         val foreground = state.textColor
-        val padding = ((if (compact) 7 else 12) * context.resources.displayMetrics.density).toInt()
-        views.setViewPadding(com.opentasker.app.R.id.widget_display_panel, padding, padding, padding, padding)
+        val paddingDp = if (compact) 6f else 12f
+        val padding = (paddingDp * context.resources.displayMetrics.density).toInt()
+        views.setViewPadding(
+            com.opentasker.app.R.id.widget_display_panel,
+            padding,
+            padding,
+            padding,
+            padding,
+        )
 
         val background = WidgetBackgroundRenderer.render(
             backgroundColor = state.backgroundColor,
@@ -380,17 +395,33 @@ object WidgetDisplayRenderer {
             if (compact) 13f else 17f,
         )
 
+        // Two-by-one widgets have too little vertical room for an absolute design canvas.
+        // Present up to two selected items side by side there; larger widgets preserve authored
+        // canvas coordinates and dimensions.
         val configured = state.elements
-        val visibleElements = if (configured.size > MAX_SLOTS) {
+        val visibleElements = if (compact) {
+            configured.take(2)
+        } else if (configured.size > MAX_SLOTS) {
             configured.take(MAX_SLOTS - 1) + WidgetDisplayElement(
                 id = "overflow-" + configured.size,
                 type = WidgetDisplayElementType.TEXT,
                 text = "+ " + (configured.size - (MAX_SLOTS - 1)) + " more items",
                 textSizeSp = 11,
+                xDp = 12,
+                yDp = 172,
+                widthDp = 296,
+                heightDp = 22,
             )
         } else {
             configured
         }
+
+        val contentWidthDp = (minWidth - paddingDp * 2).coerceAtLeast(72f)
+        val headerHeightDp = if (compact) 0f else {
+            (if (state.title.isBlank()) 0f else 24f) +
+                (if (state.subtitle.isBlank()) 0f else 18f) + 7f
+        }
+        val contentHeightDp = (minHeight - paddingDp * 2 - headerHeightDp).coerceAtLeast(26f)
 
         if (visibleElements.isEmpty()) {
             val empty = WidgetDisplayElement(
@@ -398,20 +429,78 @@ object WidgetDisplayRenderer {
                 type = WidgetDisplayElementType.TEXT,
                 text = "Tap to edit this Widget Display",
                 textSizeSp = 12,
+                xDp = 8,
+                yDp = 8,
+                widthDp = WidgetDisplayCanvasMetrics.WIDTH_DP - 16,
+                heightDp = 40,
             )
             bindElement(context, views, slots.first(), empty, state, widgetId, foreground, bitmapBytes, compact)
             views.setOnClickPendingIntent(slots.first().root, configPendingIntent(context, widgetId))
+            if (modernCanvas) {
+                placeSlot(
+                    views, slots.first().root, empty,
+                    contentWidthDp, contentHeightDp,
+                    compact, 0, 1,
+                )
+            }
         } else {
             visibleElements.forEachIndexed { index, element ->
-                slots.getOrNull(index)?.let { slot ->
-                    bitmapBytes = bindElement(
-                        context, views, slot, element, state, widgetId, foreground, bitmapBytes, compact,
+                val slot = slots.getOrNull(index) ?: return@forEachIndexed
+                bitmapBytes = bindElement(
+                    context, views, slot, element, state, widgetId, foreground, bitmapBytes, compact,
+                )
+                if (modernCanvas) {
+                    placeSlot(
+                        views = views,
+                        rootId = slot.root,
+                        element = element,
+                        contentWidthDp = contentWidthDp,
+                        contentHeightDp = contentHeightDp,
+                        compact = compact,
+                        compactIndex = index,
+                        compactCount = visibleElements.size,
                     )
                 }
             }
         }
 
         manager.updateAppWidget(widgetId, views)
+    }
+
+    /** Places an existing XML slot without constructing or inserting any child RemoteViews. */
+    private fun placeSlot(
+        views: RemoteViews,
+        rootId: Int,
+        element: WidgetDisplayElement,
+        contentWidthDp: Float,
+        contentHeightDp: Float,
+        compact: Boolean,
+        compactIndex: Int,
+        compactCount: Int,
+    ) {
+        val unit = android.util.TypedValue.COMPLEX_UNIT_DIP
+        if (compact) {
+            val columnWidth = contentWidthDp / compactCount.coerceAtLeast(1)
+            val width = (columnWidth - 5f).coerceAtLeast(1f)
+            val height = (contentHeightDp - 4f).coerceAtLeast(18f)
+            val left = compactIndex * columnWidth + 2f
+            views.setViewLayoutWidth(rootId, width, unit)
+            views.setViewLayoutHeight(rootId, height, unit)
+            views.setViewLayoutMargin(rootId, Gravity.LEFT, left, unit)
+            views.setViewLayoutMargin(rootId, Gravity.TOP, 2f, unit)
+            return
+        }
+
+        val scaleX = contentWidthDp / WidgetDisplayCanvasMetrics.WIDTH_DP
+        val scaleY = contentHeightDp / WidgetDisplayCanvasMetrics.HEIGHT_DP
+        val width = (element.widthDp * scaleX).coerceAtLeast(1f)
+        val height = (element.heightDp * scaleY).coerceAtLeast(1f)
+        val left = (element.xDp * scaleX).coerceIn(0f, (contentWidthDp - width).coerceAtLeast(0f))
+        val top = (element.yDp * scaleY).coerceIn(0f, (contentHeightDp - height).coerceAtLeast(0f))
+        views.setViewLayoutWidth(rootId, width, unit)
+        views.setViewLayoutHeight(rootId, height, unit)
+        views.setViewLayoutMargin(rootId, Gravity.LEFT, left, unit)
+        views.setViewLayoutMargin(rootId, Gravity.TOP, top, unit)
     }
 
     private fun bindElement(
