@@ -593,7 +593,8 @@ private fun WidgetDisplayStateEditor(
         }
 
         state.elements.forEachIndexed { index, element ->
-            Card(
+            if (element.id == selectedElementId) {
+                Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                 shape = RoundedCornerShape(16.dp),
@@ -604,12 +605,12 @@ private fun WidgetDisplayStateEditor(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(element.type.displayLabel, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
-                        TextButton(onClick = { selectedElementId = element.id }) {
-                            Text(if (selectedElementId == element.id) "Selected" else "Select")
-                        }
                         TextButton(
                             onClick = {
-                                onStateChange(state.copy(elements = state.elements.toMutableList().also { it.removeAt(index) }))
+                                val remaining = state.elements.toMutableList().also { it.removeAt(index) }
+                                selectedElementId = remaining.getOrNull(index.coerceAtMost(remaining.lastIndex))?.id
+                                activeGuides = emptyList()
+                                onStateChange(state.copy(elements = remaining))
                             },
                         ) { Text("Remove", color = MaterialTheme.colorScheme.error) }
                     }
@@ -732,6 +733,7 @@ private fun WidgetDisplayStateEditor(
                         }
                     }
                 }
+            }
             }
         }
 
