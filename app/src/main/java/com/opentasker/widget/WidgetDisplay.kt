@@ -494,7 +494,6 @@ object WidgetDisplayRenderer {
         }
 
 
-        val contentWidthDp = (minWidth - paddingDp * 2).coerceAtLeast(72f)
         val headerHeightDp = if (hideHeader) 0f else {
             (if (state.title.isBlank()) 0f else 24f) +
                 (if (state.subtitle.isBlank()) 0f else 20f)
