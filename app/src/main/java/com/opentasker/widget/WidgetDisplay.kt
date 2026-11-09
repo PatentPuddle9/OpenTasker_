@@ -474,8 +474,8 @@ object WidgetDisplayRenderer {
             if (compact) 13f else 17f,
         )
 
-        // Small fixed sizes use responsive grids instead of shrinking the 320 × 200 canvas
-        // until every item becomes unreadable. Larger widgets retain the exact authored layout.
+        // Every launcher size keeps the authored element coordinates. The design canvas is
+        // scaled uniformly into the real content area below; elements are never rearranged.
         val configured = state.elements
         fun overflowSummary(visibleCount: Int) = WidgetDisplayElement(
             id = "overflow-" + configured.size,
@@ -492,7 +492,6 @@ object WidgetDisplayRenderer {
         } else {
             configured
         }
-
 
         val headerHeightDp = if (hideHeader) 0f else {
             (if (state.title.isBlank()) 0f else 24f) +
