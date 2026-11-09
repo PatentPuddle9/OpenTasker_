@@ -345,6 +345,11 @@ internal fun ContextConfigDialog(
     }
     var nfcWriteMessage by rememberSaveable(state.profile.id, state.index, state.type) { mutableStateOf<String?>(null) }
     val fields = contextFields(state.type, config)
+    val visibleFields = if (state.type == ContextType.LOCATION) {
+        fields.filterNot { it.key == "latitude" || it.key == "longitude" }
+    } else {
+        fields
+    }
     val saveConfig = contextConfigForSave(state.type, config)
     val selectedStateKey = config["key"]?.trim().orEmpty()
     val missingStateKey = state.type == ContextType.STATE && selectedStateKey.isBlank()
@@ -416,6 +421,18 @@ internal fun ContextConfigDialog(
                     }
                     HorizontalDivider()
                 }
+                if (state.type == ContextType.LOCATION) {
+                    item("location-map-picker") {
+                        LocationMapPicker(
+                            latitude = config["latitude"].orEmpty(),
+                            longitude = config["longitude"].orEmpty(),
+                            radiusMeters = config["radiusMeters"].orEmpty(),
+                            onLocationSelected = { latitude, longitude ->
+                                config = config + mapOf("latitude" to latitude, "longitude" to longitude)
+                            },
+                        )
+                    }
+                }
                 if (state.type == ContextType.STATE) {
                     item("state-key-lock") {
                         Surface(
@@ -455,7 +472,7 @@ internal fun ContextConfigDialog(
                         )
                     }
                 } else {
-                    items(fields, key = { it.key }) { field ->
+                    items(visibleFields, key = { it.key }) { field ->
                         ActionFieldInput(
                             field = field,
                             value = config[field.key].orEmpty(),
