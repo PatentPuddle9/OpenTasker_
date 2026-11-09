@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -80,31 +82,6 @@ internal fun WidgetDisplayCanvas(
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
                 Box(Modifier.fillMaxSize()) {
-                    if (state.title.isNotBlank() || state.subtitle.isNotBlank()) {
-                        Column(
-                            modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(1.dp),
-                        ) {
-                            if (state.title.isNotBlank()) {
-                                Text(
-                                    state.title,
-                                    color = Color(state.textColor),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                            if (state.subtitle.isNotBlank()) {
-                                Text(
-                                    state.subtitle,
-                                    color = Color(state.textColor).copy(alpha = 0.75f),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                    }
                     state.elements.take(WidgetDisplayCanvasMetrics.MAX_ELEMENTS).forEachIndexed { index, element ->
                         WidgetDisplayCanvasItem(
                             element = element,
@@ -322,17 +299,12 @@ private fun WidgetDisplayCanvasItemContent(
                     style = MaterialTheme.typography.labelSmall,
                     maxLines = 1,
                 )
-                Surface(
-                    modifier = Modifier.fillMaxWidth().size(height = 4.dp, width = 1.dp),
-                    color = foreground.copy(alpha = 0.22f),
-                    shape = RoundedCornerShape(8.dp),
-                ) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth(element.progress.coerceIn(0, 100) / 100f)
-                            .background(accent, RoundedCornerShape(8.dp)),
-                    )
-                }
+                LinearProgressIndicator(
+                    progress = element.progress.coerceIn(0, 100) / 100f,
+                    modifier = Modifier.fillMaxWidth().height(4.dp),
+                    color = accent,
+                    trackColor = foreground.copy(alpha = 0.22f),
+                )
             }
             WidgetDisplayElementType.DIVIDER -> Box(
                 Modifier.fillMaxWidth().size(height = 1.dp, width = 1.dp).background(foreground.copy(alpha = 0.6f)),
