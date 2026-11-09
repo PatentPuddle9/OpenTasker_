@@ -41,6 +41,7 @@ import com.opentasker.ui.screens.ActiveAutomationUi
 import com.opentasker.ui.theme.OpenTaskerTheme
 import com.opentasker.ui.theme.ThemeMode
 import com.opentasker.ui.theme.ThemePreference
+import com.opentasker.widget.WidgetDisplayProvider
 
 /**
  * Shown while startup finishes preparing the database. Applying a staged restore copies up to
@@ -83,6 +84,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Refresh already-pinned Widget Displays after an app upgrade so launchers replace
+        // stale RemoteViews from an older renderer with the current safe layout.
+        runCatching { WidgetDisplayProvider.requestRefresh(applicationContext) }
+            .onFailure { AppLogger.warn("MainActivity", "Could not refresh Widget Displays", it) }
         onBackPressedDispatcher.addCallback(this, rootBackCallback)
         registerPredictiveBackCallback()
         enableEdgeToEdge()
