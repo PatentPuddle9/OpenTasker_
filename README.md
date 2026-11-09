@@ -105,7 +105,8 @@ The **Widgets** area manages two home-screen widget types:
 
 - Choose a fixed **2 × 1**, **2 × 2**, **4 × 2**, or **4 × 4** size, or select **Custom** to resize it horizontally and vertically.
 - Create, edit, duplicate, reorder, and delete states. Each state has its own title, subtitle, layout, colors, and content.
-- Add text, images, icons, progress bars, Action buttons, Widget Shortcut buttons, dividers, and spacing.
+- Add text, images, icons, progress bars, Action buttons, Widget Shortcut buttons, dividers, and spacing. Each state displays up to eight items.
+- Uses a fixed, launcher-safe RemoteViews layout rather than dynamically inserting views. A lightweight initial placeholder protects widget creation, and rendering errors leave a tappable recovery view.
 - Buttons can launch existing Actions, including Actions owned by Widget Shortcuts.
 - Move between states with the **Control Widget Display** Action to show a particular state or move forward/back; the widget itself stays clean, with no navigation arrows.
 - The widget ID is shown in the Widgets list for use in Control Widget Display actions.
