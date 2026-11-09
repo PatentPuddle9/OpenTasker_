@@ -157,18 +157,54 @@ class TaskWidgetCustomizationTest {
                 display.contains("IMAGE_HEIGHT_PX = 90"))
         assertTrue("Uploaded icons are sampled to compact dimensions",
             display.contains("ICON_MAX_DIMENSION_PX = 40"))
-        assertTrue("Small square widgets should use a two-by-two grid",
-            display.contains("ContentMode.SQUARE_GRID"))
-        assertTrue("Wide widgets should use a four-column grid",
-            display.contains("ContentMode.WIDE_GRID"))
-        assertTrue("Tall custom widgets should use a two-column grid",
-            display.contains("ContentMode.PORTRAIT_GRID"))
-        assertTrue("Compact widgets should show a summary instead of silently dropping content",
-            display.contains("overflowSummary(1)") && display.contains("overflowSummary(3)"))
+        assertFalse("Widget size must not replace the authored canvas with responsive grids",
+            display.contains("ContentMode.") || display.contains("compactIndex % columns"))
+        assertTrue("Every widget size should use the same saved-coordinate transform",
+            display.contains("WidgetDisplayCanvasMetrics.placement("))
+        assertTrue("The renderer should reserve space for root padding and content margin",
+            display.contains("val rootInsetDp = 4f") &&
+                display.contains("val contentTopMarginDp = 6f"))
+        assertTrue("Older configurations with more than eight entries still get an overflow summary",
+            display.contains("configured.size > MAX_SLOTS") &&
+                display.contains("overflowSummary(MAX_SLOTS - 1)"))
         assertTrue("Scene and Widget canvas elements should snap while the finger is still down",
             display.contains("setViewLayoutMargin(rootId, RemoteViews.MARGIN_LEFT") &&
                 sourceRoot.resolve("com/opentasker/widget/WidgetDisplayCanvas.kt").readText()
                     .contains("dragX = (result.snappedX - element.xDp).toFloat()"))
+    }
+
+    @Test
+    fun widgetDisplayPlacementPreservesEditorCoordinatesAndCanvasAspectRatio() {
+        val element = WidgetDisplayElement(
+            type = WidgetDisplayElementType.TEXT,
+            xDp = 40,
+            yDp = 30,
+            widthDp = 80,
+            heightDp = 60,
+        )
+        val sameAspect = WidgetDisplayCanvasMetrics.placement(
+            element = element,
+            designCanvasWidthDp = 320,
+            designCanvasHeightDp = 200,
+            contentWidthDp = 640f,
+            contentHeightDp = 400f,
+        )
+        assertEquals(80f, sameAspect.leftDp, 0.01f)
+        assertEquals(60f, sameAspect.topDp, 0.01f)
+        assertEquals(160f, sameAspect.widthDp, 0.01f)
+        assertEquals(120f, sameAspect.heightDp, 0.01f)
+
+        val letterboxed = WidgetDisplayCanvasMetrics.placement(
+            element = element,
+            designCanvasWidthDp = 400,
+            designCanvasHeightDp = 200,
+            contentWidthDp = 600f,
+            contentHeightDp = 600f,
+        )
+        assertEquals(60f, letterboxed.leftDp, 0.01f)
+        assertEquals(240f, letterboxed.topDp, 0.01f)
+        assertEquals(120f, letterboxed.widthDp, 0.01f)
+        assertEquals(90f, letterboxed.heightDp, 0.01f)
     }
 
     @Test
