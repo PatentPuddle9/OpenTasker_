@@ -4,8 +4,6 @@ import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
-import android.os.Build
-import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
 import com.opentasker.core.scenes.SceneImageLoader
@@ -152,274 +150,434 @@ object WidgetDisplayStateController {
  * Each button/shortcut targets a top-level Action (Profile ID), never an Action block.
  */
 object WidgetDisplayRenderer {
-    // Keep the complete RemoteViews bitmap payload comfortably below Android's Binder limit.
-    // Backgrounds and uploaded images are serialized as raw pixels, not compressed PNGs.
-    private const val MAX_REMOTE_BITMAP_BYTES = 650 * 1024
-    private const val BACKGROUND_WIDTH_PX = 320
-    private const val BACKGROUND_HEIGHT_PX = 232
-    private const val IMAGE_WIDTH_PX = 256
-    private const val IMAGE_HEIGHT_PX = 144
-    private const val ICON_MAX_DIMENSION_PX = 64
+    /**
+     * Uses one pre-inflated RemoteViews hierarchy. Building and inserting arbitrary child
+     * RemoteViews at update time proved too fragile across launchers and Android versions.
+     * Keeping all slots in XML means updates only change text, visibility, images and progress.
+     */
+    private const val MAX_SLOTS = 8
+    private const val MAX_REMOTE_BITMAP_BYTES = 480 * 1024
+    private const val BACKGROUND_WIDTH_PX = 192
+    private const val BACKGROUND_HEIGHT_PX = 144
+    private const val IMAGE_WIDTH_PX = 160
+    private const val IMAGE_HEIGHT_PX = 90
+    private const val ICON_MAX_DIMENSION_PX = 40
+
+    private data class SlotIds(
+        val root: Int,
+        val text: Int,
+        val image: Int,
+        val imageFallback: Int,
+        val imageCaption: Int,
+        val action: Int,
+        val actionIcon: Int,
+        val actionLabel: Int,
+        val progress: Int,
+        val progressLabel: Int,
+        val progressValue: Int,
+        val progressBar: Int,
+        val divider: Int,
+        val spacer: Int,
+    )
+
+    private val slots = listOf(
+        SlotIds(
+            com.opentasker.app.R.id.widget_display_slot_1_root,
+            com.opentasker.app.R.id.widget_display_slot_1_text,
+            com.opentasker.app.R.id.widget_display_slot_1_image,
+            com.opentasker.app.R.id.widget_display_slot_1_image_fallback,
+            com.opentasker.app.R.id.widget_display_slot_1_image_caption,
+            com.opentasker.app.R.id.widget_display_slot_1_action,
+            com.opentasker.app.R.id.widget_display_slot_1_action_icon,
+            com.opentasker.app.R.id.widget_display_slot_1_action_label,
+            com.opentasker.app.R.id.widget_display_slot_1_progress,
+            com.opentasker.app.R.id.widget_display_slot_1_progress_label,
+            com.opentasker.app.R.id.widget_display_slot_1_progress_value,
+            com.opentasker.app.R.id.widget_display_slot_1_progress_bar,
+            com.opentasker.app.R.id.widget_display_slot_1_divider,
+            com.opentasker.app.R.id.widget_display_slot_1_spacer,
+        ),
+        SlotIds(
+            com.opentasker.app.R.id.widget_display_slot_2_root,
+            com.opentasker.app.R.id.widget_display_slot_2_text,
+            com.opentasker.app.R.id.widget_display_slot_2_image,
+            com.opentasker.app.R.id.widget_display_slot_2_image_fallback,
+            com.opentasker.app.R.id.widget_display_slot_2_image_caption,
+            com.opentasker.app.R.id.widget_display_slot_2_action,
+            com.opentasker.app.R.id.widget_display_slot_2_action_icon,
+            com.opentasker.app.R.id.widget_display_slot_2_action_label,
+            com.opentasker.app.R.id.widget_display_slot_2_progress,
+            com.opentasker.app.R.id.widget_display_slot_2_progress_label,
+            com.opentasker.app.R.id.widget_display_slot_2_progress_value,
+            com.opentasker.app.R.id.widget_display_slot_2_progress_bar,
+            com.opentasker.app.R.id.widget_display_slot_2_divider,
+            com.opentasker.app.R.id.widget_display_slot_2_spacer,
+        ),
+        SlotIds(
+            com.opentasker.app.R.id.widget_display_slot_3_root,
+            com.opentasker.app.R.id.widget_display_slot_3_text,
+            com.opentasker.app.R.id.widget_display_slot_3_image,
+            com.opentasker.app.R.id.widget_display_slot_3_image_fallback,
+            com.opentasker.app.R.id.widget_display_slot_3_image_caption,
+            com.opentasker.app.R.id.widget_display_slot_3_action,
+            com.opentasker.app.R.id.widget_display_slot_3_action_icon,
+            com.opentasker.app.R.id.widget_display_slot_3_action_label,
+            com.opentasker.app.R.id.widget_display_slot_3_progress,
+            com.opentasker.app.R.id.widget_display_slot_3_progress_label,
+            com.opentasker.app.R.id.widget_display_slot_3_progress_value,
+            com.opentasker.app.R.id.widget_display_slot_3_progress_bar,
+            com.opentasker.app.R.id.widget_display_slot_3_divider,
+            com.opentasker.app.R.id.widget_display_slot_3_spacer,
+        ),
+        SlotIds(
+            com.opentasker.app.R.id.widget_display_slot_4_root,
+            com.opentasker.app.R.id.widget_display_slot_4_text,
+            com.opentasker.app.R.id.widget_display_slot_4_image,
+            com.opentasker.app.R.id.widget_display_slot_4_image_fallback,
+            com.opentasker.app.R.id.widget_display_slot_4_image_caption,
+            com.opentasker.app.R.id.widget_display_slot_4_action,
+            com.opentasker.app.R.id.widget_display_slot_4_action_icon,
+            com.opentasker.app.R.id.widget_display_slot_4_action_label,
+            com.opentasker.app.R.id.widget_display_slot_4_progress,
+            com.opentasker.app.R.id.widget_display_slot_4_progress_label,
+            com.opentasker.app.R.id.widget_display_slot_4_progress_value,
+            com.opentasker.app.R.id.widget_display_slot_4_progress_bar,
+            com.opentasker.app.R.id.widget_display_slot_4_divider,
+            com.opentasker.app.R.id.widget_display_slot_4_spacer,
+        ),
+        SlotIds(
+            com.opentasker.app.R.id.widget_display_slot_5_root,
+            com.opentasker.app.R.id.widget_display_slot_5_text,
+            com.opentasker.app.R.id.widget_display_slot_5_image,
+            com.opentasker.app.R.id.widget_display_slot_5_image_fallback,
+            com.opentasker.app.R.id.widget_display_slot_5_image_caption,
+            com.opentasker.app.R.id.widget_display_slot_5_action,
+            com.opentasker.app.R.id.widget_display_slot_5_action_icon,
+            com.opentasker.app.R.id.widget_display_slot_5_action_label,
+            com.opentasker.app.R.id.widget_display_slot_5_progress,
+            com.opentasker.app.R.id.widget_display_slot_5_progress_label,
+            com.opentasker.app.R.id.widget_display_slot_5_progress_value,
+            com.opentasker.app.R.id.widget_display_slot_5_progress_bar,
+            com.opentasker.app.R.id.widget_display_slot_5_divider,
+            com.opentasker.app.R.id.widget_display_slot_5_spacer,
+        ),
+        SlotIds(
+            com.opentasker.app.R.id.widget_display_slot_6_root,
+            com.opentasker.app.R.id.widget_display_slot_6_text,
+            com.opentasker.app.R.id.widget_display_slot_6_image,
+            com.opentasker.app.R.id.widget_display_slot_6_image_fallback,
+            com.opentasker.app.R.id.widget_display_slot_6_image_caption,
+            com.opentasker.app.R.id.widget_display_slot_6_action,
+            com.opentasker.app.R.id.widget_display_slot_6_action_icon,
+            com.opentasker.app.R.id.widget_display_slot_6_action_label,
+            com.opentasker.app.R.id.widget_display_slot_6_progress,
+            com.opentasker.app.R.id.widget_display_slot_6_progress_label,
+            com.opentasker.app.R.id.widget_display_slot_6_progress_value,
+            com.opentasker.app.R.id.widget_display_slot_6_progress_bar,
+            com.opentasker.app.R.id.widget_display_slot_6_divider,
+            com.opentasker.app.R.id.widget_display_slot_6_spacer,
+        ),
+        SlotIds(
+            com.opentasker.app.R.id.widget_display_slot_7_root,
+            com.opentasker.app.R.id.widget_display_slot_7_text,
+            com.opentasker.app.R.id.widget_display_slot_7_image,
+            com.opentasker.app.R.id.widget_display_slot_7_image_fallback,
+            com.opentasker.app.R.id.widget_display_slot_7_image_caption,
+            com.opentasker.app.R.id.widget_display_slot_7_action,
+            com.opentasker.app.R.id.widget_display_slot_7_action_icon,
+            com.opentasker.app.R.id.widget_display_slot_7_action_label,
+            com.opentasker.app.R.id.widget_display_slot_7_progress,
+            com.opentasker.app.R.id.widget_display_slot_7_progress_label,
+            com.opentasker.app.R.id.widget_display_slot_7_progress_value,
+            com.opentasker.app.R.id.widget_display_slot_7_progress_bar,
+            com.opentasker.app.R.id.widget_display_slot_7_divider,
+            com.opentasker.app.R.id.widget_display_slot_7_spacer,
+        ),
+        SlotIds(
+            com.opentasker.app.R.id.widget_display_slot_8_root,
+            com.opentasker.app.R.id.widget_display_slot_8_text,
+            com.opentasker.app.R.id.widget_display_slot_8_image,
+            com.opentasker.app.R.id.widget_display_slot_8_image_fallback,
+            com.opentasker.app.R.id.widget_display_slot_8_image_caption,
+            com.opentasker.app.R.id.widget_display_slot_8_action,
+            com.opentasker.app.R.id.widget_display_slot_8_action_icon,
+            com.opentasker.app.R.id.widget_display_slot_8_action_label,
+            com.opentasker.app.R.id.widget_display_slot_8_progress,
+            com.opentasker.app.R.id.widget_display_slot_8_progress_label,
+            com.opentasker.app.R.id.widget_display_slot_8_progress_value,
+            com.opentasker.app.R.id.widget_display_slot_8_progress_bar,
+            com.opentasker.app.R.id.widget_display_slot_8_divider,
+            com.opentasker.app.R.id.widget_display_slot_8_spacer,
+        )
+    )
 
     fun updateWidget(context: Context, manager: AppWidgetManager, widgetId: Int) {
+        try {
+            renderWidget(context, manager, widgetId)
+        } catch (error: Exception) {
+            android.util.Log.e("WidgetDisplay", "Could not render widget $widgetId", error)
+            runCatching {
+                manager.updateAppWidget(widgetId, createRecoveryViews(context, widgetId))
+            }.onFailure {
+                android.util.Log.e("WidgetDisplay", "Could not show recovery widget $widgetId", it)
+            }
+        }
+    }
+
+    private fun renderWidget(context: Context, manager: AppWidgetManager, widgetId: Int) {
         if (WidgetDisplayStore.isRemoved(context, widgetId)) {
-            val placeholder = RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display)
-            placeholder.setImageViewBitmap(
-                com.opentasker.app.R.id.widget_display_background,
-                WidgetBackgroundRenderer.render(
-                    backgroundColor = 0xFF30243F.toInt(),
-                    gradient = true,
-                    width = BACKGROUND_WIDTH_PX,
-                    height = BACKGROUND_HEIGHT_PX,
-                    shape = "rounded_square",
-                ),
-            )
-            placeholder.setTextViewText(com.opentasker.app.R.id.widget_display_title, "Widget removed")
-            placeholder.setTextViewText(
-                com.opentasker.app.R.id.widget_display_subtitle,
-                "Remove this widget from your home screen",
-            )
-            placeholder.setTextColor(com.opentasker.app.R.id.widget_display_title, android.graphics.Color.WHITE)
-            placeholder.setTextColor(com.opentasker.app.R.id.widget_display_subtitle, android.graphics.Color.WHITE)
-            placeholder.removeAllViews(com.opentasker.app.R.id.widget_display_content)
-            manager.updateAppWidget(widgetId, placeholder)
+            manager.updateAppWidget(widgetId, createRecoveryViews(context, widgetId, removed = true))
             return
         }
+
         val config = WidgetDisplayStore.load(context, widgetId)
         val stateIndex = WidgetDisplayStore.activeIndex(context, widgetId, config.states.size)
         val state = config.states[stateIndex]
         val options = manager.getAppWidgetOptions(widgetId)
-        val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
         val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
-        val compactHeight = minHeight in 1..109
-        val veryCompactHeight = minHeight in 1..69
-        val narrowWidth = minWidth in 1..149
+        val compact = minHeight in 1..109
+
         val views = RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display)
         val foreground = state.textColor
-        val panelPaddingDp = if (compactHeight) 6 else 12
-        val panelPadding = (panelPaddingDp * context.resources.displayMetrics.density).toInt()
+        val padding = ((if (compact) 7 else 12) * context.resources.displayMetrics.density).toInt()
         views.setViewPadding(
             com.opentasker.app.R.id.widget_display_panel,
-            panelPadding,
-            panelPadding,
-            panelPadding,
-            panelPadding,
+            padding,
+            padding,
+            padding,
+            padding,
         )
-        val backgroundBitmap = WidgetBackgroundRenderer.render(
+
+        val background = WidgetBackgroundRenderer.render(
             backgroundColor = state.backgroundColor,
             gradient = state.gradient,
             width = BACKGROUND_WIDTH_PX,
             height = BACKGROUND_HEIGHT_PX,
             shape = "rounded_square",
         )
-        var remoteBitmapBytesUsed = backgroundBitmap.byteCount
-        views.setImageViewBitmap(
-            com.opentasker.app.R.id.widget_display_background,
-            backgroundBitmap,
-        )
+        var bitmapBytes = background.byteCount
+        views.setImageViewBitmap(com.opentasker.app.R.id.widget_display_background, background)
+
         views.setTextViewText(com.opentasker.app.R.id.widget_display_title, state.title)
         views.setTextViewText(com.opentasker.app.R.id.widget_display_subtitle, state.subtitle)
         views.setTextColor(com.opentasker.app.R.id.widget_display_title, foreground)
         views.setTextColor(com.opentasker.app.R.id.widget_display_subtitle, foreground)
-        views.setTextViewTextSize(
-            com.opentasker.app.R.id.widget_display_title,
-            android.util.TypedValue.COMPLEX_UNIT_SP,
-            if (narrowWidth) 13f else 17f,
-        )
         views.setViewVisibility(
             com.opentasker.app.R.id.widget_display_title,
-            if (state.title.isBlank() || veryCompactHeight) View.GONE else View.VISIBLE,
+            if (compact || state.title.isBlank()) View.GONE else View.VISIBLE,
         )
         views.setViewVisibility(
             com.opentasker.app.R.id.widget_display_subtitle,
-            if (state.subtitle.isBlank() || compactHeight) View.GONE else View.VISIBLE,
+            if (compact || state.subtitle.isBlank()) View.GONE else View.VISIBLE,
         )
-        // Keep compact widgets vertical by default. Forcing a horizontal row used to make
-        // each match-parent child consume the entire widget width, hiding everything after it.
-        // User-selected horizontal layouts use explicit child widths on API 31+.
-        val renderHorizontally = (state.horizontal || veryCompactHeight) &&
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            minWidth > 0
-        views.setInt(
-            com.opentasker.app.R.id.widget_display_content,
-            "setOrientation",
-            if (renderHorizontally) android.widget.LinearLayout.HORIZONTAL else android.widget.LinearLayout.VERTICAL,
+        views.setTextViewTextSize(
+            com.opentasker.app.R.id.widget_display_title,
+            android.util.TypedValue.COMPLEX_UNIT_SP,
+            if (compact) 13f else 17f,
         )
-        views.removeAllViews(com.opentasker.app.R.id.widget_display_content)
 
-        // Spacer and divider elements are purely decorative; collapse them on the shortest
-        // 2x1 layout so real content such as shortcuts and progress indicators remains visible.
-        val elements = state.elements
-        val renderedElements = if (veryCompactHeight) {
-            elements.filterNot {
-                it.type == WidgetDisplayElementType.SPACER || it.type == WidgetDisplayElementType.DIVIDER
-            }
+        val configured = state.elements
+        val visibleElements = if (configured.size > MAX_SLOTS) {
+            configured.take(MAX_SLOTS - 1) + WidgetDisplayElement(
+                id = "overflow-" + configured.size,
+                type = WidgetDisplayElementType.TEXT,
+                text = "+ " + (configured.size - (MAX_SLOTS - 1)) + " more items",
+                textSizeSp = 11,
+            )
         } else {
-            elements
+            configured
         }
-        if (renderedElements.isEmpty()) {
-            val empty = RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display_text_item)
-            empty.setTextViewText(com.opentasker.app.R.id.widget_display_text, "Add text, images, or Action shortcuts to this state.")
-            empty.setTextColor(com.opentasker.app.R.id.widget_display_text, foreground)
-            empty.setTextViewTextSize(com.opentasker.app.R.id.widget_display_text, android.util.TypedValue.COMPLEX_UNIT_SP, 12f)
-            views.addView(com.opentasker.app.R.id.widget_display_content, empty)
-        } else {
-            val spacerCount = renderedElements.count { it.type == WidgetDisplayElementType.SPACER }
-            val dividerCount = renderedElements.count { it.type == WidgetDisplayElementType.DIVIDER }
-            val contentCount = renderedElements.count {
-                it.type != WidgetDisplayElementType.SPACER && it.type != WidgetDisplayElementType.DIVIDER
-            }.coerceAtLeast(1)
-            val reservedWidth = spacerCount * 6f + dividerCount * 1f
-            val availableWidth = (minWidth - panelPaddingDp * 2f - reservedWidth).coerceAtLeast(contentCount * 28f)
-            val slotWidth = availableWidth / contentCount
 
-            renderedElements.forEach { element ->
-                val child = when (element.type) {
-                    WidgetDisplayElementType.TEXT -> RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display_text_item).apply {
-                        setTextViewText(com.opentasker.app.R.id.widget_display_text, element.text)
-                        setTextColor(com.opentasker.app.R.id.widget_display_text, foreground)
-                        setTextViewTextSize(
-                            com.opentasker.app.R.id.widget_display_text,
-                            android.util.TypedValue.COMPLEX_UNIT_SP,
-                            element.textSizeSp.coerceIn(10, 36).toFloat(),
-                        )
-                    }
-                    WidgetDisplayElementType.IMAGE -> RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display_image_item).apply {
-                        val bitmap = SceneImageLoader.load(
-                            context = context,
-                            source = element.imageUri,
-                            targetWidthPx = IMAGE_WIDTH_PX,
-                            targetHeightPx = IMAGE_HEIGHT_PX,
-                        )
-                        if (bitmap != null && canAttachBitmap(bitmap.byteCount, remoteBitmapBytesUsed)) {
-                            setImageViewBitmap(com.opentasker.app.R.id.widget_display_image, bitmap)
-                            remoteBitmapBytesUsed += bitmap.byteCount
-                            setViewVisibility(com.opentasker.app.R.id.widget_display_image, View.VISIBLE)
-                        } else {
-                            setViewVisibility(com.opentasker.app.R.id.widget_display_image, View.GONE)
-                            setViewVisibility(com.opentasker.app.R.id.widget_display_image_fallback, View.VISIBLE)
-                            setTextViewText(
-                                com.opentasker.app.R.id.widget_display_image_fallback,
-                                if (bitmap == null) "Image unavailable" else "Image skipped to keep the widget lightweight",
-                            )
-                        }
-                        setTextViewText(com.opentasker.app.R.id.widget_display_image_caption, element.text)
-                        setTextColor(com.opentasker.app.R.id.widget_display_image_caption, foreground)
-                    }
-                    WidgetDisplayElementType.BUTTON, WidgetDisplayElementType.SHORTCUT -> {
-                        val layout = if (element.type == WidgetDisplayElementType.SHORTCUT) {
-                            com.opentasker.app.R.layout.widget_display_shortcut_item
-                        } else {
-                            com.opentasker.app.R.layout.widget_display_button_item
-                        }
-                        RemoteViews(context.packageName, layout).apply {
-                            val customIcon = CustomWidgetIconStore.loadBitmapForWidget(
-                                context,
-                                element.icon,
-                                state.accentColor,
-                                maxDimensionPx = ICON_MAX_DIMENSION_PX,
-                            )
-                            if (customIcon != null && canAttachBitmap(customIcon.byteCount, remoteBitmapBytesUsed)) {
-                                setImageViewBitmap(com.opentasker.app.R.id.widget_display_action_icon, customIcon)
-                                remoteBitmapBytesUsed += customIcon.byteCount
-                            } else {
-                                val icon = WidgetIconCatalog.resolve(element.icon)
-                                setImageViewResource(com.opentasker.app.R.id.widget_display_action_icon, icon.drawableRes)
-                                setInt(com.opentasker.app.R.id.widget_display_action_icon, "setColorFilter", state.accentColor)
-                            }
-                            setTextViewText(com.opentasker.app.R.id.widget_display_action_label, element.text)
-                            setTextColor(com.opentasker.app.R.id.widget_display_action_label, foreground)
-                            if (compactHeight) {
-                                setTextViewTextSize(com.opentasker.app.R.id.widget_display_action_label, TypedValue.COMPLEX_UNIT_SP, 10f)
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                    setViewLayoutWidth(com.opentasker.app.R.id.widget_display_action_icon, 18f, TypedValue.COMPLEX_UNIT_DIP)
-                                    setViewLayoutHeight(com.opentasker.app.R.id.widget_display_action_icon, 18f, TypedValue.COMPLEX_UNIT_DIP)
-                                }
-                            }
-                            element.actionProfileId?.takeIf { it > 0L }?.let { profileId ->
-                                val run = Intent(context, TaskRunActivity::class.java).apply {
-                                    putExtra(TaskRunActivity.EXTRA_PROFILE_ID, profileId)
-                                    putExtra(TaskRunActivity.EXTRA_SOURCE, TaskRunActivity.SOURCE_WIDGET_DISPLAY)
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                }
-                                val requestCode = ((widgetId.toLong() shl 20) xor element.id.hashCode().toLong()).toInt()
-                                val pendingIntent = PendingIntent.getActivity(
-                                    context,
-                                    requestCode,
-                                    run,
-                                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                                )
-                                val rootId = if (element.type == WidgetDisplayElementType.SHORTCUT) {
-                                    com.opentasker.app.R.id.widget_display_shortcut_root
-                                } else {
-                                    com.opentasker.app.R.id.widget_display_action_root
-                                }
-                                setOnClickPendingIntent(rootId, pendingIntent)
-                            }
-                        }
-                    }
-                    WidgetDisplayElementType.ICON -> RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display_icon_item).apply {
-                        val customIcon = CustomWidgetIconStore.loadBitmapForWidget(
-                            context,
-                            element.icon,
-                            state.accentColor,
-                            maxDimensionPx = ICON_MAX_DIMENSION_PX,
-                        )
-                        if (customIcon != null && canAttachBitmap(customIcon.byteCount, remoteBitmapBytesUsed)) {
-                            setImageViewBitmap(com.opentasker.app.R.id.widget_display_large_icon, customIcon)
-                            remoteBitmapBytesUsed += customIcon.byteCount
-                        } else {
-                            val icon = WidgetIconCatalog.resolve(element.icon)
-                            setImageViewResource(com.opentasker.app.R.id.widget_display_large_icon, icon.drawableRes)
-                            setInt(com.opentasker.app.R.id.widget_display_large_icon, "setColorFilter", state.accentColor)
-                        }
-                        setTextViewText(com.opentasker.app.R.id.widget_display_icon_label, element.text)
-                        setTextColor(com.opentasker.app.R.id.widget_display_icon_label, foreground)
-                    }
-                    WidgetDisplayElementType.PROGRESS -> RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display_progress_item).apply {
-                        setTextViewText(com.opentasker.app.R.id.widget_display_progress_label, element.text)
-                        setTextColor(com.opentasker.app.R.id.widget_display_progress_label, foreground)
-                        setTextViewText(com.opentasker.app.R.id.widget_display_progress_value, "${element.progress.coerceIn(0, 100)}%")
-                        setTextColor(com.opentasker.app.R.id.widget_display_progress_value, foreground)
-                        setProgressBar(com.opentasker.app.R.id.widget_display_progress_bar, 100, element.progress.coerceIn(0, 100), false)
-                        if (compactHeight) {
-                            setTextViewTextSize(com.opentasker.app.R.id.widget_display_progress_label, TypedValue.COMPLEX_UNIT_SP, 10f)
-                            setTextViewTextSize(com.opentasker.app.R.id.widget_display_progress_value, TypedValue.COMPLEX_UNIT_SP, 10f)
-                        }
-                    }
-                    WidgetDisplayElementType.DIVIDER -> RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display_divider_item)
-                    WidgetDisplayElementType.SPACER -> RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display_spacer_item)
+        if (visibleElements.isEmpty()) {
+            val empty = WidgetDisplayElement(
+                id = "empty",
+                type = WidgetDisplayElementType.TEXT,
+                text = "Tap to edit this Widget Display",
+                textSizeSp = 12,
+            )
+            bindElement(context, views, slots.first(), empty, state, widgetId, foreground, bitmapBytes, compact)
+            views.setOnClickPendingIntent(
+                slots.first().root,
+                configPendingIntent(context, widgetId),
+            )
+        } else {
+            visibleElements.forEachIndexed { index, element ->
+                slots.getOrNull(index)?.let { slot ->
+                    bitmapBytes = bindElement(
+                        context,
+                        views,
+                        slot,
+                        element,
+                        state,
+                        widgetId,
+                        foreground,
+                        bitmapBytes,
+                        compact,
+                    )
                 }
-                if (renderHorizontally) {
-                    val rootId = rootViewId(element.type)
-                    val widthDp = when (element.type) {
-                        WidgetDisplayElementType.SPACER -> 6f
-                        WidgetDisplayElementType.DIVIDER -> 1f
-                        else -> slotWidth
-                    }
-                    child.setViewLayoutWidth(rootId, widthDp.coerceAtLeast(1f), TypedValue.COMPLEX_UNIT_DIP)
-                    if (element.type == WidgetDisplayElementType.DIVIDER) {
-                        child.setViewLayoutHeight(rootId, 28f, TypedValue.COMPLEX_UNIT_DIP)
-                    }
-                }
-                views.addView(com.opentasker.app.R.id.widget_display_content, child)
             }
         }
 
         manager.updateAppWidget(widgetId, views)
     }
 
-    private fun canAttachBitmap(bitmapBytes: Int, alreadyUsedBytes: Int): Boolean =
-        bitmapBytes > 0 && alreadyUsedBytes + bitmapBytes <= MAX_REMOTE_BITMAP_BYTES
+    private fun bindElement(
+        context: Context,
+        views: RemoteViews,
+        slot: SlotIds,
+        element: WidgetDisplayElement,
+        state: WidgetDisplayState,
+        widgetId: Int,
+        foreground: Int,
+        alreadyUsedBitmapBytes: Int,
+        compact: Boolean,
+    ): Int {
+        views.setViewVisibility(slot.root, View.VISIBLE)
+        return when (element.type) {
+            WidgetDisplayElementType.TEXT -> {
+                views.setViewVisibility(slot.text, View.VISIBLE)
+                views.setTextViewText(slot.text, element.text)
+                views.setTextColor(slot.text, foreground)
+                views.setTextViewTextSize(
+                    slot.text,
+                    android.util.TypedValue.COMPLEX_UNIT_SP,
+                    element.textSizeSp.coerceIn(10, 36).toFloat(),
+                )
+                alreadyUsedBitmapBytes
+            }
 
-    private fun rootViewId(type: WidgetDisplayElementType): Int = when (type) {
-        WidgetDisplayElementType.TEXT -> com.opentasker.app.R.id.widget_display_text
-        WidgetDisplayElementType.IMAGE -> com.opentasker.app.R.id.widget_display_image_item_root
-        WidgetDisplayElementType.BUTTON -> com.opentasker.app.R.id.widget_display_action_root
-        WidgetDisplayElementType.SHORTCUT -> com.opentasker.app.R.id.widget_display_shortcut_root
-        WidgetDisplayElementType.ICON -> com.opentasker.app.R.id.widget_display_icon_root
-        WidgetDisplayElementType.PROGRESS -> com.opentasker.app.R.id.widget_display_progress_root
-        WidgetDisplayElementType.DIVIDER -> com.opentasker.app.R.id.widget_display_divider
-        WidgetDisplayElementType.SPACER -> com.opentasker.app.R.id.widget_display_spacer
+            WidgetDisplayElementType.IMAGE -> {
+                val image = SceneImageLoader.load(
+                    context = context,
+                    source = element.imageUri,
+                    targetWidthPx = IMAGE_WIDTH_PX,
+                    targetHeightPx = IMAGE_HEIGHT_PX,
+                )
+                val canDisplayImage = image != null &&
+                    alreadyUsedBitmapBytes + image.byteCount <= MAX_REMOTE_BITMAP_BYTES
+                if (canDisplayImage) {
+                    views.setImageViewBitmap(slot.image, image)
+                    views.setViewVisibility(slot.image, View.VISIBLE)
+                } else {
+                    views.setTextViewText(
+                        slot.imageFallback,
+                        if (image == null) "Image unavailable" else "Image hidden to keep this widget stable",
+                    )
+                    views.setTextColor(slot.imageFallback, foreground)
+                    views.setViewVisibility(slot.imageFallback, View.VISIBLE)
+                }
+                if (element.text.isNotBlank()) {
+                    views.setTextViewText(slot.imageCaption, element.text)
+                    views.setTextColor(slot.imageCaption, foreground)
+                    views.setViewVisibility(slot.imageCaption, View.VISIBLE)
+                }
+                alreadyUsedBitmapBytes + if (canDisplayImage) image!!.byteCount else 0
+            }
+
+            WidgetDisplayElementType.BUTTON,
+            WidgetDisplayElementType.SHORTCUT,
+            WidgetDisplayElementType.ICON -> {
+                val customIcon = CustomWidgetIconStore.loadBitmapForWidget(
+                    context,
+                    element.icon,
+                    state.accentColor,
+                    maxDimensionPx = ICON_MAX_DIMENSION_PX,
+                )
+                val canDisplayIcon = customIcon != null &&
+                    alreadyUsedBitmapBytes + customIcon.byteCount <= MAX_REMOTE_BITMAP_BYTES
+                if (canDisplayIcon) {
+                    views.setImageViewBitmap(slot.actionIcon, customIcon)
+                } else {
+                    val icon = WidgetIconCatalog.resolve(element.icon)
+                    views.setImageViewResource(slot.actionIcon, icon.drawableRes)
+                    views.setInt(slot.actionIcon, "setColorFilter", state.accentColor)
+                }
+                views.setTextViewText(slot.actionLabel, element.text)
+                views.setTextColor(slot.actionLabel, foreground)
+                if (compact) {
+                    views.setTextViewTextSize(
+                        slot.actionLabel,
+                        android.util.TypedValue.COMPLEX_UNIT_SP,
+                        10f,
+                    )
+                }
+                views.setViewVisibility(slot.action, View.VISIBLE)
+
+                if (element.type != WidgetDisplayElementType.ICON) {
+                    element.actionProfileId?.takeIf { it > 0L }?.let { profileId ->
+                        val runAction = Intent(context, TaskRunActivity::class.java).apply {
+                            putExtra(TaskRunActivity.EXTRA_PROFILE_ID, profileId)
+                            putExtra(TaskRunActivity.EXTRA_SOURCE, TaskRunActivity.SOURCE_WIDGET_DISPLAY)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        }
+                        val requestCode = ((widgetId.toLong() shl 20) xor element.id.hashCode().toLong()).toInt()
+                        val pending = PendingIntent.getActivity(
+                            context,
+                            requestCode,
+                            runAction,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                        )
+                        views.setOnClickPendingIntent(slot.action, pending)
+                    }
+                }
+
+                alreadyUsedBitmapBytes + if (canDisplayIcon) customIcon!!.byteCount else 0
+            }
+
+            WidgetDisplayElementType.PROGRESS -> {
+                views.setTextViewText(slot.progressLabel, element.text)
+                views.setTextColor(slot.progressLabel, foreground)
+                views.setTextViewText(slot.progressValue, "${element.progress.coerceIn(0, 100)}%")
+                views.setTextColor(slot.progressValue, foreground)
+                views.setProgressBar(slot.progressBar, 100, element.progress.coerceIn(0, 100), false)
+                views.setViewVisibility(slot.progress, View.VISIBLE)
+                alreadyUsedBitmapBytes
+            }
+
+            WidgetDisplayElementType.DIVIDER -> {
+                views.setViewVisibility(slot.divider, View.VISIBLE)
+                alreadyUsedBitmapBytes
+            }
+
+            WidgetDisplayElementType.SPACER -> {
+                views.setViewVisibility(slot.spacer, View.VISIBLE)
+                alreadyUsedBitmapBytes
+            }
+        }
+    }
+
+    private fun configPendingIntent(context: Context, widgetId: Int): PendingIntent {
+        val openEditor = Intent(context, WidgetDisplayConfigActivity::class.java).apply {
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        return PendingIntent.getActivity(
+            context,
+            700_000 + widgetId,
+            openEditor,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun createRecoveryViews(
+        context: Context,
+        widgetId: Int,
+        removed: Boolean = false,
+    ): RemoteViews {
+        val recovery = RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display_fallback)
+        recovery.setTextViewText(
+            com.opentasker.app.R.id.widget_display_fallback_title,
+            if (removed) "Widget removed" else "Widget Display couldn't load",
+        )
+        recovery.setTextViewText(
+            com.opentasker.app.R.id.widget_display_fallback_message,
+            if (removed) "Remove this widget from your home screen"
+            else "Tap here to reopen setup and repair it",
+        )
+        recovery.setOnClickPendingIntent(
+            com.opentasker.app.R.id.widget_display_fallback_root,
+            configPendingIntent(context, widgetId),
+        )
+        return recovery
     }
 }
