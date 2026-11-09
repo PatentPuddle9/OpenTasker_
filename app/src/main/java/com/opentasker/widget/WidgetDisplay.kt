@@ -57,6 +57,13 @@ data class WidgetDisplayConfig(
     val canvasHeightDp: Int = WidgetDisplayCanvasMetrics.HEIGHT_DP,
 )
 
+data class WidgetDisplayElementPlacement(
+    val leftDp: Float,
+    val topDp: Float,
+    val widthDp: Float,
+    val heightDp: Float,
+)
+
 object WidgetDisplayCanvasMetrics {
     const val WIDTH_DP = 320
     const val HEIGHT_DP = 200
@@ -97,6 +104,35 @@ object WidgetDisplayCanvasMetrics {
             width = width,
             height = height,
         )
+    }
+
+    /**
+     * Fits the authored canvas into the available widget content area without changing its
+     * aspect ratio. Every element uses this one transform, so saved editor coordinates stay intact.
+     */
+    fun placement(
+        element: WidgetDisplayElement,
+        designCanvasWidthDp: Int,
+        designCanvasHeightDp: Int,
+        contentWidthDp: Float,
+        contentHeightDp: Float,
+    ): WidgetDisplayElementPlacement {
+        val designWidth = designCanvasWidthDp.coerceAtLeast(1).toFloat()
+        val designHeight = designCanvasHeightDp.coerceAtLeast(1).toFloat()
+        val availableWidth = contentWidthDp.coerceAtLeast(1f)
+        val availableHeight = contentHeightDp.coerceAtLeast(1f)
+        val scale = minOf(availableWidth / designWidth, availableHeight / designHeight)
+        val scaledCanvasWidth = designWidth * scale
+        val scaledCanvasHeight = designHeight * scale
+        val offsetX = (availableWidth - scaledCanvasWidth) / 2f
+        val offsetY = (availableHeight - scaledCanvasHeight) / 2f
+        val width = (element.widthDp * scale).coerceAtLeast(1f)
+        val height = (element.heightDp * scale).coerceAtLeast(1f)
+        val left = (offsetX + element.xDp * scale)
+            .coerceIn(0f, (availableWidth - width).coerceAtLeast(0f))
+        val top = (offsetY + element.yDp * scale)
+            .coerceIn(0f, (availableHeight - height).coerceAtLeast(0f))
+        return WidgetDisplayElementPlacement(left, top, width, height)
     }
 
     /** Positions widgets created by older builds in a tidy starter layout for the selected canvas size. */
@@ -258,14 +294,6 @@ object WidgetDisplayRenderer {
     private const val IMAGE_HEIGHT_PX = 90
     private const val ICON_MAX_DIMENSION_PX = 40
 
-    private enum class ContentMode {
-        CANVAS,
-        COMPACT_ROW,
-        SQUARE_GRID,
-        WIDE_GRID,
-        PORTRAIT_GRID,
-    }
-
     private data class SlotIds(
         val root: Int,
         val text: Int,
@@ -396,15 +424,10 @@ object WidgetDisplayRenderer {
         val options = manager.getAppWidgetOptions(widgetId)
         val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 220).coerceAtLeast(110)
         val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 140).coerceAtLeast(40)
-        val mode = when {
-            minHeight <= 69 -> ContentMode.COMPACT_ROW
-            minWidth < 190 && minHeight >= 70 && minHeight < 180 -> ContentMode.SQUARE_GRID
-            minWidth >= 190 && minHeight < 180 -> ContentMode.WIDE_GRID
-            minHeight > minWidth * 1.35f -> ContentMode.PORTRAIT_GRID
-            else -> ContentMode.CANVAS
-        }
-        val compact = mode == ContentMode.COMPACT_ROW
-        val hideHeader = mode != ContentMode.CANVAS
+        // Keep the compact header treatment, but never replace authored positions with
+        // launcher-size-specific grids. The design is mapped as one canvas at every size.
+        val compact = minHeight <= 69
+        val hideHeader = compact
         val modernCanvas = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
         val layoutId = if (modernCanvas) {
             com.opentasker.app.R.layout.widget_display
@@ -464,35 +487,26 @@ object WidgetDisplayRenderer {
             widthDp = (canvasWidthDp - 24).coerceAtLeast(32),
             heightDp = 22.coerceAtMost(canvasHeightDp),
         )
-        val visibleElements = when (mode) {
-            ContentMode.COMPACT_ROW -> if (configured.size > 2) {
-                configured.take(1) + overflowSummary(1)
-            } else {
-                configured
-            }
-            ContentMode.SQUARE_GRID -> if (configured.size > 4) {
-                configured.take(3) + overflowSummary(3)
-            } else {
-                configured
-            }
-            ContentMode.WIDE_GRID, ContentMode.PORTRAIT_GRID -> if (configured.size > MAX_SLOTS) {
-                configured.take(MAX_SLOTS - 1) + overflowSummary(MAX_SLOTS - 1)
-            } else {
-                configured
-            }
-            ContentMode.CANVAS -> if (configured.size > MAX_SLOTS) {
-                configured.take(MAX_SLOTS - 1) + overflowSummary(MAX_SLOTS - 1)
-            } else {
-                configured
-            }
+        val visibleElements = if (configured.size > MAX_SLOTS) {
+            configured.take(MAX_SLOTS - 1) + overflowSummary(MAX_SLOTS - 1)
+        } else {
+            configured
         }
+
 
         val contentWidthDp = (minWidth - paddingDp * 2).coerceAtLeast(72f)
         val headerHeightDp = if (hideHeader) 0f else {
             (if (state.title.isBlank()) 0f else 24f) +
-                (if (state.subtitle.isBlank()) 0f else 18f) + 7f
+                (if (state.subtitle.isBlank()) 0f else 20f)
         }
-        val contentHeightDp = (minHeight - paddingDp * 2 - headerHeightDp).coerceAtLeast(26f)
+        // widget_display_root has 2 dp padding on all sides, widget_display_panel has its own
+        // padding, and widget_display_content has a 6 dp top margin.
+        val rootInsetDp = 4f
+        val contentTopMarginDp = 6f
+        val contentWidthDp = (minWidth - rootInsetDp - paddingDp * 2).coerceAtLeast(32f)
+        val contentHeightDp = (
+            minHeight - rootInsetDp - paddingDp * 2 - headerHeightDp - contentTopMarginDp
+        ).coerceAtLeast(24f)
 
         if (visibleElements.isEmpty()) {
             val empty = WidgetDisplayElement(
@@ -514,9 +528,6 @@ object WidgetDisplayRenderer {
                     element = empty,
                     contentWidthDp = contentWidthDp,
                     contentHeightDp = contentHeightDp,
-                    mode = mode,
-                    compactIndex = 0,
-                    compactCount = 1,
                     designCanvasWidthDp = canvasWidthDp,
                     designCanvasHeightDp = canvasHeightDp,
                 )
@@ -534,9 +545,6 @@ object WidgetDisplayRenderer {
                         element = element,
                         contentWidthDp = contentWidthDp,
                         contentHeightDp = contentHeightDp,
-                        mode = mode,
-                        compactIndex = index,
-                        compactCount = visibleElements.size,
                         designCanvasWidthDp = canvasWidthDp,
                         designCanvasHeightDp = canvasHeightDp,
                     )
@@ -554,55 +562,21 @@ object WidgetDisplayRenderer {
         element: WidgetDisplayElement,
         contentWidthDp: Float,
         contentHeightDp: Float,
-        mode: ContentMode,
-        compactIndex: Int,
-        compactCount: Int,
         designCanvasWidthDp: Int,
         designCanvasHeightDp: Int,
     ) {
         val unit = android.util.TypedValue.COMPLEX_UNIT_DIP
-        if (mode != ContentMode.CANVAS) {
-            val columns = when (mode) {
-                ContentMode.COMPACT_ROW -> compactCount.coerceAtLeast(1)
-                ContentMode.SQUARE_GRID, ContentMode.PORTRAIT_GRID -> 2
-                ContentMode.WIDE_GRID -> 4
-                ContentMode.CANVAS -> 1
-            }
-            val rows = when (mode) {
-                ContentMode.COMPACT_ROW, ContentMode.WIDE_GRID -> 1
-                ContentMode.SQUARE_GRID -> 2
-                ContentMode.PORTRAIT_GRID -> 4
-                ContentMode.CANVAS -> 1
-            }
-            val cellWidth = contentWidthDp / columns
-            val cellHeight = contentHeightDp / rows
-            val width = (cellWidth - 4f).coerceAtLeast(1f)
-            val height = (cellHeight - 4f).coerceAtLeast(18f)
-            val left = (compactIndex % columns) * cellWidth + 2f
-            val top = (compactIndex / columns) * cellHeight + 2f
-            views.setViewLayoutWidth(rootId, width, unit)
-            views.setViewLayoutHeight(rootId, height, unit)
-            views.setViewLayoutMargin(rootId, RemoteViews.MARGIN_LEFT, left, unit)
-            views.setViewLayoutMargin(rootId, RemoteViews.MARGIN_TOP, top, unit)
-            return
-        }
-
-        // Keep the authored aspect ratio when the launcher's fixed slot differs from the
-        // dimensions the user entered in the editor. Center the design rather than distorting it.
-        val scale = minOf(
-            contentWidthDp / designCanvasWidthDp.toFloat(),
-            contentHeightDp / designCanvasHeightDp.toFloat(),
+        val placement = WidgetDisplayCanvasMetrics.placement(
+            element = element,
+            designCanvasWidthDp = designCanvasWidthDp,
+            designCanvasHeightDp = designCanvasHeightDp,
+            contentWidthDp = contentWidthDp,
+            contentHeightDp = contentHeightDp,
         )
-        val scaledCanvasWidth = designCanvasWidthDp * scale
-        val scaledCanvasHeight = designCanvasHeightDp * scale
-        val canvasOffsetX = (contentWidthDp - scaledCanvasWidth) / 2f
-        val canvasOffsetY = (contentHeightDp - scaledCanvasHeight) / 2f
-        val width = (element.widthDp * scale).coerceAtLeast(1f)
-        val height = (element.heightDp * scale).coerceAtLeast(1f)
-        val left = (canvasOffsetX + element.xDp * scale)
-            .coerceIn(0f, (contentWidthDp - width).coerceAtLeast(0f))
-        val top = (canvasOffsetY + element.yDp * scale)
-            .coerceIn(0f, (contentHeightDp - height).coerceAtLeast(0f))
+        val left = placement.leftDp
+        val top = placement.topDp
+        val width = placement.widthDp
+        val height = placement.heightDp
         views.setViewLayoutWidth(rootId, width, unit)
         views.setViewLayoutHeight(rootId, height, unit)
         views.setViewLayoutMargin(rootId, RemoteViews.MARGIN_LEFT, left, unit)
