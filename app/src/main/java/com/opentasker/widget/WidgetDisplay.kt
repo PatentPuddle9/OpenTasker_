@@ -414,21 +414,34 @@ object WidgetDisplayRenderer {
         // Small fixed sizes use responsive grids instead of shrinking the 320 × 200 canvas
         // until every item becomes unreadable. Larger widgets retain the exact authored layout.
         val configured = state.elements
+        fun overflowSummary(visibleCount: Int) = WidgetDisplayElement(
+            id = "overflow-" + configured.size,
+            type = WidgetDisplayElementType.TEXT,
+            text = "+ " + (configured.size - visibleCount) + " more",
+            textSizeSp = 11,
+            xDp = 12,
+            yDp = 172,
+            widthDp = 296,
+            heightDp = 22,
+        )
         val visibleElements = when (mode) {
-            ContentMode.COMPACT_ROW -> configured.take(2)
-            ContentMode.SQUARE_GRID -> configured.take(4)
-            ContentMode.WIDE_GRID, ContentMode.PORTRAIT_GRID -> configured.take(MAX_SLOTS)
+            ContentMode.COMPACT_ROW -> if (configured.size > 2) {
+                configured.take(1) + overflowSummary(1)
+            } else {
+                configured
+            }
+            ContentMode.SQUARE_GRID -> if (configured.size > 4) {
+                configured.take(3) + overflowSummary(3)
+            } else {
+                configured
+            }
+            ContentMode.WIDE_GRID, ContentMode.PORTRAIT_GRID -> if (configured.size > MAX_SLOTS) {
+                configured.take(MAX_SLOTS - 1) + overflowSummary(MAX_SLOTS - 1)
+            } else {
+                configured
+            }
             ContentMode.CANVAS -> if (configured.size > MAX_SLOTS) {
-                configured.take(MAX_SLOTS - 1) + WidgetDisplayElement(
-                    id = "overflow-" + configured.size,
-                    type = WidgetDisplayElementType.TEXT,
-                    text = "+ " + (configured.size - (MAX_SLOTS - 1)) + " more items",
-                    textSizeSp = 11,
-                    xDp = 12,
-                    yDp = 172,
-                    widthDp = 296,
-                    heightDp = 22,
-                )
+                configured.take(MAX_SLOTS - 1) + overflowSummary(MAX_SLOTS - 1)
             } else {
                 configured
             }
