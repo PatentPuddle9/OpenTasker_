@@ -5,6 +5,17 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,13 +30,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,8 +81,6 @@ internal data class OpenTaskerWidgetEntry(
 @Composable
 internal fun ShortcutsScreen(
     contentPadding: PaddingValues,
-    onCreateNew: () -> Unit,
-    onCreateWidgetDisplay: (WidgetDisplayProvider.Size) -> Unit,
     onDeleteWidget: (OpenTaskerWidgetEntry, (Boolean) -> Unit) -> Unit,
 ) {
     val context = LocalContext.current
@@ -76,7 +88,6 @@ internal fun ShortcutsScreen(
     var refreshKey by remember { mutableIntStateOf(0) }
     var widgets by remember { mutableStateOf(loadOpenTaskerWidgets(context)) }
     var pendingDelete by remember { mutableStateOf<OpenTaskerWidgetEntry?>(null) }
-    var showDisplaySizes by remember { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -120,17 +131,12 @@ internal fun ShortcutsScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.size(18.dp))
-            Button(onClick = onCreateNew) {
-                Icon(Icons.Filled.Add, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Create Widget Shortcut")
-            }
-            OutlinedButton(onClick = { showDisplaySizes = true }) {
-                Icon(Icons.Outlined.Widgets, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Create Widget Display")
-            }
+            Spacer(Modifier.size(10.dp))
+            Text(
+                "Tap Create to add a Widget Shortcut or a Widget Display.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     } else {
         LazyColumn(
@@ -151,11 +157,6 @@ internal fun ShortcutsScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
-                    OutlinedButton(onClick = { showDisplaySizes = true }) {
-                        Icon(Icons.Outlined.Widgets, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Widget Display")
                     }
                 }
             }
@@ -215,36 +216,6 @@ internal fun ShortcutsScreen(
         }
     }
 
-    if (showDisplaySizes) {
-        AlertDialog(
-            onDismissRequest = { showDisplaySizes = false },
-            title = { Text("Create Widget Display") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        "Choose a fixed layout size or a resizable custom widget.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    WidgetDisplayProvider.Size.entries.forEach { size ->
-                        TextButton(
-                            onClick = {
-                                showDisplaySizes = false
-                                onCreateWidgetDisplay(size)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(size.label, modifier = Modifier.fillMaxWidth())
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showDisplaySizes = false }) { Text("Cancel") }
-            },
-        )
-    }
-
     pendingDelete?.let { widget ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
@@ -272,6 +243,172 @@ internal fun ShortcutsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { pendingDelete = null }) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+/**
+ * One creation button with a softly expanding, Google Keep-style choice panel.
+ * Choosing Widget Display opens the size picker as the second step.
+ */
+@Composable
+internal fun WidgetsCreateFab(
+    onCreateShortcut: () -> Unit,
+    onCreateDisplay: (WidgetDisplayProvider.Size) -> Unit,
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    var showDisplaySizes by rememberSaveable { mutableStateOf(false) }
+    val addRotation by animateFloatAsState(
+        targetValue = if (expanded) 45f else 0f,
+        animationSpec = tween(190),
+        label = "widgets-create-icon-rotation",
+    )
+
+    Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn(tween(150)) +
+                slideInVertically(tween(210)) { it / 4 } +
+                scaleIn(tween(210), initialScale = 0.94f),
+            exit = fadeOut(tween(110)) +
+                slideOutVertically(tween(150)) { it / 5 } +
+                scaleOut(tween(150), targetScale = 0.96f),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(22.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                tonalElevation = 5.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
+            ) {
+                Column(
+                    modifier = Modifier.width(254.dp).padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        "Create a widget",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .clip(RoundedCornerShape(15.dp))
+                            .clickable {
+                                expanded = false
+                                onCreateShortcut()
+                            }
+                            .padding(horizontal = 10.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(40.dp),
+                            shape = RoundedCornerShape(13.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Filled.Add,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            }
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text("Widget Shortcut", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                "One tap to run an Action",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .clip(RoundedCornerShape(15.dp))
+                            .clickable {
+                                expanded = false
+                                showDisplaySizes = true
+                            }
+                            .padding(horizontal = 10.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(40.dp),
+                            shape = RoundedCornerShape(13.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Outlined.Widgets,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            }
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text("Widget Display", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                "A custom multi-state dashboard",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        ExtendedFloatingActionButton(
+            onClick = { expanded = !expanded },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            icon = {
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = if (expanded) "Close create menu" else "Create widget",
+                    modifier = Modifier.rotate(addRotation),
+                )
+            },
+            text = { Text(if (expanded) "Close" else "Create") },
+        )
+    }
+
+    if (showDisplaySizes) {
+        AlertDialog(
+            onDismissRequest = { showDisplaySizes = false },
+            title = { Text("Create Widget Display") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        "Choose a fixed layout or a resizable custom widget.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    WidgetDisplayProvider.Size.entries.forEach { size ->
+                        TextButton(
+                            onClick = {
+                                showDisplaySizes = false
+                                onCreateDisplay(size)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(size.label, modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDisplaySizes = false }) { Text("Cancel") }
             },
         )
     }
