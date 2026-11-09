@@ -192,6 +192,18 @@ class TaskWidgetCustomizationTest {
         assertEquals(WidgetDisplayCanvasMetrics.HEIGHT_DP, normalized.heightDp)
         assertEquals(0, normalized.xDp)
         assertEquals(0, normalized.yDp)
+
+        val resizedCanvasItem = WidgetDisplayCanvasMetrics.normalize(
+            listOf(oversized),
+            canvasWidthDp = 480,
+            canvasHeightDp = 300,
+        ).single()
+        assertEquals(480, resizedCanvasItem.widthDp)
+        assertEquals(300, resizedCanvasItem.heightDp)
+        assertEquals(0, resizedCanvasItem.xDp)
+        assertEquals(0, resizedCanvasItem.yDp)
+        assertEquals(110, WidgetDisplayCanvasMetrics.normalizeWidth(50))
+        assertEquals(1000, WidgetDisplayCanvasMetrics.normalizeHeight(1200))
     }
 
     @Test
@@ -203,6 +215,17 @@ class TaskWidgetCustomizationTest {
         val guides = sourceRoot.resolve("com/opentasker/core/scenes/SceneAlignmentGuides.kt").readText()
 
         assertTrue(editor.contains("WidgetDisplayCanvas("))
+        assertTrue(editor.contains("Design canvas size"))
+        assertTrue(editor.contains("Width (dp)"))
+        assertTrue(editor.contains("Height (dp)"))
+        assertTrue(editor.contains("canvasWidthDp = canvasWidthDp"))
+        assertTrue(editor.contains("canvasHeightDp = canvasHeightDp"))
+        assertTrue(editor.contains("launcher still controls the physical widget slot"))
+        assertTrue(canvas.contains("designWidthDp: Int"))
+        assertTrue(canvas.contains("designHeightDp: Int"))
+        assertTrue(canvas.contains("canvasHeight = designHeightDp * scale"))
+        assertTrue(model.contains("val canvasWidthDp: Int = WidgetDisplayCanvasMetrics.WIDTH_DP"))
+        assertTrue(model.contains("val canvasHeightDp: Int = WidgetDisplayCanvasMetrics.HEIGHT_DP"))
         assertTrue(editor.contains("SceneSelectionAlignment.CENTER_ON_CANVAS"))
         assertTrue(editor.contains("label = { Text(\"X\") }"))
         assertTrue(editor.contains("label = { Text(\"Y\") }"))
@@ -253,7 +276,7 @@ class TaskWidgetCustomizationTest {
     }
 
     @Test
-    fun widgetDisplayOffersFourLockedSizesAndOneResizableCustomVariant() {
+    fun widgetDisplayOffersOnlyFixedLauncherSizesIncludingCustomEditorSize() {
         val provider = sourceRoot.resolve("com/opentasker/widget/WidgetDisplayProvider.kt").readText()
         val manifest = sourceRoot.resolve("../AndroidManifest.xml").readText()
         assertTrue(provider.contains("COMPACT"))
@@ -273,7 +296,10 @@ class TaskWidgetCustomizationTest {
             assertTrue(info.contains("android:resizeMode=\"none\""))
         }
         val custom = resRoot.resolve("xml/widget_display_custom_info.xml").readText()
-        assertTrue(custom.contains("android:resizeMode=\"horizontal|vertical\""))
+        assertTrue(custom.contains("android:resizeMode=\"none\""))
+        assertFalse(custom.contains("android:minResizeWidth"))
+        assertFalse(custom.contains("android:minResizeHeight"))
+        assertTrue(provider.contains("Custom · set size in editor"))
         assertTrue(manifest.contains("WidgetDisplayCustomProvider"))
         assertTrue(manifest.contains("WidgetDisplayConfigActivity"))
     }
