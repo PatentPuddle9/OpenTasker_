@@ -139,8 +139,18 @@ private fun WidgetDisplayCanvasItem(
                 )
             }
             .size(
-                width = (element.widthDp * scale).coerceAtLeast(24f).dp,
-                height = (element.heightDp * scale).coerceAtLeast(20f).dp,
+                width = (
+                    (element.widthDp + resizeX).coerceIn(
+                        32f,
+                        (WidgetDisplayCanvasMetrics.WIDTH_DP - element.xDp).coerceAtLeast(32).toFloat(),
+                    ) * scale
+                ).coerceAtLeast(24f).dp,
+                height = (
+                    (element.heightDp + resizeY).coerceIn(
+                        24f,
+                        (WidgetDisplayCanvasMetrics.HEIGHT_DP - element.yDp).coerceAtLeast(24).toFloat(),
+                    ) * scale
+                ).coerceAtLeast(20f).dp,
             ),
     ) {
         Surface(
