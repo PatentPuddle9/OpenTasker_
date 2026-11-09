@@ -46,6 +46,8 @@ private const val WIDGET_STATE_SNAP_THRESHOLD_DP = 3
 @Composable
 internal fun WidgetDisplayCanvas(
     state: WidgetDisplayState,
+    designWidthDp: Int,
+    designHeightDp: Int,
     selectedElementId: String?,
     guides: List<AlignmentGuide>,
     onSelect: (String) -> Unit,
@@ -61,7 +63,7 @@ internal fun WidgetDisplayCanvas(
         ) {
             Text("Design canvas", style = MaterialTheme.typography.titleMedium)
             Text(
-                "${WidgetDisplayCanvasMetrics.WIDTH_DP} × ${WidgetDisplayCanvasMetrics.HEIGHT_DP} dp",
+                "$designWidthDp × $designHeightDp dp",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -73,8 +75,8 @@ internal fun WidgetDisplayCanvas(
         )
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val canvasWidth = maxWidth.value
-            val scale = canvasWidth / WidgetDisplayCanvasMetrics.WIDTH_DP.toFloat()
-            val canvasHeight = WidgetDisplayCanvasMetrics.HEIGHT_DP * scale
+            val scale = canvasWidth / designWidthDp.toFloat()
+            val canvasHeight = designHeightDp * scale
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -90,6 +92,8 @@ internal fun WidgetDisplayCanvas(
                             element = element,
                             index = index,
                             state = state,
+                            designWidthDp = designWidthDp,
+                            designHeightDp = designHeightDp,
                             scale = scale,
                             selected = element.id == selectedElementId,
                             onSelect = { onSelect(element.id) },
@@ -102,8 +106,8 @@ internal fun WidgetDisplayCanvas(
                         guides = guides,
                         canvasWidthDp = canvasWidth,
                         canvasHeightDp = canvasHeight,
-                        designWidthDp = WidgetDisplayCanvasMetrics.WIDTH_DP.toFloat(),
-                        designHeightDp = WidgetDisplayCanvasMetrics.HEIGHT_DP.toFloat(),
+                        designWidthDp = designWidthDp.toFloat(),
+                        designHeightDp = designHeightDp.toFloat(),
                     )
                 }
             }
@@ -116,6 +120,8 @@ private fun WidgetDisplayCanvasItem(
     element: WidgetDisplayElement,
     index: Int,
     state: WidgetDisplayState,
+    designWidthDp: Int,
+    designHeightDp: Int,
     scale: Float,
     selected: Boolean,
     onSelect: () -> Unit,
@@ -145,13 +151,13 @@ private fun WidgetDisplayCanvasItem(
                 width = (
                     (element.widthDp + resizeX).coerceIn(
                         32f,
-                        (WidgetDisplayCanvasMetrics.WIDTH_DP - element.xDp).coerceAtLeast(32).toFloat(),
+                        (designWidthDp - element.xDp).coerceAtLeast(32).toFloat(),
                     ) * scale
                 ).coerceAtLeast(24f).dp,
                 height = (
                     (element.heightDp + resizeY).coerceIn(
                         24f,
-                        (WidgetDisplayCanvasMetrics.HEIGHT_DP - element.yDp).coerceAtLeast(24).toFloat(),
+                        (designHeightDp - element.yDp).coerceAtLeast(24).toFloat(),
                     ) * scale
                 ).coerceAtLeast(20f).dp,
             ),
@@ -170,8 +176,8 @@ private fun WidgetDisplayCanvasItem(
                             val candidateX = (element.xDp + dragX).roundToInt()
                             val candidateY = (element.yDp + dragY).roundToInt()
                             val result = SceneAlignmentGuides.findGuides(
-                                canvasWidthDp = WidgetDisplayCanvasMetrics.WIDTH_DP,
-                                canvasHeightDp = WidgetDisplayCanvasMetrics.HEIGHT_DP,
+                                canvasWidthDp = designWidthDp,
+                                canvasHeightDp = designHeightDp,
                                 elements = state.elements.map {
                                     CanvasElementBounds(it.xDp, it.yDp, it.widthDp, it.heightDp)
                                 },
@@ -192,8 +198,8 @@ private fun WidgetDisplayCanvasItem(
                             val candidateX = (element.xDp + dragX).roundToInt()
                             val candidateY = (element.yDp + dragY).roundToInt()
                             val result = SceneAlignmentGuides.findGuides(
-                                canvasWidthDp = WidgetDisplayCanvasMetrics.WIDTH_DP,
-                                canvasHeightDp = WidgetDisplayCanvasMetrics.HEIGHT_DP,
+                                canvasWidthDp = designWidthDp,
+                                canvasHeightDp = designHeightDp,
                                 elements = state.elements.map {
                                     CanvasElementBounds(it.xDp, it.yDp, it.widthDp, it.heightDp)
                                 },
@@ -241,9 +247,9 @@ private fun WidgetDisplayCanvasItem(
                             },
                             onDragEnd = {
                                 val width = (element.widthDp + resizeX.roundToInt())
-                                    .coerceIn(32, WidgetDisplayCanvasMetrics.WIDTH_DP - element.xDp)
+                                    .coerceIn(32, designWidthDp - element.xDp)
                                 val height = (element.heightDp + resizeY.roundToInt())
-                                    .coerceIn(24, WidgetDisplayCanvasMetrics.HEIGHT_DP - element.yDp)
+                                    .coerceIn(24, designHeightDp - element.yDp)
                                 resizeX = 0f
                                 resizeY = 0f
                                 onResize(width, height)
