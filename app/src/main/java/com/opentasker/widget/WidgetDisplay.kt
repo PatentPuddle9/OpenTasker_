@@ -226,7 +226,7 @@ object WidgetDisplayRenderer {
         // Keep compact widgets vertical by default. Forcing a horizontal row used to make
         // each match-parent child consume the entire widget width, hiding everything after it.
         // User-selected horizontal layouts use explicit child widths on API 31+.
-        val renderHorizontally = state.horizontal &&
+        val renderHorizontally = (state.horizontal || veryCompactHeight) &&
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
             minWidth > 0
         views.setInt(
@@ -309,7 +309,11 @@ object WidgetDisplayRenderer {
                             setTextViewText(com.opentasker.app.R.id.widget_display_action_label, element.text)
                             setTextColor(com.opentasker.app.R.id.widget_display_action_label, foreground)
                             if (compactHeight) {
-                                setTextViewTextSize(com.opentasker.app.R.id.widget_display_action_label, TypedValue.COMPLEX_UNIT_SP, 11f)
+                                setTextViewTextSize(com.opentasker.app.R.id.widget_display_action_label, TypedValue.COMPLEX_UNIT_SP, 10f)
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    setViewLayoutWidth(com.opentasker.app.R.id.widget_display_action_icon, 18f, TypedValue.COMPLEX_UNIT_DIP)
+                                    setViewLayoutHeight(com.opentasker.app.R.id.widget_display_action_icon, 18f, TypedValue.COMPLEX_UNIT_DIP)
+                                }
                             }
                             element.actionProfileId?.takeIf { it > 0L }?.let { profileId ->
                                 val run = Intent(context, TaskRunActivity::class.java).apply {
