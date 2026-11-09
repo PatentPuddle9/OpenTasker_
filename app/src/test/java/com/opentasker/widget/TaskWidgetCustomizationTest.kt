@@ -133,7 +133,7 @@ class TaskWidgetCustomizationTest {
         assertTrue("The renderer catches errors and installs a recovery view",
             display.contains("createRecoveryViews"))
         assertTrue("The recovery view explains how to repair the widget",
-            fallback.contains("Tap here to reopen setup and repair it"))
+            display.contains("Tap here to reopen setup and repair it"))
         assertTrue("The recovery view has a clickable root",
             fallback.contains("@+id/widget_display_fallback_root"))
 
@@ -188,7 +188,8 @@ class TaskWidgetCustomizationTest {
         val sizes = listOf("compact", "square", "wide", "large", "custom")
         sizes.forEach { size ->
             val info = resRoot.resolve("xml/widget_display_${size}_info.xml").readText()
-            assertTrue(info.contains("@layout/widget_display"))
+            assertTrue(info.contains("android:initialLayout=\"@layout/widget_display_fallback\""))
+            assertTrue(info.contains("android:previewLayout=\"@layout/widget_display_fallback\""))
         }
         listOf("compact", "square", "wide", "large").forEach { size ->
             val info = resRoot.resolve("xml/widget_display_${size}_info.xml").readText()
