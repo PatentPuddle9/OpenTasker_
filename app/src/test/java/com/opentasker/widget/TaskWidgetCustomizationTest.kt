@@ -155,6 +155,18 @@ class TaskWidgetCustomizationTest {
                 display.contains("IMAGE_HEIGHT_PX = 90"))
         assertTrue("Uploaded icons are sampled to compact dimensions",
             display.contains("ICON_MAX_DIMENSION_PX = 40"))
+        assertTrue("Small square widgets should use a two-by-two grid",
+            display.contains("ContentMode.SQUARE_GRID"))
+        assertTrue("Wide widgets should use a four-column grid",
+            display.contains("ContentMode.WIDE_GRID"))
+        assertTrue("Tall custom widgets should use a two-column grid",
+            display.contains("ContentMode.PORTRAIT_GRID"))
+        assertTrue("Compact widgets should show a summary instead of silently dropping content",
+            display.contains("overflowSummary(1)") && display.contains("overflowSummary(3)"))
+        assertTrue("Scene and Widget canvas elements should snap while the finger is still down",
+            display.contains("setViewLayoutMargin(rootId, Gravity.LEFT") &&
+                sourceRoot.resolve("com/opentasker/widget/WidgetDisplayCanvas.kt").readText()
+                    .contains("dragX = (result.snappedX - element.xDp).toFloat()"))
     }
 
     @Test
@@ -175,6 +187,7 @@ class TaskWidgetCustomizationTest {
         assertTrue(canvas.contains("onResize"))
         assertTrue(canvas.contains("SceneAlignmentGuides.findGuides"))
         assertTrue(sceneCanvas.contains("CanvasAlignmentGuideOverlay"))
+        assertTrue(sceneCanvas.contains("dragX = alignment.snappedX * canvasWidth / safeSceneWidth"))
         assertTrue(guides.contains("findHorizontalSpacing"))
         assertTrue(guides.contains("findVerticalSpacing"))
         assertTrue(model.contains("val xDp: Int = -1"))
