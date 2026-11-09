@@ -150,6 +150,15 @@ class TaskWidgetCustomizationTest {
     }
 
     @Test
+    fun appLaunchRefreshesExistingWidgetDisplaysAfterAnUpgrade() {
+        val main = sourceRoot.resolve("../java/com/opentasker/app/MainActivity.kt")
+            .takeIf(Files::exists)
+            ?.readText()
+            ?: sourceRoot.resolve("com/opentasker/app/MainActivity.kt").readText()
+        assertTrue(main.contains("WidgetDisplayProvider.requestRefresh(applicationContext)"))
+    }
+
+    @Test
     fun widgetsTabHasOneAnimatedCreateMenuForBothWidgetTypes() {
         val screen = sourceRoot.resolve("com/opentasker/ui/screens/ShortcutsScreen.kt").readText()
         val host = sourceRoot.resolve("com/opentasker/ui/screens/ActiveAutomationUi.kt").readText()
