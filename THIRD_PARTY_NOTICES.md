@@ -12,11 +12,14 @@ OpenTasker includes the **Coolicons Line Oval Icons** collection by **Kryston Sc
 
 The original SVG symbol sprite is retained in `app/src/main/assets/coolicons-v4.1-sprite.svg`. The 442 symbols are also converted to Android VectorDrawable resources for use in the app and widgets. The app's existing `bolt` icon is original OpenTasker artwork and is intentionally retained unchanged.
 
-## Leaflet 1.9.4
+## OpenStreetMap
 
-The in-app location picker loads Leaflet 1.9.4 JavaScript and CSS at runtime from the unpkg CDN.
+The in-app location picker displays map tiles from OpenStreetMap and uses the Nominatim search service for place lookup.
 
-- Project: https://leafletjs.com/
-- Source: https://github.com/Leaflet/Leaflet/tree/v1.9.4
-- License: BSD 2-Clause (BSD-2-Clause)
-- License text: https://github.com/Leaflet/Leaflet/blob/v1.9.4/LICENSE
+- Map data: https://www.openstreetmap.org/
+- Tile service policy: https://operations.osmfoundation.org/policies/tiles/
+- Nominatim usage policy: https://operations.osmfoundation.org/policies/nominatim/
+- Data license: Open Database License (ODbL)
+- License text: https://opendatacommons.org/licenses/odbl/
+
+The map displays the required OpenStreetMap contributor attribution.
