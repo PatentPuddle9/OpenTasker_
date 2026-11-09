@@ -12,7 +12,7 @@
         android:id="@+id/widget_display_fallback_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Widget Display couldn't load"
+        android:text="Widget Display"
         android:textColor="#FFFFFFFF"
         android:textSize="14sp"
         android:textStyle="bold"
@@ -23,7 +23,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="5dp"
-        android:text="Tap here to reopen setup and repair it"
+        android:text="Your dashboard will appear here."
         android:textColor="#DDFFFFFF"
         android:textSize="12sp"
         android:maxLines="3" />
