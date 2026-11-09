@@ -120,37 +120,13 @@ internal fun ScenePreviewBox(
                                     onAlignmentGuidesChanged = { guides -> activeGuides = guides },
                                 )
                             }
-                            if (activeGuides.isNotEmpty()) {
-                                val scaleX = canvasWidth / (scene.widthDp.takeIf { it > 0 } ?: 1).toFloat()
-                                val scaleY = canvasHeight / (scene.heightDp.takeIf { it > 0 } ?: 1).toFloat()
-                                Canvas(Modifier.fillMaxSize()) {
-                                    val dash = PathEffect.dashPathEffect(floatArrayOf(6f, 4f))
-                                    activeGuides.forEach { guide ->
-                                        when (guide.orientation) {
-                                            GuideOrientation.VERTICAL -> {
-                                                val x = guide.position * scaleX
-                                                drawLine(
-                                                    color = guideColor,
-                                                    start = Offset(x, 0f),
-                                                    end = Offset(x, size.height),
-                                                    strokeWidth = 1.5f,
-                                                    pathEffect = dash,
-                                                )
-                                            }
-                                            GuideOrientation.HORIZONTAL -> {
-                                                val y = guide.position * scaleY
-                                                drawLine(
-                                                    color = guideColor,
-                                                    start = Offset(0f, y),
-                                                    end = Offset(size.width, y),
-                                                    strokeWidth = 1.5f,
-                                                    pathEffect = dash,
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            CanvasAlignmentGuideOverlay(
+                                guides = activeGuides,
+                                canvasWidthDp = canvasWidth,
+                                canvasHeightDp = canvasHeight,
+                                designWidthDp = scene.widthDp.toFloat(),
+                                designHeightDp = scene.heightDp.toFloat(),
+                            )
                         }
                     }
                 }
