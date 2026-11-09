@@ -109,6 +109,38 @@ class SceneAlignmentGuidesTest {
     }
 
     @Test
+    fun callerCanReduceSnapStrengthWithoutChangingDefaultSceneSnapping() {
+        val elements = listOf(
+            CanvasElementBounds(x = 100, y = 100, width = 40, height = 40),
+            CanvasElementBounds(x = 0, y = 0, width = 40, height = 40),
+        )
+        val defaultSnap = SceneAlignmentGuides.findGuides(
+            canvasWidthDp = 320,
+            canvasHeightDp = 200,
+            elements = elements,
+            movingIndex = 1,
+            candidateX = 56,
+            candidateY = 20,
+            candidateW = 40,
+            candidateH = 40,
+        )
+        val softerSnap = SceneAlignmentGuides.findGuides(
+            canvasWidthDp = 320,
+            canvasHeightDp = 200,
+            elements = elements,
+            movingIndex = 1,
+            candidateX = 56,
+            candidateY = 20,
+            candidateW = 40,
+            candidateH = 40,
+            snapThresholdDp = 3,
+        )
+
+        assertEquals(60, defaultSnap.snappedX)
+        assertEquals(56, softerSnap.snappedX)
+    }
+
+    @Test
     fun noSnapWhenFarFromAnchors() {
         val result = SceneAlignmentGuides.findGuides(
             scene = scene(),
