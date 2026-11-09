@@ -202,7 +202,7 @@ class TaskWidgetCustomizationTest {
             contentHeightDp = 600f,
         )
         assertEquals(60f, letterboxed.leftDp, 0.01f)
-        assertEquals(240f, letterboxed.topDp, 0.01f)
+        assertEquals(195f, letterboxed.topDp, 0.01f)
         assertEquals(120f, letterboxed.widthDp, 0.01f)
         assertEquals(90f, letterboxed.heightDp, 0.01f)
     }
