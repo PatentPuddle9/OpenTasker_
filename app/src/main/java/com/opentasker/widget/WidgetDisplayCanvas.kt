@@ -70,7 +70,8 @@ internal fun WidgetDisplayCanvas(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val scale = maxWidth.value / WidgetDisplayCanvasMetrics.WIDTH_DP.toFloat()
+            val canvasWidth = maxWidth.value
+            val scale = canvasWidth / WidgetDisplayCanvasMetrics.WIDTH_DP.toFloat()
             val canvasHeight = WidgetDisplayCanvasMetrics.HEIGHT_DP * scale
             Surface(
                 modifier = Modifier
@@ -97,7 +98,7 @@ internal fun WidgetDisplayCanvas(
                     }
                     CanvasAlignmentGuideOverlay(
                         guides = guides,
-                        canvasWidthDp = maxWidth.value,
+                        canvasWidthDp = canvasWidth,
                         canvasHeightDp = canvasHeight,
                         designWidthDp = WidgetDisplayCanvasMetrics.WIDTH_DP.toFloat(),
                         designHeightDp = WidgetDisplayCanvasMetrics.HEIGHT_DP.toFloat(),
