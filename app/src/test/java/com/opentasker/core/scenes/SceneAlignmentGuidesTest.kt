@@ -52,6 +52,63 @@ class SceneAlignmentGuidesTest {
     }
 
     @Test
+    fun matchesOtherObjectCentersAndEdges() {
+        val anchor = element(x = 100, y = 90, w = 80, h = 40)
+        val result = SceneAlignmentGuides.findGuides(
+            scene = scene(elements = listOf(anchor, element(0, 0))),
+            movingIndex = 1,
+            candidateX = 119,
+            candidateY = 93,
+            candidateW = 40,
+            candidateH = 40,
+        )
+        assertEquals(120, result.snappedX)
+        assertEquals(90, result.snappedY)
+        assertTrue(result.guides.any { it.orientation == GuideOrientation.VERTICAL && it.snappedPosition == 140 })
+        assertTrue(result.guides.any { it.orientation == GuideOrientation.HORIZONTAL && it.snappedPosition == 90 })
+    }
+
+    @Test
+    fun snapsToEqualHorizontalSpacingBetweenTwoObjects() {
+        val peers = listOf(
+            CanvasElementBounds(x = 40, y = 100, width = 40, height = 40),
+            CanvasElementBounds(x = 220, y = 100, width = 40, height = 40),
+        )
+        val result = SceneAlignmentGuides.findGuides(
+            canvasWidthDp = 500,
+            canvasHeightDp = 300,
+            elements = peers + CanvasElementBounds(0, 0, 40, 40),
+            movingIndex = 2,
+            candidateX = 133,
+            candidateY = 100,
+            candidateW = 40,
+            candidateH = 40,
+        )
+        assertEquals(130, result.snappedX)
+        assertTrue(result.guides.count { it.kind == AlignmentGuideKind.SPACING } >= 2)
+    }
+
+    @Test
+    fun snapsToEqualVerticalSpacingBetweenTwoObjects() {
+        val peers = listOf(
+            CanvasElementBounds(x = 120, y = 20, width = 40, height = 30),
+            CanvasElementBounds(x = 120, y = 170, width = 40, height = 30),
+        )
+        val result = SceneAlignmentGuides.findGuides(
+            canvasWidthDp = 320,
+            canvasHeightDp = 260,
+            elements = peers + CanvasElementBounds(0, 0, 40, 30),
+            movingIndex = 2,
+            candidateX = 120,
+            candidateY = 92,
+            candidateW = 40,
+            candidateH = 30,
+        )
+        assertEquals(95, result.snappedY)
+        assertTrue(result.guides.count { it.kind == AlignmentGuideKind.SPACING } >= 2)
+    }
+
+    @Test
     fun noSnapWhenFarFromAnchors() {
         val result = SceneAlignmentGuides.findGuides(
             scene = scene(),
