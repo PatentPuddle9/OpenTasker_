@@ -623,17 +623,17 @@ fun ActiveAutomationUi(
                     )
                 }
 
-                OpenTaskerScreen.Shortcuts -> ExtendedFloatingActionButton(
-                    onClick = {
+                OpenTaskerScreen.Shortcuts -> WidgetsCreateFab(
+                    onCreateShortcut = {
                         if (!requestNewTaskWidget(context)) {
                             scope.launch { snackbarHostState.showSnackbar("Your launcher couldn't create a home-screen widget.") }
                         }
                     },
-                    shape = RoundedCornerShape(DesignSystem.Radii.lg),
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    icon = { Icon(Icons.Filled.Add, contentDescription = "Create Widget Shortcut") },
-                    text = { Text("Widget Shortcut") },
+                    onCreateDisplay = { size ->
+                        if (!WidgetDisplayProvider.requestPinWidget(context, size)) {
+                            scope.launch { snackbarHostState.showSnackbar("Your launcher couldn't create a Widget Display.") }
+                        }
+                    },
                 )
 
                 OpenTaskerScreen.Vars,
@@ -804,16 +804,6 @@ fun ActiveAutomationUi(
 
             OpenTaskerScreen.Shortcuts -> ShortcutsScreen(
                 contentPadding = innerPadding,
-                onCreateNew = {
-                    if (!requestNewTaskWidget(context)) {
-                        scope.launch { snackbarHostState.showSnackbar("Your launcher couldn't create a home-screen widget.") }
-                    }
-                },
-                onCreateWidgetDisplay = { size ->
-                    if (!WidgetDisplayProvider.requestPinWidget(context, size)) {
-                        scope.launch { snackbarHostState.showSnackbar("Your launcher couldn't create a Widget Display.") }
-                    }
-                },
                 onDeleteWidget = { widget, onComplete ->
                     scope.launch {
                         runCatching {
