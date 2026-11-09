@@ -170,6 +170,29 @@ class TaskWidgetCustomizationTest {
     }
 
     @Test
+    fun widgetDisplayCanvasMigratesLegacyItemsAndClampsEditedBounds() {
+        val legacy = WidgetDisplayElement(type = WidgetDisplayElementType.TEXT, text = "Legacy")
+        val migrated = WidgetDisplayCanvasMetrics.normalize(listOf(legacy)).single()
+        assertEquals(12, migrated.xDp)
+        assertEquals(12, migrated.yDp)
+        assertEquals(WidgetDisplayCanvasMetrics.DEFAULT_WIDTH_DP, migrated.widthDp)
+        assertEquals(WidgetDisplayCanvasMetrics.DEFAULT_HEIGHT_DP, migrated.heightDp)
+
+        val oversized = WidgetDisplayElement(
+            type = WidgetDisplayElementType.TEXT,
+            xDp = 900,
+            yDp = 900,
+            widthDp = 900,
+            heightDp = 900,
+        )
+        val normalized = WidgetDisplayCanvasMetrics.normalize(listOf(oversized)).single()
+        assertEquals(WidgetDisplayCanvasMetrics.WIDTH_DP, normalized.widthDp)
+        assertEquals(WidgetDisplayCanvasMetrics.HEIGHT_DP, normalized.heightDp)
+        assertEquals(0, normalized.xDp)
+        assertEquals(0, normalized.yDp)
+    }
+
+    @Test
     fun widgetStateEditorUsesTheSharedDraggableCanvasAndCanvaAlignmentTools() {
         val editor = sourceRoot.resolve("com/opentasker/widget/WidgetDisplayConfigEditor.kt").readText()
         val canvas = sourceRoot.resolve("com/opentasker/widget/WidgetDisplayCanvas.kt").readText()
