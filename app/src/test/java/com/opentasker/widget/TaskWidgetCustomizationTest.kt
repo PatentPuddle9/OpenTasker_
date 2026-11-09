@@ -112,46 +112,30 @@ class TaskWidgetCustomizationTest {
     }
 
     @Test
-    fun widgetDisplayUsesOnlyRemoteViewsSupportedElementsAndCollapsesCompactWhitespace() {
+    fun widgetDisplayUsesFixedRemoteViewsSlotsAndNeverBuildsDynamicChildTrees() {
         val display = sourceRoot.resolve("com/opentasker/widget/WidgetDisplay.kt").readText()
         val root = resRoot.resolve("layout/widget_display.xml").readText()
-        val spacer = resRoot.resolve("layout/widget_display_spacer_item.xml").readText()
-        val divider = resRoot.resolve("layout/widget_display_divider_item.xml").readText()
-        val image = resRoot.resolve("layout/widget_display_image_item.xml").readText()
-        val icon = resRoot.resolve("layout/widget_display_icon_item.xml").readText()
-        val progress = resRoot.resolve("layout/widget_display_progress_item.xml").readText()
+        val fallback = resRoot.resolve("layout/widget_display_fallback.xml").readText()
 
-        assertFalse("Spacer must not use android.view.Space inside RemoteViews", spacer.contains("<Space"))
-        assertTrue("Spacer must use a RemoteViews-supported TextView", spacer.contains("<TextView"))
-        assertFalse("Divider must not use a generic View inside RemoteViews", divider.contains("<View "))
-        assertTrue("Divider must use a RemoteViews-supported TextView", divider.contains("<TextView"))
-        assertTrue(image.contains("@+id/widget_display_image_item_root"))
-        assertTrue(icon.contains("@+id/widget_display_icon_root"))
-        assertTrue(progress.contains("@+id/widget_display_progress_root"))
-        assertFalse("State arrows are intentionally removed", root.contains("widget_display_navigation"))
-        assertFalse(display.contains("WidgetDisplayStateReceiver"))
-        assertTrue(display.contains("Build.VERSION.SDK_INT >= Build.VERSION_CODES.S"))
-        assertTrue(display.contains("elements.filterNot"))
-        assertTrue(display.contains("it.type == WidgetDisplayElementType.SPACER"))
-        assertTrue(display.contains("it.type == WidgetDisplayElementType.DIVIDER"))
-        assertTrue(display.contains("state.horizontal || veryCompactHeight"))
-        assertTrue(display.contains("child.setViewLayoutWidth"))
-    }
-
-    @Test
-    fun widgetDisplayKeepsRemoteViewsBitmapPayloadBelowBinderLimit() {
-        val display = sourceRoot.resolve("com/opentasker/widget/WidgetDisplay.kt").readText()
-
-        assertTrue(display.contains("MAX_REMOTE_BITMAP_BYTES = 650 * 1024"))
-        assertTrue(display.contains("BACKGROUND_WIDTH_PX = 320"))
-        assertTrue(display.contains("BACKGROUND_HEIGHT_PX = 232"))
-        assertTrue(display.contains("IMAGE_WIDTH_PX = 256"))
-        assertTrue(display.contains("IMAGE_HEIGHT_PX = 144"))
-        assertTrue(display.contains("ICON_MAX_DIMENSION_PX = 64"))
-        assertTrue(display.contains("canAttachBitmap(bitmap.byteCount, remoteBitmapBytesUsed)"))
-        assertTrue(display.contains("remoteBitmapBytesUsed += bitmap.byteCount"))
-        assertFalse(display.contains("targetWidthPx = 640"))
-        assertFalse(display.contains("width = 720"))
+        assertTrue("A fixed layout should define eight independently-addressable slots",
+            (1..8).all { root.contains("@+id/widget_display_slot_${it}_root") })
+        assertTrue("The renderer should use only the pre-inflated widget layout",
+            display.contains("R.layout.widget_display"))
+        assertFalse("RemoteViews must not create nested child trees at update time",
+            display.contains("views.addView"))
+        assertFalse("RemoteViews must not clear and rebuild the content tree",
+            display.contains("views.removeAllViews"))
+        assertFalse("Avoid API-specific dynamic layout-size changes",
+            display.contains("setViewLayoutWidth") || display.contains("setViewLayoutHeight"))
+        assertTrue("Text, image, action, progress, divider and spacer slots are static",
+            listOf("_text", "_image", "_action", "_progress", "_divider", "_spacer")
+                .all { root.contains(it) })
+        assertTrue("Rendering errors should switch to a recovery layout",
+            display.contains("createRecoveryViews"))
+        assertTrue("The recovery layout should tell the user how to repair the widget",
+            fallback.contains("Tap here to reopen setup and repair it"))
+        assertTrue("Recovery view should be clickable",
+            fallback.contains("@+id/widget_display_fallback_root"))
     }
 
     @Test
