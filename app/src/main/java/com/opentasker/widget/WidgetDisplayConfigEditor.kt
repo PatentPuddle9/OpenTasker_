@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -24,6 +25,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
@@ -57,14 +59,13 @@ import com.opentasker.app.R
 import com.opentasker.ui.icons.Icons
 import com.opentasker.core.model.Profile
 import com.opentasker.core.scenes.SceneImageLoader
-import com.opentasker.core.storage.toDomainDecodeResult
 import com.opentasker.ui.icons.WidgetIconImage
 import com.opentasker.ui.screens.ActionIconPickerDialog
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 internal fun WidgetDisplayConfigEditor(
     widgetId: Int,
@@ -356,7 +357,7 @@ private fun WidgetDisplayStateEditor(
                 WidgetDisplayElementType.SHORTCUT -> "Widget shortcut"
                 WidgetDisplayElementType.ICON -> "Icon label"
                 WidgetDisplayElementType.PROGRESS -> "Progress"
-                else -> "",
+                else -> ""
             },
         )
         onStateChange(state.copy(elements = state.elements + item))
