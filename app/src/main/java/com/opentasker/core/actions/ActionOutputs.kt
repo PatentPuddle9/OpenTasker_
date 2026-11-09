@@ -193,6 +193,7 @@ fun ActionField.acceptsVariableType(type: ActionValueType): Boolean {
         FieldType.CHECKBOX -> type == ActionValueType.ANY || type == ActionValueType.BOOLEAN
         FieldType.DROPDOWN,
         FieldType.TASK,
+        FieldType.ACTION_BLOCK,
         FieldType.APP,
         FieldType.FILE,
         FieldType.SCENE,
