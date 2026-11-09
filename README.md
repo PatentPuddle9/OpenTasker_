@@ -74,34 +74,28 @@ These are the current registered action IDs, grouped by their runtime category. 
 
 | Category | Count | Registered action blocks |
 |---|---:|---|
-| **Settings and device control** | 24 | \`wifi.toggle\`, \`wifi.scan\`, \`bluetooth.toggle\`, \`brightness.read\`, \`brightness.set\`, \`volume.read\`, \`volume.set\`, \`airplane.toggle\`, \`mobile.toggle\`, \`aod.set\`, \`screen.timeout\`, \`settings.write\`, \`dnd.set\`, \`zen.rule.set\`, \`zen.rule.clear\`, \`ringer.set\`, \`torch.read\`, \`torch.set\`, \`tile.set\`, \`state.temporary\`, \`ime.info\`, \`ime.set\`, \`screen.off\`, \`wake\` |
-| **Apps and shortcuts** | 11 | \`intent.launch\`, \`app.launch\`, \`app.archive\`, \`app.unarchive\`, \`shortcut.publish\`, \`plugin.locale.fire\`, \`app.kill\`, \`home.go\`, \`url.open\`, \`sms.send\`, \`screenshot.take\` |
-| **Files** | 5 | \`file.read\`, \`file.write\`, \`file.append\`, \`file.delete\`, \`file.list\` |
-| **Network and integrations** | 8 | \`http.request\`, \`http.get\`, \`http.post\`, \`integration.home_assistant.webhook\`, \`mqtt.publish\`, \`ping\`, \`download\`, \`wol\` |
-| **Media** | 6 | \`sound.play\`, \`sound.stop\`, \`sound.pause\`, \`track.next\`, \`track.previous\`, \`media.mute\` |
-| **System, scenes, and widgets** | 9 | \`scene.show\`, \`widget.display.control\`, \`auth.device_credential\`, \`clipboard.set\`, \`reboot\`, \`lock\`, \`log\`, \`tasker.unsupported\`, \`macrodroid.unsupported\` |
-| **Notifications and prompts** | 6 | \`notify.show\`, \`toast.show\`, \`notify.cancel\`, \`notify.progress\`, \`tts.speak\`, \`vibrate\` |
-| **Variables and data** | 13 | \`var.set\`, \`var.persist\`, \`clipboard.get\`, \`contacts.lookup\`, \`data.read\`, \`datetime.format\`, \`datetime.parse\`, \`datetime.add\`, \`text.match\`, \`text.replace\`, \`text.split\`, \`text.join\`, \`text.substring\` |
-| **Flow** | 1 runnable + 10 engine commands | Runnable: \`flow.wait\`. Engine commands: \`task.run\`, \`flow.if\`, \`flow.else\`, \`flow.endif\`, \`flow.foreach\`, \`flow.endfor\`, \`flow.stop\`, \`flow.try\`, \`flow.catch\`, \`flow.endtry\`. |
-| **Plugins and scripts** | 2 | \`plugin.locale.query\`, \`script.termux.run\` |
+| **Settings and device control** | 24 | `wifi.toggle`, `wifi.scan`, `bluetooth.toggle`, `brightness.read`, `brightness.set`, `volume.read`, `volume.set`, `airplane.toggle`, `mobile.toggle`, `aod.set`, `screen.timeout`, `settings.write`, `dnd.set`, `zen.rule.set`, `zen.rule.clear`, `ringer.set`, `torch.read`, `torch.set`, `tile.set`, `state.temporary`, `ime.info`, `ime.set`, `screen.off`, `wake` |
+| **Apps and shortcuts** | 11 | `intent.launch`, `app.launch`, `app.archive`, `app.unarchive`, `shortcut.publish`, `plugin.locale.fire`, `app.kill`, `home.go`, `url.open`, `sms.send`, `screenshot.take` |
+| **Files** | 5 | `file.read`, `file.write`, `file.append`, `file.delete`, `file.list` |
+| **Network and integrations** | 8 | `http.request`, `http.get`, `http.post`, `integration.home_assistant.webhook`, `mqtt.publish`, `ping`, `download`, `wol` |
+| **Media** | 6 | `sound.play`, `sound.stop`, `sound.pause`, `track.next`, `track.previous`, `media.mute` |
+| **System, scenes, and widgets** | 9 | `scene.show`, `widget.display.control`, `auth.device_credential`, `clipboard.set`, `reboot`, `lock`, `log`, `tasker.unsupported`, `macrodroid.unsupported` |
+| **Notifications and prompts** | 6 | `notify.show`, `toast.show`, `notify.cancel`, `notify.progress`, `tts.speak`, `vibrate` |
+| **Variables and data** | 13 | `var.set`, `var.persist`, `clipboard.get`, `contacts.lookup`, `data.read`, `datetime.format`, `datetime.parse`, `datetime.add`, `text.match`, `text.replace`, `text.split`, `text.join`, `text.substring` |
+| **Flow** | 1 runnable + 10 engine commands | Runnable: `flow.wait`. Engine commands: `task.run`, `flow.if`, `flow.else`, `flow.endif`, `flow.foreach`, `flow.endfor`, `flow.stop`, `flow.try`, `flow.catch`, `flow.endtry`. |
+| **Plugins and scripts** | 2 | `plugin.locale.query`, `script.termux.run` |
 
-**Sign In** (\`auth.device_credential\`) requests Android's biometric sign-in prompt, such as fingerprint when enrolled and available, with device PIN, pattern, or password as the device-credential fallback. If the device has no secure lock configured, Android reports that no credential is needed. Showing the prompt from a background automation requires Display over other apps access.
+**Sign In** (`auth.device_credential`) requests Android's biometric sign-in prompt, such as fingerprint when enrolled and available, with device PIN, pattern, or password as the device-credential fallback. If the device has no secure lock configured, Android reports that no credential is needed. Showing the prompt from a background automation requires Display over other apps access.
 
-**Brightness, volume, and torch status** can be read into variables with \`brightness.read\`, \`volume.read\`, and \`torch.read\`. Their corresponding setting blocks can change supported values. Other settings writes are checked against the capability and Android-version requirements for that operation.
+**Brightness, volume, and torch status** can be read into variables with `brightness.read`, `volume.read`, and `torch.read`. Their corresponding setting blocks can change supported values. Other settings writes are checked against the capability and Android-version requirements for that operation.
 
 **Temporary State** supports reversible brightness, volume, ringer, and Do Not Disturb changes. It captures the previous value, applies the temporary value, and schedules restoration after the selected duration. The restore job survives an app-process restart.
 
-**Quick Settings tiles** have four app-owned slots. Configure each tile's label, subtitle, icon, and state, then use \`tile.set\` to control it. A tile tap can also be used as a trigger. Tile-triggered runs wait for the device to be unlocked.
+**Quick Settings tiles** have four app-owned slots. Configure each tile's label, subtitle, icon, and state, then use `tile.set` to control it. A tile tap can also be used as a trigger. Tile-triggered runs wait for the device to be unlocked.
 
-**Widget Display control** (\`widget.display.control\`) selects a display widget and shows a specific state or advances/rewinds its slideshow. **Show Scene** (\`scene.show\`) displays a saved Scene as a floating overlay.
+**Widget Display control** (`widget.display.control`) selects a display widget and shows a specific state or advances/rewinds its slideshow. **Show Scene** (`scene.show`) displays a saved Scene as a floating overlay.
 
 **Show Popup** opens a real Android dialog above other apps instead of posting a notification. It uses the Display over other apps access in Setup. Up to three buttons can be configured; a button without a selected action block simply dismisses the dialog.
-
-**Toast** displays a short message with a selectable icon. Toast overlays follow the device's light or dark appearance and use Android's native toast-window animation. Action-result messages can also be enabled or disabled in Settings, including results from widget and shortcut runs.
-
-**Show Popup**
-
-**Show Popup** opens a real Android dialog above other apps instead of posting a notification. It uses the Display over other apps access in Setup. Up to three buttons can be configured; a button without a selected flow simply dismisses the dialog.
 
 **Toast** displays a short message with a selectable icon. Toast overlays follow the device's light or dark appearance and use Android's native toast-window animation. Action-result messages can also be enabled or disabled in Settings, including results from widget and shortcut runs.
 
@@ -114,10 +108,6 @@ New automations should use **HTTP Request** for GET, HEAD, POST, PUT, PATCH, DEL
 **MQTT Publish** uses an in-app MQTT 3.1.1 client. TLS is enabled by default and verifies the broker hostname. Cleartext is restricted to private/local hosts. Payloads are capped, QoS 2 and wildcard publish topics are rejected, and username/password fields are redacted.
 
 Clipboard actions read and write bounded text without an additional permission. Clipboard-derived values are marked sensitive. Contact lookup supports bounded name, phone, and email matching into sensitive variables. On Android 17 and newer, the default contact mode uses the system picker to grant access only to selected fields; explicit permission mode is available for unattended runs.
-
-Quick Settings tiles provide four app-owned slots. Configure a tile's label, subtitle, icon, and state, then bind it to an Action. Tile-triggered runs use the same execution and run-log path as other entry points. A tile tap on a locked device waits until the phone is unlocked before running.
-
-The **Temporary State** action applies a bounded reversible setting, such as brightness, volume, ringer mode, or DND, and schedules restoration of the captured previous value. Pending restore work survives process death.
 
 Keyboard actions report the current and enabled input methods. The keyboard picker opens Android's own selection UI; ordinary apps cannot silently switch the active keyboard.
 
