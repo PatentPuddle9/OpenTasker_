@@ -87,7 +87,7 @@ class MainActivity : ComponentActivity() {
         // Refresh already-pinned Widget Displays after an app upgrade so launchers replace
         // stale RemoteViews from an older renderer with the current safe layout.
         runCatching { WidgetDisplayProvider.requestRefresh(applicationContext) }
-            .onFailure { AppLogger.warn("MainActivity", "Could not refresh Widget Displays", it) }
+            .onFailure { AppLogger.debug("MainActivity", "Could not refresh Widget Displays: ${it.message}") }
         onBackPressedDispatcher.addCallback(this, rootBackCallback)
         registerPredictiveBackCallback()
         enableEdgeToEdge()
