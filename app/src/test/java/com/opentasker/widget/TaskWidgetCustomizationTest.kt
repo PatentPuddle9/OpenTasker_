@@ -148,7 +148,7 @@ class TaskWidgetCustomizationTest {
         assertTrue(screen.contains("Text(\"Widget Shortcut\""))
         assertTrue(screen.contains("Text(\"Widget Display\""))
         assertFalse("The list itself should not have a second create button", screen.contains("onCreateNew"))
-        assertFalse("The list itself should not have a separate Display button", screen.contains("Create Widget Display"))
+        assertFalse("The list itself should not have a separate Display button", screen.contains("OutlinedButton(onClick = { showDisplaySizes"))
     }
 
     @Test
