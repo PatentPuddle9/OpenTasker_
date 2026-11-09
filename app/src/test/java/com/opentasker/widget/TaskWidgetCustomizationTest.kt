@@ -240,7 +240,7 @@ class TaskWidgetCustomizationTest {
         assertTrue(guides.contains("findVerticalSpacing"))
         assertTrue(model.contains("val xDp: Int = -1"))
         assertTrue(model.contains("val yDp: Int = -1"))
-        assertTrue(model.contains("WidgetDisplayCanvasMetrics.normalize(state.elements)"))
+        assertTrue(model.contains("WidgetDisplayCanvasMetrics.normalize(\n                                    state.elements,\n                                    canvasWidthDp,"))
     }
 
     @Test
