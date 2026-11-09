@@ -21,7 +21,7 @@
     <string name="error_prefix">Error: %1$s</string>
     <string name="success_prefix">Success: %1$s</string>
     <string name="widget_display_description">A customizable Widget Display dashboard with multiple states and Action shortcuts</string>
-    <string name="widget_display_custom_description">A resizable customizable Widget Display dashboard</string>
+    <string name="widget_display_custom_description">A fixed-size Widget Display dashboard with an editor-sized design canvas</string>
     <string name="widget_display_variant_compact">Widget Display · Compact</string>
     <string name="widget_display_variant_square">Widget Display · Square</string>
     <string name="widget_display_variant_wide">Widget Display · Wide</string>
