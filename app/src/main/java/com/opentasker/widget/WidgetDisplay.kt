@@ -220,6 +220,14 @@ object WidgetDisplayRenderer {
     private const val IMAGE_HEIGHT_PX = 90
     private const val ICON_MAX_DIMENSION_PX = 40
 
+    private enum class ContentMode {
+        CANVAS,
+        COMPACT_ROW,
+        SQUARE_GRID,
+        WIDE_GRID,
+        PORTRAIT_GRID,
+    }
+
     private data class SlotIds(
         val root: Int,
         val text: Int,
@@ -348,7 +356,15 @@ object WidgetDisplayRenderer {
         val options = manager.getAppWidgetOptions(widgetId)
         val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 220).coerceAtLeast(110)
         val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 140).coerceAtLeast(40)
-        val compact = minHeight <= 69
+        val mode = when {
+            minHeight <= 69 -> ContentMode.COMPACT_ROW
+            minWidth < 190 && minHeight >= 70 && minHeight < 180 -> ContentMode.SQUARE_GRID
+            minWidth >= 190 && minHeight < 180 -> ContentMode.WIDE_GRID
+            minHeight > minWidth * 1.35f -> ContentMode.PORTRAIT_GRID
+            else -> ContentMode.CANVAS
+        }
+        val compact = mode == ContentMode.COMPACT_ROW
+        val hideHeader = mode != ContentMode.CANVAS
         val modernCanvas = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
         val layoutId = if (modernCanvas) {
             com.opentasker.app.R.layout.widget_display
@@ -383,11 +399,11 @@ object WidgetDisplayRenderer {
         views.setTextColor(com.opentasker.app.R.id.widget_display_subtitle, foreground)
         views.setViewVisibility(
             com.opentasker.app.R.id.widget_display_title,
-            if (compact || state.title.isBlank()) View.GONE else View.VISIBLE,
+            if (hideHeader || state.title.isBlank()) View.GONE else View.VISIBLE,
         )
         views.setViewVisibility(
             com.opentasker.app.R.id.widget_display_subtitle,
-            if (compact || state.subtitle.isBlank()) View.GONE else View.VISIBLE,
+            if (hideHeader || state.subtitle.isBlank()) View.GONE else View.VISIBLE,
         )
         views.setTextViewTextSize(
             com.opentasker.app.R.id.widget_display_title,
@@ -395,29 +411,31 @@ object WidgetDisplayRenderer {
             if (compact) 13f else 17f,
         )
 
-        // Two-by-one widgets have too little vertical room for an absolute design canvas.
-        // Present up to two selected items side by side there; larger widgets preserve authored
-        // canvas coordinates and dimensions.
+        // Small fixed sizes use responsive grids instead of shrinking the 320 × 200 canvas
+        // until every item becomes unreadable. Larger widgets retain the exact authored layout.
         val configured = state.elements
-        val visibleElements = if (compact) {
-            configured.take(2)
-        } else if (configured.size > MAX_SLOTS) {
-            configured.take(MAX_SLOTS - 1) + WidgetDisplayElement(
-                id = "overflow-" + configured.size,
-                type = WidgetDisplayElementType.TEXT,
-                text = "+ " + (configured.size - (MAX_SLOTS - 1)) + " more items",
-                textSizeSp = 11,
-                xDp = 12,
-                yDp = 172,
-                widthDp = 296,
-                heightDp = 22,
-            )
-        } else {
-            configured
+        val visibleElements = when (mode) {
+            ContentMode.COMPACT_ROW -> configured.take(2)
+            ContentMode.SQUARE_GRID -> configured.take(4)
+            ContentMode.WIDE_GRID, ContentMode.PORTRAIT_GRID -> configured.take(MAX_SLOTS)
+            ContentMode.CANVAS -> if (configured.size > MAX_SLOTS) {
+                configured.take(MAX_SLOTS - 1) + WidgetDisplayElement(
+                    id = "overflow-" + configured.size,
+                    type = WidgetDisplayElementType.TEXT,
+                    text = "+ " + (configured.size - (MAX_SLOTS - 1)) + " more items",
+                    textSizeSp = 11,
+                    xDp = 12,
+                    yDp = 172,
+                    widthDp = 296,
+                    heightDp = 22,
+                )
+            } else {
+                configured
+            }
         }
 
         val contentWidthDp = (minWidth - paddingDp * 2).coerceAtLeast(72f)
-        val headerHeightDp = if (compact) 0f else {
+        val headerHeightDp = if (hideHeader) 0f else {
             (if (state.title.isBlank()) 0f else 24f) +
                 (if (state.subtitle.isBlank()) 0f else 18f) + 7f
         }
@@ -438,9 +456,14 @@ object WidgetDisplayRenderer {
             views.setOnClickPendingIntent(slots.first().root, configPendingIntent(context, widgetId))
             if (modernCanvas) {
                 placeSlot(
-                    views, slots.first().root, empty,
-                    contentWidthDp, contentHeightDp,
-                    compact, 0, 1,
+                    views = views,
+                    rootId = slots.first().root,
+                    element = empty,
+                    contentWidthDp = contentWidthDp,
+                    contentHeightDp = contentHeightDp,
+                    mode = mode,
+                    compactIndex = 0,
+                    compactCount = 1,
                 )
             }
         } else {
@@ -456,7 +479,7 @@ object WidgetDisplayRenderer {
                         element = element,
                         contentWidthDp = contentWidthDp,
                         contentHeightDp = contentHeightDp,
-                        compact = compact,
+                        mode = mode,
                         compactIndex = index,
                         compactCount = visibleElements.size,
                     )
@@ -474,20 +497,34 @@ object WidgetDisplayRenderer {
         element: WidgetDisplayElement,
         contentWidthDp: Float,
         contentHeightDp: Float,
-        compact: Boolean,
+        mode: ContentMode,
         compactIndex: Int,
         compactCount: Int,
     ) {
         val unit = android.util.TypedValue.COMPLEX_UNIT_DIP
-        if (compact) {
-            val columnWidth = contentWidthDp / compactCount.coerceAtLeast(1)
-            val width = (columnWidth - 5f).coerceAtLeast(1f)
-            val height = (contentHeightDp - 4f).coerceAtLeast(18f)
-            val left = compactIndex * columnWidth + 2f
+        if (mode != ContentMode.CANVAS) {
+            val columns = when (mode) {
+                ContentMode.COMPACT_ROW -> compactCount.coerceAtLeast(1)
+                ContentMode.SQUARE_GRID, ContentMode.PORTRAIT_GRID -> 2
+                ContentMode.WIDE_GRID -> 4
+                ContentMode.CANVAS -> 1
+            }
+            val rows = when (mode) {
+                ContentMode.COMPACT_ROW, ContentMode.WIDE_GRID -> 1
+                ContentMode.SQUARE_GRID -> 2
+                ContentMode.PORTRAIT_GRID -> 4
+                ContentMode.CANVAS -> 1
+            }
+            val cellWidth = contentWidthDp / columns
+            val cellHeight = contentHeightDp / rows
+            val width = (cellWidth - 4f).coerceAtLeast(1f)
+            val height = (cellHeight - 4f).coerceAtLeast(18f)
+            val left = (compactIndex % columns) * cellWidth + 2f
+            val top = (compactIndex / columns) * cellHeight + 2f
             views.setViewLayoutWidth(rootId, width, unit)
             views.setViewLayoutHeight(rootId, height, unit)
             views.setViewLayoutMargin(rootId, Gravity.LEFT, left, unit)
-            views.setViewLayoutMargin(rootId, Gravity.TOP, 2f, unit)
+            views.setViewLayoutMargin(rootId, Gravity.TOP, top, unit)
             return
         }
 
