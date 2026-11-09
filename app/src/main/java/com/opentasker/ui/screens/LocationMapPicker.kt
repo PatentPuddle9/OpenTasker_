@@ -18,13 +18,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -48,7 +45,6 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -162,7 +158,7 @@ private fun LocationMapPickerDialog(
     var lastSearchAt by remember { mutableLongStateOf(0L) }
     var mapView by remember { mutableStateOf<WebView?>(null) }
 
-    fun setSelection(latitude: Double, longitude: Double, moveMap: Boolean = true) {
+    fun setSelection(latitude: Double, longitude: Double, moveMap: Boolean = true, updateMap: Boolean = true) {
         if (!latitude.isFinite() || latitude !in -90.0..90.0 ||
             !longitude.isFinite() || longitude !in -180.0..180.0
         ) return
@@ -170,10 +166,12 @@ private fun LocationMapPickerDialog(
         selectedLongitude = longitude
         statusMessage = null
         val move = if (moveMap) "true" else "false"
-        mapView?.evaluateJavascript(
-            "window.setOpenTaskerPoint($latitude,$longitude,$move);",
-            null,
-        )
+        if (updateMap) {
+            mapView?.evaluateJavascript(
+                "window.setOpenTaskerPoint($latitude,$longitude,$move);",
+                null,
+            )
+        }
     }
 
     fun useCurrentLocation() {
@@ -351,7 +349,7 @@ private fun LocationMapPickerDialog(
                             isHorizontalScrollBarEnabled = false
                             addJavascriptInterface(
                                 LocationPickerJavascriptBridge { lat, lon ->
-                                    mainHandler.post { setSelection(lat, lon, moveMap = false) }
+                                    mainHandler.post { setSelection(lat, lon, moveMap = false, updateMap = false) }
                                 },
                                 "OpenTaskerPicker",
                             )
@@ -593,7 +591,13 @@ private fun locationPickerHtml(
               if (!isFinite(lat) || !isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
               var point = [lat, lon];
               if (marker) marker.setLatLng(point);
-              else marker = L.marker(point, { icon:pointIcon, draggable:true }).addTo(map);
+              else {
+                marker = L.marker(point, { icon:pointIcon, draggable:true }).addTo(map);
+                marker.on('dragend', function(event) {
+                  var moved = event.target.getLatLng();
+                  updatePoint(moved.lat, moved.lng, true, false);
+                });
+              }
               if (rangeCircle) rangeCircle.setLatLng(point).setRadius(activeRadius);
               else rangeCircle = L.circle(point, {
                 radius:activeRadius, color:'#6750a4', weight:2,
@@ -605,7 +609,7 @@ private fun locationPickerHtml(
               }
             }
             window.setOpenTaskerPoint = function(lat, lon, moveMap) {
-              updatePoint(lat, lon, true, moveMap);
+              updatePoint(lat, lon, false, moveMap);
             };
             window.updateOpenTaskerRadius = function(radius) {
               activeRadius = Math.max(1, Number(radius) || 100);
