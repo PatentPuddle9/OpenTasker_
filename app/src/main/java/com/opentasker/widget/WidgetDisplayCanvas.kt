@@ -301,7 +301,14 @@ private fun WidgetDisplayCanvasItemContent(
                     modifier = Modifier.size(16.dp),
                 )
                 Text(
-                    element.text.ifBlank { element.type.displayLabel },
+                    element.text.ifBlank {
+                        when (element.type) {
+                            WidgetDisplayElementType.BUTTON -> "Action"
+                            WidgetDisplayElementType.SHORTCUT -> "Widget shortcut"
+                            WidgetDisplayElementType.ICON -> "Icon"
+                            else -> "Content"
+                        }
+                    },
                     color = foreground,
                     style = MaterialTheme.typography.labelSmall,
                     maxLines = 1,
