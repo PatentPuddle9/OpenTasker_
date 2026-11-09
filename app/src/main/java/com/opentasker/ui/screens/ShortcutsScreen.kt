@@ -391,7 +391,7 @@ internal fun WidgetsCreateFab(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        "Choose a fixed layout or a resizable custom widget.",
+                        "Choose a fixed launcher layout. Set the design canvas width and height in the editor.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
