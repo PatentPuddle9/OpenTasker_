@@ -128,7 +128,7 @@ The **Widgets** area manages two home-screen widget types. Widgets launch or dis
 - Create, edit, duplicate, reorder, and delete states. Each state has its own title, subtitle, colors, and content.
 - Edit each state on a draggable design canvas. Drag to position items, resize an item from its corner handle, or enter exact X/Y/width/height values.
 - Items snap to canvas centers and edges, line up with other items, and show matching horizontal or vertical gap guides while dragging. Center and edge-align a selected item with one tap.
-- Small 2 × 2 and 4 × 2 widgets automatically use compact grids; larger widgets preserve the authored canvas positions.
+- Every supported widget size uses the same saved X/Y/width/height positions from the editor. The renderer scales the complete design canvas proportionally into the available widget area instead of rearranging items into a size-specific grid.
 - Add text, images, icons, progress bars, Action buttons, Widget Shortcut buttons, dividers, and spacing. Each state displays up to eight items.
 - Uses a fixed, launcher-safe RemoteViews layout rather than dynamically inserting views. A lightweight initial placeholder protects widget creation, and rendering errors leave a tappable recovery view.
 - Buttons can launch existing Actions, including Actions owned by Widget Shortcuts.
