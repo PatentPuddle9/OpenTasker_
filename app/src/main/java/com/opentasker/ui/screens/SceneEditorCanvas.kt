@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -15,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,6 +50,7 @@ import com.opentasker.core.scenes.SceneAlignmentGuides
 import com.opentasker.core.scenes.SceneCanvasElementProjection
 import com.opentasker.core.scenes.SceneCanvasProjector
 import com.opentasker.core.scenes.SceneEditorMutations
+import com.opentasker.core.scenes.SceneSelectionAlignment
 import com.opentasker.ui.theme.DesignSystem
 
 @Composable
@@ -56,6 +61,7 @@ internal fun ScenePreviewBox(
     selectedIndices: Set<Int> = emptySet(),
     onToggleSelect: (Int) -> Unit = {},
     onMoveSelected: (Int, Int) -> Unit = { _, _ -> },
+    onAlignSelected: (SceneSelectionAlignment) -> Unit = {},
 ) {
     var activeGuides by remember { mutableStateOf<List<AlignmentGuide>>(emptyList()) }
     Surface(
@@ -68,6 +74,27 @@ internal fun ScenePreviewBox(
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.sm)) {
             Text(stringResource(R.string.scenes_canvas_size, scene.widthDp, scene.heightDp), style = MaterialTheme.typography.labelLarge)
+            if (selectedIndices.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = { onAlignSelected(SceneSelectionAlignment.CENTER_ON_CANVAS) }) {
+                        Text("Center on canvas")
+                    }
+                    if (selectedIndices.size >= 2) {
+                        TextButton(onClick = { onAlignSelected(SceneSelectionAlignment.LEFT) }) { Text("Left") }
+                        TextButton(onClick = { onAlignSelected(SceneSelectionAlignment.CENTER_HORIZONTAL) }) { Text("Center H") }
+                        TextButton(onClick = { onAlignSelected(SceneSelectionAlignment.RIGHT) }) { Text("Right") }
+                        TextButton(onClick = { onAlignSelected(SceneSelectionAlignment.TOP) }) { Text("Top") }
+                        TextButton(onClick = { onAlignSelected(SceneSelectionAlignment.CENTER_VERTICAL) }) { Text("Center V") }
+                        TextButton(onClick = { onAlignSelected(SceneSelectionAlignment.BOTTOM) }) { Text("Bottom") }
+                        TextButton(onClick = { onAlignSelected(SceneSelectionAlignment.DISTRIBUTE_HORIZONTAL) }) { Text("Equal H gaps") }
+                        TextButton(onClick = { onAlignSelected(SceneSelectionAlignment.DISTRIBUTE_VERTICAL) }) { Text("Equal V gaps") }
+                    }
+                }
+            }
             if (scene.elements.isEmpty()) {
                 Text(
                     stringResource(R.string.empty_scene_elements),
