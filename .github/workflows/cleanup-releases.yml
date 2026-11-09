@@ -1,0 +1,33 @@
+name: Clean up OpenTasker releases
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - Experimental
+    paths:
+      - .github/workflows/cleanup-releases.yml
+      - tools/cleanup-releases.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: opentasker-release-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Reformat versioned release notes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Experimental
+        uses: actions/checkout@v4
+        with:
+          ref: Experimental
+
+      - name: Clean up release presentation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python3 tools/cleanup-releases.py
