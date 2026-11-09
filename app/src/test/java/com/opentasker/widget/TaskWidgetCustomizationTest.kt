@@ -94,7 +94,7 @@ class TaskWidgetCustomizationTest {
 
         assertTrue(display.contains("data class WidgetDisplayState"))
         assertTrue(display.contains("MAX_STATES = 75"))
-        assertTrue(display.contains("WidgetDisplayStateReceiver"))
+        assertFalse("Widget Displays should not render previous/next arrows", display.contains("widget_display_navigation"))
         assertTrue(display.contains("WidgetDisplayStateController"))
         assertTrue(display.contains("WidgetDisplayElementType.IMAGE"))
         assertTrue(display.contains("WidgetDisplayElementType.PROGRESS"))
@@ -109,6 +109,46 @@ class TaskWidgetCustomizationTest {
         assertTrue(action.contains("WidgetDisplayStateController.control"))
         assertTrue(catalog.contains("define(\"widget.display.control\""))
         assertTrue(metadata.contains("id = \"widget.display.control\""))
+    }
+
+    @Test
+    fun widgetDisplayUsesOnlyRemoteViewsSupportedElementsAndCollapsesCompactWhitespace() {
+        val display = sourceRoot.resolve("com/opentasker/widget/WidgetDisplay.kt").readText()
+        val root = resRoot.resolve("layout/widget_display.xml").readText()
+        val spacer = resRoot.resolve("layout/widget_display_spacer_item.xml").readText()
+        val divider = resRoot.resolve("layout/widget_display_divider_item.xml").readText()
+        val image = resRoot.resolve("layout/widget_display_image_item.xml").readText()
+        val icon = resRoot.resolve("layout/widget_display_icon_item.xml").readText()
+        val progress = resRoot.resolve("layout/widget_display_progress_item.xml").readText()
+
+        assertFalse("Spacer must not use android.view.Space inside RemoteViews", spacer.contains("<Space"))
+        assertTrue("Spacer must use a RemoteViews-supported TextView", spacer.contains("<TextView"))
+        assertFalse("Divider must not use a generic View inside RemoteViews", divider.contains("<View "))
+        assertTrue("Divider must use a RemoteViews-supported TextView", divider.contains("<TextView"))
+        assertTrue(image.contains("@+id/widget_display_image_item_root"))
+        assertTrue(icon.contains("@+id/widget_display_icon_root"))
+        assertTrue(progress.contains("@+id/widget_display_progress_root"))
+        assertFalse("State arrows are intentionally removed", root.contains("widget_display_navigation"))
+        assertFalse(display.contains("WidgetDisplayStateReceiver"))
+        assertTrue(display.contains("Build.VERSION.SDK_INT >= Build.VERSION_CODES.S"))
+        assertTrue(display.contains("elements.filterNot"))
+        assertTrue(display.contains("WidgetDisplayElementType.SPACER || it.type == WidgetDisplayElementType.DIVIDER"))
+        assertTrue(display.contains("child.setViewLayoutWidth"))
+    }
+
+    @Test
+    fun widgetsTabHasOneAnimatedCreateMenuForBothWidgetTypes() {
+        val screen = sourceRoot.resolve("com/opentasker/ui/screens/ShortcutsScreen.kt").readText()
+        val host = sourceRoot.resolve("com/opentasker/ui/screens/ActiveAutomationUi.kt").readText()
+
+        assertTrue(host.contains("OpenTaskerScreen.Shortcuts -> WidgetsCreateFab"))
+        assertTrue(screen.contains("AnimatedVisibility("))
+        assertTrue(screen.contains("slideInVertically"))
+        assertTrue(screen.contains("scaleIn"))
+        assertTrue(screen.contains("Text(\"Widget Shortcut\""))
+        assertTrue(screen.contains("Text(\"Widget Display\""))
+        assertFalse("The list itself should not have a second create button", screen.contains("onCreateNew"))
+        assertFalse("The list itself should not have a separate Display button", screen.contains("Create Widget Display"))
     }
 
     @Test
