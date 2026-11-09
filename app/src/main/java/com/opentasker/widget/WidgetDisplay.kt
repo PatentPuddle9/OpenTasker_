@@ -1,5 +1,6 @@
 package com.opentasker.widget
 
+import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
@@ -151,7 +152,7 @@ object WidgetDisplayStateController {
  * Each button/shortcut targets a top-level Action (Profile ID), never an Action block.
  */
 object WidgetDisplayRenderer {
-        fun updateWidget(context: Context, manager: AppWidgetManager, widgetId: Int) {
+    fun updateWidget(context: Context, manager: AppWidgetManager, widgetId: Int) {
         if (WidgetDisplayStore.isRemoved(context, widgetId)) {
             val placeholder = RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display)
             placeholder.setImageViewBitmap(
