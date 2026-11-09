@@ -37,7 +37,7 @@ open class WidgetDisplayProvider : AppWidgetProvider() {
         SQUARE("Square · 2 × 2", WidgetDisplaySquareProvider::class.java),
         WIDE("Wide · 4 × 2", WidgetDisplayWideProvider::class.java),
         LARGE("Large · 4 × 4", WidgetDisplayLargeProvider::class.java),
-        CUSTOM("Custom · set size in editor", WidgetDisplayCustomProvider::class.java),
+        CUSTOM("Custom · 3 × 3 · set size in editor", WidgetDisplayCustomProvider::class.java),
     }
 
     data class Instance(val widgetId: Int, val size: Size)
