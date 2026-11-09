@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_display_fallback_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:padding="14dp"
+    android:background="#30243F">
+
+    <TextView
+        android:id="@+id/widget_display_fallback_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Widget Display couldn't load"
+        android:textColor="#FFFFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:maxLines="2" />
+
+    <TextView
+        android:id="@+id/widget_display_fallback_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:text="Tap here to reopen setup and repair it"
+        android:textColor="#DDFFFFFF"
+        android:textSize="12sp"
+        android:maxLines="3" />
+</LinearLayout>
