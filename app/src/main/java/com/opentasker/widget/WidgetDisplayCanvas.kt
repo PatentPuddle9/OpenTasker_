@@ -168,6 +168,10 @@ private fun WidgetDisplayCanvasItem(
                                 candidateW = element.widthDp,
                                 candidateH = element.heightDp,
                             )
+                            // Keep the dragged item on the magnetic snap point while the finger
+                            // is still down, just like the Scene canvas.
+                            dragX = (result.snappedX - element.xDp).toFloat()
+                            dragY = (result.snappedY - element.yDp).toFloat()
                             onGuidesChanged(result.guides)
                         },
                         onDragEnd = {
