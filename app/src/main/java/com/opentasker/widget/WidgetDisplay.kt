@@ -587,12 +587,22 @@ object WidgetDisplayRenderer {
             return
         }
 
-        val scaleX = contentWidthDp / designCanvasWidthDp.toFloat()
-        val scaleY = contentHeightDp / designCanvasHeightDp.toFloat()
-        val width = (element.widthDp * scaleX).coerceAtLeast(1f)
-        val height = (element.heightDp * scaleY).coerceAtLeast(1f)
-        val left = (element.xDp * scaleX).coerceIn(0f, (contentWidthDp - width).coerceAtLeast(0f))
-        val top = (element.yDp * scaleY).coerceIn(0f, (contentHeightDp - height).coerceAtLeast(0f))
+        // Keep the authored aspect ratio when the launcher's fixed slot differs from the
+        // dimensions the user entered in the editor. Center the design rather than distorting it.
+        val scale = minOf(
+            contentWidthDp / designCanvasWidthDp.toFloat(),
+            contentHeightDp / designCanvasHeightDp.toFloat(),
+        )
+        val scaledCanvasWidth = designCanvasWidthDp * scale
+        val scaledCanvasHeight = designCanvasHeightDp * scale
+        val canvasOffsetX = (contentWidthDp - scaledCanvasWidth) / 2f
+        val canvasOffsetY = (contentHeightDp - scaledCanvasHeight) / 2f
+        val width = (element.widthDp * scale).coerceAtLeast(1f)
+        val height = (element.heightDp * scale).coerceAtLeast(1f)
+        val left = (canvasOffsetX + element.xDp * scale)
+            .coerceIn(0f, (contentWidthDp - width).coerceAtLeast(0f))
+        val top = (canvasOffsetY + element.yDp * scale)
+            .coerceIn(0f, (contentHeightDp - height).coerceAtLeast(0f))
         views.setViewLayoutWidth(rootId, width, unit)
         views.setViewLayoutHeight(rootId, height, unit)
         views.setViewLayoutMargin(rootId, RemoteViews.MARGIN_LEFT, left, unit)
