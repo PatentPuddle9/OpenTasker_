@@ -107,7 +107,7 @@ The **Widgets** area manages two home-screen widget types:
 - Create, edit, duplicate, reorder, and delete states. Each state has its own title, subtitle, layout, colors, and content.
 - Add text, images, icons, progress bars, Action buttons, Widget Shortcut buttons, dividers, and spacing.
 - Buttons can launch existing Actions, including Actions owned by Widget Shortcuts.
-- Move between states with the on-widget previous/next controls, or use the **Control Widget Display** Action to show a particular state or move forward/back.
+- Move between states with the **Control Widget Display** Action to show a particular state or move forward/back; the widget itself stays clean, with no navigation arrows.
 - The widget ID is shown in the Widgets list for use in Control Widget Display actions.
 
 ### Icons and customization
