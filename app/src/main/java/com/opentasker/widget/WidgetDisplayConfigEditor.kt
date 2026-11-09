@@ -443,6 +443,11 @@ private fun WidgetDisplayStateEditor(
         )
 
         Text("Add content", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Each state can display up to 8 items on the home screen.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             addTypes.forEach { (label, type) ->
                 OutlinedButton(onClick = { addElement(type) }) { Text(label) }
