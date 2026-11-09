@@ -97,10 +97,10 @@ internal fun WidgetDisplayConfigEditor(
             listOf(WidgetDisplayState(name = "State 1"))
         })
     }
-    var canvasWidthDp by remember(widgetId) {
+    var canvasWidthDp by rememberSaveable(widgetId) {
         mutableStateOf(WidgetDisplayCanvasMetrics.normalizeWidth(initialConfig.canvasWidthDp))
     }
-    var canvasHeightDp by remember(widgetId) {
+    var canvasHeightDp by rememberSaveable(widgetId) {
         mutableStateOf(WidgetDisplayCanvasMetrics.normalizeHeight(initialConfig.canvasHeightDp))
     }
     var canvasWidthText by rememberSaveable(widgetId) {
