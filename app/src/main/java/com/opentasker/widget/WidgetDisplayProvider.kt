@@ -29,19 +29,20 @@ open class WidgetDisplayProvider : AppWidgetProvider() {
         appWidgetIds.forEach { WidgetDisplayStore.clear(context, it) }
     }
 
-    companion object {
-        enum class Size(
-            val label: String,
-            val providerClass: Class<out WidgetDisplayProvider>,
-        ) {
-            COMPACT("Compact · 2 × 1", WidgetDisplayCompactProvider::class.java),
-            SQUARE("Square · 2 × 2", WidgetDisplaySquareProvider::class.java),
-            WIDE("Wide · 4 × 2", WidgetDisplayWideProvider::class.java),
-            LARGE("Large · 4 × 4", WidgetDisplayLargeProvider::class.java),
-            CUSTOM("Custom · resizable", WidgetDisplayCustomProvider::class.java),
-        }
+    enum class Size(
+        val label: String,
+        val providerClass: Class<out WidgetDisplayProvider>,
+    ) {
+        COMPACT("Compact · 2 × 1", WidgetDisplayCompactProvider::class.java),
+        SQUARE("Square · 2 × 2", WidgetDisplaySquareProvider::class.java),
+        WIDE("Wide · 4 × 2", WidgetDisplayWideProvider::class.java),
+        LARGE("Large · 4 × 4", WidgetDisplayLargeProvider::class.java),
+        CUSTOM("Custom · resizable", WidgetDisplayCustomProvider::class.java),
+    }
 
-        data class Instance(val widgetId: Int, val size: Size)
+    data class Instance(val widgetId: Int, val size: Size)
+
+    companion object {
 
         fun requestPinWidget(context: Context, size: Size): Boolean {
             val manager = AppWidgetManager.getInstance(context)
