@@ -303,6 +303,13 @@ private fun SceneCanvasElement(
                                 candidateW = element.widthDp,
                                 candidateH = element.heightDp,
                             )
+                            // Move the preview onto the snapped coordinates immediately so the
+                            // guide behaves like Canva's magnetic alignment rather than only
+                            // correcting the element after the finger is lifted.
+                            val safeSceneWidth = scene.widthDp.takeIf { it > 0 } ?: 1
+                            val safeSceneHeight = scene.heightDp.takeIf { it > 0 } ?: 1
+                            dragX = alignment.snappedX * canvasWidth / safeSceneWidth - projection.x
+                            dragY = alignment.snappedY * canvasHeight / safeSceneHeight - projection.y
                             onAlignmentGuidesChanged(alignment.guides)
                         },
                         onDragEnd = {
