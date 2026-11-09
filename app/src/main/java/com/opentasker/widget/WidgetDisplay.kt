@@ -152,7 +152,7 @@ class WidgetDisplayStateReceiver : BroadcastReceiver() {
         val widgetId = intent?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
             ?: AppWidgetManager.INVALID_APPWIDGET_ID
         if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return
-        val operation = intent.getStringExtra(EXTRA_OPERATION).orEmpty()
+        val operation = intent?.getStringExtra(EXTRA_OPERATION).orEmpty()
         WidgetDisplayStateController.control(context, widgetId, operation)
     }
 
