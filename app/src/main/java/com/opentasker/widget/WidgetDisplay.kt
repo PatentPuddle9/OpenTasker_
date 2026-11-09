@@ -28,6 +28,11 @@ data class WidgetDisplayElement(
     val imageUri: String = "",
     val progress: Int = 50,
     val textSizeSp: Int = 14,
+    /** Top-left position and size in the editor's 320 × 200 dp design canvas. */
+    val xDp: Int = -1,
+    val yDp: Int = -1,
+    val widthDp: Int = 136,
+    val heightDp: Int = 40,
 )
 
 @Serializable
@@ -49,6 +54,51 @@ data class WidgetDisplayConfig(
     val states: List<WidgetDisplayState> = listOf(WidgetDisplayState(name = "State 1")),
 )
 
+object WidgetDisplayCanvasMetrics {
+    const val WIDTH_DP = 320
+    const val HEIGHT_DP = 200
+    const val MAX_ELEMENTS = 8
+    const val DEFAULT_WIDTH_DP = 136
+    const val DEFAULT_HEIGHT_DP = 40
+    private const val OUTER_PADDING_DP = 12
+    private const val COLUMN_GAP_DP = 24
+    private const val ROW_GAP_DP = 8
+
+    fun defaultBounds(index: Int): com.opentasker.core.scenes.CanvasElementBounds {
+        val slot = index.coerceIn(0, MAX_ELEMENTS - 1)
+        val column = slot % 2
+        val row = slot / 2
+        return com.opentasker.core.scenes.CanvasElementBounds(
+            x = OUTER_PADDING_DP + column * (DEFAULT_WIDTH_DP + COLUMN_GAP_DP),
+            y = OUTER_PADDING_DP + row * (DEFAULT_HEIGHT_DP + ROW_GAP_DP),
+            width = DEFAULT_WIDTH_DP,
+            height = DEFAULT_HEIGHT_DP,
+        )
+    }
+
+    /** Positions widgets created by older builds in a tidy two-column starter layout. */
+    fun normalize(elements: List<WidgetDisplayElement>): List<WidgetDisplayElement> =
+        elements.mapIndexed { index, element ->
+            if (element.xDp < 0 || element.yDp < 0 || element.widthDp <= 0 || element.heightDp <= 0) {
+                val bounds = defaultBounds(index)
+                element.copy(
+                    xDp = bounds.x,
+                    yDp = bounds.y,
+                    widthDp = bounds.width,
+                    heightDp = bounds.height,
+                )
+            } else {
+                val width = element.widthDp.coerceIn(32, WIDTH_DP)
+                val height = element.heightDp.coerceIn(24, HEIGHT_DP)
+                element.copy(
+                    xDp = element.xDp.coerceIn(0, WIDTH_DP - width),
+                    yDp = element.yDp.coerceIn(0, HEIGHT_DP - height),
+                    widthDp = width,
+                    heightDp = height,
+                )
+            }
+        }
+}
 object WidgetDisplayStore {
     const val MAX_STATES = 75
     private const val PREFS = "opentasker_widget_display_prefs"
@@ -67,7 +117,13 @@ object WidgetDisplayStore {
         return runCatching {
             json.decodeFromString<WidgetDisplayConfig>(raw)
                 .let { config ->
-                    config.copy(states = config.states.take(MAX_STATES).ifEmpty { listOf(WidgetDisplayState(name = "State 1")) })
+                    config.copy(
+                        states = config.states.take(MAX_STATES).ifEmpty {
+                            listOf(WidgetDisplayState(name = "State 1"))
+                        }.map { state ->
+                            state.copy(elements = WidgetDisplayCanvasMetrics.normalize(state.elements))
+                        },
+                    )
                 }
         }.getOrElse { WidgetDisplayConfig() }
     }
