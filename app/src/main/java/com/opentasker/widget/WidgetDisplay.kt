@@ -53,11 +53,17 @@ data class WidgetDisplayState(
 @Serializable
 data class WidgetDisplayConfig(
     val states: List<WidgetDisplayState> = listOf(WidgetDisplayState(name = "State 1")),
+    val canvasWidthDp: Int = WidgetDisplayCanvasMetrics.WIDTH_DP,
+    val canvasHeightDp: Int = WidgetDisplayCanvasMetrics.HEIGHT_DP,
 )
 
 object WidgetDisplayCanvasMetrics {
     const val WIDTH_DP = 320
     const val HEIGHT_DP = 200
+    const val MIN_WIDTH_DP = 110
+    const val MIN_HEIGHT_DP = 80
+    const val MAX_WIDTH_DP = 1000
+    const val MAX_HEIGHT_DP = 1000
     const val MAX_ELEMENTS = 8
     const val DEFAULT_WIDTH_DP = 136
     const val DEFAULT_HEIGHT_DP = 40
@@ -65,23 +71,45 @@ object WidgetDisplayCanvasMetrics {
     private const val COLUMN_GAP_DP = 24
     private const val ROW_GAP_DP = 8
 
-    fun defaultBounds(index: Int): com.opentasker.core.scenes.CanvasElementBounds {
+    fun normalizeWidth(widthDp: Int): Int = widthDp.coerceIn(MIN_WIDTH_DP, MAX_WIDTH_DP)
+    fun normalizeHeight(heightDp: Int): Int = heightDp.coerceIn(MIN_HEIGHT_DP, MAX_HEIGHT_DP)
+
+    fun defaultBounds(
+        index: Int,
+        canvasWidthDp: Int = WIDTH_DP,
+        canvasHeightDp: Int = HEIGHT_DP,
+    ): com.opentasker.core.scenes.CanvasElementBounds {
+        val safeWidth = normalizeWidth(canvasWidthDp)
+        val safeHeight = normalizeHeight(canvasHeightDp)
         val slot = index.coerceIn(0, MAX_ELEMENTS - 1)
-        val column = slot % 2
-        val row = slot / 2
+        val columns = if (safeWidth >= 320) 2 else 1
+        val gap = if (columns == 2) COLUMN_GAP_DP else 0
+        val cellWidth = ((safeWidth - OUTER_PADDING_DP * 2 - gap * (columns - 1)) / columns)
+            .coerceAtLeast(32)
+        val width = DEFAULT_WIDTH_DP.coerceAtMost(cellWidth).coerceAtLeast(32)
+        val height = DEFAULT_HEIGHT_DP.coerceAtMost((safeHeight - OUTER_PADDING_DP * 2).coerceAtLeast(24))
+            .coerceAtLeast(24)
+        val column = slot % columns
+        val row = slot / columns
         return com.opentasker.core.scenes.CanvasElementBounds(
-            x = OUTER_PADDING_DP + column * (DEFAULT_WIDTH_DP + COLUMN_GAP_DP),
-            y = OUTER_PADDING_DP + row * (DEFAULT_HEIGHT_DP + ROW_GAP_DP),
-            width = DEFAULT_WIDTH_DP,
-            height = DEFAULT_HEIGHT_DP,
+            x = (OUTER_PADDING_DP + column * (cellWidth + gap)).coerceIn(0, safeWidth - width),
+            y = (OUTER_PADDING_DP + row * (height + ROW_GAP_DP)).coerceIn(0, safeHeight - height),
+            width = width,
+            height = height,
         )
     }
 
-    /** Positions widgets created by older builds in a tidy two-column starter layout. */
-    fun normalize(elements: List<WidgetDisplayElement>): List<WidgetDisplayElement> =
-        elements.mapIndexed { index, element ->
+    /** Positions widgets created by older builds in a tidy starter layout for the selected canvas size. */
+    fun normalize(
+        elements: List<WidgetDisplayElement>,
+        canvasWidthDp: Int = WIDTH_DP,
+        canvasHeightDp: Int = HEIGHT_DP,
+    ): List<WidgetDisplayElement> {
+        val safeWidth = normalizeWidth(canvasWidthDp)
+        val safeHeight = normalizeHeight(canvasHeightDp)
+        return elements.mapIndexed { index, element ->
             if (element.xDp < 0 || element.yDp < 0 || element.widthDp <= 0 || element.heightDp <= 0) {
-                val bounds = defaultBounds(index)
+                val bounds = defaultBounds(index, safeWidth, safeHeight)
                 element.copy(
                     xDp = bounds.x,
                     yDp = bounds.y,
@@ -89,16 +117,17 @@ object WidgetDisplayCanvasMetrics {
                     heightDp = bounds.height,
                 )
             } else {
-                val width = element.widthDp.coerceIn(32, WIDTH_DP)
-                val height = element.heightDp.coerceIn(24, HEIGHT_DP)
+                val width = element.widthDp.coerceIn(32, safeWidth)
+                val height = element.heightDp.coerceIn(24, safeHeight)
                 element.copy(
-                    xDp = element.xDp.coerceIn(0, WIDTH_DP - width),
-                    yDp = element.yDp.coerceIn(0, HEIGHT_DP - height),
+                    xDp = element.xDp.coerceIn(0, safeWidth - width),
+                    yDp = element.yDp.coerceIn(0, safeHeight - height),
                     widthDp = width,
                     heightDp = height,
                 )
             }
         }
+    }
 }
 object WidgetDisplayStore {
     const val MAX_STATES = 75
@@ -118,11 +147,21 @@ object WidgetDisplayStore {
         return runCatching {
             json.decodeFromString<WidgetDisplayConfig>(raw)
                 .let { config ->
+                    val canvasWidthDp = WidgetDisplayCanvasMetrics.normalizeWidth(config.canvasWidthDp)
+                    val canvasHeightDp = WidgetDisplayCanvasMetrics.normalizeHeight(config.canvasHeightDp)
                     config.copy(
+                        canvasWidthDp = canvasWidthDp,
+                        canvasHeightDp = canvasHeightDp,
                         states = config.states.take(MAX_STATES).ifEmpty {
                             listOf(WidgetDisplayState(name = "State 1"))
                         }.map { state ->
-                            state.copy(elements = WidgetDisplayCanvasMetrics.normalize(state.elements))
+                            state.copy(
+                                elements = WidgetDisplayCanvasMetrics.normalize(
+                                    state.elements,
+                                    canvasWidthDp,
+                                    canvasHeightDp,
+                                ),
+                            )
                         },
                     )
                 }
@@ -352,6 +391,8 @@ object WidgetDisplayRenderer {
         val config = WidgetDisplayStore.load(context, widgetId)
         val stateIndex = WidgetDisplayStore.activeIndex(context, widgetId, config.states.size)
         val state = config.states[stateIndex]
+        val canvasWidthDp = WidgetDisplayCanvasMetrics.normalizeWidth(config.canvasWidthDp)
+        val canvasHeightDp = WidgetDisplayCanvasMetrics.normalizeHeight(config.canvasHeightDp)
         val options = manager.getAppWidgetOptions(widgetId)
         val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 220).coerceAtLeast(110)
         val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 140).coerceAtLeast(40)
@@ -418,10 +459,10 @@ object WidgetDisplayRenderer {
             type = WidgetDisplayElementType.TEXT,
             text = "+ " + (configured.size - visibleCount) + " more",
             textSizeSp = 11,
-            xDp = 12,
-            yDp = 172,
-            widthDp = 296,
-            heightDp = 22,
+            xDp = 12.coerceAtMost(canvasWidthDp - 1),
+            yDp = (canvasHeightDp - 34).coerceAtLeast(0),
+            widthDp = (canvasWidthDp - 24).coerceAtLeast(32),
+            heightDp = 22.coerceAtMost(canvasHeightDp),
         )
         val visibleElements = when (mode) {
             ContentMode.COMPACT_ROW -> if (configured.size > 2) {
@@ -461,8 +502,8 @@ object WidgetDisplayRenderer {
                 textSizeSp = 12,
                 xDp = 8,
                 yDp = 8,
-                widthDp = WidgetDisplayCanvasMetrics.WIDTH_DP - 16,
-                heightDp = 40,
+                widthDp = (canvasWidthDp - 16).coerceAtLeast(32),
+                heightDp = 40.coerceAtMost(canvasHeightDp - 8),
             )
             bindElement(context, views, slots.first(), empty, state, widgetId, foreground, bitmapBytes, compact)
             views.setOnClickPendingIntent(slots.first().root, configPendingIntent(context, widgetId))
@@ -476,6 +517,8 @@ object WidgetDisplayRenderer {
                     mode = mode,
                     compactIndex = 0,
                     compactCount = 1,
+                    designCanvasWidthDp = canvasWidthDp,
+                    designCanvasHeightDp = canvasHeightDp,
                 )
             }
         } else {
@@ -494,6 +537,8 @@ object WidgetDisplayRenderer {
                         mode = mode,
                         compactIndex = index,
                         compactCount = visibleElements.size,
+                        designCanvasWidthDp = canvasWidthDp,
+                        designCanvasHeightDp = canvasHeightDp,
                     )
                 }
             }
@@ -512,6 +557,8 @@ object WidgetDisplayRenderer {
         mode: ContentMode,
         compactIndex: Int,
         compactCount: Int,
+        designCanvasWidthDp: Int,
+        designCanvasHeightDp: Int,
     ) {
         val unit = android.util.TypedValue.COMPLEX_UNIT_DIP
         if (mode != ContentMode.CANVAS) {
@@ -540,8 +587,8 @@ object WidgetDisplayRenderer {
             return
         }
 
-        val scaleX = contentWidthDp / WidgetDisplayCanvasMetrics.WIDTH_DP
-        val scaleY = contentHeightDp / WidgetDisplayCanvasMetrics.HEIGHT_DP
+        val scaleX = contentWidthDp / designCanvasWidthDp.toFloat()
+        val scaleY = contentHeightDp / designCanvasHeightDp.toFloat()
         val width = (element.widthDp * scaleX).coerceAtLeast(1f)
         val height = (element.heightDp * scaleY).coerceAtLeast(1f)
         val left = (element.xDp * scaleX).coerceIn(0f, (contentWidthDp - width).coerceAtLeast(0f))
