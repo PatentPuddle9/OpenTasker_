@@ -70,20 +70,20 @@ The trigger picker is searchable and grouped into ten categories. The category i
 
 ### Complete action catalogue
 
-These are the current registered action IDs, grouped by their runtime category. The IDs are stable identifiers used in saved automations and import/export files.
+The action catalogue contains 85 registered entries plus 10 engine-handled flow commands. This table describes the user-facing capability and includes the stable action ID stored in automations.
 
-| Category | Count | Registered action blocks |
+| Category | Count | Action blocks and functionality |
 |---|---:|---|
-| **Settings and device control** | 24 | `wifi.toggle`, `wifi.scan`, `bluetooth.toggle`, `brightness.read`, `brightness.set`, `volume.read`, `volume.set`, `airplane.toggle`, `mobile.toggle`, `aod.set`, `screen.timeout`, `settings.write`, `dnd.set`, `zen.rule.set`, `zen.rule.clear`, `ringer.set`, `torch.read`, `torch.set`, `tile.set`, `state.temporary`, `ime.info`, `ime.set`, `screen.off`, `wake` |
-| **Apps and shortcuts** | 11 | `intent.launch`, `app.launch`, `app.archive`, `app.unarchive`, `shortcut.publish`, `plugin.locale.fire`, `app.kill`, `home.go`, `url.open`, `sms.send`, `screenshot.take` |
-| **Files** | 5 | `file.read`, `file.write`, `file.append`, `file.delete`, `file.list` |
-| **Network and integrations** | 8 | `http.request`, `http.get`, `http.post`, `integration.home_assistant.webhook`, `mqtt.publish`, `ping`, `download`, `wol` |
-| **Media** | 6 | `sound.play`, `sound.stop`, `sound.pause`, `track.next`, `track.previous`, `media.mute` |
-| **System, scenes, and widgets** | 9 | `scene.show`, `widget.display.control`, `auth.device_credential`, `clipboard.set`, `reboot`, `lock`, `log`, `tasker.unsupported`, `macrodroid.unsupported` |
-| **Notifications and prompts** | 6 | `notify.show`, `toast.show`, `notify.cancel`, `notify.progress`, `tts.speak`, `vibrate` |
-| **Variables and data** | 13 | `var.set`, `var.persist`, `clipboard.get`, `contacts.lookup`, `data.read`, `datetime.format`, `datetime.parse`, `datetime.add`, `text.match`, `text.replace`, `text.split`, `text.join`, `text.substring` |
-| **Flow** | 1 runnable + 10 engine commands | Runnable: `flow.wait`. Engine commands: `task.run`, `flow.if`, `flow.else`, `flow.endif`, `flow.foreach`, `flow.endfor`, `flow.stop`, `flow.try`, `flow.catch`, `flow.endtry`. |
-| **Plugins and scripts** | 2 | `plugin.locale.query`, `script.termux.run` |
+| **Settings and device control** | 24 | Toggle Wi-Fi and Bluetooth (`wifi.toggle`, `bluetooth.toggle`); scan nearby Wi-Fi networks (`wifi.scan`); read/set brightness and volume (`brightness.read`, `brightness.set`, `volume.read`, `volume.set`); toggle airplane mode and mobile data (`airplane.toggle`, `mobile.toggle`); set Always-on Display and screen timeout (`aod.set`, `screen.timeout`); write an allowed system setting (`settings.write`); set Do Not Disturb and Zen rules (`dnd.set`, `zen.rule.set`, `zen.rule.clear`); set ringer mode (`ringer.set`); read/set torch state (`torch.read`, `torch.set`); set a Quick Settings tile (`tile.set`); apply a temporary reversible setting (`state.temporary`); inspect/select an input method (`ime.info`, `ime.set`); turn the screen off or wake it (`screen.off`, `wake`). |
+| **Apps and shortcuts** | 11 | Launch an Android intent or app (`intent.launch`, `app.launch`); archive/unarchive an app (`app.archive`, `app.unarchive`); publish a launcher shortcut (`shortcut.publish`); dispatch a Locale setting (`plugin.locale.fire`); kill an app where Android permits it (`app.kill`); return to Home (`home.go`); open a URL (`url.open`); send an SMS (`sms.send`); capture a screenshot (`screenshot.take`). |
+| **Files** | 5 | Read, write, append, delete, and list files (`file.read`, `file.write`, `file.append`, `file.delete`, `file.list`). |
+| **Network and integrations** | 8 | Make a configurable HTTP request or use GET/POST shortcuts (`http.request`, `http.get`, `http.post`); send a Home Assistant webhook (`integration.home_assistant.webhook`); publish MQTT messages (`mqtt.publish`); ping a host (`ping`); download a file (`download`); send Wake-on-LAN (`wol`). |
+| **Media** | 6 | Play, stop, or pause audio (`sound.play`, `sound.stop`, `sound.pause`); move to the next/previous track (`track.next`, `track.previous`); mute media (`media.mute`). |
+| **System, scenes, and widgets** | 9 | Show a saved Scene overlay (`scene.show`); control a Widget Display state or slideshow (`widget.display.control`); request secure device sign-in (`auth.device_credential`); write clipboard text (`clipboard.set`); reboot or lock the device (`reboot`, `lock`); add a message to the run log (`log`). The two remaining entries (`tasker.unsupported`, `macrodroid.unsupported`) are explicit compatibility placeholders for imported actions that OpenTasker cannot execute. |
+| **Notifications and prompts** | 6 | Show a dialog above other apps (`notify.show`); show a Toast (`toast.show`); cancel a notification (`notify.cancel`); post/update a progress notification (`notify.progress`); speak text with text-to-speech (`tts.speak`); vibrate (`vibrate`). |
+| **Variables and data** | 13 | Set and persist variables (`var.set`, `var.persist`); read clipboard text (`clipboard.get`); look up contacts (`contacts.lookup`); read structured JSON/CSV/XML/HTML data (`data.read`); format, parse, and add to date/time values (`datetime.format`, `datetime.parse`, `datetime.add`); match, replace, split, join, and take substrings from text (`text.match`, `text.replace`, `text.split`, `text.join`, `text.substring`). |
+| **Flow** | 1 runnable + 10 engine commands | Wait (`flow.wait`). Engine commands run another Action/subflow (`task.run`), branch on conditions (`flow.if`, `flow.else`, `flow.endif`), iterate collections (`flow.foreach`, `flow.endfor`), stop a run (`flow.stop`), and handle errors (`flow.try`, `flow.catch`, `flow.endtry`). |
+| **Plugins and scripts** | 2 | Query a Locale/Tasker condition plugin (`plugin.locale.query`) and run an approved Termux script (`script.termux.run`). |
 
 **Sign In** (`auth.device_credential`) requests Android's biometric sign-in prompt, such as fingerprint when enrolled and available, with device PIN, pattern, or password as the device-credential fallback. If the device has no secure lock configured, Android reports that no credential is needed. Showing the prompt from a background automation requires Display over other apps access.
 
