@@ -41,6 +41,8 @@ import com.opentasker.ui.icons.WidgetIconImage
 import com.opentasker.ui.screens.CanvasAlignmentGuideOverlay
 import kotlin.math.roundToInt
 
+private const val WIDGET_STATE_SNAP_THRESHOLD_DP = 3
+
 @Composable
 internal fun WidgetDisplayCanvas(
     state: WidgetDisplayState,
@@ -178,6 +180,7 @@ private fun WidgetDisplayCanvasItem(
                                 candidateY = candidateY,
                                 candidateW = element.widthDp,
                                 candidateH = element.heightDp,
+                                snapThresholdDp = WIDGET_STATE_SNAP_THRESHOLD_DP,
                             )
                             // Keep the dragged item on the magnetic snap point while the finger
                             // is still down, just like the Scene canvas.
@@ -199,6 +202,7 @@ private fun WidgetDisplayCanvasItem(
                                 candidateY = candidateY,
                                 candidateW = element.widthDp,
                                 candidateH = element.heightDp,
+                                snapThresholdDp = WIDGET_STATE_SNAP_THRESHOLD_DP,
                             )
                             dragX = 0f
                             dragY = 0f
