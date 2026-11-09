@@ -35,6 +35,7 @@ object SceneAlignmentGuides {
         candidateY: Int,
         candidateW: Int,
         candidateH: Int,
+        snapThresholdDp: Int = SNAP_THRESHOLD_DP,
     ): AlignmentResult = findGuides(
         canvasWidthDp = scene.widthDp,
         canvasHeightDp = scene.heightDp,
@@ -46,6 +47,7 @@ object SceneAlignmentGuides {
         candidateY = candidateY,
         candidateW = candidateW,
         candidateH = candidateH,
+        snapThresholdDp = snapThresholdDp,
     )
 
     /**
@@ -62,6 +64,7 @@ object SceneAlignmentGuides {
         candidateY: Int,
         candidateW: Int,
         candidateH: Int,
+        snapThresholdDp: Int = SNAP_THRESHOLD_DP,
     ): AlignmentResult {
         val safeCanvasWidth = canvasWidthDp.coerceAtLeast(1)
         val safeCanvasHeight = canvasHeightDp.coerceAtLeast(1)
@@ -94,11 +97,13 @@ object SceneAlignmentGuides {
             candidate = candidateX,
             size = width,
             anchors = verticalAnchors,
+            snapThresholdDp = snapThresholdDp,
         )
         val ySnap = nearestSnap(
             candidate = candidateY,
             size = height,
             anchors = horizontalAnchors,
+            snapThresholdDp = snapThresholdDp,
         )
         var snappedX = xSnap?.position ?: candidateX
         var snappedY = ySnap?.position ?: candidateY
@@ -117,6 +122,7 @@ object SceneAlignmentGuides {
             candidateY = candidateY,
             width = width,
             height = height,
+            snapThresholdDp = snapThresholdDp,
         )
         if (horizontalSpacing != null &&
             (xSnap == null || horizontalSpacing.distance < xSnap.distance)
@@ -132,6 +138,7 @@ object SceneAlignmentGuides {
             candidateY = candidateY,
             width = width,
             height = height,
+            snapThresholdDp = snapThresholdDp,
         )
         if (verticalSpacing != null &&
             (ySnap == null || verticalSpacing.distance < ySnap.distance)
@@ -160,13 +167,18 @@ object SceneAlignmentGuides {
         val guides: List<AlignmentGuide>,
     )
 
-    private fun nearestSnap(candidate: Int, size: Int, anchors: List<Int>): AxisSnap? {
+    private fun nearestSnap(
+        candidate: Int,
+        size: Int,
+        anchors: List<Int>,
+        snapThresholdDp: Int,
+    ): AxisSnap? {
         var best: AxisSnap? = null
         val movingAnchors = listOf(0, size / 2, size)
         anchors.distinct().forEach { anchor ->
             movingAnchors.forEachIndexed { index, offset ->
                 val distance = abs(candidate + offset - anchor)
-                if (distance <= SNAP_THRESHOLD_DP && (best == null || distance < best!!.distance)) {
+                if (distance <= snapThresholdDp && (best == null || distance < best!!.distance)) {
                     best = AxisSnap(
                         position = anchor - offset,
                         anchor = anchor,
@@ -184,6 +196,7 @@ object SceneAlignmentGuides {
         candidateY: Int,
         width: Int,
         height: Int,
+        snapThresholdDp: Int,
     ): SpacingSnap? {
         val sameRow = peers.filter { peer ->
             val overlap = minOf(candidateY + height, peer.y + peer.height) - maxOf(candidateY, peer.y)
@@ -200,7 +213,7 @@ object SceneAlignmentGuides {
                 val secondGap = rightEdge - (ideal + width)
                 if (firstGap < 0 || secondGap < 0) continue
                 val distance = abs(candidateX - ideal)
-                if (distance <= SNAP_THRESHOLD_DP && (best == null || distance < best!!.distance)) {
+                if (distance <= snapThresholdDp && (best == null || distance < best!!.distance)) {
                     best = SpacingSnap(
                         position = ideal,
                         distance = distance,
@@ -237,6 +250,7 @@ object SceneAlignmentGuides {
         candidateY: Int,
         width: Int,
         height: Int,
+        snapThresholdDp: Int,
     ): SpacingSnap? {
         val sameColumn = peers.filter { peer ->
             val overlap = minOf(candidateX + width, peer.x + peer.width) - maxOf(candidateX, peer.x)
@@ -253,7 +267,7 @@ object SceneAlignmentGuides {
                 val secondGap = bottomEdge - (ideal + height)
                 if (firstGap < 0 || secondGap < 0) continue
                 val distance = abs(candidateY - ideal)
-                if (distance <= SNAP_THRESHOLD_DP && (best == null || distance < best!!.distance)) {
+                if (distance <= snapThresholdDp && (best == null || distance < best!!.distance)) {
                     best = SpacingSnap(
                         position = ideal,
                         distance = distance,
