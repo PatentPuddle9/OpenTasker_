@@ -624,8 +624,8 @@ private fun locationPickerHtml(
               var selected = HAS_POINT ? { lat:CENTER_LAT, lon:CENTER_LON } : null;
               var activeRadius = RADIUS;
               var pointer = null;
-              var tileErrors = 0;
-              var tileCount = 0;
+              var tileCache = Object.create(null);
+              var visibleTileKeys = [];
               var renderQueued = false;
 
               function worldSize() { return TILE_SIZE * Math.pow(2, zoom); }
@@ -657,10 +657,23 @@ private fun locationPickerHtml(
                   render();
                 });
               }
+              function updateTileStatus() {
+                var failures = 0;
+                for (var i = 0; i < visibleTileKeys.length; i++) {
+                  var tile = tileCache[visibleTileKeys[i]];
+                  if (tile && tile.dataset.state === 'error') failures++;
+                }
+                if (failures > 0 && failures >= visibleTileKeys.length) {
+                  tileStatus.textContent = 'Map tiles are unavailable. Check your internet connection; place search and manual selection still work.';
+                  tileStatus.style.display = 'block';
+                } else if (failures > 0) {
+                  tileStatus.textContent = 'Some map tiles could not be loaded.';
+                  tileStatus.style.display = 'block';
+                } else {
+                  tileStatus.style.display = 'none';
+                }
+              }
               function renderTiles(width, height, centerX, centerY) {
-                tilesLayer.innerHTML = '';
-                tileErrors = 0;
-                tileCount = 0;
                 var left = centerX - width / 2;
                 var top = centerY - height / 2;
                 var firstX = Math.floor(left / TILE_SIZE);
@@ -668,37 +681,50 @@ private fun locationPickerHtml(
                 var firstY = Math.floor(top / TILE_SIZE);
                 var lastY = Math.floor((top + height) / TILE_SIZE);
                 var count = Math.pow(2, zoom);
+                var nextVisible = [];
                 for (var ty = firstY; ty <= lastY; ty++) {
                   if (ty < 0 || ty >= count) continue;
                   for (var tx = firstX; tx <= lastX; tx++) {
                     var wrappedX = ((tx % count) + count) % count;
-                    var image = document.createElement('img');
-                    image.className = 'tile';
-                    image.alt = '';
-                    image.draggable = false;
+                    var key = zoom + '/' + wrappedX + '/' + ty;
+                    var image = tileCache[key];
+                    if (!image) {
+                      image = document.createElement('img');
+                      image.className = 'tile';
+                      image.alt = '';
+                      image.draggable = false;
+                      image.dataset.state = 'loading';
+                      image.dataset.key = key;
+                      image.onload = function() {
+                        this.dataset.state = 'loaded';
+                        updateTileStatus();
+                      };
+                      image.onerror = function() {
+                        this.dataset.state = 'error';
+                        updateTileStatus();
+                      };
+                      tileCache[key] = image;
+                      image.src = 'https://tile.openstreetmap.org/' + key + '.png';
+                    }
                     image.style.left = (tx * TILE_SIZE - left) + 'px';
                     image.style.top = (ty * TILE_SIZE - top) + 'px';
-                    image.onload = function() { updateTileStatus(); };
-                    image.onerror = function() {
-                      tileErrors++;
-                      updateTileStatus();
-                    };
-                    tileCount++;
-                    image.src = 'https://tile.openstreetmap.org/' + zoom + '/' + wrappedX + '/' + ty + '.png';
-                    tilesLayer.appendChild(image);
+                    if (image.parentNode !== tilesLayer) tilesLayer.appendChild(image);
+                    nextVisible.push(key);
                   }
                 }
+                var children = Array.prototype.slice.call(tilesLayer.children);
+                children.forEach(function(child) {
+                  if (nextVisible.indexOf(child.dataset.key) === -1) tilesLayer.removeChild(child);
+                });
+                visibleTileKeys = nextVisible;
                 updateTileStatus();
-              }
-              function updateTileStatus() {
-                if (tileErrors > 0 && tileErrors >= tileCount) {
-                  tileStatus.textContent = 'Map tiles are unavailable. Check your internet connection; place search and manual selection still work.';
-                  tileStatus.style.display = 'block';
-                } else if (tileCount > 0 && tileErrors > 0) {
-                  tileStatus.textContent = 'Some map tiles could not be loaded.';
-                  tileStatus.style.display = 'block';
-                } else {
-                  tileStatus.style.display = 'none';
+                var cacheKeys = Object.keys(tileCache);
+                if (cacheKeys.length > 120) {
+                  cacheKeys.slice(0, cacheKeys.length - 100).forEach(function(key) {
+                    var oldTile = tileCache[key];
+                    if (oldTile.parentNode) oldTile.parentNode.removeChild(oldTile);
+                    delete tileCache[key];
+                  });
                 }
               }
               function renderSelection(width, height, centerX, centerY) {
