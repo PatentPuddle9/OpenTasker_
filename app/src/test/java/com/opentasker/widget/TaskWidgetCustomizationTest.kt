@@ -125,8 +125,16 @@ class TaskWidgetCustomizationTest {
             display.contains("views.addView"))
         assertFalse("RemoteViews must not clear and rebuild the content tree",
             display.contains("views.removeAllViews"))
-        assertFalse("Avoid API-specific dynamic child sizing",
-            display.contains("setViewLayoutWidth") || display.contains("setViewLayoutHeight"))
+        assertTrue("Positioned canvas slots need runtime width and height",
+            display.contains("setViewLayoutWidth") && display.contains("setViewLayoutHeight"))
+        assertTrue("Positioned canvas slots need left and top margins",
+            display.contains("setViewLayoutMargin(rootId, Gravity.LEFT") &&
+                display.contains("setViewLayoutMargin(rootId, Gravity.TOP"))
+        assertTrue("Absolute positioning must be guarded to Android 12 and newer",
+            display.contains("Build.VERSION.SDK_INT >= Build.VERSION_CODES.S"))
+        val legacy = resRoot.resolve("layout/widget_display_legacy.xml").readText()
+        assertTrue("Older Android versions retain a stacked fallback layout",
+            legacy.contains("@+id/widget_display_slot_1_root"))
         assertTrue("The content types must be represented by static slots",
             listOf("_text", "_image", "_action", "_progress", "_divider", "_spacer")
                 .all { root.contains(it) })
@@ -147,6 +155,31 @@ class TaskWidgetCustomizationTest {
                 display.contains("IMAGE_HEIGHT_PX = 90"))
         assertTrue("Uploaded icons are sampled to compact dimensions",
             display.contains("ICON_MAX_DIMENSION_PX = 40"))
+    }
+
+    @Test
+    fun widgetStateEditorUsesTheSharedDraggableCanvasAndCanvaAlignmentTools() {
+        val editor = sourceRoot.resolve("com/opentasker/widget/WidgetDisplayConfigEditor.kt").readText()
+        val canvas = sourceRoot.resolve("com/opentasker/widget/WidgetDisplayCanvas.kt").readText()
+        val model = sourceRoot.resolve("com/opentasker/widget/WidgetDisplay.kt").readText()
+        val sceneCanvas = sourceRoot.resolve("com/opentasker/ui/screens/SceneEditorCanvas.kt").readText()
+        val guides = sourceRoot.resolve("com/opentasker/core/scenes/SceneAlignmentGuides.kt").readText()
+
+        assertTrue(editor.contains("WidgetDisplayCanvas("))
+        assertTrue(editor.contains("SceneSelectionAlignment.CENTER_ON_CANVAS"))
+        assertTrue(editor.contains("label = { Text(\"X\") }"))
+        assertTrue(editor.contains("label = { Text(\"Y\") }"))
+        assertTrue(editor.contains("label = { Text(\"Width\") }"))
+        assertTrue(editor.contains("label = { Text(\"Height\") }"))
+        assertTrue(canvas.contains("detectDragGestures"))
+        assertTrue(canvas.contains("onResize"))
+        assertTrue(canvas.contains("SceneAlignmentGuides.findGuides"))
+        assertTrue(sceneCanvas.contains("CanvasAlignmentGuideOverlay"))
+        assertTrue(guides.contains("findHorizontalSpacing"))
+        assertTrue(guides.contains("findVerticalSpacing"))
+        assertTrue(model.contains("val xDp: Int = -1"))
+        assertTrue(model.contains("val yDp: Int = -1"))
+        assertTrue(model.contains("WidgetDisplayCanvasMetrics.normalize(state.elements)"))
     }
 
     @Test
