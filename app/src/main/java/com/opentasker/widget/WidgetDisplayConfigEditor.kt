@@ -329,6 +329,10 @@ private fun WidgetDisplayStateEditor(
     val context = LocalContext.current
     var selectingActionFor by rememberSaveable(state.id) { mutableStateOf<String?>(null) }
     var selectingIconFor by rememberSaveable(state.id) { mutableStateOf<String?>(null) }
+    var selectedElementId by rememberSaveable(state.id) {
+        mutableStateOf(state.elements.firstOrNull()?.id)
+    }
+    var activeGuides by remember { mutableStateOf(emptyList<com.opentasker.core.scenes.AlignmentGuide>()) }
 
     var selectingImageFor by rememberSaveable(state.id) { mutableStateOf<String?>(null) }
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -348,6 +352,8 @@ private fun WidgetDisplayStateEditor(
     }
 
     fun addElement(type: WidgetDisplayElementType) {
+        if (state.elements.size >= WidgetDisplayCanvasMetrics.MAX_ELEMENTS) return
+        val bounds = WidgetDisplayCanvasMetrics.defaultBounds(state.elements.size)
         val item = WidgetDisplayElement(
             type = type,
             text = when (type) {
@@ -359,8 +365,45 @@ private fun WidgetDisplayStateEditor(
                 WidgetDisplayElementType.PROGRESS -> "Progress"
                 else -> ""
             },
+            xDp = bounds.x,
+            yDp = bounds.y,
+            widthDp = bounds.width,
+            heightDp = bounds.height,
         )
         onStateChange(state.copy(elements = state.elements + item))
+        selectedElementId = item.id
+    }
+
+    fun updateBounds(
+        elementId: String,
+        update: (WidgetDisplayElement) -> WidgetDisplayElement,
+    ) {
+        onStateChange(state.copy(elements = state.elements.replaceElement(elementId, update)))
+    }
+
+    fun alignSelected(alignment: com.opentasker.core.scenes.SceneSelectionAlignment) {
+        val selected = state.elements.firstOrNull { it.id == selectedElementId } ?: return
+        val next = when (alignment) {
+            com.opentasker.core.scenes.SceneSelectionAlignment.LEFT ->
+                selected.copy(xDp = 0)
+            com.opentasker.core.scenes.SceneSelectionAlignment.CENTER_HORIZONTAL ->
+                selected.copy(xDp = (WidgetDisplayCanvasMetrics.WIDTH_DP - selected.widthDp) / 2)
+            com.opentasker.core.scenes.SceneSelectionAlignment.RIGHT ->
+                selected.copy(xDp = WidgetDisplayCanvasMetrics.WIDTH_DP - selected.widthDp)
+            com.opentasker.core.scenes.SceneSelectionAlignment.TOP ->
+                selected.copy(yDp = 0)
+            com.opentasker.core.scenes.SceneSelectionAlignment.CENTER_VERTICAL ->
+                selected.copy(yDp = (WidgetDisplayCanvasMetrics.HEIGHT_DP - selected.heightDp) / 2)
+            com.opentasker.core.scenes.SceneSelectionAlignment.BOTTOM ->
+                selected.copy(yDp = WidgetDisplayCanvasMetrics.HEIGHT_DP - selected.heightDp)
+            com.opentasker.core.scenes.SceneSelectionAlignment.CENTER_ON_CANVAS ->
+                selected.copy(
+                    xDp = (WidgetDisplayCanvasMetrics.WIDTH_DP - selected.widthDp) / 2,
+                    yDp = (WidgetDisplayCanvasMetrics.HEIGHT_DP - selected.heightDp) / 2,
+                )
+            else -> selected
+        }
+        updateBounds(selected.id) { next }
     }
 
     val canSave = state.name.isNotBlank() && state.elements.all { element ->
@@ -400,17 +443,6 @@ private fun WidgetDisplayStateEditor(
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Horizontal layout", fontWeight = FontWeight.Medium)
-                Text(
-                    "Arrange content side by side instead of in a column.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Switch(checked = state.horizontal, onCheckedChange = { onStateChange(state.copy(horizontal = it)) })
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
                 Text("Gradient background", fontWeight = FontWeight.Medium)
                 Text(
                     "Blend the background into a darker shade.",
@@ -444,14 +476,120 @@ private fun WidgetDisplayStateEditor(
 
         Text("Add content", style = MaterialTheme.typography.titleMedium)
         Text(
-            "Each state can display up to 8 items on the home screen.",
+            "Each state can display up to 8 items on the home screen. Drag items on the canvas to position them; resize from the corner handle.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             addTypes.forEach { (label, type) ->
-                OutlinedButton(onClick = { addElement(type) }) { Text(label) }
+                OutlinedButton(
+                    onClick = { addElement(type) },
+                    enabled = state.elements.size < WidgetDisplayCanvasMetrics.MAX_ELEMENTS,
+                ) { Text(label) }
             }
+        }
+
+        WidgetDisplayCanvas(
+            state = state,
+            selectedElementId = selectedElementId,
+            guides = activeGuides,
+            onSelect = { selectedElementId = it },
+            onMove = { elementId, x, y ->
+                updateBounds(elementId) { it.copy(xDp = x, yDp = y) }
+            },
+            onResize = { elementId, width, height ->
+                updateBounds(elementId) { it.copy(widthDp = width, heightDp = height) }
+            },
+            onGuidesChanged = { activeGuides = it },
+        )
+
+        state.elements.firstOrNull { it.id == selectedElementId }?.let { selected ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("Selected item · ${selected.type.displayLabel}", style = MaterialTheme.typography.titleSmall)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        OutlinedButton(onClick = { alignSelected(com.opentasker.core.scenes.SceneSelectionAlignment.CENTER_ON_CANVAS) }) {
+                            Text("Center")
+                        }
+                        OutlinedButton(onClick = { alignSelected(com.opentasker.core.scenes.SceneSelectionAlignment.CENTER_HORIZONTAL) }) {
+                            Text("Center H")
+                        }
+                        OutlinedButton(onClick = { alignSelected(com.opentasker.core.scenes.SceneSelectionAlignment.CENTER_VERTICAL) }) {
+                            Text("Center V")
+                        }
+                        OutlinedButton(onClick = { alignSelected(com.opentasker.core.scenes.SceneSelectionAlignment.LEFT) }) { Text("Left") }
+                        OutlinedButton(onClick = { alignSelected(com.opentasker.core.scenes.SceneSelectionAlignment.RIGHT) }) { Text("Right") }
+                        OutlinedButton(onClick = { alignSelected(com.opentasker.core.scenes.SceneSelectionAlignment.TOP) }) { Text("Top") }
+                        OutlinedButton(onClick = { alignSelected(com.opentasker.core.scenes.SceneSelectionAlignment.BOTTOM) }) { Text("Bottom") }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = selected.xDp.toString(),
+                            onValueChange = { raw ->
+                                raw.toIntOrNull()?.let { x ->
+                                    updateBounds(selected.id) { it.copy(xDp = x.coerceIn(0, WidgetDisplayCanvasMetrics.WIDTH_DP - selected.widthDp)) }
+                                }
+                            },
+                            label = { Text("X") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedTextField(
+                            value = selected.yDp.toString(),
+                            onValueChange = { raw ->
+                                raw.toIntOrNull()?.let { y ->
+                                    updateBounds(selected.id) { it.copy(yDp = y.coerceIn(0, WidgetDisplayCanvasMetrics.HEIGHT_DP - selected.heightDp)) }
+                                }
+                            },
+                            label = { Text("Y") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedTextField(
+                            value = selected.widthDp.toString(),
+                            onValueChange = { raw ->
+                                raw.toIntOrNull()?.let { width ->
+                                    val safeWidth = width.coerceIn(32, WidgetDisplayCanvasMetrics.WIDTH_DP - selected.xDp)
+                                    updateBounds(selected.id) { it.copy(widthDp = safeWidth) }
+                                }
+                            },
+                            label = { Text("Width") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedTextField(
+                            value = selected.heightDp.toString(),
+                            onValueChange = { raw ->
+                                raw.toIntOrNull()?.let { height ->
+                                    val safeHeight = height.coerceIn(24, WidgetDisplayCanvasMetrics.HEIGHT_DP - selected.yDp)
+                                    updateBounds(selected.id) { it.copy(heightDp = safeHeight) }
+                                }
+                            },
+                            label = { Text("Height") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+        }
+
+        if (state.elements.size > WidgetDisplayCanvasMetrics.MAX_ELEMENTS) {
+            Text(
+                "Only the first 8 items are shown on the home-screen widget. Remove or reorder extra items.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
 
         state.elements.forEachIndexed { index, element ->
@@ -466,6 +604,9 @@ private fun WidgetDisplayStateEditor(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(element.type.displayLabel, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                        TextButton(onClick = { selectedElementId = element.id }) {
+                            Text(if (selectedElementId == element.id) "Selected" else "Select")
+                        }
                         TextButton(
                             onClick = {
                                 onStateChange(state.copy(elements = state.elements.toMutableList().also { it.removeAt(index) }))
@@ -593,9 +734,6 @@ private fun WidgetDisplayStateEditor(
                 }
             }
         }
-
-        Text("Preview", style = MaterialTheme.typography.titleMedium)
-        WidgetDisplayPreview(state)
 
         Button(onClick = onSaveState, enabled = canSave, modifier = Modifier.fillMaxWidth()) {
             Text("Save state")
