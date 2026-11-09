@@ -456,7 +456,7 @@ object WidgetDisplayRenderer {
                 val canDisplayImage = image != null &&
                     alreadyUsedBitmapBytes + image.byteCount <= MAX_REMOTE_BITMAP_BYTES
                 if (canDisplayImage) {
-                    views.setImageViewBitmap(slot.image, image)
+                    views.setImageViewBitmap(slot.image, image!!)
                     views.setViewVisibility(slot.image, View.VISIBLE)
                 } else {
                     views.setTextViewText(
@@ -486,7 +486,7 @@ object WidgetDisplayRenderer {
                 val canDisplayIcon = customIcon != null &&
                     alreadyUsedBitmapBytes + customIcon.byteCount <= MAX_REMOTE_BITMAP_BYTES
                 if (canDisplayIcon) {
-                    views.setImageViewBitmap(slot.actionIcon, customIcon)
+                    views.setImageViewBitmap(slot.actionIcon, customIcon!!)
                 } else {
                     val icon = WidgetIconCatalog.resolve(element.icon)
                     views.setImageViewResource(slot.actionIcon, icon.drawableRes)
