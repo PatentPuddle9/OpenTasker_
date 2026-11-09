@@ -1,10 +1,10 @@
 package com.opentasker.widget
 
-import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
 import com.opentasker.core.scenes.SceneImageLoader
@@ -146,22 +146,6 @@ object WidgetDisplayStateController {
     }
 }
 
-/** Private receiver for the in-widget previous/next controls. */
-class WidgetDisplayStateReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent?) {
-        val widgetId = intent?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
-            ?: AppWidgetManager.INVALID_APPWIDGET_ID
-        if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return
-        val operation = intent?.getStringExtra(EXTRA_OPERATION).orEmpty()
-        WidgetDisplayStateController.control(context, widgetId, operation)
-    }
-
-    companion object {
-        const val EXTRA_OPERATION = "com.opentasker.widget.display.OPERATION"
-        const val ACTION_STATE = "com.opentasker.widget.display.CHANGE_STATE"
-    }
-}
-
 /**
  * Renders one page of a configurable home-screen dashboard using RemoteViews-safe layouts.
  * Each button/shortcut targets a top-level Action (Profile ID), never an Action block.
@@ -188,7 +172,6 @@ object WidgetDisplayRenderer {
             placeholder.setTextColor(com.opentasker.app.R.id.widget_display_title, android.graphics.Color.WHITE)
             placeholder.setTextColor(com.opentasker.app.R.id.widget_display_subtitle, android.graphics.Color.WHITE)
             placeholder.removeAllViews(com.opentasker.app.R.id.widget_display_content)
-            placeholder.setViewVisibility(com.opentasker.app.R.id.widget_display_navigation, View.GONE)
             manager.updateAppWidget(widgetId, placeholder)
             return
         }
@@ -203,7 +186,8 @@ object WidgetDisplayRenderer {
         val narrowWidth = minWidth in 1..149
         val views = RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display)
         val foreground = state.textColor
-        val panelPadding = if (compactHeight) 6 else 12
+        val panelPaddingDp = if (compactHeight) 6 else 12
+        val panelPadding = (panelPaddingDp * context.resources.displayMetrics.density).toInt()
         views.setViewPadding(
             com.opentasker.app.R.id.widget_display_panel,
             panelPadding,
@@ -238,22 +222,46 @@ object WidgetDisplayRenderer {
             com.opentasker.app.R.id.widget_display_subtitle,
             if (state.subtitle.isBlank() || compactHeight) View.GONE else View.VISIBLE,
         )
+        // Keep compact widgets vertical by default. Forcing a horizontal row used to make
+        // each match-parent child consume the entire widget width, hiding everything after it.
+        // User-selected horizontal layouts use explicit child widths on API 31+.
+        val renderHorizontally = state.horizontal &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            minWidth > 0
         views.setInt(
             com.opentasker.app.R.id.widget_display_content,
             "setOrientation",
-            if (state.horizontal || compactHeight) android.widget.LinearLayout.HORIZONTAL else android.widget.LinearLayout.VERTICAL,
+            if (renderHorizontally) android.widget.LinearLayout.HORIZONTAL else android.widget.LinearLayout.VERTICAL,
         )
         views.removeAllViews(com.opentasker.app.R.id.widget_display_content)
 
+        // Spacer and divider elements are purely decorative; collapse them on the shortest
+        // 2x1 layout so real content such as shortcuts and progress indicators remains visible.
         val elements = state.elements
-        if (elements.isEmpty()) {
+        val renderedElements = if (veryCompactHeight) {
+            elements.filterNot {
+                it.type == WidgetDisplayElementType.SPACER || it.type == WidgetDisplayElementType.DIVIDER
+            }
+        } else {
+            elements
+        }
+        if (renderedElements.isEmpty()) {
             val empty = RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display_text_item)
-            empty.setTextViewText(com.opentasker.app.R.id.widget_display_text, "Edit this state to add content and Action shortcuts.")
+            empty.setTextViewText(com.opentasker.app.R.id.widget_display_text, "Add text, images, or Action shortcuts to this state.")
             empty.setTextColor(com.opentasker.app.R.id.widget_display_text, foreground)
             empty.setTextViewTextSize(com.opentasker.app.R.id.widget_display_text, android.util.TypedValue.COMPLEX_UNIT_SP, 12f)
             views.addView(com.opentasker.app.R.id.widget_display_content, empty)
         } else {
-            elements.forEach { element ->
+            val spacerCount = renderedElements.count { it.type == WidgetDisplayElementType.SPACER }
+            val dividerCount = renderedElements.count { it.type == WidgetDisplayElementType.DIVIDER }
+            val contentCount = renderedElements.count {
+                it.type != WidgetDisplayElementType.SPACER && it.type != WidgetDisplayElementType.DIVIDER
+            }.coerceAtLeast(1)
+            val reservedWidth = spacerCount * 6f + dividerCount * 1f
+            val availableWidth = (minWidth - panelPaddingDp * 2f - reservedWidth).coerceAtLeast(contentCount * 28f)
+            val slotWidth = availableWidth / contentCount
+
+            renderedElements.forEach { element ->
                 val child = when (element.type) {
                     WidgetDisplayElementType.TEXT -> RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display_text_item).apply {
                         setTextViewText(com.opentasker.app.R.id.widget_display_text, element.text)
@@ -298,6 +306,9 @@ object WidgetDisplayRenderer {
                             }
                             setTextViewText(com.opentasker.app.R.id.widget_display_action_label, element.text)
                             setTextColor(com.opentasker.app.R.id.widget_display_action_label, foreground)
+                            if (compactHeight) {
+                                setTextViewTextSize(com.opentasker.app.R.id.widget_display_action_label, TypedValue.COMPLEX_UNIT_SP, 11f)
+                            }
                             element.actionProfileId?.takeIf { it > 0L }?.let { profileId ->
                                 val run = Intent(context, TaskRunActivity::class.java).apply {
                                     putExtra(TaskRunActivity.EXTRA_PROFILE_ID, profileId)
@@ -338,45 +349,41 @@ object WidgetDisplayRenderer {
                         setTextViewText(com.opentasker.app.R.id.widget_display_progress_value, "${element.progress.coerceIn(0, 100)}%")
                         setTextColor(com.opentasker.app.R.id.widget_display_progress_value, foreground)
                         setProgressBar(com.opentasker.app.R.id.widget_display_progress_bar, 100, element.progress.coerceIn(0, 100), false)
+                        if (compactHeight) {
+                            setTextViewTextSize(com.opentasker.app.R.id.widget_display_progress_label, TypedValue.COMPLEX_UNIT_SP, 10f)
+                            setTextViewTextSize(com.opentasker.app.R.id.widget_display_progress_value, TypedValue.COMPLEX_UNIT_SP, 10f)
+                        }
                     }
                     WidgetDisplayElementType.DIVIDER -> RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display_divider_item)
                     WidgetDisplayElementType.SPACER -> RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display_spacer_item)
+                }
+                if (renderHorizontally) {
+                    val rootId = rootViewId(element.type)
+                    val widthDp = when (element.type) {
+                        WidgetDisplayElementType.SPACER -> 6f
+                        WidgetDisplayElementType.DIVIDER -> 1f
+                        else -> slotWidth
+                    }
+                    child.setViewLayoutWidth(rootId, widthDp.coerceAtLeast(1f), TypedValue.COMPLEX_UNIT_DIP)
+                    if (element.type == WidgetDisplayElementType.DIVIDER) {
+                        child.setViewLayoutHeight(rootId, 28f, TypedValue.COMPLEX_UNIT_DIP)
+                    }
                 }
                 views.addView(com.opentasker.app.R.id.widget_display_content, child)
             }
         }
 
-        val navigationVisible = config.states.size > 1 && minHeight >= 70
-        views.setViewVisibility(com.opentasker.app.R.id.widget_display_navigation, if (navigationVisible) View.VISIBLE else View.GONE)
-        if (navigationVisible) {
-            views.setTextViewText(
-                com.opentasker.app.R.id.widget_display_state_counter,
-                "${stateIndex + 1} / ${config.states.size}",
-            )
-            views.setTextColor(com.opentasker.app.R.id.widget_display_state_counter, foreground)
-            val previous = stateChangePendingIntent(context, widgetId, "previous", 100_000 + widgetId * 2)
-            val next = stateChangePendingIntent(context, widgetId, "next", 100_001 + widgetId * 2)
-            views.setOnClickPendingIntent(com.opentasker.app.R.id.widget_display_previous, previous)
-            views.setOnClickPendingIntent(com.opentasker.app.R.id.widget_display_next, next)
-            views.setBoolean(com.opentasker.app.R.id.widget_display_previous, "setEnabled", true)
-            views.setBoolean(com.opentasker.app.R.id.widget_display_next, "setEnabled", true)
-            views.setTextColor(com.opentasker.app.R.id.widget_display_previous, foreground)
-            views.setTextColor(com.opentasker.app.R.id.widget_display_next, foreground)
-        }
         manager.updateAppWidget(widgetId, views)
     }
 
-    private fun stateChangePendingIntent(context: Context, widgetId: Int, operation: String, requestCode: Int): PendingIntent {
-        val intent = Intent(context, WidgetDisplayStateReceiver::class.java).apply {
-            action = WidgetDisplayStateReceiver.ACTION_STATE
-            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-            putExtra(WidgetDisplayStateReceiver.EXTRA_OPERATION, operation)
-        }
-        return PendingIntent.getBroadcast(
-            context,
-            requestCode,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
+    private fun rootViewId(type: WidgetDisplayElementType): Int = when (type) {
+        WidgetDisplayElementType.TEXT -> com.opentasker.app.R.id.widget_display_text
+        WidgetDisplayElementType.IMAGE -> com.opentasker.app.R.id.widget_display_image_item_root
+        WidgetDisplayElementType.BUTTON -> com.opentasker.app.R.id.widget_display_action_root
+        WidgetDisplayElementType.SHORTCUT -> com.opentasker.app.R.id.widget_display_shortcut_root
+        WidgetDisplayElementType.ICON -> com.opentasker.app.R.id.widget_display_icon_root
+        WidgetDisplayElementType.PROGRESS -> com.opentasker.app.R.id.widget_display_progress_root
+        WidgetDisplayElementType.DIVIDER -> com.opentasker.app.R.id.widget_display_divider
+        WidgetDisplayElementType.SPACER -> com.opentasker.app.R.id.widget_display_spacer
     }
 }
