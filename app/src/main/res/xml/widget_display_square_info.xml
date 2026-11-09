@@ -5,9 +5,9 @@
     android:targetCellWidth="2"
     android:targetCellHeight="2"
     android:updatePeriodMillis="0"
-    android:initialLayout="@layout/widget_display"
+    android:initialLayout="@layout/widget_display_fallback"
     android:configure="com.opentasker.widget.WidgetDisplayConfigActivity"
     android:resizeMode="none"
     android:widgetCategory="home_screen"
     android:description="@string/widget_display_description"
-    android:previewLayout="@layout/widget_display" />
+    android:previewLayout="@layout/widget_display_fallback" />
