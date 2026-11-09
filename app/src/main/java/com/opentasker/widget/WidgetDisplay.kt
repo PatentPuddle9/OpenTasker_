@@ -427,7 +427,7 @@ object WidgetDisplayRenderer {
         // Keep the compact header treatment, but never replace authored positions with
         // launcher-size-specific grids. The design is mapped as one canvas at every size.
         val compact = minHeight <= 69
-        val hideHeader = compact
+        val hideHeader = minHeight < 180
         val modernCanvas = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
         val layoutId = if (modernCanvas) {
             com.opentasker.app.R.layout.widget_display
