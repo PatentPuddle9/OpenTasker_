@@ -558,72 +558,267 @@ private fun locationPickerHtml(
         <!doctype html>
         <html>
         <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+          <meta name="color-scheme" content="light">
           <style>
-            html, body, #map { height:100%; width:100%; margin:0; padding:0; background:#e8e8e8; }
-            .ot-pin { width:24px; height:24px; border-radius:50% 50% 50% 0; transform:rotate(-45deg);
-              background:#6750a4; border:3px solid #fff; box-shadow:0 2px 8px #0005; }
-            .ot-pin:after { content:''; position:absolute; width:7px; height:7px; border-radius:50%;
-              top:5px; left:5px; background:#fff; }
-            .leaflet-control-attribution { font-size:10px !important; }
-            .leaflet-container { font: 12px sans-serif; }
+            * { box-sizing:border-box; }
+            html, body, #map { height:100%; width:100%; margin:0; padding:0; overflow:hidden; }
+            body { font:14px sans-serif; background:#e8e8e8; color:#29252f; }
+            #map { position:relative; background-color:#e8e8e8;
+              background-image:linear-gradient(45deg,#dedede 25%,transparent 25%),
+                linear-gradient(-45deg,#dedede 25%,transparent 25%),
+                linear-gradient(45deg,transparent 75%,#dedede 75%),
+                linear-gradient(-45deg,transparent 75%,#dedede 75%);
+              background-size:24px 24px; background-position:0 0,0 12px,12px -12px,-12px 0;
+              touch-action:none; user-select:none; -webkit-user-select:none; }
+            #tiles, #overlay { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+            .tile { position:absolute; width:256px; height:256px; max-width:none; border:0; }
+            #circle { position:absolute; border:2px solid #6750a4; border-radius:50%;
+              background:rgba(103,80,164,.16); transform:translate(-50%,-50%); pointer-events:none; }
+            #pin { position:absolute; width:26px; height:26px; margin:-25px 0 0 -13px;
+              border-radius:50% 50% 50% 0; transform:rotate(-45deg);
+              background:#6750a4; border:3px solid #fff; box-shadow:0 2px 8px #0006;
+              pointer-events:auto; touch-action:none; }
+            #pin:after { content:''; position:absolute; width:8px; height:8px; border-radius:50%;
+              top:6px; left:6px; background:#fff; }
+            #zoom { position:absolute; z-index:5; top:12px; left:12px; display:flex; flex-direction:column;
+              gap:5px; pointer-events:auto; }
+            .zoom-button { width:40px; height:40px; border:1px solid #bbb; border-radius:8px;
+              background:#fff; color:#222; font-size:25px; line-height:1; box-shadow:0 1px 4px #0003; }
+            #tile-status { display:none; position:absolute; z-index:4; top:12px; left:62px; right:12px;
+              padding:8px 10px; border-radius:8px; background:#fff; color:#524b5b;
+              box-shadow:0 1px 4px #0003; font-size:12px; }
+            #attribution { position:absolute; z-index:5; right:0; bottom:0; padding:3px 6px;
+              background:rgba(255,255,255,.86); color:#333; font-size:10px; pointer-events:auto; }
+            #attribution a { color:#315f91; }
           </style>
-          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         </head>
         <body>
-          <div id="map"></div>
+          <div id="map" aria-label="Map. Tap to choose a location, drag to pan.">
+            <div id="tiles"></div>
+            <div id="overlay">
+              <div id="circle"></div>
+              <div id="pin" title="Drag to move the selected location"></div>
+            </div>
+            <div id="zoom">
+              <button class="zoom-button" id="zoom-in" aria-label="Zoom in">+</button>
+              <button class="zoom-button" id="zoom-out" aria-label="Zoom out">−</button>
+            </div>
+            <div id="tile-status"></div>
+            <div id="attribution">© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a></div>
+          </div>
           <script>
-            var map = L.map('map', { zoomControl:true, attributionControl:true });
-            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-              maxZoom:19,
-              attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-            }).addTo(map);
-            var marker = null;
-            var rangeCircle = null;
-            var pointIcon = L.divIcon({
-              className:'ot-marker-host',
-              html:'<div class="ot-pin"></div>',
-              iconSize:[24,24],
-              iconAnchor:[12,24]
-            });
-            var activeRadius = RADIUS;
-            function updatePoint(lat, lon, notify, moveMap) {
-              if (!isFinite(lat) || !isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
-              var point = [lat, lon];
-              if (marker) marker.setLatLng(point);
-              else {
-                marker = L.marker(point, { icon:pointIcon, draggable:true }).addTo(map);
-                marker.on('dragend', function(event) {
-                  var moved = event.target.getLatLng();
-                  updatePoint(moved.lat, moved.lng, true, false);
+            (function() {
+              'use strict';
+              var TILE_SIZE = 256;
+              var EARTH_RADIUS = 6378137;
+              var MAX_LATITUDE = 85.05112878;
+              var map = document.getElementById('map');
+              var tilesLayer = document.getElementById('tiles');
+              var pin = document.getElementById('pin');
+              var circle = document.getElementById('circle');
+              var tileStatus = document.getElementById('tile-status');
+              var centerLat = CENTER_LAT;
+              var centerLon = CENTER_LON;
+              var zoom = ZOOM;
+              var selected = HAS_POINT ? { lat:CENTER_LAT, lon:CENTER_LON } : null;
+              var activeRadius = RADIUS;
+              var pointer = null;
+              var tileErrors = 0;
+              var tileCount = 0;
+              var renderQueued = false;
+
+              function worldSize() { return TILE_SIZE * Math.pow(2, zoom); }
+              function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+              function lonToX(lon) { return (lon + 180) / 360 * worldSize(); }
+              function latToY(lat) {
+                var safeLat = clamp(lat, -MAX_LATITUDE, MAX_LATITUDE) * Math.PI / 180;
+                return (1 - Math.log(Math.tan(safeLat) + 1 / Math.cos(safeLat)) / Math.PI) / 2 * worldSize();
+              }
+              function xToLon(x) { return x / worldSize() * 360 - 180; }
+              function yToLat(y) {
+                var n = Math.PI - 2 * Math.PI * y / worldSize();
+                return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+              }
+              function screenToPoint(x, y) {
+                var rect = map.getBoundingClientRect();
+                var worldX = lonToX(centerLon) + x - rect.width / 2;
+                var worldY = latToY(centerLat) + y - rect.height / 2;
+                var size = worldSize();
+                worldX = ((worldX % size) + size) % size;
+                worldY = clamp(worldY, 0, size);
+                return { lat:yToLat(worldY), lon:xToLon(worldX) };
+              }
+              function scheduleRender() {
+                if (renderQueued) return;
+                renderQueued = true;
+                window.requestAnimationFrame(function() {
+                  renderQueued = false;
+                  render();
                 });
               }
-              if (rangeCircle) rangeCircle.setLatLng(point).setRadius(activeRadius);
-              else rangeCircle = L.circle(point, {
-                radius:activeRadius, color:'#6750a4', weight:2,
-                fillColor:'#6750a4', fillOpacity:0.16
-              }).addTo(map);
-              if (moveMap) map.setView(point, Math.max(map.getZoom(), 16));
-              if (notify && window.OpenTaskerPicker) {
-                window.OpenTaskerPicker.onPointSelected(lat, lon);
+              function renderTiles(width, height, centerX, centerY) {
+                tilesLayer.innerHTML = '';
+                tileErrors = 0;
+                tileCount = 0;
+                var left = centerX - width / 2;
+                var top = centerY - height / 2;
+                var firstX = Math.floor(left / TILE_SIZE);
+                var lastX = Math.floor((left + width) / TILE_SIZE);
+                var firstY = Math.floor(top / TILE_SIZE);
+                var lastY = Math.floor((top + height) / TILE_SIZE);
+                var count = Math.pow(2, zoom);
+                for (var ty = firstY; ty <= lastY; ty++) {
+                  if (ty < 0 || ty >= count) continue;
+                  for (var tx = firstX; tx <= lastX; tx++) {
+                    var wrappedX = ((tx % count) + count) % count;
+                    var image = document.createElement('img');
+                    image.className = 'tile';
+                    image.alt = '';
+                    image.draggable = false;
+                    image.style.left = (tx * TILE_SIZE - left) + 'px';
+                    image.style.top = (ty * TILE_SIZE - top) + 'px';
+                    image.onload = function() { updateTileStatus(); };
+                    image.onerror = function() {
+                      tileErrors++;
+                      updateTileStatus();
+                    };
+                    tileCount++;
+                    image.src = 'https://tile.openstreetmap.org/' + zoom + '/' + wrappedX + '/' + ty + '.png';
+                    tilesLayer.appendChild(image);
+                  }
+                }
+                updateTileStatus();
               }
-            }
-            window.setOpenTaskerPoint = function(lat, lon, moveMap) {
-              updatePoint(lat, lon, false, moveMap);
-            };
-            window.updateOpenTaskerRadius = function(radius) {
-              activeRadius = Math.max(1, Number(radius) || 100);
-              if (rangeCircle) rangeCircle.setRadius(activeRadius);
-            };
-            map.on('click', function(event) {
-              updatePoint(event.latlng.lat, event.latlng.lng, true, false);
-            });
-            map.on('tileerror', function() {
-              document.body.setAttribute('data-tile-error', 'true');
-            });
-            map.setView([CENTER_LAT, CENTER_LON], ZOOM);
-            if (HAS_POINT) updatePoint(CENTER_LAT, CENTER_LON, false, false);
+              function updateTileStatus() {
+                if (tileErrors > 0 && tileErrors >= tileCount) {
+                  tileStatus.textContent = 'Map tiles are unavailable. Check your internet connection; place search and manual selection still work.';
+                  tileStatus.style.display = 'block';
+                } else if (tileCount > 0 && tileErrors > 0) {
+                  tileStatus.textContent = 'Some map tiles could not be loaded.';
+                  tileStatus.style.display = 'block';
+                } else {
+                  tileStatus.style.display = 'none';
+                }
+              }
+              function renderSelection(width, height, centerX, centerY) {
+                if (!selected) {
+                  pin.style.display = 'none';
+                  circle.style.display = 'none';
+                  return;
+                }
+                var rectX = lonToX(selected.lon) - centerX + width / 2;
+                var rectY = latToY(selected.lat) - centerY + height / 2;
+                var metersPerPixel = Math.cos(selected.lat * Math.PI / 180) * 2 * Math.PI * EARTH_RADIUS / worldSize();
+                var radiusPixels = activeRadius / Math.max(0.0001, metersPerPixel);
+                radiusPixels = Math.min(radiusPixels, Math.max(width, height) * 2);
+                circle.style.display = 'block';
+                circle.style.width = (radiusPixels * 2) + 'px';
+                circle.style.height = (radiusPixels * 2) + 'px';
+                circle.style.left = rectX + 'px';
+                circle.style.top = rectY + 'px';
+                pin.style.display = 'block';
+                pin.style.left = rectX + 'px';
+                pin.style.top = rectY + 'px';
+              }
+              function render() {
+                var width = map.clientWidth;
+                var height = map.clientHeight;
+                if (!width || !height) return;
+                var centerX = lonToX(centerLon);
+                var centerY = latToY(centerLat);
+                renderTiles(width, height, centerX, centerY);
+                renderSelection(width, height, centerX, centerY);
+              }
+              function setPoint(lat, lon, moveMap) {
+                if (!isFinite(lat) || !isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
+                selected = { lat:lat, lon:lon };
+                if (moveMap) {
+                  centerLat = lat;
+                  centerLon = lon;
+                  zoom = Math.max(zoom, 15);
+                }
+                scheduleRender();
+              }
+              window.setOpenTaskerPoint = setPoint;
+              window.updateOpenTaskerRadius = function(radius) {
+                activeRadius = Math.max(1, Number(radius) || 100);
+                scheduleRender();
+              };
+              function notifyPoint() {
+                if (selected && window.OpenTaskerPicker) {
+                  window.OpenTaskerPicker.onPointSelected(selected.lat, selected.lon);
+                }
+              }
+              function pointerPosition(event) {
+                var rect = map.getBoundingClientRect();
+                return { x:event.clientX - rect.left, y:event.clientY - rect.top };
+              }
+              map.addEventListener('pointerdown', function(event) {
+                if (event.target.closest && event.target.closest('.zoom-button')) return;
+                var pos = pointerPosition(event);
+                pointer = {
+                  id:event.pointerId, x:pos.x, y:pos.y,
+                  startX:pos.x, startY:pos.y,
+                  centerX:lonToX(centerLon), centerY:latToY(centerLat),
+                  draggingPin:event.target === pin, moved:false
+                };
+                map.setPointerCapture(event.pointerId);
+                event.preventDefault();
+              });
+              map.addEventListener('pointermove', function(event) {
+                if (!pointer || pointer.id !== event.pointerId) return;
+                var pos = pointerPosition(event);
+                var dx = pos.x - pointer.startX;
+                var dy = pos.y - pointer.startY;
+                if (Math.abs(dx) + Math.abs(dy) > 4) pointer.moved = true;
+                if (!pointer.moved) return;
+                if (pointer.draggingPin) {
+                  selected = screenToPoint(pos.x, pos.y);
+                } else {
+                  var size = worldSize();
+                  var x = ((pointer.centerX - dx) % size + size) % size;
+                  var y = clamp(pointer.centerY - dy, 0, size);
+                  centerLon = xToLon(x);
+                  centerLat = yToLat(y);
+                }
+                scheduleRender();
+                event.preventDefault();
+              });
+              function finishPointer(event) {
+                if (!pointer || pointer.id !== event.pointerId) return;
+                var pos = pointerPosition(event);
+                if (!pointer.moved) {
+                  selected = screenToPoint(pos.x, pos.y);
+                  notifyPoint();
+                } else if (pointer.draggingPin) {
+                  notifyPoint();
+                }
+                pointer = null;
+                scheduleRender();
+              }
+              map.addEventListener('pointerup', finishPointer);
+              map.addEventListener('pointercancel', function() { pointer = null; });
+              document.getElementById('zoom-in').addEventListener('click', function(event) {
+                event.stopPropagation();
+                zoom = Math.min(19, zoom + 1);
+                scheduleRender();
+              });
+              document.getElementById('zoom-out').addEventListener('click', function(event) {
+                event.stopPropagation();
+                zoom = Math.max(2, zoom - 1);
+                scheduleRender();
+              });
+              map.addEventListener('wheel', function(event) {
+                zoom = clamp(zoom + (event.deltaY < 0 ? 1 : -1), 2, 19);
+                scheduleRender();
+                event.preventDefault();
+              }, { passive:false });
+              window.addEventListener('resize', scheduleRender);
+              render();
+              if (selected) notifyInitialSelection();
+              function notifyInitialSelection() { /* Initial coordinates already live in Compose state. */ }
+            })();
           </script>
         </body>
         </html>
