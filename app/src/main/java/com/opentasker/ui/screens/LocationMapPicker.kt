@@ -551,9 +551,9 @@ private fun locationPickerHtml(
     radiusMeters: Double,
 ): String {
     val hasInitialPoint = latitude != null && longitude != null
-    val centerLatitude = latitude ?: 20.0
-    val centerLongitude = longitude ?: 0.0
-    val zoom = if (hasInitialPoint) 16 else 2
+    val centerLatitude = latitude ?: 39.5
+    val centerLongitude = longitude ?: -98.35
+    val zoom = if (hasInitialPoint) 16 else 4
     return """
         <!doctype html>
         <html>
@@ -721,6 +721,7 @@ private fun locationPickerHtml(
                 var cacheKeys = Object.keys(tileCache);
                 if (cacheKeys.length > 120) {
                   cacheKeys.slice(0, cacheKeys.length - 100).forEach(function(key) {
+                    if (visibleTileKeys.indexOf(key) !== -1) return;
                     var oldTile = tileCache[key];
                     if (oldTile.parentNode) oldTile.parentNode.removeChild(oldTile);
                     delete tileCache[key];
