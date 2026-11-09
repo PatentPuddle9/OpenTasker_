@@ -139,6 +139,22 @@ class TaskWidgetCustomizationTest {
     }
 
     @Test
+    fun widgetDisplayKeepsRemoteViewsBitmapPayloadBelowBinderLimit() {
+        val display = sourceRoot.resolve("com/opentasker/widget/WidgetDisplay.kt").readText()
+
+        assertTrue(display.contains("MAX_REMOTE_BITMAP_BYTES = 650 * 1024"))
+        assertTrue(display.contains("BACKGROUND_WIDTH_PX = 320"))
+        assertTrue(display.contains("BACKGROUND_HEIGHT_PX = 232"))
+        assertTrue(display.contains("IMAGE_WIDTH_PX = 256"))
+        assertTrue(display.contains("IMAGE_HEIGHT_PX = 144"))
+        assertTrue(display.contains("ICON_MAX_DIMENSION_PX = 64"))
+        assertTrue(display.contains("canAttachBitmap(bitmap.byteCount, remoteBitmapBytesUsed)"))
+        assertTrue(display.contains("remoteBitmapBytesUsed += bitmap.byteCount"))
+        assertFalse(display.contains("targetWidthPx = 640"))
+        assertFalse(display.contains("width = 720"))
+    }
+
+    @Test
     fun widgetsTabHasOneAnimatedCreateMenuForBothWidgetTypes() {
         val screen = sourceRoot.resolve("com/opentasker/ui/screens/ShortcutsScreen.kt").readText()
         val host = sourceRoot.resolve("com/opentasker/ui/screens/ActiveAutomationUi.kt").readText()
