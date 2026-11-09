@@ -127,9 +127,11 @@ class TaskWidgetCustomizationTest {
             display.contains("views.removeAllViews"))
         assertTrue("Positioned canvas slots need runtime width and height",
             display.contains("setViewLayoutWidth") && display.contains("setViewLayoutHeight"))
-        assertTrue("Positioned canvas slots need left and top margins",
-            display.contains("setViewLayoutMargin(rootId, Gravity.LEFT") &&
-                display.contains("setViewLayoutMargin(rootId, Gravity.TOP"))
+        assertTrue("Positioned canvas slots need left and top margin selectors",
+            display.contains("setViewLayoutMargin(rootId, RemoteViews.MARGIN_LEFT") &&
+                display.contains("setViewLayoutMargin(rootId, RemoteViews.MARGIN_TOP"))
+        assertFalse("Gravity flags are not RemoteViews margin selectors",
+            display.contains("setViewLayoutMargin(rootId, Gravity."))
         assertTrue("Absolute positioning must be guarded to Android 12 and newer",
             display.contains("Build.VERSION.SDK_INT >= Build.VERSION_CODES.S"))
         val legacy = resRoot.resolve("layout/widget_display_legacy.xml").readText()
@@ -164,7 +166,7 @@ class TaskWidgetCustomizationTest {
         assertTrue("Compact widgets should show a summary instead of silently dropping content",
             display.contains("overflowSummary(1)") && display.contains("overflowSummary(3)"))
         assertTrue("Scene and Widget canvas elements should snap while the finger is still down",
-            display.contains("setViewLayoutMargin(rootId, Gravity.LEFT") &&
+            display.contains("setViewLayoutMargin(rootId, RemoteViews.MARGIN_LEFT") &&
                 sourceRoot.resolve("com/opentasker/widget/WidgetDisplayCanvas.kt").readText()
                     .contains("dragX = (result.snappedX - element.xDp).toFloat()"))
     }
