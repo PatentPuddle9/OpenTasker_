@@ -307,7 +307,7 @@ private fun WidgetDisplayCanvasItemContent(
                 )
             }
             WidgetDisplayElementType.DIVIDER -> Box(
-                Modifier.fillMaxWidth().size(height = 1.dp, width = 1.dp).background(foreground.copy(alpha = 0.6f)),
+                Modifier.fillMaxWidth().height(1.dp).background(foreground.copy(alpha = 0.6f)),
             )
             WidgetDisplayElementType.SPACER -> Box(Modifier.fillMaxSize())
         }
