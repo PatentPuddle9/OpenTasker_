@@ -152,6 +152,15 @@ object WidgetDisplayStateController {
  * Each button/shortcut targets a top-level Action (Profile ID), never an Action block.
  */
 object WidgetDisplayRenderer {
+    // Keep the complete RemoteViews bitmap payload comfortably below Android's Binder limit.
+    // Backgrounds and uploaded images are serialized as raw pixels, not compressed PNGs.
+    private const val MAX_REMOTE_BITMAP_BYTES = 650 * 1024
+    private const val BACKGROUND_WIDTH_PX = 320
+    private const val BACKGROUND_HEIGHT_PX = 232
+    private const val IMAGE_WIDTH_PX = 256
+    private const val IMAGE_HEIGHT_PX = 144
+    private const val ICON_MAX_DIMENSION_PX = 64
+
     fun updateWidget(context: Context, manager: AppWidgetManager, widgetId: Int) {
         if (WidgetDisplayStore.isRemoved(context, widgetId)) {
             val placeholder = RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display)
@@ -160,8 +169,8 @@ object WidgetDisplayRenderer {
                 WidgetBackgroundRenderer.render(
                     backgroundColor = 0xFF30243F.toInt(),
                     gradient = true,
-                    width = 720,
-                    height = 520,
+                    width = BACKGROUND_WIDTH_PX,
+                    height = BACKGROUND_HEIGHT_PX,
                     shape = "rounded_square",
                 ),
             )
@@ -196,15 +205,17 @@ object WidgetDisplayRenderer {
             panelPadding,
             panelPadding,
         )
+        val backgroundBitmap = WidgetBackgroundRenderer.render(
+            backgroundColor = state.backgroundColor,
+            gradient = state.gradient,
+            width = BACKGROUND_WIDTH_PX,
+            height = BACKGROUND_HEIGHT_PX,
+            shape = "rounded_square",
+        )
+        var remoteBitmapBytesUsed = backgroundBitmap.byteCount
         views.setImageViewBitmap(
             com.opentasker.app.R.id.widget_display_background,
-            WidgetBackgroundRenderer.render(
-                backgroundColor = state.backgroundColor,
-                gradient = state.gradient,
-                width = 720,
-                height = 520,
-                shape = "rounded_square",
-            ),
+            backgroundBitmap,
         )
         views.setTextViewText(com.opentasker.app.R.id.widget_display_title, state.title)
         views.setTextViewText(com.opentasker.app.R.id.widget_display_subtitle, state.subtitle)
@@ -277,16 +288,20 @@ object WidgetDisplayRenderer {
                         val bitmap = SceneImageLoader.load(
                             context = context,
                             source = element.imageUri,
-                            targetWidthPx = 640,
-                            targetHeightPx = 360,
+                            targetWidthPx = IMAGE_WIDTH_PX,
+                            targetHeightPx = IMAGE_HEIGHT_PX,
                         )
-                        if (bitmap != null) {
+                        if (bitmap != null && canAttachBitmap(bitmap.byteCount, remoteBitmapBytesUsed)) {
                             setImageViewBitmap(com.opentasker.app.R.id.widget_display_image, bitmap)
+                            remoteBitmapBytesUsed += bitmap.byteCount
                             setViewVisibility(com.opentasker.app.R.id.widget_display_image, View.VISIBLE)
                         } else {
                             setViewVisibility(com.opentasker.app.R.id.widget_display_image, View.GONE)
                             setViewVisibility(com.opentasker.app.R.id.widget_display_image_fallback, View.VISIBLE)
-                            setTextViewText(com.opentasker.app.R.id.widget_display_image_fallback, "Image unavailable")
+                            setTextViewText(
+                                com.opentasker.app.R.id.widget_display_image_fallback,
+                                if (bitmap == null) "Image unavailable" else "Image skipped to keep the widget lightweight",
+                            )
                         }
                         setTextViewText(com.opentasker.app.R.id.widget_display_image_caption, element.text)
                         setTextColor(com.opentasker.app.R.id.widget_display_image_caption, foreground)
@@ -298,9 +313,15 @@ object WidgetDisplayRenderer {
                             com.opentasker.app.R.layout.widget_display_button_item
                         }
                         RemoteViews(context.packageName, layout).apply {
-                            val customIcon = CustomWidgetIconStore.loadBitmapForWidget(context, element.icon, state.accentColor)
-                            if (customIcon != null) {
+                            val customIcon = CustomWidgetIconStore.loadBitmapForWidget(
+                                context,
+                                element.icon,
+                                state.accentColor,
+                                maxDimensionPx = ICON_MAX_DIMENSION_PX,
+                            )
+                            if (customIcon != null && canAttachBitmap(customIcon.byteCount, remoteBitmapBytesUsed)) {
                                 setImageViewBitmap(com.opentasker.app.R.id.widget_display_action_icon, customIcon)
+                                remoteBitmapBytesUsed += customIcon.byteCount
                             } else {
                                 val icon = WidgetIconCatalog.resolve(element.icon)
                                 setImageViewResource(com.opentasker.app.R.id.widget_display_action_icon, icon.drawableRes)
@@ -338,9 +359,15 @@ object WidgetDisplayRenderer {
                         }
                     }
                     WidgetDisplayElementType.ICON -> RemoteViews(context.packageName, com.opentasker.app.R.layout.widget_display_icon_item).apply {
-                        val customIcon = CustomWidgetIconStore.loadBitmapForWidget(context, element.icon, state.accentColor)
-                        if (customIcon != null) {
+                        val customIcon = CustomWidgetIconStore.loadBitmapForWidget(
+                            context,
+                            element.icon,
+                            state.accentColor,
+                            maxDimensionPx = ICON_MAX_DIMENSION_PX,
+                        )
+                        if (customIcon != null && canAttachBitmap(customIcon.byteCount, remoteBitmapBytesUsed)) {
                             setImageViewBitmap(com.opentasker.app.R.id.widget_display_large_icon, customIcon)
+                            remoteBitmapBytesUsed += customIcon.byteCount
                         } else {
                             val icon = WidgetIconCatalog.resolve(element.icon)
                             setImageViewResource(com.opentasker.app.R.id.widget_display_large_icon, icon.drawableRes)
@@ -381,6 +408,9 @@ object WidgetDisplayRenderer {
 
         manager.updateAppWidget(widgetId, views)
     }
+
+    private fun canAttachBitmap(bitmapBytes: Int, alreadyUsedBytes: Int): Boolean =
+        bitmapBytes > 0 && alreadyUsedBytes + bitmapBytes <= MAX_REMOTE_BITMAP_BYTES
 
     private fun rootViewId(type: WidgetDisplayElementType): Int = when (type) {
         WidgetDisplayElementType.TEXT -> com.opentasker.app.R.id.widget_display_text
