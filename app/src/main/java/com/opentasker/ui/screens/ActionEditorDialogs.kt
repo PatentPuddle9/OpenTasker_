@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.stateDescription
@@ -63,8 +64,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Code
 import com.opentasker.app.OpenTaskerApp_NoHilt
 import com.opentasker.app.R
 import com.opentasker.core.actions.ActionField
@@ -80,7 +79,6 @@ import com.opentasker.core.actions.NotificationTaskCandidate
 import com.opentasker.core.actions.NotificationTaskReference
 import com.opentasker.core.actions.NotificationTaskResolution
 import com.opentasker.core.actions.VariableChipOption
-import com.opentasker.core.actions.acceptsVariableType
 import com.opentasker.core.actions.insertVariableAtSelection
 import com.opentasker.core.actions.mergeActionArguments
 import com.opentasker.core.actions.typedVariableOptions
@@ -527,7 +525,7 @@ internal fun ActionConfigDialog(
                         hint = null,
                         supportingText = { Text(stringResource(R.string.action_condition_helper)) },
                         isError = false,
-                        variableOptions = variableOptions.filter { it.type != com.opentasker.core.actions.ActionValueType.ARRAY },
+                        variableOptions = variableOptions,
                         singleLine = true,
                     )
                     Spacer(Modifier.height(12.dp))
@@ -611,7 +609,7 @@ internal fun ActionConfigDialog(
                         actionBlocks = enclosingActions,
                         excludedActionBlockId = state.existing?.id,
                         issue = validationIssues[field.key],
-                        variableOptions = variableOptions.filter { option -> field.acceptsVariableType(option.type) },
+                        variableOptions = variableOptions,
                     )
                     taskBindingIssues[field.key]?.let { issue ->
                         Text(
@@ -934,7 +932,7 @@ private fun VariableTextField(
                 modifier = Modifier.testTag(ACTION_VARIABLE_PICKER_TAG),
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.Code,
+                    painter = painterResource(R.drawable.ic_variable_picker),
                     contentDescription = "Insert variable",
                     tint = MaterialTheme.colorScheme.primary,
                 )
@@ -971,10 +969,19 @@ private fun VariablePickerDialog(
     var query by rememberSaveable { mutableStateOf("") }
     var selectedCategory by rememberSaveable { mutableStateOf("All") }
     val categories = remember(options) {
-        listOf("All") + options
-            .map { variableCategoryLabel(it.scope) }
-            .distinct()
-            .sorted()
+        val categoryOrder = listOf(
+            "Action outputs",
+            "Trigger data",
+            "Saved variables",
+            "Display",
+            "Audio",
+            "Battery",
+            "Connectivity",
+            "System",
+            "Flow errors",
+        )
+        val available = options.map(::variableCategoryLabel).distinct()
+        listOf("All") + categoryOrder.filter { it in available } + available.filterNot { it in categoryOrder }.sorted()
     }
     val filteredOptions = remember(options, query, selectedCategory) {
         filterVariablePickerOptions(options, query, selectedCategory)
@@ -1094,16 +1101,24 @@ internal fun filterVariablePickerOptions(
         val matchesQuery = normalizedQuery.isBlank() ||
             option.name.lowercase().contains(normalizedQuery) ||
             option.reference.lowercase().contains(normalizedQuery) ||
-            option.description.lowercase().contains(normalizedQuery)
+            option.description.lowercase().contains(normalizedQuery) ||
+            option.type.name.lowercase().contains(normalizedQuery) ||
+            variableCategoryLabel(option).lowercase().contains(normalizedQuery)
         matchesCategory && matchesQuery
     }.sortedWith(compareBy<VariableChipOption>({ it.name.lowercase() }, { it.reference }))
 }
 
-private fun variableCategoryLabel(scope: com.opentasker.core.actions.VariableChipScope): String = when (scope) {
+private fun variableCategoryLabel(option: VariableChipOption): String = when (option.scope) {
     com.opentasker.core.actions.VariableChipScope.STEP -> "Action outputs"
     com.opentasker.core.actions.VariableChipScope.EVENT -> "Trigger data"
     com.opentasker.core.actions.VariableChipScope.GLOBAL -> "Saved variables"
-    com.opentasker.core.actions.VariableChipScope.SYSTEM -> "System"
+    com.opentasker.core.actions.VariableChipScope.SYSTEM -> when {
+        option.name.startsWith("brightness", ignoreCase = true) -> "Display"
+        option.name.startsWith("volume", ignoreCase = true) -> "Audio"
+        option.name.startsWith("battery", ignoreCase = true) -> "Battery"
+        option.name in setOf("wifi", "wifi_ssid", "wifi_connected", "internet", "network_type", "vpn") -> "Connectivity"
+        else -> "System"
+    }
     com.opentasker.core.actions.VariableChipScope.FLOW_ERROR -> "Flow errors"
 }
 
