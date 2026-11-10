@@ -21,6 +21,7 @@ data class TemplateScope(
     val sensitiveGlobal: Set<String> = emptySet(),
     val sensitiveTask: Set<String> = emptySet(),
     val sensitiveArrays: Set<String> = emptySet(),
+    val system: Map<String, String> = emptyMap(),
 )
 
 data class TemplateExpressionLimits(
@@ -54,6 +55,7 @@ enum class TemplateValueSource {
     TASK,
     EVENT,
     GLOBAL,
+    SYSTEM,
     ARRAY,
     LITERAL,
     DEFAULT,
@@ -65,7 +67,7 @@ enum class TemplateValueSource {
  *
  * Supported syntax is intentionally small:
  * - `{{ name }}` resolves task, event, then global variables.
- * - `{{ task.name }}`, `{{ event.name }}`, and `{{ global.name }}` pin a scope.
+ * - `{{ task.name }}`, `{{ event.name }}`, `{{ global.name }}`, and `{{ system.name }}` pin a scope.
  * - `{{ payload.user.name }}` reads a dot path from a JSON object variable.
  * - `{{ items[0] }}` and `{{ items[#] }}` read arrays supplied by the caller.
  * - Pipe functions include `default`, `upper`, `lower`, `trim`, `add`, `sub`,
@@ -225,6 +227,12 @@ class TemplateExpressionEngine(
                 scope.global,
                 TemplateValueSource.GLOBAL,
                 scope.sensitiveGlobal,
+            )
+            normalized.startsWith("system.") -> resolveInMap(
+                normalized.removePrefix("system."),
+                scope.system,
+                TemplateValueSource.SYSTEM,
+                emptySet(),
             )
             normalized.startsWith("array.") -> resolveArray(
                 normalized.removePrefix("array."),
