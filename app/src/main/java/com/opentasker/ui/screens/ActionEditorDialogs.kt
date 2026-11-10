@@ -30,6 +30,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -38,6 +40,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
@@ -54,10 +57,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Code
 import com.opentasker.app.OpenTaskerApp_NoHilt
 import com.opentasker.app.R
 import com.opentasker.core.actions.ActionField
@@ -74,7 +81,7 @@ import com.opentasker.core.actions.NotificationTaskReference
 import com.opentasker.core.actions.NotificationTaskResolution
 import com.opentasker.core.actions.VariableChipOption
 import com.opentasker.core.actions.acceptsVariableType
-import com.opentasker.core.actions.insertVariableChip
+import com.opentasker.core.actions.insertVariableAtSelection
 import com.opentasker.core.actions.mergeActionArguments
 import com.opentasker.core.actions.typedVariableOptions
 import com.opentasker.core.capabilities.ActionCapabilityRegistry
@@ -513,17 +520,15 @@ internal fun ActionConfigDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
+                    VariableTextField(
                         value = condition,
                         onValueChange = { condition = it },
-                        label = { Text(stringResource(R.string.action_condition_label)) },
+                        label = stringResource(R.string.action_condition_label),
+                        hint = null,
                         supportingText = { Text(stringResource(R.string.action_condition_helper)) },
+                        isError = false,
+                        variableOptions = variableOptions.filter { it.type != com.opentasker.core.actions.ActionValueType.ARRAY },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    VariableChipPicker(
-                        options = variableOptions.filter { it.type != com.opentasker.core.actions.ActionValueType.ARRAY },
-                        onSelect = { option -> condition = insertVariableChip(condition, option) },
                     )
                     Spacer(Modifier.height(12.dp))
                     if (!FlowControl.isControl(state.metadata.id)) {
@@ -898,78 +903,209 @@ private fun VariableTextField(
     minLines: Int = 1,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text(label) },
-            placeholder = hint?.let { { Text(it) } },
-            supportingText = supportingText,
-            isError = isError,
-            keyboardOptions = keyboardOptions,
-            singleLine = singleLine,
-            minLines = minLines,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        VariableChipPicker(
-            options = variableOptions,
-            onSelect = { option -> onValueChange(insertVariableChip(value, option)) },
-        )
+    var fieldValue by remember {
+        mutableStateOf(TextFieldValue(value, selection = TextRange(value.length)))
     }
-}
+    var showVariablePicker by remember { mutableStateOf(false) }
 
-@Composable
-private fun VariableChipPicker(
-    options: List<VariableChipOption>,
-    onSelect: (VariableChipOption) -> Unit,
-) {
-    if (options.isEmpty()) return
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag(ACTION_VARIABLE_PICKER_TAG),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(
-            stringResource(R.string.action_variable_picker_label),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            items(
-                options,
-                key = { option ->
-                    "${option.scope}:${option.actionIndex}:${option.name}:${option.reference}:${option.type}"
-                },
-            ) { option ->
-                FilterChip(
-                    selected = false,
-                    onClick = { onSelect(option) },
-                    label = {
-                        Text(
-                            variableChipLabel(option),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    },
-                )
-            }
+    // Keep external edits in sync without resetting the caret on every keystroke.
+    LaunchedEffect(value) {
+        if (fieldValue.text != value) {
+            fieldValue = TextFieldValue(value, selection = TextRange(value.length))
         }
     }
+
+    OutlinedTextField(
+        value = fieldValue,
+        onValueChange = { edited ->
+            fieldValue = edited
+            onValueChange(edited.text)
+        },
+        label = { Text(label) },
+        placeholder = hint?.let { { Text(it) } },
+        supportingText = supportingText,
+        isError = isError,
+        keyboardOptions = keyboardOptions,
+        singleLine = singleLine,
+        minLines = minLines,
+        trailingIcon = {
+            IconButton(
+                onClick = { showVariablePicker = true },
+                modifier = Modifier.testTag(ACTION_VARIABLE_PICKER_TAG),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Code,
+                    contentDescription = "Insert variable",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+    if (showVariablePicker) {
+        VariablePickerDialog(
+            options = variableOptions,
+            onDismiss = { showVariablePicker = false },
+            onSelect = { option ->
+                val (updatedText, cursor) = insertVariableAtSelection(
+                    existing = fieldValue.text,
+                    selectionStart = fieldValue.selection.min,
+                    selectionEnd = fieldValue.selection.max,
+                    option = option,
+                )
+                fieldValue = TextFieldValue(updatedText, selection = TextRange(cursor))
+                onValueChange(updatedText)
+                showVariablePicker = false
+            },
+        )
+    }
 }
 
 @Composable
-private fun variableChipLabel(option: VariableChipOption): String = when (option.scope) {
-    com.opentasker.core.actions.VariableChipScope.STEP -> stringResource(
-        R.string.action_variable_chip_step,
-        (option.actionIndex ?: 0) + 1,
-        option.name,
+private fun VariablePickerDialog(
+    options: List<VariableChipOption>,
+    onDismiss: () -> Unit,
+    onSelect: (VariableChipOption) -> Unit,
+) {
+    var query by rememberSaveable { mutableStateOf("") }
+    var selectedCategory by rememberSaveable { mutableStateOf("All") }
+    val categories = remember(options) {
+        listOf("All") + options
+            .map { variableCategoryLabel(it.scope) }
+            .distinct()
+            .sorted()
+    }
+    val filteredOptions = remember(options, query, selectedCategory) {
+        val normalizedQuery = query.trim().lowercase()
+        options.filter { option ->
+            val matchesCategory = selectedCategory == "All" ||
+                variableCategoryLabel(option.scope) == selectedCategory
+            val matchesQuery = normalizedQuery.isBlank() ||
+                option.name.lowercase().contains(normalizedQuery) ||
+                option.reference.lowercase().contains(normalizedQuery) ||
+                option.description.lowercase().contains(normalizedQuery)
+            matchesCategory && matchesQuery
+        }.sortedWith(compareBy<VariableChipOption>({ it.name.lowercase() }, { it.reference }))
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Insert variable") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.sm)) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    label = { Text("Search variables") },
+                    placeholder = { Text("Search by name or description") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(categories, key = { it }) { category ->
+                        FilterChip(
+                            selected = selectedCategory == category,
+                            onClick = { selectedCategory = category },
+                            label = { Text(category) },
+                        )
+                    }
+                }
+                Text(
+                    "${filteredOptions.size} variables",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (filteredOptions.isEmpty()) {
+                    Text(
+                        "No matching variables.",
+                        modifier = Modifier.padding(vertical = 20.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 380.dp),
+                        verticalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.xs),
+                    ) {
+                        items(
+                            filteredOptions,
+                            key = { option ->
+                                "${option.scope}:${option.actionIndex}:${option.reference}:${option.type}"
+                            },
+                        ) { option ->
+                            Card(
+                                onClick = { onSelect(option) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                                ),
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            option.name,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        Text(
+                                            variableTypeLabel(option.type),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    Text(
+                                        option.reference,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                    if (option.description.isNotBlank()) {
+                                        Text(
+                                            option.description,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    if (option.scope == com.opentasker.core.actions.VariableChipScope.STEP) {
+                                        Text(
+                                            "Action step ${(option.actionIndex ?: 0) + 1}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        },
     )
-    com.opentasker.core.actions.VariableChipScope.EVENT -> stringResource(R.string.action_variable_chip_event, option.name)
-    com.opentasker.core.actions.VariableChipScope.GLOBAL -> stringResource(R.string.action_variable_chip_global, option.name)
+}
+
+private fun variableCategoryLabel(scope: com.opentasker.core.actions.VariableChipScope): String = when (scope) {
+    com.opentasker.core.actions.VariableChipScope.STEP -> "Action outputs"
+    com.opentasker.core.actions.VariableChipScope.EVENT -> "Trigger data"
+    com.opentasker.core.actions.VariableChipScope.GLOBAL -> "Saved variables"
+    com.opentasker.core.actions.VariableChipScope.SYSTEM -> "System"
+}
+
+private fun variableTypeLabel(type: com.opentasker.core.actions.ActionValueType): String = when (type) {
+    com.opentasker.core.actions.ActionValueType.ANY -> "Any"
+    com.opentasker.core.actions.ActionValueType.TEXT -> "Text"
+    com.opentasker.core.actions.ActionValueType.NUMBER -> "Number"
+    com.opentasker.core.actions.ActionValueType.BOOLEAN -> "Boolean"
+    com.opentasker.core.actions.ActionValueType.JSON -> "JSON"
+    com.opentasker.core.actions.ActionValueType.ARRAY -> "Array"
 }
 
 @Composable
