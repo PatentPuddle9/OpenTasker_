@@ -96,6 +96,7 @@ enum class VariableChipScope {
     EVENT,
     GLOBAL,
     SYSTEM,
+    FLOW_ERROR,
 }
 
 /** A value-only editor option. Secret values are intentionally not part of this type. */
@@ -129,6 +130,30 @@ data class SystemEditorVariable(
     val name: String,
     val type: ActionValueType,
     val description: String,
+)
+
+data class FlowEditorVariable(
+    val name: String,
+    val type: ActionValueType,
+    val description: String,
+)
+
+/** Error details made available inside flow.catch and action fallback runs. */
+val DEFAULT_EDITOR_FLOW_VARIABLES: List<FlowEditorVariable> = listOf(
+    FlowEditorVariable("FLOW_ERROR_JSON", ActionValueType.JSON, "Structured details about the failed action."),
+    FlowEditorVariable("FLOW_ERROR_TASK_ID", ActionValueType.NUMBER, "ID of the task that failed."),
+    FlowEditorVariable("FLOW_ERROR_TASK_NAME", ActionValueType.TEXT, "Name of the task that failed."),
+    FlowEditorVariable("FLOW_ERROR_ACTION_ID", ActionValueType.NUMBER, "ID of the failed action block."),
+    FlowEditorVariable("FLOW_ERROR_ACTION", ActionValueType.TEXT, "Type of the failed action."),
+    FlowEditorVariable("FLOW_ERROR_INDEX", ActionValueType.NUMBER, "One-based position of the failed action."),
+    FlowEditorVariable("FLOW_ERROR_TYPE", ActionValueType.TEXT, "Action type that failed."),
+    FlowEditorVariable("FLOW_ERROR_MESSAGE", ActionValueType.TEXT, "Failure message from the action."),
+    FlowEditorVariable("FLOW_ERROR_ATTEMPT", ActionValueType.NUMBER, "Number of attempts made by the failed action."),
+    FlowEditorVariable("FLOW_ERROR_RETRYING", ActionValueType.BOOLEAN, "Whether the action is currently being retried."),
+    FlowEditorVariable("FLOW_ERROR_RETRY_REASON", ActionValueType.TEXT, "Reason recorded for an action retry."),
+    FlowEditorVariable("FLOW_ERROR_PROFILE_ID", ActionValueType.NUMBER, "ID of the profile that started the task, when available."),
+    FlowEditorVariable("FLOW_ERROR_PROFILE_NAME", ActionValueType.TEXT, "Name of the profile that started the task, when available."),
+    FlowEditorVariable("FLOW_ERROR_CAUGHT", ActionValueType.BOOLEAN, "Whether the failure has been handled by flow.catch."),
 )
 
 /** Live device values captured at the start of every automation run. */
@@ -177,6 +202,7 @@ fun typedVariableOptions(
     globalNames: Collection<String> = emptyList(),
     eventVariables: List<EditorEventVariable> = DEFAULT_EDITOR_EVENT_VARIABLES,
     systemVariables: List<SystemEditorVariable> = DEFAULT_EDITOR_SYSTEM_VARIABLES,
+    flowVariables: List<FlowEditorVariable> = DEFAULT_EDITOR_FLOW_VARIABLES,
 ): List<VariableChipOption> {
     val precedingCount = editingIndex?.coerceIn(0, actions.size) ?: actions.size
     val stepOptions = actions.take(precedingCount).flatMapIndexed { index, action ->
@@ -226,7 +252,18 @@ fun typedVariableOptions(
                 description = variable.description,
             )
         }
-    return stepOptions + eventOptions + globalOptions + systemOptions
+    val flowOptions = flowVariables
+        .distinctBy(FlowEditorVariable::name)
+        .map { variable ->
+            VariableChipOption(
+                name = variable.name,
+                type = variable.type,
+                scope = VariableChipScope.FLOW_ERROR,
+                reference = "{{ task.${variable.name} }}",
+                description = variable.description,
+            )
+        }
+    return stepOptions + eventOptions + globalOptions + systemOptions + flowOptions
 }
 
 /** Whether a metadata field can consume a declared output without an implicit type cast. */
