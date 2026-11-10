@@ -1097,7 +1097,7 @@ internal fun filterVariablePickerOptions(
 ): List<VariableChipOption> {
     val normalizedQuery = query.trim().lowercase()
     return options.filter { option ->
-        val matchesCategory = category == "All" || variableCategoryLabel(option.scope) == category
+        val matchesCategory = category == "All" || variableCategoryLabel(option) == category
         val matchesQuery = normalizedQuery.isBlank() ||
             option.name.lowercase().contains(normalizedQuery) ||
             option.reference.lowercase().contains(normalizedQuery) ||
