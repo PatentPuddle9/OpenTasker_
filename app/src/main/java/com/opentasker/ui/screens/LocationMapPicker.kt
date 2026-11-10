@@ -12,6 +12,8 @@ import android.os.Looper
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -254,7 +256,7 @@ private fun LocationMapPickerDialog(
             tonalElevation = 6.dp,
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier.fillMaxSize().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Row(
@@ -343,9 +345,32 @@ private fun LocationMapPickerDialog(
                             settings.javaScriptCanOpenWindowsAutomatically = false
                             settings.userAgentString =
                                 settings.userAgentString + " OpenTasker/" + BuildConfig.VERSION_NAME
-                            webViewClient = WebViewClient()
+                            webViewClient = object : WebViewClient() {
+                                override fun onPageFinished(view: WebView, url: String?) {
+                                    super.onPageFinished(view, url)
+                                    // The first HTML render can happen before AndroidView has its
+                                    // final measured size. Re-render once the document is ready.
+                                    view.post {
+                                        view.evaluateJavascript(
+                                            "window.invalidateOpenTaskerMap && window.invalidateOpenTaskerMap();",
+                                            null,
+                                        )
+                                    }
+                                }
+
+                                override fun onReceivedError(
+                                    view: WebView,
+                                    request: WebResourceRequest,
+                                    error: WebResourceError,
+                                ) {
+                                    super.onReceivedError(view, request, error)
+                                    if (request.isForMainFrame) {
+                                        statusMessage = "The map view could not load. You can still search for an address or place."
+                                    }
+                                }
+                            }
                             webChromeClient = WebChromeClient()
-                            setBackgroundColor(android.graphics.Color.WHITE)
+                            setBackgroundColor(android.graphics.Color.rgb(232, 232, 232))
                             isVerticalScrollBarEnabled = false
                             isHorizontalScrollBarEnabled = false
                             addJavascriptInterface(
@@ -841,7 +866,22 @@ private fun locationPickerHtml(
                 scheduleRender();
                 event.preventDefault();
               }, { passive:false });
+              // AndroidView can initially measure the WebView at 0x0 while Compose is
+              // laying out the dialog. Observe the actual map element so tiles are drawn
+              // as soon as it receives a non-zero size, not only on a later window resize.
+              if (window.ResizeObserver) {
+                var mapResizeObserver = new ResizeObserver(scheduleRender);
+                mapResizeObserver.observe(map);
+              }
               window.addEventListener('resize', scheduleRender);
+              window.addEventListener('orientationchange', scheduleRender);
+              document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) scheduleRender();
+              });
+              window.invalidateOpenTaskerMap = function() {
+                render();
+                scheduleRender();
+              };
               render();
               if (selected) notifyInitialSelection();
               function notifyInitialSelection() { /* Initial coordinates already live in Compose state. */ }
