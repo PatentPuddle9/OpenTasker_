@@ -92,7 +92,6 @@ class ActionOutputsTest {
     }
 
     @Test
-    @Test
     fun pickerCatalogsEveryDeviceSnapshotVariable() {
         val expected = setOf(
             "brightness", "brightness_percent", "brightness_mode", "brightness_automatic",
@@ -112,6 +111,7 @@ class ActionOutputsTest {
         assertEquals(expected, actual)
     }
 
+    @Test
     fun fieldCompatibilityKeepsNumbersAndArraysTyped() {
         val number = ActionField("number", 1, FieldType.NUMBER, numberRule = ActionNumberRule())
         val array = ActionField("array", 1, inputType = ActionValueType.ARRAY)
