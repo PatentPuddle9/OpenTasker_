@@ -228,9 +228,11 @@ fun typedVariableOptions(
             reference = "{{ event.${event.name} }}",
         )
     }
+    val flowVariableNames = flowVariables.mapTo(mutableSetOf(), FlowEditorVariable::name)
     val globalOptions = globalNames
         .asSequence()
         .mapNotNull(VariableNamePolicy::normalize)
+        .filterNot { it in flowVariableNames }
         .distinct()
         .map { name ->
             VariableChipOption(
@@ -259,7 +261,7 @@ fun typedVariableOptions(
                 name = variable.name,
                 type = variable.type,
                 scope = VariableChipScope.FLOW_ERROR,
-                reference = "{{ task.${variable.name} }}",
+                reference = "{{ global.${variable.name} }}",
                 description = variable.description,
             )
         }
