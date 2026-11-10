@@ -66,6 +66,27 @@ class ActionOutputsTest {
     }
 
     @Test
+    fun systemVariablesAreListedAndInsertedAtTheCurrentSelection() {
+        val options = typedVariableOptions(actions = emptyList())
+        val battery = options.single { it.scope == VariableChipScope.SYSTEM && it.name == "battery_percent" }
+        val brightness = options.single { it.scope == VariableChipScope.SYSTEM && it.name == "brightness" }
+        val volume = options.single { it.scope == VariableChipScope.SYSTEM && it.name == "volume_percent" }
+
+        assertEquals("{{ system.battery_percent }}", battery.reference)
+        assertEquals("{{ system.brightness }}", brightness.reference)
+        assertEquals("{{ system.volume_percent }}", volume.reference)
+
+        val (updated, cursor) = insertVariableAtSelection(
+            existing = "beforeXafter",
+            selectionStart = 6,
+            selectionEnd = 7,
+            option = battery,
+        )
+        assertEquals("before{{ system.battery_percent }}after", updated)
+        assertEquals(6 + battery.reference.length, cursor)
+    }
+
+    @Test
     fun fieldCompatibilityKeepsNumbersAndArraysTyped() {
         val number = ActionField("number", 1, FieldType.NUMBER, numberRule = ActionNumberRule())
         val array = ActionField("array", 1, inputType = ActionValueType.ARRAY)
