@@ -100,7 +100,7 @@ class ActionVariablePickerTest {
             filterVariablePickerOptions(options, query = "system.brightness").map { it.name },
         )
         assertEquals(
-            listOf("battery_percent", "brightness_percent"),
+            listOf("battery_percent", "brightness_percent", "volume_percent"),
             filterVariablePickerOptions(options, query = "percentage").map { it.name },
         )
         assertEquals(
