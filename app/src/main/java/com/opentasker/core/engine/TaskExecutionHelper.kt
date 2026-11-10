@@ -172,6 +172,7 @@ suspend fun executeAndLogTask(
         )
     }
     initialVariables.forEach { (name, value) -> variables.set(name, value) }
+    variables.seedSystemVariables(readSystemVariableSnapshot(appContext))
     // Baseline after seeding + event vars, so only globals actually changed during the run persist.
     val baselineGlobals = variables.globalSnapshot()
     val baselineSensitiveGlobals = variables.globalSensitiveSnapshot()
