@@ -99,6 +99,7 @@ object ActionMetadataRegistry {
  */
 private fun declaredActionSummaryRes(actionId: String): Int = when (actionId) {
     "notify.show",
+    "notify.send",
     "toast.show",
     "scene.show",
     "widget.display.control",
@@ -353,6 +354,32 @@ fun registerActionMetadata() {
                         option("long", R.string.catalog_action_toast_show_duration_long),
                     ),
                 ),
+            ),
+        ),
+    )
+
+    ActionMetadataRegistry.register(
+        ActionMetadata(
+            id = "notify.send",
+            nameRes = R.string.catalog_action_notify_send_name,
+            descriptionRes = R.string.catalog_action_notify_send_description,
+            categoryRes = R.string.catalog_category_notification,
+            fields = listOf(
+                ActionField("title", R.string.catalog_action_notify_send_field_title_label, required = true, hintRes = R.string.catalog_action_notify_send_field_title_hint),
+                ActionField("text", R.string.catalog_action_notify_send_field_text_label, FieldType.MULTILINE, hintRes = R.string.catalog_action_notify_send_field_text_hint),
+                ActionField(
+                    "channel",
+                    R.string.catalog_action_notify_send_field_channel_label,
+                    FieldType.DROPDOWN,
+                    options = listOf(
+                        option("quiet", R.string.catalog_action_notify_send_channel_quiet),
+                        option("default", R.string.catalog_action_notify_send_channel_default),
+                        option("urgent", R.string.catalog_action_notify_send_channel_urgent),
+                    ),
+                ),
+                ActionField("ongoing", R.string.catalog_action_notify_send_field_ongoing_label, FieldType.CHECKBOX),
+                ActionField("tag", R.string.catalog_action_notify_send_field_tag_label, hintRes = R.string.catalog_action_notify_send_field_tag_hint),
+                ActionField("id", R.string.catalog_action_notify_send_field_id_label, FieldType.NUMBER, hintRes = R.string.catalog_action_notify_send_field_id_hint, numberRule = integerRule(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong())),
             ),
         ),
     )

@@ -101,6 +101,7 @@ object ActionCapabilityRegistry {
 
     private val capabilities = mapOf(
         "notify.show" to ActionCapability(CapabilityLevel.RequiresSetup, "Requires Display over other apps access to show a popup dialog.", R.string.capability_popup_dialog_overlay),
+        "notify.send" to ActionCapability(CapabilityLevel.RequiresSetup, "Requires notification permission on Android 13+.", R.string.capability_notification_permission),
         "scene.show" to ActionCapability(CapabilityLevel.RequiresSetup, "Requires Display over other apps access to show a scene overlay.", R.string.capability_scene_overlay),
         "auth.device_credential" to ActionCapability(CapabilityLevel.RequiresSetup, "Requires Display over other apps access so background automations can open the Android credential screen.", R.string.capability_device_credential_overlay),
         "notify.cancel" to ActionCapability(CapabilityLevel.RequiresSetup, "Cancels a posted notification by tag and/or ID. Requires notification permission on Android 13+.", R.string.capability_notification_cancel_permission),

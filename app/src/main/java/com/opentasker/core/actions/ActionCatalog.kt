@@ -43,6 +43,7 @@ class ActionDefinition(
 object ActionCatalog {
     val all: List<ActionDefinition> = listOf(
         define("notify.show", ActionCategory.NOTIFICATION, ActionRetrySafety.NEVER, ::ShowPopupAction),
+        define("notify.send", ActionCategory.NOTIFICATION, ActionRetrySafety.NEVER, ::SendNotificationAction),
         define("toast.show", ActionCategory.NOTIFICATION, ActionRetrySafety.NEVER, ::ShowToastAction),
         define("scene.show", ActionCategory.SYSTEM, ActionRetrySafety.NEVER, ::ShowSceneAction),
         define("widget.display.control", ActionCategory.SYSTEM, ActionRetrySafety.NEVER, ::WidgetDisplayControlAction),

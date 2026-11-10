@@ -100,6 +100,7 @@ object AutomationSensitivityRegistry {
     private val deviceControlActionIds = setOf(
         "clipboard.set",
         "notify.show",
+        "notify.send",
         "notify.cancel",
         "notify.progress",
         "toast.show",

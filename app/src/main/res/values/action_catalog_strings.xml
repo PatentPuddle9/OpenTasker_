@@ -2,6 +2,21 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <!-- Generated from stable action catalog keys; values are the translatable presentation layer. -->
     <string name="catalog_action_notify_show_name" formatted="false">Show Popup</string>
+    <string name="catalog_action_notify_send_name" formatted="false">Send Notification</string>
+    <string name="catalog_action_notify_send_description" formatted="false">Post a standard Android notification with no progress bar.</string>
+    <string name="catalog_action_notify_send_field_title_label" formatted="false">Title</string>
+    <string name="catalog_action_notify_send_field_title_hint" formatted="false">Notification title</string>
+    <string name="catalog_action_notify_send_field_text_label" formatted="false">Message</string>
+    <string name="catalog_action_notify_send_field_text_hint" formatted="false">Optional notification message</string>
+    <string name="catalog_action_notify_send_field_channel_label" formatted="false">Notification importance</string>
+    <string name="catalog_action_notify_send_channel_quiet" formatted="false">Quiet</string>
+    <string name="catalog_action_notify_send_channel_default" formatted="false">Default</string>
+    <string name="catalog_action_notify_send_channel_urgent" formatted="false">Urgent</string>
+    <string name="catalog_action_notify_send_field_ongoing_label" formatted="false">Keep notification ongoing</string>
+    <string name="catalog_action_notify_send_field_tag_label" formatted="false">Tag</string>
+    <string name="catalog_action_notify_send_field_tag_hint" formatted="false">Optional tag used to update or cancel this notification</string>
+    <string name="catalog_action_notify_send_field_id_label" formatted="false">ID</string>
+    <string name="catalog_action_notify_send_field_id_hint" formatted="false">Optional ID; leave blank to generate one automatically</string>
     <string name="catalog_action_notify_show_description" formatted="false">Show a popup dialog with optional task buttons; buttons without a task dismiss the dialog</string>
     <string name="catalog_action_toast_show_name" formatted="false">Show Toast</string>
     <string name="catalog_action_toast_show_description" formatted="false">Show a brief toast message with an optional selectable icon.</string>

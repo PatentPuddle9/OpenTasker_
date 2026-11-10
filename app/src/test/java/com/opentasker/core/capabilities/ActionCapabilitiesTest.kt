@@ -9,6 +9,14 @@ import org.junit.Test
 
 class ActionCapabilitiesTest {
     @Test
+    fun sendingANotificationRequiresAndroidNotificationPermission() {
+        val capability = ActionCapabilityRegistry.get("notify.send")
+        assertTrue(capability.canAdd)
+        assertEquals(CapabilityLevel.RequiresSetup, capability.level)
+        assertTrue(capability.reason.contains("notification permission"))
+    }
+
+    @Test
     fun unsupportedActionsCannotBeAddedFromUi() {
         assertFalse(ActionCapabilityRegistry.get("app.kill").canAdd)
         assertFalse(ActionCapabilityRegistry.get("wifi.toggle").canAdd)

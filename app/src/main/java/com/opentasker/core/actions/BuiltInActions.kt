@@ -26,6 +26,64 @@ import com.opentasker.core.platform.AndroidAudioHardening
 import com.opentasker.core.platform.PromotedOngoingNotificationSupport
 import java.util.concurrent.atomic.AtomicInteger
 
+/** Posts a standard Android notification without a progress indicator. */
+class SendNotificationAction : DeclaredAction(ActionCatalog.require("notify.send")) {
+
+    override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(ctx.app, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return ActionResult.Failure("Notification permission is not granted")
+        }
+
+        val title = args["title"]?.takeIf { it.isNotBlank() }
+            ?: return ActionResult.Failure("missing title")
+        val rawId = args["id"]?.trim()
+        val id = when {
+            rawId.isNullOrEmpty() -> nextNotificationId.getAndIncrement()
+            rawId.toIntOrNull() != null -> rawId.toInt()
+            else -> return ActionResult.Failure("id must be an integer")
+        }
+        val ongoing = when (args["ongoing"]?.trim()?.lowercase()) {
+            null, "" -> false
+            "true" -> true
+            "false" -> false
+            else -> return ActionResult.Failure("ongoing must be true or false")
+        }
+        val channelDef = NotificationChannels.resolve(args["channel"] ?: "default")
+        val manager = ctx.app.getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(
+            NotificationChannel(channelDef.id, channelDef.name, channelDef.importance),
+        )
+
+        val text = args["text"].orEmpty()
+        val builder = NotificationCompat.Builder(ctx.app, channelDef.id)
+            .setSmallIcon(R.drawable.ic_notification_mark)
+            .setContentTitle(title)
+            .setAutoCancel(!ongoing)
+            .setOngoing(ongoing)
+            .setOnlyAlertOnce(true)
+        if (text.isNotBlank()) {
+            builder
+                .setContentText(text)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+        }
+
+        val tag = args["tag"]?.takeIf { it.isNotBlank() }
+        return try {
+            NotificationManagerCompat.from(ctx.app).notify(tag, id, builder.build())
+            ctx.logger("Notification posted (id=$id)")
+            ActionResult.Success
+        } catch (ex: SecurityException) {
+            ActionResult.Failure("notification failed: ${ex.message}", ex)
+        }
+    }
+
+    private companion object {
+        val nextNotificationId = AtomicInteger(10_000)
+    }
+}
+
 /** Posts an ordered progress notification on Android 16+ and a normal progress bar below it. */
 class ProgressNotificationAction : DeclaredAction(ActionCatalog.require("notify.progress")) {
 
