@@ -26,6 +26,20 @@ class ActionVariablePickerTest {
             description = "Current battery charge percentage.",
         ),
         VariableChipOption(
+            name = "volume_percent",
+            type = ActionValueType.NUMBER,
+            scope = VariableChipScope.SYSTEM,
+            reference = "{{ system.volume_percent }}",
+            description = "Media volume as a percentage.",
+        ),
+        VariableChipOption(
+            name = "wifi_ssid",
+            type = ActionValueType.TEXT,
+            scope = VariableChipScope.SYSTEM,
+            reference = "{{ system.wifi_ssid }}",
+            description = "Connected Wi-Fi network name, when available.",
+        ),
+        VariableChipOption(
             name = "share_text",
             type = ActionValueType.TEXT,
             scope = VariableChipScope.EVENT,
@@ -47,10 +61,22 @@ class ActionVariablePickerTest {
     )
 
     @Test
-    fun categoriesFilterSystemAndTriggerVariablesSeparately() {
+    fun categoriesGroupSystemVariablesByDeviceArea() {
         assertEquals(
-            listOf("battery_percent", "brightness_percent"),
-            filterVariablePickerOptions(options, query = "", category = "System").map { it.name },
+            listOf("battery_percent"),
+            filterVariablePickerOptions(options, query = "", category = "Battery").map { it.name },
+        )
+        assertEquals(
+            listOf("brightness_percent"),
+            filterVariablePickerOptions(options, query = "", category = "Display").map { it.name },
+        )
+        assertEquals(
+            listOf("volume_percent"),
+            filterVariablePickerOptions(options, query = "", category = "Audio").map { it.name },
+        )
+        assertEquals(
+            listOf("wifi_ssid"),
+            filterVariablePickerOptions(options, query = "", category = "Connectivity").map { it.name },
         )
         assertEquals(
             listOf("share_text"),
@@ -60,11 +86,11 @@ class ActionVariablePickerTest {
             listOf("FLOW_ERROR_MESSAGE"),
             filterVariablePickerOptions(options, query = "", category = "Flow errors").map { it.name },
         )
-        assertEquals(5, filterVariablePickerOptions(options, query = "").size)
+        assertEquals(7, filterVariablePickerOptions(options, query = "").size)
     }
 
     @Test
-    fun searchMatchesNamesReferencesAndDescriptions() {
+    fun searchMatchesNamesReferencesDescriptionsTypesAndCategories() {
         assertEquals(
             listOf("battery_percent"),
             filterVariablePickerOptions(options, query = "battery").map { it.name },
@@ -77,16 +103,31 @@ class ActionVariablePickerTest {
             listOf("brightness_percent"),
             filterVariablePickerOptions(options, query = "percentage").map { it.name },
         )
+        assertEquals(
+            listOf("volume_percent"),
+            filterVariablePickerOptions(options, query = "audio").map { it.name },
+        )
+        assertEquals(
+            listOf("wifi_ssid", "share_text").sorted(),
+            filterVariablePickerOptions(options, query = "text").map { it.name }.sorted(),
+        )
     }
 
     @Test
-    fun variableFieldsUseAnIconAndDialogInsteadOfAnInlineChipStrip() {
+    fun variableFieldsUseTheUploadedIconAndDialogInsteadOfAnInlineChipStrip() {
         val source = ProductionSources.read("com/opentasker/ui/screens/ActionEditorDialogs.kt")
 
         assertTrue(source.contains("trailingIcon = {"))
         assertTrue(source.contains("IconButton("))
+        assertTrue(source.contains("painterResource(R.drawable.ic_variable_picker)"))
         assertTrue(source.contains("VariablePickerDialog("))
+        assertTrue(source.contains("variableOptions = variableOptions,"))
+        assertFalse(source.contains("acceptsVariableType"))
         assertFalse(source.contains("VariableChipPicker("))
         assertFalse(source.contains("private fun VariableChipPicker("))
+
+        val icon = ProductionSources.repoRoot.resolve("app/src/main/res/drawable/ic_variable_picker.xml").toFile()
+        assertTrue("the uploaded variable icon must be installed as a vector drawable", icon.exists())
+        assertTrue(icon.readText().contains("android:strokeLineCap=\"round\""))
     }
 }
