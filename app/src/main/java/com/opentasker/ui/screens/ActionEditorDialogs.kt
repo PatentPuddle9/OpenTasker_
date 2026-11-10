@@ -977,16 +977,7 @@ private fun VariablePickerDialog(
             .sorted()
     }
     val filteredOptions = remember(options, query, selectedCategory) {
-        val normalizedQuery = query.trim().lowercase()
-        options.filter { option ->
-            val matchesCategory = selectedCategory == "All" ||
-                variableCategoryLabel(option.scope) == selectedCategory
-            val matchesQuery = normalizedQuery.isBlank() ||
-                option.name.lowercase().contains(normalizedQuery) ||
-                option.reference.lowercase().contains(normalizedQuery) ||
-                option.description.lowercase().contains(normalizedQuery)
-            matchesCategory && matchesQuery
-        }.sortedWith(compareBy<VariableChipOption>({ it.name.lowercase() }, { it.reference }))
+        filterVariablePickerOptions(options, query, selectedCategory)
     }
 
     AlertDialog(
@@ -1090,6 +1081,22 @@ private fun VariablePickerDialog(
             TextButton(onClick = onDismiss) { Text("Close") }
         },
     )
+}
+
+internal fun filterVariablePickerOptions(
+    options: List<VariableChipOption>,
+    query: String,
+    category: String = "All",
+): List<VariableChipOption> {
+    val normalizedQuery = query.trim().lowercase()
+    return options.filter { option ->
+        val matchesCategory = category == "All" || variableCategoryLabel(option.scope) == category
+        val matchesQuery = normalizedQuery.isBlank() ||
+            option.name.lowercase().contains(normalizedQuery) ||
+            option.reference.lowercase().contains(normalizedQuery) ||
+            option.description.lowercase().contains(normalizedQuery)
+        matchesCategory && matchesQuery
+    }.sortedWith(compareBy<VariableChipOption>({ it.name.lowercase() }, { it.reference }))
 }
 
 private fun variableCategoryLabel(scope: com.opentasker.core.actions.VariableChipScope): String = when (scope) {
