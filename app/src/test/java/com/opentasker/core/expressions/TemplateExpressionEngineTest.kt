@@ -153,4 +153,20 @@ class TemplateExpressionEngineTest {
         assertEquals("Payload {{ payload }}", result.value)
         assertTrue(result.warnings.any { it.contains("Resolved value exceeds") })
     }
+    
+    @Test
+    fun systemReferencesResolveWithoutFallingIntoTaskOrGlobalScope() {
+        val result = engine.expand(
+            "{{ system.battery_percent }}|{{ system.brightness_percent }}",
+            TemplateScope(
+                task = mapOf("battery_percent" to "1"),
+                global = mapOf("battery_percent" to "2"),
+                system = mapOf("battery_percent" to "75", "brightness_percent" to "33"),
+            ),
+        )
+
+        assertEquals("75|33", result.value)
+        assertEquals(TemplateValueSource.SYSTEM, result.traces.first().source)
+    }
+
 }
