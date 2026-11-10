@@ -92,6 +92,26 @@ class ActionOutputsTest {
     }
 
     @Test
+    @Test
+    fun pickerCatalogsEveryDeviceSnapshotVariable() {
+        val expected = setOf(
+            "brightness", "brightness_percent", "brightness_mode", "brightness_automatic",
+            "volume", "volume_max", "volume_percent", "volume_muted",
+            "volume_ring", "volume_ring_max", "volume_ring_percent",
+            "volume_alarm", "volume_alarm_max", "volume_alarm_percent",
+            "volume_notification", "volume_notification_max", "volume_notification_percent",
+            "battery_percent", "battery_level", "battery_scale", "battery_charging",
+            "battery_status", "battery_plugged", "battery_temperature_c", "battery_voltage_mv",
+            "wifi", "wifi_ssid", "wifi_connected", "internet", "network_type", "vpn",
+        )
+        val actual = typedVariableOptions(actions = emptyList())
+            .filter { it.scope == VariableChipScope.SYSTEM }
+            .map { it.name }
+            .toSet()
+
+        assertEquals(expected, actual)
+    }
+
     fun fieldCompatibilityKeepsNumbersAndArraysTyped() {
         val number = ActionField("number", 1, FieldType.NUMBER, numberRule = ActionNumberRule())
         val array = ActionField("array", 1, inputType = ActionValueType.ARRAY)
