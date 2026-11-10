@@ -95,6 +95,7 @@ enum class VariableChipScope {
     STEP,
     EVENT,
     GLOBAL,
+    SYSTEM,
 }
 
 /** A value-only editor option. Secret values are intentionally not part of this type. */
@@ -105,6 +106,7 @@ data class VariableChipOption(
     val reference: String,
     val actionIndex: Int? = null,
     val actionType: String? = null,
+    val description: String = "",
 )
 
 data class EditorEventVariable(
@@ -123,6 +125,44 @@ val DEFAULT_EDITOR_EVENT_VARIABLES: List<EditorEventVariable> = listOf(
     EditorEventVariable("share_multiple", ActionValueType.BOOLEAN),
 )
 
+data class SystemEditorVariable(
+    val name: String,
+    val type: ActionValueType,
+    val description: String,
+)
+
+/** Live device values captured at the start of every automation run. */
+val DEFAULT_EDITOR_SYSTEM_VARIABLES: List<SystemEditorVariable> = listOf(
+    SystemEditorVariable("brightness", ActionValueType.NUMBER, "Screen brightness (0–255)."),
+    SystemEditorVariable("brightness_percent", ActionValueType.NUMBER, "Screen brightness as a percentage."),
+    SystemEditorVariable("brightness_mode", ActionValueType.TEXT, "Automatic or manual brightness mode."),
+    SystemEditorVariable("brightness_automatic", ActionValueType.BOOLEAN, "Whether automatic brightness is enabled."),
+    SystemEditorVariable("volume", ActionValueType.NUMBER, "Current media volume level."),
+    SystemEditorVariable("volume_max", ActionValueType.NUMBER, "Maximum media volume level."),
+    SystemEditorVariable("volume_percent", ActionValueType.NUMBER, "Media volume as a percentage."),
+    SystemEditorVariable("volume_muted", ActionValueType.BOOLEAN, "Whether media volume is muted."),
+    SystemEditorVariable("volume_ring", ActionValueType.NUMBER, "Current ringtone volume level."),
+    SystemEditorVariable("volume_ring_percent", ActionValueType.NUMBER, "Ringtone volume as a percentage."),
+    SystemEditorVariable("volume_alarm", ActionValueType.NUMBER, "Current alarm volume level."),
+    SystemEditorVariable("volume_alarm_percent", ActionValueType.NUMBER, "Alarm volume as a percentage."),
+    SystemEditorVariable("volume_notification", ActionValueType.NUMBER, "Current notification volume level."),
+    SystemEditorVariable("volume_notification_percent", ActionValueType.NUMBER, "Notification volume as a percentage."),
+    SystemEditorVariable("battery_percent", ActionValueType.NUMBER, "Current battery charge percentage."),
+    SystemEditorVariable("battery_level", ActionValueType.NUMBER, "Raw battery charge level."),
+    SystemEditorVariable("battery_scale", ActionValueType.NUMBER, "Maximum battery charge level reported by Android."),
+    SystemEditorVariable("battery_charging", ActionValueType.BOOLEAN, "Whether the battery is charging or full."),
+    SystemEditorVariable("battery_status", ActionValueType.TEXT, "Charging, discharging, full, not charging, or unknown."),
+    SystemEditorVariable("battery_plugged", ActionValueType.TEXT, "AC, USB, wireless, dock, or unplugged."),
+    SystemEditorVariable("battery_temperature_c", ActionValueType.NUMBER, "Battery temperature in degrees Celsius."),
+    SystemEditorVariable("battery_voltage_mv", ActionValueType.NUMBER, "Battery voltage in millivolts."),
+    SystemEditorVariable("wifi", ActionValueType.TEXT, "Current Wi-Fi connection name or disconnected."),
+    SystemEditorVariable("wifi_ssid", ActionValueType.TEXT, "Connected Wi-Fi network name, when available."),
+    SystemEditorVariable("wifi_connected", ActionValueType.BOOLEAN, "Whether Wi-Fi is connected."),
+    SystemEditorVariable("internet", ActionValueType.BOOLEAN, "Whether the device currently has internet access."),
+    SystemEditorVariable("network_type", ActionValueType.TEXT, "Current network type."),
+    SystemEditorVariable("vpn", ActionValueType.BOOLEAN, "Whether a VPN is connected."),
+)
+
 /**
  * Returns all references visible while editing an action. The current action is excluded when it
  * is being edited, so a step cannot accidentally reference its own output. Global names are
@@ -133,6 +173,7 @@ fun typedVariableOptions(
     editingIndex: Int? = null,
     globalNames: Collection<String> = emptyList(),
     eventVariables: List<EditorEventVariable> = DEFAULT_EDITOR_EVENT_VARIABLES,
+    systemVariables: List<SystemEditorVariable> = DEFAULT_EDITOR_SYSTEM_VARIABLES,
 ): List<VariableChipOption> {
     val precedingCount = editingIndex?.coerceIn(0, actions.size) ?: actions.size
     val stepOptions = actions.take(precedingCount).flatMapIndexed { index, action ->
@@ -171,7 +212,18 @@ fun typedVariableOptions(
             )
         }
         .toList()
-    return stepOptions + eventOptions + globalOptions
+    val systemOptions = systemVariables
+        .distinctBy(SystemEditorVariable::name)
+        .map { variable ->
+            VariableChipOption(
+                name = variable.name,
+                type = variable.type,
+                scope = VariableChipScope.SYSTEM,
+                reference = "{{ system.${variable.name} }}",
+                description = variable.description,
+            )
+        }
+    return stepOptions + eventOptions + globalOptions + systemOptions
 }
 
 /** Whether a metadata field can consume a declared output without an implicit type cast. */
@@ -206,6 +258,19 @@ fun insertVariableChip(existing: String, option: VariableChipOption): String {
     if (existing.isBlank()) return option.reference
     val separator = if (existing.last().isWhitespace()) "" else " "
     return existing + separator + option.reference
+}
+
+/** Replaces the current text selection with a variable token and returns the new caret position. */
+fun insertVariableAtSelection(
+    existing: String,
+    selectionStart: Int,
+    selectionEnd: Int,
+    option: VariableChipOption,
+): Pair<String, Int> {
+    val start = selectionStart.coerceIn(0, existing.length)
+    val end = selectionEnd.coerceIn(start, existing.length)
+    val updated = existing.replaceRange(start, end, option.reference)
+    return updated to (start + option.reference.length)
 }
 
 private fun output(
