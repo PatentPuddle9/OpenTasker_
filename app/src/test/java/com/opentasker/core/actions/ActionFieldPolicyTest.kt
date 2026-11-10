@@ -137,6 +137,9 @@ class ActionFieldPolicyTest {
         assertEquals(ActionFieldPolicy.Error.ABOVE_MAXIMUM, ActionFieldPolicy.validate(field, "11")?.error)
         assertNull(ActionFieldPolicy.validate(field, "7"))
         assertNull(ActionFieldPolicy.validate(field, "%count"))
+        assertNull(ActionFieldPolicy.validate(field, "{{ system.brightness }}"))
+        assertNull(ActionFieldPolicy.validate(field, "{{ system.volume_percent }}"))
+        assertNull(ActionFieldPolicy.validate(field, "{{ system.battery_percent }}"))
     }
 
     @Test
