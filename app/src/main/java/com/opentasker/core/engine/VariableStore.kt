@@ -37,6 +37,7 @@ data class TrackedExpansion(
 class VariableStore {
     private val globals = ConcurrentHashMap<String, String>()
     private val rootLocals = ConcurrentHashMap<String, String>()
+    private val systemValues = ConcurrentHashMap<String, String>()
     private val localStack = java.util.Collections.synchronizedList(mutableListOf<MutableMap<String, String>>())
     private val globalSensitiveNames = ConcurrentHashMap.newKeySet<String>()
     private val declaredSecretGlobals = ConcurrentHashMap.newKeySet<String>()
@@ -120,6 +121,18 @@ class VariableStore {
         globalSensitiveNames += declaredSecretGlobals
     }
 
+    /**
+     * Replace the live system snapshot for this execution. System values are isolated from task
+     * and global namespaces and are never included in the persisted-global snapshot.
+     */
+    fun seedSystemVariables(values: Map<String, String>) {
+        systemValues.clear()
+        values.forEach { (rawName, value) ->
+            val name = VariableNamePolicy.normalize(rawName)?.lowercase() ?: return@forEach
+            systemValues[name] = value
+        }
+    }
+
     /** Snapshot of the current global scope, used to persist durable globals after a run. */
     fun globalSnapshot(): Map<String, String> = globals.toMap()
 
@@ -192,6 +205,7 @@ class VariableStore {
                 localSensitiveStack.flatMapTo(rootLocalSensitiveNames.toMutableSet()) { it }
             },
             sensitiveArrays = sensitiveArrayNames.toSet(),
+            system = systemValues.toMap(),
         )
     }
 
