@@ -161,6 +161,7 @@ private fun LocationMapPickerDialog(
     var searching by remember { mutableStateOf(false) }
     var lastSearchAt by remember { mutableLongStateOf(0L) }
     var mapView by remember { mutableStateOf<WebView?>(null) }
+    var mapLoaded by remember { mutableStateOf(false) }
 
     fun setSelection(latitude: Double, longitude: Double, moveMap: Boolean = true, updateMap: Boolean = true) {
         if (!latitude.isFinite() || latitude !in -90.0..90.0 ||
@@ -170,7 +171,7 @@ private fun LocationMapPickerDialog(
         selectedLongitude = longitude
         statusMessage = null
         val move = if (moveMap) "true" else "false"
-        if (updateMap) {
+        if (updateMap && mapLoaded) {
             mapView?.evaluateJavascript(
                 "window.setOpenTaskerPoint($latitude,$longitude,$move);",
                 null,
@@ -351,9 +352,23 @@ private fun LocationMapPickerDialog(
                                     super.onPageFinished(view, url)
                                     // The first HTML render can happen before AndroidView has its
                                     // final measured size. Re-render once the document is ready.
+                                    mapLoaded = true
                                     view.post {
+                                        // Selection and radius changes can arrive while the document
+                                        // is still loading. Replay the latest Compose state only after
+                                        // the JavaScript map API is available.
+                                        val selectedPointUpdate =
+                                            if (selectedLatitude != null && selectedLongitude != null) {
+                                                "window.setOpenTaskerPoint && window.setOpenTaskerPoint(${selectedLatitude},${selectedLongitude},true);"
+                                            } else {
+                                                ""
+                                            }
                                         view.evaluateJavascript(
-                                            "window.invalidateOpenTaskerMap && window.invalidateOpenTaskerMap();",
+                                            """
+                                                window.invalidateOpenTaskerMap && window.invalidateOpenTaskerMap();
+                                                window.updateOpenTaskerRadius && window.updateOpenTaskerRadius($radiusMeters);
+                                                $selectedPointUpdate
+                                            """.trimIndent(),
                                             null,
                                         )
                                     }
@@ -366,6 +381,7 @@ private fun LocationMapPickerDialog(
                                 ) {
                                     super.onReceivedError(view, request, error)
                                     if (request.isForMainFrame) {
+                                        mapLoaded = false
                                         statusMessage = "The map view could not load. You can still search for an address or place."
                                     }
                                 }
@@ -396,10 +412,12 @@ private fun LocationMapPickerDialog(
                     },
                     update = { webView ->
                         mapView = webView
-                        webView.evaluateJavascript(
-                            "window.updateOpenTaskerRadius($radiusMeters);",
-                            null,
-                        )
+                        if (mapLoaded) {
+                            webView.evaluateJavascript(
+                                "window.updateOpenTaskerRadius($radiusMeters);",
+                                null,
+                            )
+                        }
                     },
                 )
 
@@ -486,6 +504,7 @@ private fun LocationMapPickerDialog(
                 destroy()
             }
             mapView = null
+            mapLoaded = false
         }
     }
 }
