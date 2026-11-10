@@ -639,8 +639,8 @@
     <string name="catalog_action_log_name" formatted="false">Log Message</string>
     <string name="catalog_action_log_description" formatted="false">Write message to task log</string>
     <string name="catalog_action_log_field_message_label" formatted="false">Message</string>
-    <string name="catalog_action_notify_progress_name" formatted="false">Progress Notification</string>
-    <string name="catalog_action_notify_progress_description" formatted="false">Post ordered progress feedback with an Android 16 fallback</string>
+    <string name="catalog_action_notify_progress_name" formatted="false">Send Progress Notification</string>
+    <string name="catalog_action_notify_progress_description" formatted="false">Post a notification with a progress bar. Requires a progress value from 0 to 100.</string>
     <string name="catalog_action_notify_progress_field_title_label" formatted="false">Title</string>
     <string name="catalog_action_notify_progress_field_title_hint" formatted="false">Notification title</string>
     <string name="catalog_action_notify_progress_field_text_label" formatted="false">Text</string>
