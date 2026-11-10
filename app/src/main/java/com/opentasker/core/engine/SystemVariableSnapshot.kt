@@ -107,11 +107,12 @@ private fun addVolumeSnapshot(
             "0"
         }
         if (includeMute) {
-            values["${name}_muted"] = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            val muted = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
                 audio.isStreamMute(stream)
             } else {
                 level == 0
-            }.toString()
+            }
+            values["${name}_muted"] = muted.toString()
         }
     }
 }
