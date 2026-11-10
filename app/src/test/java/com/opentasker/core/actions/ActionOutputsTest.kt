@@ -79,7 +79,7 @@ class ActionOutputsTest {
         val flowMessage = options.single {
             it.scope == VariableChipScope.FLOW_ERROR && it.name == "FLOW_ERROR_MESSAGE"
         }
-        assertEquals("{{ task.FLOW_ERROR_MESSAGE }}", flowMessage.reference)
+        assertEquals("{{ global.FLOW_ERROR_MESSAGE }}", flowMessage.reference)
 
         val (updated, cursor) = insertVariableAtSelection(
             existing = "beforeXafter",
