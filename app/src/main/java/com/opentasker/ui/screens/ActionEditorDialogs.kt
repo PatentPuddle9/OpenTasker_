@@ -1104,6 +1104,7 @@ private fun variableCategoryLabel(scope: com.opentasker.core.actions.VariableChi
     com.opentasker.core.actions.VariableChipScope.EVENT -> "Trigger data"
     com.opentasker.core.actions.VariableChipScope.GLOBAL -> "Saved variables"
     com.opentasker.core.actions.VariableChipScope.SYSTEM -> "System"
+    com.opentasker.core.actions.VariableChipScope.FLOW_ERROR -> "Flow errors"
 }
 
 private fun variableTypeLabel(type: com.opentasker.core.actions.ActionValueType): String = when (type) {
