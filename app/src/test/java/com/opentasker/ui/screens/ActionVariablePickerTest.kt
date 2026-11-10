@@ -37,6 +37,13 @@ class ActionVariablePickerTest {
             scope = VariableChipScope.GLOBAL,
             reference = "{{ global.SavedCount }}",
         ),
+        VariableChipOption(
+            name = "FLOW_ERROR_MESSAGE",
+            type = ActionValueType.TEXT,
+            scope = VariableChipScope.FLOW_ERROR,
+            reference = "{{ global.FLOW_ERROR_MESSAGE }}",
+            description = "Failure message from the action.",
+        ),
     )
 
     @Test
@@ -49,7 +56,11 @@ class ActionVariablePickerTest {
             listOf("share_text"),
             filterVariablePickerOptions(options, query = "", category = "Trigger data").map { it.name },
         )
-        assertEquals(4, filterVariablePickerOptions(options, query = "").size)
+        assertEquals(
+            listOf("FLOW_ERROR_MESSAGE"),
+            filterVariablePickerOptions(options, query = "", category = "Flow errors").map { it.name },
+        )
+        assertEquals(5, filterVariablePickerOptions(options, query = "").size)
     }
 
     @Test
