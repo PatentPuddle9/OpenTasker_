@@ -56,6 +56,7 @@ internal enum class OpenTaskerScreen(@StringRes val labelRes: Int) {
     RunLog(R.string.nav_run_log),
     Diagnostics(R.string.nav_diagnostics),
     Settings(R.string.nav_settings),
+    Marketplace(R.string.nav_marketplace),
 }
 internal val primaryNavigationScreens = listOf(
     OpenTaskerScreen.Actions,
@@ -78,6 +79,7 @@ internal fun OpenTaskerScreen.icon(): ImageVector = when (this) {
     OpenTaskerScreen.RunLog -> Icons.Outlined.History
     OpenTaskerScreen.Diagnostics -> Icons.Outlined.MonitorHeart
     OpenTaskerScreen.Settings -> Icons.Outlined.Tune
+    OpenTaskerScreen.Marketplace -> Icons.Outlined.ShoppingBag
 }
 
 internal fun shouldNavigateBackToActions(screen: OpenTaskerScreen): Boolean =
