@@ -1,6 +1,15 @@
 name: Build OpenTasker APK
 
 on:
+  push:
+    branches: [Experimental]
+    paths:
+      - "app/**"
+      - "gradle/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - ".github/workflows/build.yml"
   workflow_dispatch:
 
 jobs:
