@@ -249,6 +249,12 @@ android {
             "MARKETPLACE_PUBLIC_KEY_X509_BASE64",
             marketplacePublicKey.toBuildConfigStringLiteral(),
         )
+        // Public OAuth application identifier only; no client secret or personal token is shipped.
+        val githubOAuthClientId = providers.environmentVariable("GITHUB_OAUTH_CLIENT_ID")
+            .orElse("")
+            .get()
+            .trim()
+        buildConfigField("String", "GITHUB_OAUTH_CLIENT_ID", githubOAuthClientId.toBuildConfigStringLiteral())
         buildConfigField("String", "BUILD_BRANCH", appBuildBranch.toBuildConfigStringLiteral())
         buildConfigField("String", "UPDATE_SOURCE_BRANCH", appUpdateSourceBranch.toBuildConfigStringLiteral())
         buildConfigField("String", "BUILD_CHANNEL", (if (appIsBetaBuild) "Beta" else "Experimental").toBuildConfigStringLiteral())
