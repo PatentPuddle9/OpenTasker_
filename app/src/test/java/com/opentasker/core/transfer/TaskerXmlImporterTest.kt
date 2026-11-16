@@ -208,7 +208,7 @@ class TaskerXmlImporterTest {
                         <Action><code>453</code></Action>
                         <Action><code>37</code><Str sr="arg0">%MODE = quiet</Str></Action>
                         <Action><code>43</code></Action><Action><code>38</code></Action>
-                        <Action><code>39</code><Str sr="arg0">%ITEMS</Str><Str sr="arg1">item</Str></Action>
+                        <Action><code>39</code><Str sr="arg0">item</Str><Str sr="arg1">%ITEMS()</Str></Action>
                         <Action><code>40</code></Action><Action><code>137</code></Action>
                     </Task>
                 </TaskerData>
@@ -224,6 +224,8 @@ class TaskerXmlImporterTest {
         assertEquals("music", actions[4].args["stream"])
         assertEquals("content://media/song", actions[6].args["path"])
         assertEquals("%MODE = quiet", actions[10].args["condition"])
+        assertEquals("ITEMS", actions[13].args["list"])
+        assertEquals("item", actions[13].args["var"])
         assertEquals(16, report.mappedActions.size)
         assertTrue(report.unsupportedActions.isEmpty())
         assertTrue(report.lossyWarnings.any { it.contains("volume") })
@@ -478,11 +480,9 @@ class TaskerXmlImporterTest {
     }
 
     @Test
-    fun regexConditionOperatorImportsAsWildcardAndWarns() {
-        // Tasker ops 4/5 are "Matches Regex"/"Doesn't Match Regex". The evaluator has no regex
-        // condition operator, so they degrade to the wildcard match -- which keeps the guard in
-        // place (fail-closed) but changes semantics, so the degradation must be reported the same
-        // way the multi-condition and unknown-op cases are, not applied silently.
+    fun regexConditionOperatorImportsAsRegexCondition() {
+        // Tasker ops 4/5 are "Matches Regex"/"Doesn't Match Regex", which the evaluator now runs
+        // as real regex conditions (~R / !~R), so a pattern it can compile imports without a note.
         val report = TaskerXmlImporter.parse(
             rawXml = """
                 <TaskerData>
@@ -502,12 +502,8 @@ class TaskerXmlImporterTest {
         )
 
         val action = report.bundle.tasks.single().actions.single()
-        assertEquals("%pa_url ~ ^https?://.+", action.condition)
-        assertTrue(
-            report.lossyWarnings.any {
-                it.contains("regex") && it.contains("imported as a plain wildcard match")
-            },
-        )
+        assertEquals("%pa_url ~R ^https?://.+", action.condition)
+        assertTrue(report.lossyWarnings.none { it.contains("regex") })
     }
 
     @Test
@@ -582,5 +578,20 @@ class TaskerXmlImporterTest {
         assertEquals(null, action.condition)
         assertEquals("true", action.args["condition"])
         assertTrue(report.lossyWarnings.any { it.contains("unsupported Tasker comparison (op 99)") })
+    }
+
+    @Test
+    fun aTaskOfMoreThanTenStepsImportsInStepOrderNotTheOrderTaskerWritesThem() {
+        // A real export lists act10 and act11 between act1 and act2.
+        val steps = (0..11).map { it.toString() }.sorted().joinToString("") { index ->
+            """<Action sr="act$index"><code>547</code><Str sr="arg0">%step</Str><Str sr="arg1">$index</Str></Action>"""
+        }
+        val report = TaskerXmlImporter.parse(
+            rawXml = """<TaskerData><Task sr="task1"><id>1</id><nme>Long</nme>$steps</Task></TaskerData>""",
+            appVersion = "test",
+            importedAtEpochMs = 123L,
+        )
+
+        assertEquals((0..11).map { it.toString() }, report.bundle.tasks.single().actions.map { it.args["value"] })
     }
 }

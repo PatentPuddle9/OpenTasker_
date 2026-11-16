@@ -1,9 +1,14 @@
 package com.opentasker.core.actions
 
 import android.content.ContextWrapper
+import android.content.Intent
 import com.opentasker.core.engine.ActionContext
 import com.opentasker.core.engine.ActionResult
 import com.opentasker.core.engine.VariableStore
+import com.opentasker.core.platform.BackgroundActivityStart
+import com.opentasker.core.scripting.ShizukuScriptExecutionResult
+import com.opentasker.core.scripting.ShizukuScriptPolicy
+import com.opentasker.core.scripting.ShizukuScriptReply
 import com.opentasker.core.scripting.TermuxCommandResult
 import com.opentasker.core.scripting.TermuxScriptExecutionResult
 import com.sun.net.httpserver.HttpServer
@@ -13,6 +18,7 @@ import java.net.URL
 import java.nio.file.Files
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -418,6 +424,41 @@ class ActionGuardsTest {
         assertTrue("missing package should fail", result is ActionResult.Failure)
     }
 
+    private class RecordingStarts : ContextWrapper(null) {
+        var started = 0
+
+        override fun startActivity(intent: Intent) {
+            started++
+        }
+    }
+
+    @Test
+    fun anActivityStartAndroidWillDropIsStillTriedButNotReportedAsSuccess() {
+        val app = RecordingStarts()
+        BackgroundActivityStart.likelyBlockedOverrideForTests = true
+        try {
+            val result = startActivityFromAction(ActionContext(app, VariableStore()), Intent(), "the link")
+            assertEquals("an exemption the app can't see must still get to open it", 1, app.started)
+            assertTrue("a dropped start must not read as success: $result", result is ActionResult.Failure)
+            assertTrue((result as ActionResult.Failure).message.contains("Overlay access"))
+        } finally {
+            BackgroundActivityStart.likelyBlockedOverrideForTests = null
+        }
+    }
+
+    @Test
+    fun anActivityStartAndroidAllowsReportsSuccess() {
+        val app = RecordingStarts()
+        BackgroundActivityStart.likelyBlockedOverrideForTests = false
+        try {
+            val result = startActivityFromAction(ActionContext(app, VariableStore()), Intent(), "the link")
+            assertEquals(1, app.started)
+            assertEquals(ActionResult.Success, result)
+        } finally {
+            BackgroundActivityStart.likelyBlockedOverrideForTests = null
+        }
+    }
+
     // --- SetVariable guards ---
 
     @Test
@@ -490,6 +531,133 @@ class ActionGuardsTest {
         val result = TermuxScriptAction().completeExecution(context, null, failed)
         assertTrue(result is ActionResult.Failure)
         assertTrue((result as ActionResult.Failure).message.contains("could not execute"))
+    }
+
+    @Test
+    fun termuxScriptWhoseCommandIsMissingExplainsTheEnvironmentWithoutQuotingIt() {
+        val context = ActionContext(ContextWrapper(null), VariableStore(), logger = {})
+        val completed = TermuxScriptExecutionResult.Completed(
+            command = TermuxCommandResult(
+                stdout = "",
+                stderr = "ot_late.sh: 3: rish: not found",
+                exitCode = 127,
+                stdoutOriginalLength = 0,
+                stderrOriginalLength = 30,
+                errorCode = TermuxCommandResult.ERROR_CODE_OK,
+            ),
+            approvedHash = "a".repeat(64),
+        )
+
+        val uncaptured = (TermuxScriptAction().completeExecution(context, null, completed) as ActionResult.Failure).message
+        assertTrue(uncaptured, "code 127" in uncaptured)
+        assertTrue(uncaptured, ".bashrc" in uncaptured)
+        assertTrue(uncaptured, "Output variable prefix" in uncaptured)
+        assertFalse("Script output must stay out of the run log", "rish" in uncaptured)
+
+        val captured = (TermuxScriptAction().completeExecution(context, "tx", completed) as ActionResult.Failure).message
+        assertTrue(captured, "tx_stderr" in captured)
+        assertFalse(captured, "Output variable prefix" in captured)
+    }
+
+    @Test
+    fun termuxScriptWithAnotherExitCodeOnlySaysWhereItsErrorsWent() {
+        val context = ActionContext(ContextWrapper(null), VariableStore(), logger = {})
+        val completed = TermuxScriptExecutionResult.Completed(
+            command = TermuxCommandResult(
+                stdout = "",
+                stderr = "nope",
+                exitCode = 2,
+                stdoutOriginalLength = 0,
+                stderrOriginalLength = 4,
+                errorCode = TermuxCommandResult.ERROR_CODE_OK,
+            ),
+            approvedHash = "a".repeat(64),
+        )
+
+        val message = (TermuxScriptAction().completeExecution(context, "tx", completed) as ActionResult.Failure).message
+        assertTrue(message, "code 2" in message)
+        assertTrue(message, "tx_stderr" in message)
+        assertFalse(message, ".bashrc" in message)
+    }
+
+    // --- ShizukuScriptAction fail-closed ---
+
+    @Test
+    fun shizukuScriptNeedsAPathAndFailsClosedUntilShizukuIsReady() = runBlocking {
+        val missing = ShizukuScriptAction().run(ctx(), emptyMap())
+        assertTrue((missing as ActionResult.Failure).message.contains("path"))
+
+        val result = ShizukuScriptAction().run(ctx(), mapOf("path" to "/data/local/tmp/a.sh"))
+        assertTrue("A script must not run without Shizuku", result is ActionResult.Failure)
+        assertTrue((result as ActionResult.Failure).message.contains("isn't ready"))
+    }
+
+    @Test
+    fun shizukuScriptMapsBoundedResultsWithoutLoggingTheirContents() {
+        val variables = VariableStore()
+        val logs = mutableListOf<String>()
+        val context = ActionContext(ContextWrapper(null), variables, logger = logs::add)
+        val result = ShizukuScriptAction().completeExecution(
+            context,
+            "%script",
+            ShizukuScriptExecutionResult.Completed(
+                reply = ShizukuScriptReply(
+                    status = ShizukuScriptPolicy.STATUS_RAN,
+                    exitCode = 0,
+                    stdout = "private stdout",
+                    stderr = "private stderr",
+                    stdoutBytes = 90_000,
+                    stderrBytes = 14,
+                ),
+                approvedHash = "a".repeat(64),
+            ),
+        )
+
+        assertEquals(ActionResult.Success, result)
+        assertEquals("private stdout", variables.get("%script_stdout"))
+        assertEquals("private stderr", variables.get("%script_stderr"))
+        assertEquals("0", variables.get("%script_exit_code"))
+        assertEquals("The real size is reported even past the capture cap", "90000", variables.get("%script_stdout_length"))
+        assertTrue(logs.single().contains("stdout=<redacted:90000B>"))
+        assertTrue("stdout content leaked into logs", logs.none { "private stdout" in it })
+        assertTrue("stderr content leaked into logs", logs.none { "private stderr" in it })
+    }
+
+    @Test
+    fun shizukuScriptWithANonZeroExitFailsButKeepsItsOutput() {
+        val variables = VariableStore()
+        val context = ActionContext(ContextWrapper(null), variables, logger = {})
+        val result = ShizukuScriptAction().completeExecution(
+            context,
+            "%script",
+            ShizukuScriptExecutionResult.Completed(
+                reply = ShizukuScriptReply(status = ShizukuScriptPolicy.STATUS_RAN, exitCode = 2, stderr = "nope"),
+                approvedHash = "a".repeat(64),
+            ),
+        )
+
+        assertTrue((result as ActionResult.Failure).message.contains("code 2"))
+        assertEquals("2", variables.get("%script_exit_code"))
+        assertEquals("nope", variables.get("%script_stderr"))
+    }
+
+    @Test
+    fun shizukuScriptWhoseCommandIsMissingSaysSoWithoutQuotingIt() {
+        val context = ActionContext(ContextWrapper(null), VariableStore(), logger = {})
+        val result = ShizukuScriptAction().completeExecution(
+            context,
+            null,
+            ShizukuScriptExecutionResult.Completed(
+                reply = ShizukuScriptReply(status = ShizukuScriptPolicy.STATUS_RAN, exitCode = 127, stderr = "sh: rish: not found"),
+                approvedHash = "a".repeat(64),
+            ),
+        )
+
+        val message = (result as ActionResult.Failure).message
+        assertTrue(message, "code 127" in message)
+        assertTrue(message, "full paths" in message)
+        assertTrue(message, "Output variable prefix" in message)
+        assertFalse("Script output must stay out of the run log", "rish" in message)
     }
 
     // --- VolumeAction guards ---

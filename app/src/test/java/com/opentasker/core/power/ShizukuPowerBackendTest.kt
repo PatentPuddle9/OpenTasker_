@@ -7,6 +7,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.After
 import org.junit.Test
+import rikka.shizuku.ShizukuApiConstants
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.readText
@@ -26,6 +27,26 @@ class ShizukuPowerBackendTest {
         assertTrue(installed.managerInstalled)
         assertEquals(ShizukuPowerState.NotInstalled, missing.state)
         assertFalse(missing.managerInstalled)
+    }
+
+    @Test
+    fun aLiveBinderCountsWithoutTheStockManagerPackage() {
+        fun status(
+            killSwitchEnabled: Boolean = false,
+            permissionGranted: Boolean = true,
+            transport: Boolean = true,
+        ) = ShizukuPowerBackend.statusFor(
+            managerInstalled = false,
+            killSwitchEnabled = killSwitchEnabled,
+            serviceRunning = true,
+            permissionGranted = permissionGranted,
+            privilegedTransportAvailable = transport,
+        ).state
+
+        assertEquals(ShizukuPowerState.Ready, status())
+        assertEquals(ShizukuPowerState.PermissionNeeded, status(permissionGranted = false))
+        assertEquals(ShizukuPowerState.BackendUnavailable, status(transport = false))
+        assertEquals(ShizukuPowerState.Disabled, status(killSwitchEnabled = true))
     }
 
     @Test
@@ -58,12 +79,31 @@ class ShizukuPowerBackendTest {
         ShizukuPowerBackend.killSwitchEnabled = true
         val result = ShizukuShellRunner.execute("reboot")
         assertTrue(result is ShellResult.Failure)
-        assertTrue((result as ShellResult.Failure).reason.contains("kill switch"))
+        assertEquals(
+            "Shizuku power mode is off, so nothing ran. Turn it on from its row in Setup.",
+            (result as ShellResult.Failure).reason,
+        )
+    }
+
+    @Test
+    fun theHotspotHonorsTheKillSwitchAndNeverFallsBackToTheAppProcess() {
+        ShizukuPowerBackend.killSwitchEnabled = true
+        listOf(ShizukuShellRunner.setWifiHotspot(true), ShizukuShellRunner.readWifiHotspot()).forEach { result ->
+            assertEquals(
+                "Shizuku power mode is off, so nothing ran. Turn it on from its row in Setup.",
+                (result as ShellResult.Failure).reason,
+            )
+        }
+
+        ShizukuPowerBackend.killSwitchEnabled = false
+        listOf(ShizukuShellRunner.setWifiHotspot(false), ShizukuShellRunner.readWifiHotspot()).forEach { result ->
+            assertTrue((result as ShellResult.Failure).reason.contains("Can't reach Shizuku, so nothing ran."))
+        }
     }
 
     @Test
     fun allElevatedActionsAreInAllowlist() {
-        ShizukuPowerBackend.elevatedActionIds.forEach { actionId ->
+        (ShizukuPowerBackend.elevatedActionIds - ShizukuPowerBackend.frameworkActionIds).forEach { actionId ->
             assertTrue("$actionId should be in allowlist", ShizukuShellRunner.isAllowed(actionId))
             assertTrue("$actionId should have variants", ShizukuShellRunner.allowedVariantCount(actionId) > 0)
         }
@@ -73,8 +113,8 @@ class ShizukuPowerBackendTest {
     fun allowlistPinsEveryElevatedCommandVariant() {
         val expected = mapOf(
             "airplane.toggle" to listOf(
-                listOf("settings", "put", "global", "airplane_mode_on", "1"),
-                listOf("settings", "put", "global", "airplane_mode_on", "0"),
+                listOf("cmd", "connectivity", "airplane-mode", "enable"),
+                listOf("cmd", "connectivity", "airplane-mode", "disable"),
             ),
             "mobile.toggle" to listOf(
                 listOf("svc", "data", "enable"),
@@ -85,12 +125,16 @@ class ShizukuPowerBackendTest {
                 listOf("settings", "put", "secure", "doze_always_on", "0"),
             ),
             "screenshot.take" to listOf(listOf("screencap", "-p")),
-            "reboot" to listOf(listOf("svc", "power", "reboot", "false")),
+            "reboot" to listOf(listOf("svc", "power", "reboot")),
             "screen.off" to listOf(listOf("input", "keyevent", "223")),
             "wake" to listOf(listOf("input", "keyevent", "224")),
         )
 
-        assertEquals(ShizukuPowerBackend.elevatedActionIds, expected.keys)
+        assertEquals(ShizukuPowerBackend.elevatedActionIds - ShizukuPowerBackend.frameworkActionIds, expected.keys)
+        assertFalse(
+            "The hotspot is a framework call, so the shell route must not gain a command for it",
+            ShizukuCommandPolicy.isAllowed("hotspot.toggle"),
+        )
         expected.forEach { (actionId, variants) ->
             assertEquals("$actionId variant count", variants.size, ShizukuCommandPolicy.variantCount(actionId))
             variants.forEachIndexed { index, argv ->
@@ -105,7 +149,11 @@ class ShizukuPowerBackendTest {
                 listOf("svc", "power", "reboot", "true"),
             ),
         )
-        assertFalse(ShizukuCommandPolicy.isExact("airplane.toggle", listOf("settings", "put", "global", "airplane_mode_on", "1", "--user", "0")))
+        assertFalse(
+            "Writing the setting leaves the modem and Wi-Fi on, so it must not come back as the airplane route",
+            ShizukuCommandPolicy.isExact("airplane.toggle", listOf("settings", "put", "global", "airplane_mode_on", "1")),
+        )
+        assertFalse(ShizukuCommandPolicy.isExact("airplane.toggle", listOf("cmd", "connectivity", "airplane-mode", "enable", "--user", "0")))
         assertFalse(
             "The always-on display write must not accept another secure key",
             ShizukuCommandPolicy.isExact("aod.set", listOf("settings", "put", "secure", "doze_enabled", "1")),
@@ -149,7 +197,7 @@ class ShizukuPowerBackendTest {
         val result = ShizukuShellRunner.execute("reboot")
 
         assertTrue(result is ShellResult.Failure)
-        assertTrue((result as ShellResult.Failure).reason.contains("No privileged Shizuku user-service transport"))
+        assertTrue((result as ShellResult.Failure).reason.contains("Can't reach Shizuku, so nothing ran."))
         assertFalse(ShizukuShellRunner.hasPrivilegedTransport())
     }
 
@@ -167,7 +215,28 @@ class ShizukuPowerBackendTest {
         assertTrue(service.contains("Runtime.getRuntime().exec"))
         assertFalse(service.contains("ProcessBuilder("))
         assertTrue(service.contains("ShizukuCommandPolicy.isExact"))
-        assertTrue(service.contains("16777114"))
+    }
+
+    @Test
+    fun everyElevatedActionSaysWhatItCanDoToThePerson() {
+        val risks = ShizukuPowerBackend.elevatedActionIds.map { id ->
+            val risk = ShizukuPowerBackend.riskByAction[id]
+            assertNotNull("$id has no risk sentence", risk)
+            assertTrue(ShizukuPowerBackend.hintForAction(id)!!.message.endsWith(risk!!))
+            risk
+        }
+
+        assertEquals("Each action has its own risk", risks.size, risks.toSet().size)
+    }
+
+    @Test
+    fun theServiceAnswersTheDestroyCodeShizukuSends() {
+        // Answering 16777114 instead left every service process running after its app died, until
+        // Shizuku itself restarted. Production can't read the library's constant, so a library
+        // upgrade that moves it fails here.
+        assertEquals(ShizukuApiConstants.USER_SERVICE_TRANSACTION_destroy, SHIZUKU_DESTROY_TRANSACTION)
+        assertTrue(isShizukuDestroyTransaction(ShizukuApiConstants.USER_SERVICE_TRANSACTION_destroy))
+        assertFalse(isShizukuDestroyTransaction(16777114))
     }
 
     @Test

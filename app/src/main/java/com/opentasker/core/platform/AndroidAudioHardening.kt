@@ -1,5 +1,6 @@
 package com.opentasker.core.platform
 
+import android.media.AudioAttributes
 import android.os.Build
 import com.opentasker.core.engine.ActionContext
 import com.opentasker.core.engine.ActionResult
@@ -14,6 +15,33 @@ enum class AudioForegroundServiceEligibility {
 enum class AudioUsageEligibility {
     GENERAL,
     ALARM,
+}
+
+/**
+ * Where a played or spoken sound goes, and so which volume it follows. Alarm audio is the one kind
+ * Android 17 lets a task started from the background make, so it's offered as a choice. Ringer and
+ * Notifications are the streams Tasker's sounds most often use besides Music, and they go quiet
+ * with the phone's ringer the way those sounds do.
+ */
+internal enum class AudioOutputStream(
+    val value: String,
+    val usage: AudioUsageEligibility,
+    /** The AudioAttributes usage a sound on this stream plays with. */
+    val attributeUsage: Int,
+) {
+    MUSIC("music", AudioUsageEligibility.GENERAL, AudioAttributes.USAGE_MEDIA),
+    ALARM("alarm", AudioUsageEligibility.ALARM, AudioAttributes.USAGE_ALARM),
+    RING("ring", AudioUsageEligibility.GENERAL, AudioAttributes.USAGE_NOTIFICATION_RINGTONE),
+    NOTIFICATION("notification", AudioUsageEligibility.GENERAL, AudioAttributes.USAGE_NOTIFICATION),
+    ;
+
+    companion object {
+        /** A blank value is the music stream every saved action has always played on. */
+        fun parse(value: String?): AudioOutputStream? {
+            val name = value.orEmpty().trim().lowercase()
+            return if (name.isEmpty()) MUSIC else entries.firstOrNull { it.value == name }
+        }
+    }
 }
 
 /**
@@ -54,6 +82,7 @@ internal object AndroidAudioHardening {
         usage: AudioUsageEligibility = AudioUsageEligibility.GENERAL,
         sdkInt: Int = sdkIntOverrideForTests ?: Build.VERSION.SDK_INT,
         targetSdkInt: Int = ANDROID_17_API,
+        offersAlarmStream: Boolean = false,
     ): AudioHardeningDecision {
         if (!isRestricted(sdkInt)) {
             return AudioHardeningDecision(allowed = true, reason = "Android audio hardening does not apply")
@@ -70,10 +99,16 @@ internal object AndroidAudioHardening {
                 reason = "The automation foreground service has while-in-use eligibility",
             )
         }
-        if (usage == AudioUsageEligibility.ALARM && eligibility.exactAlarmPermission) {
+        // Exact-alarm access only lowers the enforcement to the level that wants a foreground service
+        // of any kind. With no service running, Android still mutes alarm audio while the app is hidden.
+        if (
+            usage == AudioUsageEligibility.ALARM &&
+            eligibility.exactAlarmPermission &&
+            eligibility.foregroundService != AudioForegroundServiceEligibility.NONE
+        ) {
             return AudioHardeningDecision(
                 allowed = true,
-                reason = "Exact-alarm permission permits alarm-usage audio",
+                reason = "Exact-alarm permission permits alarm-usage audio from a foreground service",
             )
         }
 
@@ -86,10 +121,12 @@ internal object AndroidAudioHardening {
                     "Open OpenTasker, then retry the task from the visible app."
             AudioForegroundServiceEligibility.WHILE_IN_USE -> error("handled above")
         }
-        val alarmHint = if (usage == AudioUsageEligibility.ALARM && !eligibility.exactAlarmPermission) {
-            " Grant exact-alarm access in Setup to permit alarm-stream changes while backgrounded."
-        } else {
-            ""
+        val alarmHint = when {
+            usage == AudioUsageEligibility.ALARM && !eligibility.exactAlarmPermission ->
+                " Grant exact-alarm access in Setup to permit alarm-stream changes while backgrounded."
+            offersAlarmStream ->
+                " Or set this action's stream to Alarm, which can play in the background with exact-alarm access."
+            else -> ""
         }
         return AudioHardeningDecision(allowed = false, reason = recovery + alarmHint)
     }
@@ -98,6 +135,7 @@ internal object AndroidAudioHardening {
         ctx: ActionContext,
         operation: String,
         usage: AudioUsageEligibility = AudioUsageEligibility.GENERAL,
+        offersAlarmStream: Boolean = false,
     ): ActionResult.Failure? {
         val targetSdkInt = runCatching { ctx.app.applicationInfo.targetSdkVersion }
             .getOrDefault(ANDROID_17_API)
@@ -112,6 +150,7 @@ internal object AndroidAudioHardening {
             eligibility = currentEligibility,
             usage = usage,
             targetSdkInt = targetSdkInt,
+            offersAlarmStream = offersAlarmStream,
         )
         return if (decision.allowed) {
             null

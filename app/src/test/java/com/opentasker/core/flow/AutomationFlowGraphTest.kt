@@ -54,6 +54,36 @@ class AutomationFlowGraphTest {
     }
 
     @Test
+    fun detailLinesSeparateTheirPartsWithADot() {
+        val enterTask = Task(
+            id = 30,
+            name = "Dim",
+            priority = 5,
+            actions = listOf(ActionSpec(type = "brightness.set", args = mapOf("level" to "48"), continueOnError = true)),
+        )
+        val profile = Profile(
+            id = 3,
+            name = "Low battery",
+            enabled = true,
+            contexts = listOf(ContextSpec(ContextType.STATE, mapOf("key" to "battery_level"), invert = true)),
+            enterTaskId = enterTask.id,
+            automationMode = AutomationMode.SINGLE,
+        )
+
+        val graph = AutomationFlowGraphBuilder.build(profile, listOf(enterTask))
+
+        assertEquals("Enabled · Mode single · Cooldown 0s", graph.nodes.first { it.kind == AutomationFlowNodeKind.PROFILE }.detail)
+        assertEquals("1 action · priority 5", graph.enterTaskNode?.detail)
+        assertTrue(graph.contextNodes.single().detail.orEmpty().startsWith("Inverted · "))
+        val actionDetail = graph.actionNodesFor("enter-task:30").single().detail.orEmpty()
+        assertEquals("brightness.set", actionDetail.substringBefore(FLOW_DETAIL_SEPARATOR).substringBefore(" with "))
+        assertTrue(actionDetail.endsWith(" · continues after error"))
+        graph.nodes.forEach { node ->
+            assertFalse("${node.id} detail '${node.detail}'", node.detail.orEmpty().contains(" - "))
+        }
+    }
+
+    @Test
     fun subTaskActionsAreFlaggedStructurallyNotByDetailText() {
         val enterTask = Task(
             id = 20,
@@ -264,7 +294,7 @@ class AutomationFlowGraphTest {
 
         val details = AutomationFlowGraphBuilder.build(profile, listOf(task)).contextNodes.map { it.detail.orEmpty() }
 
-        assertEquals("key=battery_level, operator=<=, value=20", details[0])
+        assertEquals("battery level <= 20", details[0])
         assertTrue(details[1], details[1].contains("extraKey=msg"))
         assertTrue(details[2], details[2].contains("api_key=<redacted>"))
         assertFalse(details[2], details[2].contains("sk-live-123"))

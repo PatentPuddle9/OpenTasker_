@@ -5,7 +5,9 @@ import com.opentasker.core.model.Task
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.job
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -39,12 +41,14 @@ class TaskCollisionCoordinator(
     private val slots = ConcurrentHashMap<Long, Slot>()
 
     suspend fun <T> execute(task: Task, block: suspend () -> T): TaskCollisionOutcome<T> {
-        if (task.id <= 0L) return TaskCollisionOutcome.Executed(block())
-        val job = currentCoroutineContext()[Job] ?: return TaskCollisionOutcome.Executed(block())
+        val caller = currentCoroutineContext()[Job] ?: return TaskCollisionOutcome.Executed(block())
+        // A task with no id shares no slot, but its run still gets a scope of its own: the stop
+        // button holds whatever Job the block runs in.
+        if (task.id <= 0L) return runRegistered(Slot(), caller, block = block)
         val slot = slots.computeIfAbsent(task.id) { Slot() }
 
         return when (task.collisionMode) {
-            CollisionMode.RUN_BOTH -> runRegistered(slot, job, block = block)
+            CollisionMode.RUN_BOTH -> runRegistered(slot, caller, block = block)
             CollisionMode.WAIT -> {
                 val owner = Any()
                 withTimeoutOrNull(waitAcquisitionTimeoutMs) { slot.waitMutex.lock(owner) }
@@ -56,56 +60,111 @@ class TaskCollisionCoordinator(
                     )
                 } else {
                     try {
-                        runRegistered(slot, job, block = block)
+                        runRegistered(slot, caller, block = block)
                     } finally {
                         slot.waitMutex.unlock(owner)
                     }
                 }
             }
-            CollisionMode.ABORT_NEW -> {
-                val admitted = synchronized(slot) {
+            CollisionMode.ABORT_NEW -> runRegistered(
+                slot,
+                caller,
+                admit = { run ->
                     slot.activeJobs.removeAll { !it.isActive }
                     if (slot.activeJobs.isNotEmpty()) {
-                        false
+                        "Task is already running; Abort new skipped this invocation."
                     } else {
-                        slot.activeJobs += job
-                        true
+                        slot.activeJobs += run
+                        null
                     }
-                }
-                if (!admitted) {
-                    TaskCollisionOutcome.Skipped("Task is already running; Abort new skipped this invocation.")
-                } else {
-                    runRegistered(slot, job, alreadyRegistered = true, block = block)
-                }
-            }
+                },
+                block = block,
+            )
             CollisionMode.ABORT_EXISTING -> {
-                val previous = synchronized(slot) {
-                    slot.activeJobs.removeAll { !it.isActive }
-                    val active = slot.activeJobs.filterNot { it === job }
-                    slot.activeJobs.clear()
-                    slot.activeJobs += job
-                    active
+                var previous = emptyList<Job>()
+                runRegistered(
+                    slot,
+                    caller,
+                    admit = { run ->
+                        slot.activeJobs.removeAll { !it.isActive }
+                        // A copy this run is nested in stays, or replacing it would cancel this run too.
+                        previous = slot.activeJobs.filterNot { it.isOrContains(caller) }
+                        slot.activeJobs.removeAll(previous.toSet())
+                        slot.activeJobs += run
+                        null
+                    },
+                ) {
+                    previous.forEach { activeJob ->
+                        activeJob.cancel(CancellationException("Replaced by a newer run under Abort existing."))
+                    }
+                    block()
                 }
-                previous.forEach { activeJob ->
-                    activeJob.cancel(CancellationException("Replaced by a newer run under Abort existing."))
-                }
-                runRegistered(slot, job, alreadyRegistered = true, block = block)
             }
         }
     }
 
+    /**
+     * Cancels every running invocation of [taskId] for a Stop Task step and returns how many it
+     * cancelled. A WAIT invocation still queued for its turn isn't running yet, so it starts once
+     * the slot frees up. The invocation [sparing] runs in is left alone, for a step that names its
+     * own task and ends its own run another way.
+     */
+    fun cancelRunning(taskId: Long, reason: String, sparing: Job? = null): Int {
+        val slot = slots[taskId] ?: return 0
+        val running = synchronized(slot) {
+            slot.activeJobs.removeAll { !it.isActive }
+            slot.activeJobs.filter { sparing == null || !it.isOrContains(sparing) }
+        }
+        running.forEach { job -> job.cancel(CancellationException(reason)) }
+        return running.size
+    }
+
+    // A copy is registered by the Job of its own scope, so the code running in it has [job] somewhere
+    // under that. Nothing runs a task inside its own run today (the execution chain refuses it), so
+    // the copy that encloses [job] is always the one [job] belongs to.
+    private fun Job.isOrContains(job: Job): Boolean = this === job || children.any { it.isOrContains(job) }
+
+    /**
+     * Runs [block] in a scope of its own and registers that scope's Job as the running copy, after
+     * [admit] (under the slot lock) lets it in. [admit] returns why it refused, or null.
+     *
+     * The caller's Job used to be registered, so a stop that saw this copy running just before it
+     * finished cancelled the caller while it recorded the result, and the finished run lost its run
+     * log. Now that stop lands on the finished scope and the result stands. A stop that [block] sees,
+     * at a step's limit or any other suspension, cancels the caller as well, as it always has, so
+     * callers see the same thing. One that lands after [block]'s last suspension leaves the result.
+     */
     private suspend fun <T> runRegistered(
         slot: Slot,
-        job: Job,
-        alreadyRegistered: Boolean = false,
+        caller: Job,
+        admit: (run: Job) -> String? = { run -> slot.activeJobs += run; null },
         block: suspend () -> T,
-    ): TaskCollisionOutcome.Executed<T> {
-        if (!alreadyRegistered) synchronized(slot) { slot.activeJobs += job }
-        return try {
-            TaskCollisionOutcome.Executed(block())
-        } finally {
-            synchronized(slot) { slot.activeJobs.remove(job) }
+    ): TaskCollisionOutcome<T> {
+        var outcome: TaskCollisionOutcome<T>? = null
+        var stopped = false
+        try {
+            coroutineScope {
+                val run = coroutineContext.job
+                synchronized(slot) { admit(run) }?.let { refusal ->
+                    outcome = TaskCollisionOutcome.Skipped(refusal)
+                    return@coroutineScope
+                }
+                try {
+                    outcome = TaskCollisionOutcome.Executed(block())
+                } catch (stop: CancellationException) {
+                    // Still active means the block threw it itself, a timeout say, and nothing stopped it.
+                    stopped = !run.isActive
+                    throw stop
+                } finally {
+                    synchronized(slot) { slot.activeJobs.remove(run) }
+                }
+            }
+        } catch (stop: CancellationException) {
+            outcome?.takeIf { caller.isActive }?.let { return it }
+            if (stopped) caller.cancel(stop)
+            throw stop
         }
+        return checkNotNull(outcome)
     }
 
     companion object {

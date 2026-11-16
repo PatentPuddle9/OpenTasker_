@@ -1,6 +1,7 @@
 package com.opentasker.core.references
 
 import com.opentasker.core.actions.NotificationTaskBindings
+import com.opentasker.core.engine.STOP_TASK_ACTION_ID
 import com.opentasker.core.engine.SUB_TASK_ACTION_ID
 import com.opentasker.core.engine.SUB_TASK_REF_KEYS
 import com.opentasker.core.model.Profile
@@ -8,6 +9,7 @@ import com.opentasker.core.model.Scene
 import com.opentasker.core.model.Task
 import com.opentasker.core.model.Variable
 import com.opentasker.core.model.VariableNamePolicy
+import com.opentasker.core.model.enterTaskIdOrNull
 
 /**
  * The one enumeration of every place a task can be referenced from another automation object.
@@ -45,6 +47,16 @@ sealed interface TaskReferenceSite {
 
     /** A `task.run` action inside another task. */
     data class SubTaskRun(
+        override val ownerId: Long,
+        override val ownerName: String,
+        val actionIndex: Int,
+        val argKey: String,
+    ) : TaskReferenceSite {
+        override val ownerKind = OwnerKind.TASK
+    }
+
+    /** A `task.stop` action inside another task. */
+    data class StopTaskStep(
         override val ownerId: Long,
         override val ownerName: String,
         val actionIndex: Int,
@@ -148,13 +160,18 @@ sealed interface TaskRef {
     }
 }
 
-data class TaskReference(val site: TaskReferenceSite, val ref: TaskRef) {
+data class TaskReference(
+    val site: TaskReferenceSite,
+    val ref: TaskRef,
+    /** Set on the exit task of a profile that has no enter task, which leaves it as the only one. */
+    val profileOnlyTask: Boolean = false,
+) {
     /**
-     * True when the site cannot simply drop the reference. A profile must always have an enter
-     * task, so clearing is not a legal outcome there — it has to be reassigned or the delete has
-     * to be blocked.
+     * True when the site cannot simply drop the reference. A profile must always have a task to
+     * run (its enter task, or its exit task when it has no enter task), so clearing is not a legal
+     * outcome there — it has to be reassigned or the delete has to be blocked.
      */
-    val isRequired: Boolean get() = site is TaskReferenceSite.ProfileEnterTask
+    val isRequired: Boolean get() = site is TaskReferenceSite.ProfileEnterTask || profileOnlyTask
 }
 
 object AutomationReferenceIndex {
@@ -167,17 +184,21 @@ object AutomationReferenceIndex {
         globalFallbackTaskId: Long? = null,
     ): List<TaskReference> = buildList {
         profiles.sortedBy { it.id }.forEach { profile ->
-            add(
-                TaskReference(
-                    TaskReferenceSite.ProfileEnterTask(profile.id, profile.name),
-                    TaskRef.ById(profile.enterTaskId),
-                ),
-            )
+            val enterTaskId = profile.enterTaskIdOrNull
+            enterTaskId?.let {
+                add(
+                    TaskReference(
+                        TaskReferenceSite.ProfileEnterTask(profile.id, profile.name),
+                        TaskRef.ById(it),
+                    ),
+                )
+            }
             profile.exitTaskId?.let { exitId ->
                 add(
                     TaskReference(
                         TaskReferenceSite.ProfileExitTask(profile.id, profile.name),
                         TaskRef.ById(exitId),
+                        profileOnlyTask = enterTaskId == null,
                     ),
                 )
             }
@@ -366,13 +387,18 @@ object AutomationReferenceIndex {
         actionType: String,
         args: Map<String, String>,
     ): List<TaskReference> = buildList {
-        if (actionType == SUB_TASK_ACTION_ID) {
+        if (actionType == SUB_TASK_ACTION_ID || actionType == STOP_TASK_ACTION_ID) {
             val key = SUB_TASK_REF_KEYS.firstOrNull { args[it]?.isNotBlank() == true }
             val raw = key?.let { args[it]?.trim() }
             if (key != null && !raw.isNullOrBlank()) {
+                val site = if (actionType == SUB_TASK_ACTION_ID) {
+                    TaskReferenceSite.SubTaskRun(owner.id, owner.name, actionIndex, key)
+                } else {
+                    TaskReferenceSite.StopTaskStep(owner.id, owner.name, actionIndex, key)
+                }
                 add(
                     TaskReference(
-                        TaskReferenceSite.SubTaskRun(owner.id, owner.name, actionIndex, key),
+                        site,
                         raw.toLongOrNull()?.takeIf { it > 0 }?.let(TaskRef::ById) ?: TaskRef.ByName(raw),
                     ),
                 )

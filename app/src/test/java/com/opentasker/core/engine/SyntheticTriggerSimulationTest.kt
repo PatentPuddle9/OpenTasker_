@@ -47,6 +47,80 @@ class SyntheticTriggerSimulationTest {
     }
 
     @Test
+    fun aTimeWindowBetweenGlobalsSimulatesWithStandInValues() {
+        val simulation = SyntheticTriggerSimulator.simulate(
+            Profile(
+                id = 9L,
+                name = "Daylight",
+                enterTaskId = 13L,
+                contexts = listOf(ContextSpec(ContextType.TIME, mapOf("start" to "%Sunrise", "end" to "%Sunset"))),
+            ),
+            nowMs = 1_000_000L,
+        )
+        val context = simulation.contexts.single()
+
+        assertEquals(null, context.template.issue)
+        assertEquals("12:00", context.template.event.metadata["time"])
+        assertTrue(context.template.description, context.template.description.contains("%Sunrise as 06:00"))
+        assertTrue(context.effectiveMatched)
+    }
+
+    @Test
+    fun aPinnedEventWithNoTimeForAGlobalKeepsAnInvertedWindowOff() {
+        val profile = Profile(
+            id = 10L,
+            name = "Night",
+            enterTaskId = 14L,
+            contexts = listOf(ContextSpec(ContextType.TIME, mapOf("start" to "%Sunrise", "end" to "%Sunset"), invert = true)),
+        )
+
+        val context = SyntheticTriggerSimulator.simulate(
+            profile,
+            nowMs = 1_000_000L,
+            pinnedEvents = mapOf(0 to ContextEvent("time", true, mapOf("time" to "22:00"))),
+        ).contexts.single()
+
+        assertFalse(context.effectiveMatched)
+        assertTrue(context.explanation, context.explanation.contains("no value"))
+    }
+
+    @Test
+    fun onlyAnEventYouPinnedIsCalledPinned() {
+        val profile = Profile(
+            id = 11L,
+            name = "Two windows",
+            enterTaskId = 15L,
+            contexts = listOf(
+                ContextSpec(ContextType.TIME, mapOf("start" to "09:00", "end" to "17:00")),
+                ContextSpec(ContextType.TIME, mapOf("start" to "09:00", "end" to "17:00")),
+            ),
+        )
+
+        val (fromTemplate, pinned) = SyntheticTriggerSimulator.simulate(
+            profile,
+            nowMs = 1_000_000L,
+            pinnedEvents = mapOf(1 to ContextEvent("time", true, mapOf("time" to "22:00"))),
+        ).contexts
+
+        assertEquals("The synthetic event satisfies this predicate.", fromTemplate.explanation)
+        assertEquals("The pinned event does not satisfy this predicate.", pinned.explanation)
+    }
+
+    @Test
+    fun aRunWithNothingPinnedNeverSummarizesAsPinned() {
+        val window = ContextSpec(ContextType.TIME, mapOf("start" to "09:00", "end" to "17:00"))
+        val plain = SyntheticTriggerSimulator.simulate(Profile(id = 12L, name = "Plain", enterTaskId = 16L, contexts = listOf(window)), nowMs = 1_000_000L)
+        val graced = SyntheticTriggerSimulator.simulate(
+            Profile(id = 13L, name = "Graced", enterTaskId = 17L, contexts = listOf(window), gracePeriodSec = 30),
+            nowMs = 1_000_000L,
+        )
+
+        assertEquals("All context predicates pass the configured context logic.", plain.profileReason)
+        assertFalse(graced.profileReason, "pinned" in graced.profileReason)
+        assertTrue(graced.profileReason, graced.profileReason.startsWith("All context predicates pass"))
+    }
+
+    @Test
     fun malformedTemplatesAreVisibleAsBlockedPredicates() {
         val simulation = SyntheticTriggerSimulator.simulate(
             Profile(

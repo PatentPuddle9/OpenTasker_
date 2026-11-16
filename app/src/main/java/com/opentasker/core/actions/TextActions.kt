@@ -3,6 +3,8 @@ package com.opentasker.core.actions
 import com.opentasker.core.data.TextOps
 import com.opentasker.core.engine.ActionContext
 import com.opentasker.core.engine.ActionResult
+import com.opentasker.core.engine.isArgumentSensitive
+import com.opentasker.core.model.VariableNamePolicy
 
 private fun outputVar(args: Map<String, String>, default: String): String =
     (args["var"] ?: args["variable"])?.trim()?.ifBlank { null } ?: default
@@ -27,15 +29,50 @@ class TextMatchAction : DeclaredAction(ActionCatalog.require("text.match")) {
     }
 }
 
-/** Replace-all. Args: `source`, `pattern`, `replacement`, `var`. */
+/**
+ * Regex replace, which also runs Tasker's Search Replace. Args: `source`, `pattern`, `replacement`,
+ * `var`, `first_only`, `matches`, `search_only`. Sets `%var` to the source with every match
+ * replaced, or only the first with `first_only`. `matches` names an array that's emptied and then
+ * holds each match as %found1, %found2, ..., only the first with `first_only`. With `search_only`
+ * the step only collects the matches and leaves `%var` alone.
+ */
 class TextReplaceAction : DeclaredAction(ActionCatalog.require("text.replace")) {
 
     override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
         val source = args["source"] ?: return ActionResult.Failure("missing source")
-        val pattern = args["pattern"]?.ifBlank { null } ?: return ActionResult.Failure("missing pattern")
+        val firstOnly = args["first_only"]?.toBooleanStrictOrNull() == true
+        val searchOnly = args["search_only"]?.toBooleanStrictOrNull() == true
+        val array = args["matches"]?.trim()?.ifEmpty { null }?.let { name ->
+            VariableNamePolicy.normalize(name) ?: return ActionResult.Failure("invalid array name '$name'")
+        }
+        // Tasker empties the array before it even compiles the pattern, so a step that fails leaves
+        // it empty too. A list Split Text kept under the name goes as well, or it would hide the matches
+        // from Join Text and For Each. The matches go in with one write, since emptying the array first
+        // would lose the scope it lives in and a sub-task would fill its own copy.
+        if (array != null) ctx.variables.removeArray(array)
+        fun failed(reason: String): ActionResult {
+            if (array != null) ctx.variables.replaceNumberedItems(array, emptyMap())
+            return ActionResult.Failure(reason)
+        }
+        val pattern = args["pattern"]?.ifBlank { null } ?: return failed("missing pattern")
+        if (array != null || searchOnly) {
+            // With no array to fill, one match is enough to check the pattern.
+            val found = TextOps.findAll(source, pattern, limit = if (firstOnly || array == null) 1 else MAX_ELEMENTS + 1)
+                ?: return failed("invalid or oversized pattern")
+            if (array != null) {
+                if (found.size > MAX_ELEMENTS) return failed("more than $MAX_ELEMENTS matches")
+                if (found.isNotEmpty() && elementName(array, found.size) == null) {
+                    return failed("%$array${found.size} is longer than ${VariableNamePolicy.MAX_LENGTH} characters")
+                }
+                val sensitive = ctx.isArgumentSensitive("source")
+                ctx.variables.replaceNumberedItems(array, found.withIndex().associate { (index, match) -> index + 1 to (match to sensitive) })
+                ctx.logger("text.replace -> %$array (${found.size} match(es))")
+            }
+            if (searchOnly) return ActionResult.Success
+        }
         val replacement = args["replacement"] ?: ""
         val varName = outputVar(args, "result")
-        val replaced = TextOps.replaceAll(source, pattern, replacement)
+        val replaced = (if (firstOnly) TextOps.replaceFirst(source, pattern, replacement) else TextOps.replaceAll(source, pattern, replacement))
             ?: return ActionResult.Failure("invalid or oversized pattern")
         ctx.variables.set(varName, replaced)
         ctx.logger("text.replace -> \$$varName")
@@ -52,7 +89,7 @@ class TextSplitAction : DeclaredAction(ActionCatalog.require("text.split")) {
     override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
         val source = args["source"] ?: return ActionResult.Failure("missing source")
         val regex = args["pattern"]?.ifBlank { null }
-        val literal = args["delimiter"]?.ifBlank { null }
+        val literal = args["delimiter"]?.ifEmpty { null }
         val varName = outputVar(args, "parts")
         val parts = when {
             regex != null -> TextOps.split(source, regex, isRegex = true)
@@ -95,6 +132,23 @@ class TextSubstringAction : DeclaredAction(ActionCatalog.require("text.substring
         val varName = outputVar(args, "substring")
         ctx.variables.set(varName, TextOps.substring(source, start, end))
         ctx.logger("text.substring -> \$$varName")
+        return ActionResult.Success
+    }
+}
+
+/**
+ * Character count. Args: `source`, `var`. Counts the text as it reads once variables are filled in,
+ * so an unset `%name`, which stays as written, counts as its own characters, as in Tasker's Test
+ * Variable. Empty text counts 0, and text that is only spaces counts its spaces, so `source` isn't
+ * required.
+ */
+class TextLengthAction : DeclaredAction(ActionCatalog.require("text.length")) {
+
+    override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
+        val source = args["source"].orEmpty()
+        val varName = outputVar(args, "length")
+        ctx.variables.set(varName, source.length.toString())
+        ctx.logger("text.length -> \$$varName")
         return ActionResult.Success
     }
 }

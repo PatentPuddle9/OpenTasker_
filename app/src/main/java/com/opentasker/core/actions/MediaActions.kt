@@ -1,14 +1,18 @@
 package com.opentasker.core.actions
 
 import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
 import android.view.KeyEvent
+import java.io.File
 import kotlinx.coroutines.suspendCancellableCoroutine
 import com.opentasker.core.engine.ActionContext
 import com.opentasker.core.engine.ActionResult
 import com.opentasker.core.platform.AndroidAudioHardening
+import com.opentasker.core.platform.AudioOutputStream
 import com.opentasker.core.platform.AudioUsageEligibility
 
 /**
@@ -17,6 +21,7 @@ import com.opentasker.core.platform.AudioUsageEligibility
  * Args:
  *   - "path": file path or URI (e.g., content://media/external/audio/media/123)
  *   - "volume": 0-100 (optional)
+ *   - "stream": music (default), alarm, ring or notification (optional)
  */
 /** Schemes MediaPlayer may open directly: everything else must go through the HTTP action. */
 private val LOCAL_SOUND_SCHEMES = setOf("file", "content", "android.resource")
@@ -25,27 +30,69 @@ class PlaySoundAction : DeclaredAction(ActionCatalog.require("sound.play")) {
 
     override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
         val path = args["path"] ?: return ActionResult.Failure("missing path")
-        AndroidAudioHardening.failureIfIneligible(ctx, "sound playback")?.let { return it }
+        val stream = AudioOutputStream.parse(args["stream"])
+            ?: return ActionResult.Failure("invalid stream: ${args["stream"]}")
+        AndroidAudioHardening.failureIfIneligible(
+            ctx,
+            "sound playback",
+            stream.usage,
+            offersAlarmStream = stream != AudioOutputStream.ALARM,
+        )?.let { return it }
         val volume = args["volume"]?.toFloatOrNull()?.let { (it / 100f).coerceIn(0f, 1f) }
 
-        val player = try {
-            val uri = if (path.contains("://")) Uri.parse(path) else Uri.parse("file://$path")
-            // Local sources only. MediaPlayer will happily stream a remote URL, and that traffic
-            // never passes the HTTP action's policy checks - which is the sole justification for
-            // the manifest's cleartext allowance - so a public http:// sound would have punched
-            // straight through the private-network rule this app documents as enforced in code.
-            val scheme = uri.scheme?.lowercase()
-            if (scheme != null && scheme !in LOCAL_SOUND_SCHEMES) {
-                return ActionResult.Failure(
-                    "sound.play accepts a file path or content URI; $scheme:// sources are not supported",
-                )
-            }
-            MediaPlayer.create(ctx.app, uri)
-                ?: return ActionResult.Failure("could not create player for: $path")
-        } catch (ex: Exception) {
-            return ActionResult.Failure("failed to open: ${ex.message}", ex)
+        // fromFile encodes a '#' or '?' in a file name, and MediaPlayer only knows lowercase schemes.
+        val uri = if (path.contains("://")) Uri.parse(path).normalizeScheme() else Uri.fromFile(File(path))
+        // Local sources only. MediaPlayer will happily stream a remote URL, and that traffic
+        // never passes the HTTP action's policy checks - which is the sole justification for
+        // the manifest's cleartext allowance - so a public http:// sound would have punched
+        // straight through the private-network rule this app documents as enforced in code.
+        val scheme = uri.scheme?.lowercase()
+        if (scheme != null && scheme !in LOCAL_SOUND_SCHEMES) {
+            return ActionResult.Failure(
+                "sound.play accepts a file path or content URI; $scheme:// sources are not supported",
+            )
         }
 
+        if (stream == AudioOutputStream.MUSIC) {
+            val player = try {
+                MediaPlayer.create(ctx.app, uri) ?: return ActionResult.Failure("could not create player for: $path")
+            } catch (ex: Exception) {
+                return ActionResult.Failure("failed to open: ${ex.message}", ex)
+            }
+            return playToEnd(ctx, player, path, volume)
+        }
+
+        val audioManager = ctx.app.getSystemService(AudioManager::class.java)
+        val attributes = outputAudioAttributes(stream, AudioAttributes.CONTENT_TYPE_SONIFICATION)
+        val focus = if (stream == AudioOutputStream.ALARM) {
+            AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                .setAudioAttributes(attributes)
+                .build()
+        } else {
+            null
+        }
+        // Android 17 only exempts alarm audio once its audio server has seen the exact-alarm grant, and
+        // that record is refreshed by the app's own focus or volume call or its own AudioTrack. A
+        // MediaPlayer's track lives in the media server, so without this request the sound is muted in
+        // the background while the player still runs to completion and reports success. A refused
+        // request (a phone call holds focus) changes nothing about the record, so the sound still plays.
+        if (focus != null && audioManager.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            ctx.logger("Audio focus was not granted for the alarm sound")
+        }
+        return try {
+            val player = try {
+                MediaPlayer.create(ctx.app, uri, null, attributes, audioManager.generateAudioSessionId())
+                    ?: return ActionResult.Failure("could not create player for: $path")
+            } catch (ex: Exception) {
+                return ActionResult.Failure("failed to open: ${ex.message}", ex)
+            }
+            playToEnd(ctx, player, path, volume)
+        } finally {
+            focus?.let(audioManager::abandonAudioFocusRequest)
+        }
+    }
+
+    private suspend fun playToEnd(ctx: ActionContext, player: MediaPlayer, path: String, volume: Float?): ActionResult {
         if (volume != null) {
             player.setVolume(volume, volume)
         }
@@ -112,6 +159,50 @@ class PreviousTrackAction : DeclaredAction(ActionCatalog.require("track.previous
 }
 
 /**
+ * Resume audio playback.
+ */
+class ResumeSoundAction : DeclaredAction(ActionCatalog.require("sound.resume")) {
+
+    override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
+        ctx.logger("Resume playback")
+        return dispatchMediaKey(ctx, KeyEvent.KEYCODE_MEDIA_PLAY)
+    }
+}
+
+/**
+ * Toggle between play and pause.
+ */
+class TogglePlaybackAction : DeclaredAction(ActionCatalog.require("sound.toggle")) {
+
+    override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
+        ctx.logger("Toggle playback")
+        return dispatchMediaKey(ctx, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+    }
+}
+
+/**
+ * Rewind the current track.
+ */
+class RewindTrackAction : DeclaredAction(ActionCatalog.require("track.rewind")) {
+
+    override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
+        ctx.logger("Rewind")
+        return dispatchMediaKey(ctx, KeyEvent.KEYCODE_MEDIA_REWIND)
+    }
+}
+
+/**
+ * Fast forward the current track.
+ */
+class FastForwardTrackAction : DeclaredAction(ActionCatalog.require("track.fastforward")) {
+
+    override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
+        ctx.logger("Fast forward")
+        return dispatchMediaKey(ctx, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD)
+    }
+}
+
+/**
  * Mute audio.
  *
  * Args:
@@ -152,6 +243,12 @@ private fun dispatchMediaKey(ctx: ActionContext, keyCode: Int): ActionResult {
         ActionResult.Failure("media key dispatch failed: ${ex.message}", ex)
     }
 }
+
+internal fun outputAudioAttributes(stream: AudioOutputStream, contentType: Int): AudioAttributes =
+    AudioAttributes.Builder()
+        .setUsage(stream.attributeUsage)
+        .setContentType(contentType)
+        .build()
 
 private fun streamType(name: String): Int? = when (name.lowercase()) {
     "music", "media" -> AudioManager.STREAM_MUSIC

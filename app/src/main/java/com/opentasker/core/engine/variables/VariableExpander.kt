@@ -1,7 +1,11 @@
 package com.opentasker.core.engine.variables
 
+import com.opentasker.core.data.JsonNesting
 import com.opentasker.core.engine.VariableStore
 import org.json.JSONObject
+import java.math.BigDecimal
+import java.math.RoundingMode
+import java.util.Locale
 import com.google.re2j.Pattern as Re2Pattern
 import kotlin.math.floor
 import kotlin.math.roundToLong
@@ -26,24 +30,59 @@ class VariableExpander {
      * - "%VAR(regex:(\d+):1)" -> extract first digit group from VAR
      * - "%VAR(split:,)" -> split VAR by comma, return array
      */
-    fun expand(expr: String, variableStore: VariableStore, arrayStore: ArrayStore): String {
+    /**
+     * [conditionals] false leaves a leading `(cond) ? a : b` as text, for a value that isn't a whole
+     * expression. [unset] says how a `%name` with no value reads.
+     */
+    fun expand(
+        expr: String,
+        variableStore: VariableStore,
+        arrayStore: ArrayStore,
+        quoteValue: (String) -> String = { it },
+        conditionals: Boolean = true,
+        unset: Unset = Unset.AS_WRITTEN,
+    ): String {
         return try {
-            expandInternal(expr, variableStore, arrayStore)
+            expandInternal(expr, variableStore, arrayStore, quoteValue, conditionals, unset)
         } catch (e: Exception) {
             // If evaluation fails, return original expression
             expr
         }
     }
 
-    private fun expandInternal(expr: String, variableStore: VariableStore, arrayStore: ArrayStore): String {
+    /** How a `%name` with no value reads. */
+    enum class Unset {
+        /** Left as written, as Tasker does: "User-variables which have not had a value assigned do not have replacements carried out." */
+        AS_WRITTEN,
+
+        /** Filled in as nothing, for Is Set and an array index. */
+        BLANK,
+
+        /**
+         * Read as 0, empty or not, the way Tasker 6.7.8 fills in a plain variable in maths (decompiled
+         * `dq.S`). An operator or array form, like `%x(+1)` or `%arr(#)`, reads as it always does.
+         */
+        ZERO,
+    }
+
+    private fun expandInternal(
+        expr: String,
+        variableStore: VariableStore,
+        arrayStore: ArrayStore,
+        quoteValue: (String) -> String = { it },
+        conditionals: Boolean = true,
+        unset: Unset = Unset.AS_WRITTEN,
+    ): String {
         // Handle conditionals: (cond) ? true_val : false_val
-        val ternary = parseTernary(expr)
+        val ternary = if (conditionals) parseTernary(expr) else null
         if (ternary != null) {
-            val result = evaluateConditionInternal(ternary.condition, variableStore, arrayStore)
-            return expandText(if (result) ternary.trueValue else ternary.falseValue, variableStore, arrayStore)
+            val result = evaluateConditionInternal(ternary.condition) { operand, mode ->
+                expandInternal(operand, variableStore, arrayStore, unset = mode)
+            }
+            return expandText(if (result) ternary.trueValue else ternary.falseValue, variableStore, arrayStore, unset, quoteValue)
         }
 
-        return expandText(expr, variableStore, arrayStore)
+        return expandText(expr, variableStore, arrayStore, unset, quoteValue)
     }
 
     private data class Ternary(val condition: String, val trueValue: String, val falseValue: String)
@@ -77,16 +116,37 @@ class VariableExpander {
         )
     }
 
-    private fun expandText(expr: String, variableStore: VariableStore, arrayStore: ArrayStore): String {
+    /** [unset] defaults to [Unset.BLANK] for an array index, where an unset `%i` names no element. */
+    private fun expandText(
+        expr: String,
+        variableStore: VariableStore,
+        arrayStore: ArrayStore,
+        unset: Unset = Unset.BLANK,
+        quoteValue: (String) -> String,
+    ): String {
         if ('%' !in expr) return expr
 
         val out = StringBuilder(expr.length)
         var i = 0
         while (i < expr.length) {
             val c = expr[i]
-            if (c == '%' && i + 1 < expr.length && expr[i + 1].isLetter()) {
+            if (expr.startsWith("\\%", i) && startsVariable(expr, i + 2)) {
+                // \%%name is a percent sign and the value, and Tasker reads an unset name as blank there.
+                val token = readVariableToken(expr, i + 2, variableStore, arrayStore)
+                out.append('%').append(if (token.unset) "" else quoteValue(token.value))
+                i = token.nextIndex
+            } else if (c == '\\') {
+                i = appendEscape(expr, i, out)
+            } else if (startsVariable(expr, i)) {
                 val token = readVariableToken(expr, i, variableStore, arrayStore)
-                out.append(token.value)
+                out.append(
+                    when {
+                        unset == Unset.ZERO && token.value.isEmpty() && !token.operator -> "0"
+                        // The text kept is the author's, not a value.
+                        unset == Unset.AS_WRITTEN && token.unset -> expr.substring(i, token.nextIndex)
+                        else -> quoteValue(token.value)
+                    },
+                )
                 i = token.nextIndex
             } else {
                 out.append(c)
@@ -95,6 +155,52 @@ class VariableExpander {
         }
 
         return out.toString()
+    }
+
+    private fun startsVariable(expr: String, index: Int): Boolean =
+        index + 1 < expr.length && expr[index] == '%' && expr[index + 1].isLetter()
+
+    /**
+     * Tasker's backslash before a variable (decompiled 6.7.8, `dq.S`): `\%name` is the reference
+     * as written without the backslash, and `\\%name` is one backslash and then the value, so a
+     * longer run loses one backslash. [expandText] reads `\%%name`, which needs the value. A
+     * backslash before anything else stays. Returns the index to carry on from.
+     */
+    private fun appendEscape(expr: String, start: Int, out: StringBuilder): Int {
+        var run = start
+        while (run < expr.length && expr[run] == '\\') run++
+        val backslashes = run - start
+        return when {
+            backslashes == 1 && startsVariable(expr, run) -> {
+                // Not read, because reading an operator form like split: stores an array.
+                val end = variableTokenEnd(expr, run)
+                out.append(expr, run, end)
+                end
+            }
+            backslashes > 1 && startsVariable(expr, run) -> {
+                repeat(backslashes - 1) { out.append('\\') }
+                run
+            }
+            else -> {
+                out.append(expr, start, run)
+                run
+            }
+        }
+    }
+
+    /** Where the reference at [start] ends, as [readVariableToken] reads it, without reading its value. */
+    private fun variableTokenEnd(expr: String, start: Int): Int {
+        var cursor = start + 1
+        while (cursor < expr.length && isVariableNameChar(expr[cursor])) cursor++
+        if (expr.substring(start + 1, cursor) == "json" && cursor < expr.length && expr[cursor] == '.') {
+            val path = readJsonPath(expr, cursor + 1)
+            if (path.value.isNotEmpty()) return path.nextIndex
+        }
+        if (cursor < expr.length && expr[cursor] == '(') {
+            val close = findOperatorClose(expr, cursor)
+            if (close != -1) return close + 1
+        }
+        return cursor
     }
 
     private fun readVariableToken(
@@ -110,10 +216,8 @@ class VariableExpander {
         if (name == "json" && cursor < expr.length && expr[cursor] == '.') {
             val path = readJsonPath(expr, cursor + 1)
             if (path.value.isNotEmpty()) {
-                return TokenExpansion(
-                    evaluateJsonPath(variableStore.get("json") ?: "{}", path.value),
-                    path.nextIndex,
-                )
+                val json = variableStore.get("json") ?: return TokenExpansion("", path.nextIndex, unset = true)
+                return TokenExpansion(evaluateJsonPath(json, path.value), path.nextIndex)
             }
         }
 
@@ -124,6 +228,7 @@ class VariableExpander {
                 return TokenExpansion(
                     evaluateVarOp(name, op, variableStore, arrayStore),
                     close + 1,
+                    operator = true,
                 )
             }
         }
@@ -143,7 +248,7 @@ class VariableExpander {
             separator = name.lastIndexOf('-', separator - 1)
         }
 
-        return TokenExpansion("", cursor)
+        return TokenExpansion("", cursor, unset = true)
     }
 
     private fun findOperatorClose(expr: String, openIndex: Int): Int {
@@ -163,14 +268,9 @@ class VariableExpander {
     private fun evaluateVarOp(name: String, op: String, store: VariableStore, arrays: ArrayStore): String {
         val baseValue = store.get(name)
 
-        if (arrays.contains(name) && baseValue == null) {
-            return when {
-                op == "#" -> arrays.length(name).toString()
-                op.toIntOrNull() != null -> arrays.get(name, op.toInt())
-                op.isEmpty() -> arrays.join(name, "")
-                else -> arrays.join(name, op)
-            }
-        }
+        if (arrays.contains(name)) storedArrayValue(name, op, baseValue, store, arrays)?.let { return it }
+
+        taskerArrayValue(name, op, baseValue, store, arrays)?.let { return it }
 
         if (baseValue == null) return ""
 
@@ -179,7 +279,9 @@ class VariableExpander {
         if (numValue != null) {
             val result = when {
                 op == "//" -> floor(numValue)
-                op == "/round" -> numValue.roundToLong().toDouble()
+                // roundToLong throws on NaN, so a value that isn't finite comes out the way the
+                // other operations leave it.
+                op == "/round" -> if (numValue.isFinite()) numValue.roundToLong().toDouble() else numValue
                 op.startsWith("+") -> numValue + (op.substring(1).toDoubleOrNull() ?: 0.0)
                 op.startsWith("-") -> numValue - (op.substring(1).toDoubleOrNull() ?: 0.0)
                 op.startsWith("*") -> numValue * (op.substring(1).toDoubleOrNull() ?: 1.0)
@@ -234,6 +336,85 @@ class VariableExpander {
         }
     }
 
+    /**
+     * The 0-based arrays text.split and text.match store: `#` counts the elements, a number is one
+     * element and `a:b` joins a range with commas, backwards when a is past b. A variable inside
+     * the parentheses is filled in first and trimmed, so `%parts(%i)` reads the element at `%i` and
+     * gives empty while `%i` is, as does a range with an empty variable on either side. Any other
+     * form joins the elements with it. Both actions also set [name] to the first element, so while
+     * it holds a value the stored array answers only those array forms. It never answers once
+     * [name] has numbered elements (`%parts1`, ...) of its own, whether [name] is set or not. Null
+     * leaves [op] to them.
+     */
+    private fun storedArrayValue(
+        name: String,
+        op: String,
+        baseValue: String?,
+        store: VariableStore,
+        arrays: ArrayStore,
+    ): String? {
+        val expanded = if ('%' in op) expandText(op, store, arrays) { it } else op
+        val form = expanded.trim()
+        val arrayForm = STORED_ARRAY_FORM.matches(form)
+        if (store.numberedItems(name).isNotEmpty() || (baseValue != null && !arrayForm)) return null
+        if (form.isEmpty() && '%' in op) return ""
+        if (':' in op && op.split(':', limit = 2).any { side -> '%' in side && expandText(side, store, arrays) { it }.isBlank() }) return ""
+        val size = arrays.length(name)
+        return when {
+            form == "#" -> size.toString()
+            form.isEmpty() || !arrayForm -> arrays.join(name, expanded)
+            ':' !in form -> form.toIntOrNull()?.let { arrays.get(name, it) }.orEmpty()
+            else -> {
+                val from = form.substringBefore(':').ifEmpty { "0" }.toIntOrNull() ?: return ""
+                val to = form.substringAfter(':').ifEmpty { null }?.let { it.toIntOrNull() ?: return "" } ?: (size - 1)
+                val range = if (from <= to) from..to else from downTo to
+                range.filter { it in 0 until size }.joinToString(",") { arrays.get(name, it) }
+            }
+        }
+    }
+
+    /**
+     * Tasker's array forms over numbered variables (`%arr1`, `%arr2`, ...): `#` counts the elements,
+     * `#>` and `#<` give the first and last index, `>` and `<` the first and last value, a number
+     * one element, and an empty, `:` or `a:b` form joins the elements set in that range with commas,
+     * backwards when a is past b. A variable inside the parentheses is filled in first, so
+     * `%arr(%i)` works as it does in Tasker, and gives empty when `%i` is, or when a variable on
+     * either side of a range is. Returns null when [op]
+     * is none of these, or when [name] is a plain variable with no elements, so its own operators
+     * still apply.
+     */
+    private fun taskerArrayValue(
+        name: String,
+        op: String,
+        baseValue: String?,
+        store: VariableStore,
+        arrays: ArrayStore,
+    ): String? {
+        val form = (if ('%' in op) expandText(op, store, arrays) { it } else op).trim()
+        if (!TASKER_ARRAY_FORM.matches(form)) return null
+        val items = store.numberedItems(name)
+        if (items.isEmpty() && baseValue != null) return null
+        // An index variable that came out empty names no element, so it isn't the empty form
+        // that joins them all, nor the open side of a range (%arr(%a:%b) isn't %arr(:)).
+        if (form.isEmpty() && '%' in op) return ""
+        if (':' in op && op.split(':', limit = 2).any { side -> '%' in side && expandText(side, store, arrays) { it }.isBlank() }) return ""
+        val lastIndex = if (items.isEmpty()) 0 else items.lastKey()
+        return when (form) {
+            "#" -> items.size.toString()
+            "#>" -> (if (items.isEmpty()) 0 else items.firstKey()).toString()
+            "#<" -> lastIndex.toString()
+            ">" -> items.firstEntry()?.value.orEmpty()
+            "<" -> items.lastEntry()?.value.orEmpty()
+            else -> {
+                if (':' !in form && form.isNotEmpty()) return form.toIntOrNull()?.let(items::get).orEmpty()
+                val from = form.substringBefore(':').ifEmpty { "1" }.toIntOrNull() ?: return ""
+                val to = form.substringAfter(':', "").ifEmpty { null }?.let { it.toIntOrNull() ?: return "" } ?: lastIndex
+                val range = if (from <= to) items.subMap(from, true, to, true) else items.subMap(to, true, from, true).descendingMap()
+                range.values.joinToString(",")
+            }
+        }
+    }
+
     private fun parseRegexOp(body: String): Pair<String, Int> {
         val splitAt = body.lastIndexOf(':')
         if (splitAt <= 0) return body to 0
@@ -241,23 +422,65 @@ class VariableExpander {
         return body.substring(0, splitAt) to groupIdx
     }
 
-    fun evaluateCondition(cond: String, variableStore: VariableStore, arrayStore: ArrayStore): Boolean =
+    /**
+     * Evaluates [cond] as the author typed it. Its `||`, `&&`, parentheses and comparison operator
+     * are read from that text first, and only then is each operand handed to [expandOperand], once.
+     *
+     * Callers must not expand [cond] themselves. A value is a stranger's words as often as not (an
+     * SMS body, a notification title), and expanding before parsing let `true ||` in a message add
+     * a branch to the condition, and let `%PIN` in a message be read back as the PIN's value when
+     * the operand was expanded a second time.
+     *
+     * [expandOperand] defaults to legacy `%var` expansion. A caller with a template stage passes
+     * its own, and a `{{ ... }}` block in [cond] is kept whole for it. Its second argument says how
+     * an unset `%name` reads. It stays as written on either side of a text comparison, as in
+     * Tasker, where `%par1 ~ %*` is how a task asks whether it was given anything. It's nothing for
+     * Is Set and Isn't Set, which ask whether there's a value, and 0 where Tasker does maths: `<`,
+     * `>`, `<=`, `>=`, Is Even and Is Odd.
+     */
+    fun evaluateCondition(
+        cond: String,
+        variableStore: VariableStore,
+        arrayStore: ArrayStore,
+        expandOperand: ((String, Unset) -> String)? = null,
+    ): Boolean =
         try {
-            evaluateConditionInternal(cond, variableStore, arrayStore)
+            evaluateConditionInternal(
+                cond,
+                expandOperand ?: { operand, unset -> expandInternal(operand, variableStore, arrayStore, unset = unset) },
+            )
         } catch (e: Exception) {
             false
         }
 
-    private fun evaluateConditionInternal(cond: String, store: VariableStore, arrays: ArrayStore): Boolean {
+    /**
+     * How [evaluateCondition] reads [cond] at its top level, once its outer brackets come off: the
+     * parts it ORs (`||`, the looser) or ANDs (`&&`), or no joiner and the one comparison left. The
+     * Tasker exporter reads a guard through this so it writes the joiners the way the guard runs.
+     */
+    internal fun conditionParts(cond: String): Pair<String?, List<String>> {
         val normalized = stripOuterParens(cond.trim())
-        if (normalized.isEmpty()) return false
+        splitTopLevel(normalized, "||")?.let { return "||" to it }
+        splitTopLevel(normalized, "&&")?.let { return "&&" to it }
+        return null to listOf(normalized)
+    }
 
-        splitTopLevel(normalized, "||")?.let { parts ->
-            return parts.any { evaluateConditionInternal(it, store, arrays) }
+    /**
+     * The one comparison [evaluateCondition] finds in [cond] as its left side, operator token and
+     * right side, or null when there's none or more than one outside brackets. The Tasker exporter
+     * reads a condition through this, so an operator inside brackets stays part of its side.
+     */
+    internal fun comparisonParts(cond: String): Triple<String, String, String>? =
+        parseComparison(cond.trim())?.let { Triple(it.left, it.operator.token, it.right) }
+
+    private fun evaluateConditionInternal(cond: String, expandOperand: (String, Unset) -> String): Boolean {
+        val (joiner, parts) = conditionParts(cond)
+        when (joiner) {
+            "||" -> return parts.any { evaluateConditionInternal(it, expandOperand) }
+            "&&" -> return parts.all { evaluateConditionInternal(it, expandOperand) }
         }
-        splitTopLevel(normalized, "&&")?.let { parts ->
-            return parts.all { evaluateConditionInternal(it, store, arrays) }
-        }
+        val normalized = parts.single()
+        if (normalized.isEmpty()) return false
 
         // A real binary comparison always wins over the unary is_set/not_set reading: e.g.
         // "%status == is_set", comparing a variable against the literal string "is_set", must
@@ -268,50 +491,147 @@ class VariableExpander {
         // operator, since parseComparison always gets first look.
         val comparison = parseComparison(normalized)
         if (comparison == null) {
-            unaryExistenceResult(normalized, store, arrays)?.let { return it }
-            return normalized.toBoolean()
+            unaryExistenceResult(normalized, expandOperand)?.let { return it }
+            unaryParityResult(normalized, expandOperand)?.let { return it }
+            // A variable on its own, such as `%enabled`, is a boolean once it has its value.
+            return expandOperand(normalized, Unset.AS_WRITTEN).trim().toBoolean()
         }
-        val left = expandInternal(comparison.left, store, arrays)
-        val right = expandInternal(comparison.right, store, arrays)
+        // Trimmed after expansion: command output and file reads end with a newline, and a value
+        // that came back empty matches nothing, so two empty sides aren't "equal". An unset side
+        // stays as written, so `%a == %b` is false while both are unset, and `%a == %a` is true,
+        // except in a numeric comparison, where it's 0. A number isn't trimmed here, since
+        // taskerNumber strips only what Tasker does, and a no-break space left on it isn't a number.
+        val numeric = comparison.operator in NUMERIC_OPERATORS
+        val unset = if (numeric) Unset.ZERO else Unset.AS_WRITTEN
+        val left = expandOperand(comparison.left, unset).let { if (numeric) it else it.trim() }
+        val right = expandOperand(comparison.right, unset).let { if (numeric) it else it.trim() }
 
         return when (comparison.operator) {
-            ComparisonOperator.EQ -> left == right
+            ComparisonOperator.EQ -> left.isNotEmpty() && left == right
             ComparisonOperator.NE -> left != right
             ComparisonOperator.LE -> compareNumbers(left, right) { l, r -> l <= r }
             ComparisonOperator.GE -> compareNumbers(left, right) { l, r -> l >= r }
             ComparisonOperator.LT -> compareNumbers(left, right) { l, r -> l < r }
             ComparisonOperator.GT -> compareNumbers(left, right) { l, r -> l > r }
-            ComparisonOperator.MATCHES -> matchesGlob(left, right)
-            ComparisonOperator.NOT_MATCHES -> !matchesGlob(left, right)
+            ComparisonOperator.MATCHES -> matchesPattern(left, withEnglishOnOff(right), emptyMatchesNothing = true)
+            ComparisonOperator.NOT_MATCHES -> !matchesPattern(left, withEnglishOnOff(right), emptyMatchesNothing = false)
+            ComparisonOperator.MATCHES_REGEX -> findsRegex(left, right)
+            ComparisonOperator.NOT_MATCHES_REGEX -> !findsRegex(left, right)
         }
     }
 
     /**
-     * Tasker's wildcard match: `*` is the only special character, everything else is literal.
-     * Used for imported "Matches"/"Doesn't Match" conditions (Tasker op codes 2/3), e.g.
-     * `%pa_do ~ view_url` or `%pa_json ~ *"say":*`.
+     * Tasker's Matches. A pattern starting `~R` or `!~R` is a regular expression, and a leading `!`
+     * turns the rest of the pattern around, so `%a ~ !x` is `%a !~ x`. Anything else goes to
+     * [matchesGlob], where [emptyMatchesNothing] keeps `%a ~ *` false while `%a` is empty. An empty
+     * pattern matches nothing, as in Tasker, which checks for one before it looks for the `!`.
+     */
+    private fun matchesPattern(value: String, pattern: String, emptyMatchesNothing: Boolean): Boolean = when {
+        pattern.isEmpty() -> false
+        pattern.startsWith("~R") -> findsRegex(value, pattern.substring(2))
+        pattern.startsWith("!~R") -> !findsRegex(value, pattern.substring(3))
+        pattern.startsWith("!") -> !matchesGlob(value, pattern.substring(1))
+        else -> !(emptyMatchesNothing && value.isEmpty()) && matchesGlob(value, pattern)
+    }
+
+    /**
+     * Tasker's Matches and Doesn't Match add `/on` to a pattern that is just Tasker's word for on in
+     * the phone's language, and `/off` to its word for off (decompiled 6.7.8 `Expr.a`), so
+     * `%BLUE ~ On`, or `Ein` in German, also matches the `on` a state variable holds. Tasker compares
+     * the whole pattern, case included, and leaves `on` and `off` themselves alone.
+     */
+    private fun withEnglishOnOff(pattern: String, locale: Locale = Locale.getDefault()): String {
+        val (on, off) = TASKER_ON_OFF_WORDS[taskerLanguage(locale)] ?: TASKER_ON_OFF_WORDS.getValue("")
+        return when {
+            pattern != "on" && pattern == on -> "$pattern/on"
+            pattern != "off" && pattern == off -> "$pattern/off"
+            else -> pattern
+        }
+    }
+
+    /** The [TASKER_ON_OFF_WORDS] key Android picks Tasker's strings by for [locale]. */
+    private fun taskerLanguage(locale: Locale): String = when (val language = locale.language) {
+        "zh" -> if (locale.country == "TW" || locale.script == "Hant") "zh-TW" else "zh"
+        // Android still reports Indonesian by its old code, and the JVM by the new one.
+        "id" -> "in"
+        else -> language
+    }
+
+    /** [matchesPattern] for a value that is never empty, like the variable names Variable Clear matches. */
+    fun matches(value: String, pattern: String): Boolean = matchesPattern(value, pattern, emptyMatchesNothing = false)
+
+    /**
+     * Tasker's Matches Regex (`~R`, and `!~R` for Doesn't Match Regex). The pattern only has to
+     * match part of the value, and case counts unless the pattern says `(?i)`. An empty pattern, or
+     * one RE2 can't run (backreferences, lookarounds), matches nothing, the way a bad pattern does
+     * in Tasker.
+     */
+    private fun findsRegex(value: String, pattern: String): Boolean {
+        if (pattern.isEmpty() || pattern.length > MAX_REGEX_LENGTH || value.length > MAX_REGEX_INPUT_LENGTH) return false
+        val matcher = compileLinearRegex(pattern)?.matcher(value) ?: return false
+        return try {
+            matcher.find()
+        } catch (e: RuntimeException) {
+            false
+        }
+    }
+
+    /**
+     * Tasker's simple pattern matching: `/` separates alternatives, `*` is any number of any
+     * character and `+` is one or more, and an alternative with no capital letter ignores case.
+     * The whole value has to match. Used for imported "Matches"/"Doesn't Match" conditions (Tasker
+     * op codes 2/3), e.g. `%pa_do ~ view_url` or `%SSID ~ home/work`. [matchesPattern] handles a
+     * leading `!` before this.
      *
-     * Goes through [compileLinearRegex] (RE2, linear-time) with the same [MAX_REGEX_LENGTH] /
-     * [MAX_REGEX_INPUT_LENGTH] guards this file already applies to every other regex built from
-     * import- or variable-derived text (see the `regex:`/`replace:` var-ops above), rather than
-     * Kotlin's backtracking `Regex`: `pattern` here comes from imported Tasker condition data,
+     * Goes through [compileLinearRegex] (RE2, linear-time) rather than Kotlin's backtracking
+     * `Regex`: `pattern` here comes from imported Tasker condition data,
      * not a fixed literal, so several `*` wildcards is exactly the shape that causes catastrophic
      * backtracking in a standard engine. `com.google.re2j.Pattern.quote` is RE2J's per-character
      * `quoteMeta` escaper, not `kotlin.text.Regex.escape`'s `\Q...\E` -- RE2 doesn't implement
      * `\Q...\E` as a syntax construct at all, so the latter would either fail to compile or (worse)
      * be silently misinterpreted.
      *
+     * The [MAX_REGEX_LENGTH] cap this file puts on every regex built from imported or variable
+     * text applies per alternative here, so a long list of short choices still works. An
+     * alternative over it, or a value or whole pattern over [MAX_REGEX_INPUT_LENGTH], matches
+     * nothing, which makes `!~` true for it.
+     *
      * `\A`/`\z` anchor for a full-string match (RE2J's `Matcher` is not confirmed to expose a
      * `.matches()` convenience the way `java.util.regex.Matcher` does, so this uses the same
      * `.find()` call already proven out at the other [compileLinearRegex] call sites).
      */
     private fun matchesGlob(value: String, pattern: String): Boolean {
-        if (pattern.length > MAX_REGEX_LENGTH || value.length > MAX_REGEX_INPUT_LENGTH) return false
+        if (pattern.length > MAX_REGEX_INPUT_LENGTH || value.length > MAX_REGEX_INPUT_LENGTH) return false
+        return pattern.trim('/').split('/').any {
+            it.length <= MAX_REGEX_LENGTH && matchesPatternAlternative(value, it)
+        }
+    }
+
+    /**
+     * One alternative, built the way Tasker's matcher builds it from the literals between
+     * wildcards: between two literals every `*` and `+` counts, but at either end only the
+     * outermost one does, so `*+a` is `*a` and `a+*` is `a*`.
+     */
+    private fun matchesPatternAlternative(value: String, alternative: String): Boolean {
+        val literals = alternative.split(PATTERN_WILDCARD).dropLastWhile { it.isEmpty() }
+        val wildcards = alternative.filter { it == '*' || it == '+' }
         val regex = buildString {
-            append("(?s)\\A")
-            pattern.split("*").forEachIndexed { index, literal ->
-                if (index > 0) append(".*")
-                append(Re2Pattern.quote(literal))
+            append(if (alternative.lowercase() == alternative) "(?si)\\A" else "(?s)\\A")
+            alternative.firstOrNull()?.let { if (it == '*') append(".*") else if (it == '+') append(".+") }
+            var literalsSoFar = 0
+            literals.forEachIndexed { index, literal ->
+                if (literalsSoFar > 0) append(if (wildcards[index - 1] == '*') ".*" else ".+")
+                if (literal.isNotEmpty()) {
+                    literalsSoFar++
+                    append(Re2Pattern.quote(literal))
+                }
+            }
+            // The last character counts only if it isn't the leading one already used.
+            if (alternative.length > 1) {
+                when (alternative.last()) {
+                    '*' -> append(".*")
+                    '+' -> append(".+")
+                }
             }
             append("\\z")
         }
@@ -323,12 +643,28 @@ class VariableExpander {
         }
     }
 
+    /**
+     * The index just past a `{{ ... }}` block opening at [index], or -1 when none opens there. The
+     * structure scans step over these: a template's pipes, quoted defaults and brackets belong to
+     * the template stage, never to the condition around it.
+     */
+    private fun templateBlockEnd(expr: String, index: Int): Int {
+        if (!expr.startsWith("{{", index)) return -1
+        val close = expr.indexOf("}}", index + 2)
+        return if (close == -1) -1 else close + 2
+    }
+
     private fun splitTopLevel(expr: String, delimiter: String): List<String>? {
         val parts = mutableListOf<String>()
         var depth = 0
         var partStart = 0
         var index = 0
         while (index < expr.length) {
+            val templateEnd = templateBlockEnd(expr, index)
+            if (templateEnd != -1) {
+                index = templateEnd
+                continue
+            }
             when (expr[index]) {
                 '(' -> depth++
                 ')' -> if (depth > 0) depth--
@@ -353,31 +689,38 @@ class VariableExpander {
      * Returns null when `normalized` doesn't end with either suffix at all, so the caller can
      * fall through to its own default (`normalized.toBoolean()`).
      *
-     * This evaluator has two call paths with different pre-expansion behavior:
-     * TaskRunner.evaluateConditionString expands the whole condition once before calling in, but
-     * VariableStore.evaluateCondition (used directly by callers/tests that don't go through
-     * TaskRunner) does not expand at all -- `normalized` can arrive as raw `%variable` text. The
-     * binary comparison branch stays correct under both by calling expandInternal on its operands
-     * regardless of whether the caller already did; this needs the same self-sufficiency, so it
-     * must not assume expansion already happened.
-     *
-     * Empty (post-expansion) operand is a real, meaningful case, not a malformed condition: when
-     * the source variable is unset and the caller pre-expanded (the TaskRunner path), e.g.
-     * "%text not_set" arrives as just " not_set" (empty value + the literal suffix), and
-     * `cond.trim()` at the top of [evaluateConditionInternal] then eats that boundary space -- so
-     * an empty-operand match and a bare "not_set"/"is_set" with nothing before it are
-     * indistinguishable by the time we see them, and both correctly mean "the value is empty".
+     * `normalized` is the author's text, so the operand still holds its `%variable` and is expanded
+     * here, once, with an unset variable filled in as nothing. A bare "is_set"/"not_set" with
+     * nothing before it means "the value is empty".
      */
-    private fun unaryExistenceResult(normalized: String, store: VariableStore, arrays: ArrayStore): Boolean? {
+    private fun unaryExistenceResult(normalized: String, expandOperand: (String, Unset) -> String): Boolean? {
         for ((suffix, wantsNonEmpty) in UNARY_EXISTENCE_SUFFIXES) {
             val bareSuffix = suffix.trim()
             if (normalized.equals(bareSuffix, ignoreCase = true)) {
                 return !wantsNonEmpty
             }
             if (normalized.endsWith(suffix, ignoreCase = true)) {
-                val operand = expandInternal(normalized.removeSuffix(suffix).trim(), store, arrays)
+                val operand = expandOperand(normalized.dropLast(suffix.length).trim(), Unset.BLANK).trim()
                 return if (wantsNonEmpty) operand.isNotEmpty() else operand.isEmpty()
             }
+        }
+        return null
+    }
+
+    /**
+     * Tasker's Is Even and Is Odd (condition ops 10 and 11), which take no right-hand operand
+     * either. As in Tasker 6.7.8 (decompiled Expr), a value that isn't a finite number is neither,
+     * and otherwise Even is `value % 2 == 0` and Odd is anything else, so 2.5 is odd. Tasker fills
+     * the variable in as maths, so an unset or empty one is 0 and even. Null when neither suffix is
+     * there.
+     */
+    private fun unaryParityResult(normalized: String, expandOperand: (String, Unset) -> String): Boolean? {
+        for ((suffix, wantsEven) in UNARY_PARITY_SUFFIXES) {
+            if (!normalized.endsWith(suffix, ignoreCase = true)) continue
+            val value = taskerNumber(expandOperand(normalized.dropLast(suffix.length).trim(), Unset.ZERO))
+                ?: return false
+            val remainder = value % 2.0
+            return if (wantsEven) remainder == 0.0 else remainder != 0.0
         }
         return null
     }
@@ -392,7 +735,13 @@ class VariableExpander {
 
     private fun matchingCloseParen(expr: String, openIndex: Int): Int {
         var depth = 0
-        for (index in openIndex until expr.length) {
+        var index = openIndex
+        while (index < expr.length) {
+            val templateEnd = templateBlockEnd(expr, index)
+            if (templateEnd != -1) {
+                index = templateEnd
+                continue
+            }
             when (expr[index]) {
                 '(' -> depth++
                 ')' -> {
@@ -400,6 +749,7 @@ class VariableExpander {
                     if (depth == 0) return index
                 }
             }
+            index++
         }
         return -1
     }
@@ -409,6 +759,11 @@ class VariableExpander {
         var depth = 0
         var index = 0
         while (index < expr.length) {
+            val templateEnd = templateBlockEnd(expr, index)
+            if (templateEnd != -1) {
+                index = templateEnd
+                continue
+            }
             when (expr[index]) {
                 '(' -> depth++
                 ')' -> if (depth > 0) depth--
@@ -420,6 +775,9 @@ class VariableExpander {
                     val right = expr.substring(index + operator.token.length).trim()
                     if (left.isEmpty() || right.isEmpty()) return null
                     matches += ConditionComparison(left, operator, right)
+                    // Tasker keeps a pattern in a field of its own, so once the first operator is a
+                    // match, the rest is its pattern, a `<` or `==` in it included.
+                    if (matches.size == 1 && operator in TILDE_OPERATORS) return matches.single()
                     index += operator.token.length
                     continue
                 }
@@ -431,9 +789,10 @@ class VariableExpander {
 
     /**
      * True if `operator`'s token occurs at `index`, and -- for [ComparisonOperator.MATCHES] /
-     * [ComparisonOperator.NOT_MATCHES] only -- is bounded by whitespace or a string edge on both
-     * sides. `~` and `!~` are ordinary characters in real values in a way `==`/`<`/etc. are not
-     * (paths like `~/backups`, version strings like `1.2~rc1`, approximations like `~100`), so
+     * [ComparisonOperator.NOT_MATCHES] and their `~R` / `!~R` regex forms only -- is bounded by
+     * whitespace or a string edge on both sides. `~` and `!~` are ordinary characters in real
+     * values in a way `==`/`<`/etc. are not (paths like `~/backups`, version strings like
+     * `1.2~rc1`, approximations like `~100`), so
      * without this a literal tilde inside an otherwise unambiguous comparison's left/right text
      * makes parseComparison find two operator matches instead of one, `matches.singleOrNull()`
      * returns null, and the whole comparison silently falls back to `normalized.toBoolean()`
@@ -443,7 +802,7 @@ class VariableExpander {
      */
     private fun String.matchesOperatorAt(operator: ComparisonOperator, index: Int): Boolean {
         if (!startsWith(operator.token, index)) return false
-        if (operator != ComparisonOperator.MATCHES && operator != ComparisonOperator.NOT_MATCHES) return true
+        if (operator !in TILDE_OPERATORS) return true
         val before = index == 0 || this[index - 1].isWhitespace()
         val afterIndex = index + operator.token.length
         val after = afterIndex >= length || this[afterIndex].isWhitespace()
@@ -451,12 +810,38 @@ class VariableExpander {
     }
 
     private fun compareNumbers(left: String, right: String, predicate: (Double, Double) -> Boolean): Boolean {
-        val l = left.toDoubleOrNull() ?: return false
-        val r = right.toDoubleOrNull() ?: return false
+        val l = taskerNumber(left) ?: return false
+        val r = taskerNumber(right) ?: return false
         return predicate(l, r)
     }
 
+    /**
+     * [text] as a number the way Tasker's maths reads one value (decompiled 6.7.8, `Expr.d` and
+     * `yd`). It drops every space first, reads `0x` as a hexadecimal whole number, and otherwise
+     * takes Java's decimal form, `4f` included, with a sign-free exponent, since a `+` or `-` there
+     * is an operator to Tasker. The result has to be finite, and it's rounded half up to 10 decimal
+     * places, so `0.30000000000000004` equals `0.3`. Kotlin's parser alone also takes `0x1p3`,
+     * `NaN` and `Infinity`, which Tasker doesn't.
+     */
+    private fun taskerNumber(text: String): Double? {
+        // Tasker strips \s, which on Android is every Unicode White_Space character (no-break spaces
+        // and U+0085 included). Its reader then skips Java whitespace at the ends and only after
+        // that trims control characters. A zero width space or U+FEFF is neither, so it stays.
+        val compact = text.filterNot { isAndroidRegexSpace(it) }.trim { Character.isWhitespace(it) }.trim { it <= ' ' }
+        val value = when {
+            // A sign after 0x is an operator to Tasker, which leaves 0x alone and not a number.
+            compact.startsWith("0x", ignoreCase = true) ->
+                compact.substring(2).takeUnless { it.startsWith('+') || it.startsWith('-') }?.toLongOrNull(16)?.toDouble()
+            TASKER_NUMBER.matches(compact) -> compact.toDouble()
+            else -> null
+        }
+        return value?.takeIf { it.isFinite() }
+            ?.let { BigDecimal(it.toString()).setScale(TASKER_DECIMAL_PLACES, RoundingMode.HALF_UP).toDouble() }
+    }
+
     private fun evaluateJsonPath(json: String, path: String): String {
+        // org.json recurses per level and a StackOverflowError gets past the catch below.
+        if (JsonNesting.lenientDepth(json) > JsonNesting.MAX_DATA_DEPTH) return ""
         try {
             var current: Any? = JSONObject(json)
             val keys = path.split(".")
@@ -512,13 +897,17 @@ class VariableExpander {
         }
     }
 
-    private fun isVariableNameChar(c: Char): Boolean = c.isLetterOrDigit() || c == '_' || c == '-'
-
     private fun isJsonPathSegmentChar(c: Char): Boolean = c.isLetterOrDigit() || c == '_' || c == '-'
 
+    /**
+     * [unset] marks a plain `%name` that has no value, which [value] fills in as nothing, and
+     * [operator] a `%name(...)` form.
+     */
     private data class TokenExpansion(
         val value: String,
         val nextIndex: Int,
+        val unset: Boolean = false,
+        val operator: Boolean = false,
     )
 
     private data class ConditionComparison(
@@ -536,6 +925,8 @@ class VariableExpander {
         GT(">"),
         MATCHES("~"),
         NOT_MATCHES("!~"),
+        MATCHES_REGEX("~R"),
+        NOT_MATCHES_REGEX("!~R"),
     }
 
     companion object {
@@ -546,18 +937,82 @@ class VariableExpander {
             " is_set" to true,
             " not_set" to false,
         )
+        // (suffix, isEvenWhenTrue)
+        private val UNARY_PARITY_SUFFIXES = listOf(
+            " is_even" to true,
+            " is_odd" to false,
+        )
         private val COMPARISON_OPERATORS = listOf(
             ComparisonOperator.EQ,
             ComparisonOperator.NE,
             ComparisonOperator.LE,
             ComparisonOperator.GE,
             ComparisonOperator.LT,
+            ComparisonOperator.NOT_MATCHES_REGEX,
             ComparisonOperator.NOT_MATCHES,
+            ComparisonOperator.MATCHES_REGEX,
             ComparisonOperator.MATCHES,
             ComparisonOperator.GT,
         )
+        private val TILDE_OPERATORS = setOf(
+            ComparisonOperator.MATCHES,
+            ComparisonOperator.NOT_MATCHES,
+            ComparisonOperator.MATCHES_REGEX,
+            ComparisonOperator.NOT_MATCHES_REGEX,
+        )
+
+        /** The comparisons Tasker works out as maths (its condition ops 6 and 7, and their or-equal forms). */
+        private val NUMERIC_OPERATORS = setOf(
+            ComparisonOperator.LT,
+            ComparisonOperator.GT,
+            ComparisonOperator.LE,
+            ComparisonOperator.GE,
+        )
+        // [0-9], not \d, which Android's ICU regex matches against every script's digits.
+        private val TASKER_NUMBER = Regex("""[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][0-9]+)?[fFdD]?""")
+        private const val TASKER_DECIMAL_PLACES = 10
+
+        // Tasker 6.7.8's word_on and word_off in each language it ships, "" for its default.
+        private val TASKER_ON_OFF_WORDS = mapOf(
+            "" to ("On" to "Off"),
+            "cs" to ("Zapnuto" to "Vypnuto"),
+            "de" to ("Ein" to "Aus"),
+            "es" to ("Encendido" to "Apagado"),
+            "fr" to ("On" to "Off"),
+            "hu" to ("Be" to "Ki"),
+            "in" to ("Nyala" to "Mati"),
+            "it" to ("Acceso" to "Spento"),
+            "ja" to ("オン" to "オフ"),
+            "ko" to ("켜기" to "끄기"),
+            "nl" to ("Aan" to "Uit"),
+            "pl" to ("Włączony" to "Wyłączony"),
+            "pt" to ("Ligado" to "Desligar"),
+            "ro" to ("Activat" to "Dezactivat"),
+            "ru" to ("Вкл" to "Выкл"),
+            "tr" to ("Devrede" to "kapalı"),
+            "uk" to ("Увімк." to "Вимк."),
+            "vi" to ("Trong" to "Tắt"),
+            "zh" to ("开启" to "关闭"),
+            "zh-TW" to ("開" to "關"),
+        )
         private const val MAX_REGEX_LENGTH = 256
         private const val MAX_REGEX_INPUT_LENGTH = 10_000
+        private val PATTERN_WILDCARD = Regex("[*+]")
+        private val TASKER_ARRAY_FORM = Regex("""#[<>]?|[<>]|\d*(?::\d*)?""")
+        private val STORED_ARRAY_FORM = Regex("""#|\d*(?::\d*)?""")
+
+        private fun isVariableNameChar(c: Char): Boolean = c.isLetterOrDigit() || c == '_' || c == '-'
+
+        /**
+         * True when [written] is a lone `%name` and [expanded] is that same text, which is how an
+         * unset variable comes back. A caller that needs a value, such as an array position or a
+         * goto target, treats it as empty. A variable holding its own name reads the same.
+         */
+        fun keptUnset(written: String?, expanded: String?): Boolean {
+            val text = written?.trim().orEmpty()
+            return text.length > 1 && text[0] == '%' && text[1].isLetter() &&
+                text.drop(1).all(::isVariableNameChar) && expanded?.trim() == text
+        }
 
         private fun compileLinearRegex(pattern: String): Re2Pattern? {
             return try {
@@ -565,6 +1020,16 @@ class VariableExpander {
             } catch (_: RuntimeException) {
                 null
             }
+        }
+
+        /**
+         * Android's regex `\s`, which is `\p{IsWhite_Space}` there and only ASCII on the JVM the unit
+         * tests run on, so the set is spelled out for both to agree.
+         */
+        internal fun isAndroidRegexSpace(char: Char): Boolean = with(char) {
+            code in 0x09..0x0D || code == 0x20 || code == 0x85 || code == 0xA0 || code == 0x1680 ||
+                code in 0x2000..0x200A || code == 0x2028 || code == 0x2029 || code == 0x202F ||
+                code == 0x205F || code == 0x3000
         }
     }
 }
@@ -590,6 +1055,9 @@ class ArrayStore {
     fun clear() {
         synchronized(lock) { arrays.clear() }
     }
+
+    /** Drops the array [name], returning whether there was one. */
+    fun remove(name: String): Boolean = synchronized(lock) { arrays.remove(name) != null }
 
     companion object {
         private const val MAX_ARRAYS = 500

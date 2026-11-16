@@ -356,6 +356,12 @@ dependencies {
             version { require(libs.versions.androidxTransition.get()) }
             because("Instrumentation must not silently fall back to an unsigned 2019 transition build.")
         }
+        // Health Connect brings Guava in through kotlinx-coroutines-guava. Versions before 33.7.2
+        // carry GHSA-xxph-c9ww-hj94, where crafted serialized data can trigger huge allocations.
+        implementation(libs.guava) {
+            version { require(libs.versions.guava.get()) }
+            because("Guava before 33.7.2 carries GHSA-xxph-c9ww-hj94.")
+        }
     }
     implementation(project(":core:common"))
     implementation(project(":core:model"))

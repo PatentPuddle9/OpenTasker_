@@ -4,7 +4,11 @@ import com.opentasker.app.R
 import com.opentasker.core.storage.CorruptStoredRecordException
 import com.opentasker.core.storage.StorageDecodeIssue
 import com.opentasker.core.storage.StorageRecordType
+import com.opentasker.core.transfer.ImportBudgetExceededException
+import com.opentasker.core.transfer.MacroDroidImporter
+import com.opentasker.core.transfer.TaskerXmlImporter
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -68,10 +72,71 @@ class UiErrorMessageTest {
     }
 
     @Test
+    fun anImportOverTheItemLimitSaysWhatItCountsInsteadOfEntities() {
+        val message = uiErrorMessage(ImportBudgetExceededException("entities", observed = 5_002, limit = 5_000), R.string.ui_error_generic)
+
+        assertEquals(R.string.ui_error_import_budget_items, message.resId)
+        assertEquals(listOf<Any>(5_000L), message.args)
+    }
+
+    @Test
+    fun anImportOverAnotherLimitStillNamesIt() {
+        val message = uiErrorMessage(ImportBudgetExceededException("actions", observed = 20_001, limit = 20_000), R.string.ui_error_generic)
+
+        assertEquals(R.string.ui_error_import_budget, message.resId)
+        assertEquals(listOf<Any>("actions", 20_000L), message.args)
+    }
+
+    @Test
+    fun aTaskerFileCutOffMidTagSaysItsDamagedAndStaysUp() {
+        val cutOff = failureOf { TaskerXmlImporter.parse(rawXml = "<TaskerData sr=\"\"><Task sr=\"task1\"><nme>Mor", appVersion = "test") }
+
+        val message = importPreviewFailureMessage(cutOff, R.string.ui_error_automation_import_preview)
+
+        assertEquals(R.string.ui_error_import_damaged, message.resId)
+        assertTrue(message.stayUntilDismissed)
+    }
+
+    @Test
+    fun aMacroDroidFileCutOffSaysItsDamagedToo() {
+        val cutOff = failureOf { MacroDroidImporter.parse(rawJson = "{\"macroList\":[{\"m_name\":\"Mor", appVersion = "test") }
+
+        val message = importPreviewFailureMessage(cutOff, R.string.ui_error_automation_import_preview)
+
+        assertEquals(R.string.ui_error_import_damaged, message.resId)
+        assertTrue(message.stayUntilDismissed)
+    }
+
+    @Test
+    fun anImportFailureWithItsOwnReasonKeepsItAndStaysUp() {
+        val message = importPreviewFailureMessage(UiRejection(R.string.ui_error_import_not_recognized), R.string.ui_error_automation_import_preview)
+
+        assertEquals(R.string.ui_error_import_not_recognized, message.resId)
+        assertTrue(message.stayUntilDismissed)
+    }
+
+    @Test
+    fun anUnexpectedImportFailureFallsBackAndStaysUp() {
+        val message = importPreviewFailureMessage(IllegalArgumentException("MacroDroid import contains no macros."), R.string.ui_error_automation_import_preview)
+
+        assertEquals(R.string.ui_error_automation_import_preview, message.resId)
+        assertTrue(message.args.isEmpty())
+        assertTrue(message.stayUntilDismissed)
+    }
+
+    @Test
+    fun anOrdinaryErrorStillGoesAwayOnItsOwn() {
+        assertFalse(uiErrorMessage(IllegalStateException("busy"), R.string.ui_error_generic).stayUntilDismissed)
+    }
+
+    @Test
     fun anUnexpectedFailureFallsBackWithoutLeakingItsMessage() {
         val message = uiErrorMessage(IllegalStateException("SQLITE_BUSY: database is locked"), R.string.ui_error_generic)
 
         assertEquals(R.string.ui_error_generic, message.resId)
         assertTrue("an unexpected failure must not smuggle its text into the copy", message.args.isEmpty())
     }
+
+    private fun failureOf(block: () -> Unit): Throwable =
+        requireNotNull(runCatching(block).exceptionOrNull()) { "the import was expected to fail" }
 }

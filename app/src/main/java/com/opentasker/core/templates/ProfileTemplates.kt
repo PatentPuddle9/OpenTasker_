@@ -1,5 +1,6 @@
 package com.opentasker.core.templates
 
+import com.opentasker.core.contexts.CalendarSunEventPresets
 import com.opentasker.core.model.ActionSpec
 import com.opentasker.core.model.ContextSpec
 import com.opentasker.core.model.ContextType
@@ -31,6 +32,7 @@ enum class BlueprintSelectorKind {
     INTEGER,
     DECIMAL,
     TIME,
+    CALLER_SEARCH_URL,
 }
 
 @Serializable
@@ -66,6 +68,7 @@ data class TemplateContext(
 data class AppliedProfileTemplate(
     val task: Task,
     val profile: Profile,
+    val exitTask: Task? = null,
 )
 
 /**
@@ -91,6 +94,13 @@ data class AutomationBlueprint(
      * task once a minute.
      */
     val cooldownSec: Int = 0,
+    /**
+     * Placeholders the user can type into an input that are filled when the task runs, so a search
+     * address can say {number} instead of a template expression. They aren't inputs of their own.
+     */
+    val runtimePlaceholders: Map<String, String> = emptyMap(),
+    /** What undoes the rule when its context stops matching, such as leaving the home Wi-Fi. */
+    val exitActions: List<TemplateAction> = emptyList(),
 ) {
     /** Compatibility view for the existing guided-template screen. */
     val slots: List<BlueprintInput>
@@ -121,19 +131,17 @@ data class AutomationBlueprint(
             "Invalid blueprint values: ${invalid.joinToString()}"
         }
 
-        val taskName = expand("$title Task", values)
+        val expansions = values + runtimePlaceholders
+        val taskName = expand("$title Task", expansions)
         val task = Task(
             name = taskName,
-            actions = actions.map { action ->
-                ActionSpec(
-                    type = action.type,
-                    label = expand(action.label, values),
-                    args = action.args.mapValues { (_, value) -> expand(value, values) },
-                )
-            },
+            actions = actionSpecs(actions, expansions),
         )
+        val exitTask = exitActions.takeIf { it.isNotEmpty() }?.let { exit ->
+            Task(name = expand("$title Exit Task", expansions), actions = actionSpecs(exit, expansions))
+        }
         val profile = Profile(
-            name = expand(title, values),
+            name = expand(title, expansions),
             // Every blueprint installation is a review artifact. Enabling is an explicit user
             // action after capability, lint, and safety checks; a definition cannot bypass that
             // gate through metadata.
@@ -143,13 +151,22 @@ data class AutomationBlueprint(
             contexts = contexts.map { context ->
                 ContextSpec(
                     type = context.type,
-                    config = context.config.mapValues { (_, value) -> expand(value, values) },
+                    config = context.config.mapValues { (_, value) -> expand(value, expansions) },
                     invert = context.invert,
                 )
             },
         )
-        return AppliedProfileTemplate(task = task, profile = profile)
+        return AppliedProfileTemplate(task = task, profile = profile, exitTask = exitTask)
     }
+
+    private fun actionSpecs(source: List<TemplateAction>, expansions: Map<String, String>): List<ActionSpec> =
+        source.map { action ->
+            ActionSpec(
+                type = action.type,
+                label = expand(action.label, expansions),
+                args = action.args.mapValues { (_, value) -> expand(value, expansions) },
+            )
+        }
 
     private fun expand(value: String, slotValues: Map<String, String>): String {
         var expanded = value
@@ -197,6 +214,13 @@ fun BlueprintInput.validationError(value: String): String? {
         } catch (_: DateTimeParseException) {
             "use HH:mm"
         }
+        BlueprintSelectorKind.CALLER_SEARCH_URL -> when {
+            !value.startsWith("https://", ignoreCase = true) && !value.startsWith("http://", ignoreCase = true) ->
+                "must start with https://"
+            "{number}" !in value -> "must include {number} where the caller's number goes"
+            value.any { it.isWhitespace() || it.isISOControl() } -> "cannot contain spaces"
+            else -> null
+        }
     }
 }
 
@@ -214,6 +238,36 @@ private fun BlueprintInput.numericError(value: String, wholeNumber: Boolean, def
 private fun Double.stripTrailingZero(): String = toString().removeSuffix(".0")
 
 private val APP_ID_PATTERN = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+$")
+
+/** Encoded because a number's leading + would otherwise reach the search site as a space. */
+private val CALLER_NUMBER_PLACEHOLDER = mapOf("number" to "{{ event.incoming_number | urlencode }}")
+
+private fun callerSearchUrlInput() = TemplateSlot(
+    "searchUrl",
+    "Search URL",
+    "https://duckduckgo.com/?q={number}",
+    hint = "{number} becomes the caller's number",
+    selector = BlueprintSelectorKind.CALLER_SEARCH_URL,
+    section = "Search",
+)
+
+/** Only a checked stranger. A hidden caller or an unchecked number reads "unknown", not "false". */
+private fun incomingCallFromStranger() = TemplateContext(
+    ContextType.EVENT,
+    mapOf("event" to "incoming_call", "knownContact" to "false"),
+)
+
+private fun unknownCallerNotification() = TemplateAction(
+    "notify.show",
+    "Show the caller's number",
+    mapOf(
+        "title" to "Unknown caller",
+        "text" to "{{ event.incoming_number }}",
+        "channel" to "urgent",
+        "button1_label" to "Search",
+        "button1_url" to "{searchUrl}",
+    ),
+)
 
 object ProfileTemplateCatalog {
     val all: List<ProfileTemplate> = listOf(
@@ -404,7 +458,115 @@ object ProfileTemplateCatalog {
                 TemplateAction("volume.set", "Lower media volume", mapOf("stream" to "music", "level" to "15")),
             ),
         ),
+        ProfileTemplate(
+            id = "search-incoming-numbers",
+            title = "Search incoming phone numbers",
+            summary = "Search unknown incoming phone numbers using a configurable search engine.",
+            category = "Calls",
+            availability = TemplateAvailability.RequiresSetup,
+            safetyNote = "Creates a disabled profile. Needs Phone state, Call log, Contacts and notifications before enabling. " +
+                "The number leaves your phone only when you tap Search. Hidden callers and your contacts are never searched.",
+            inputs = listOf(callerSearchUrlInput()),
+            contexts = listOf(incomingCallFromStranger()),
+            actions = listOf(unknownCallerNotification()),
+            runtimePlaceholders = CALLER_NUMBER_PLACEHOLDER,
+        ),
+        ProfileTemplate(
+            id = "search-incoming-numbers-automatic",
+            title = "Search incoming phone numbers automatically",
+            summary = "Open a search for unknown incoming phone numbers as soon as the phone rings.",
+            category = "Calls",
+            availability = TemplateAvailability.RequiresSetup,
+            safetyNote = "Creates a disabled profile. Needs Phone state, Call log, Contacts, notifications and Display over other apps before enabling. " +
+                "Every unknown caller's number goes to the search site without asking. Without Display over other apps Android won't open the browser, " +
+                "so the notification stays as the way to search by hand. Hidden callers and your contacts are never searched.",
+            inputs = listOf(callerSearchUrlInput()),
+            contexts = listOf(incomingCallFromStranger()),
+            // The notification comes first: a blocked url.open fails the task, and it has to stay behind.
+            actions = listOf(
+                unknownCallerNotification(),
+                TemplateAction("url.open", "Search the number", mapOf("url" to "{searchUrl}")),
+            ),
+            runtimePlaceholders = CALLER_NUMBER_PLACEHOLDER,
+        ),
+        ProfileTemplate(
+            id = "vpn-off-at-home-wireguard",
+            title = "WireGuard off at home",
+            summary = "Turn a WireGuard tunnel off on your home Wi-Fi and back on when you leave it.",
+            category = "Network",
+            availability = TemplateAvailability.RequiresSetup,
+            safetyNote = "Creates a disabled profile. Needs location access to read the Wi-Fi name, WireGuard tunnel control in Setup, " +
+                "and Allow remote control apps turned on in the WireGuard settings. It only changes the VPN as you join or leave that network.",
+            inputs = listOf(
+                homeWifiInput(),
+                TemplateSlot("tunnel", "Tunnel name", "wg0", hint = "Exactly as WireGuard shows it"),
+            ),
+            contexts = listOf(onHomeWifi()),
+            actions = listOf(TemplateAction("vpn.tunnel", "Turn the VPN off", wireGuardArgs("down"))),
+            exitActions = listOf(TemplateAction("vpn.tunnel", "Turn the VPN on", wireGuardArgs("up"))),
+        ),
+        ProfileTemplate(
+            id = "vpn-off-at-home-tailscale",
+            title = "Tailscale off at home",
+            summary = "Disconnect Tailscale on your home Wi-Fi and reconnect when you leave it.",
+            category = "Network",
+            availability = TemplateAvailability.RequiresSetup,
+            safetyNote = "Creates a disabled profile. Needs location access to read the Wi-Fi name, and you need to be logged in to Tailscale. " +
+                "It only changes the VPN as you join or leave that network.",
+            inputs = listOf(homeWifiInput()),
+            contexts = listOf(onHomeWifi()),
+            actions = listOf(TemplateAction("vpn.tunnel", "Turn the VPN off", mapOf("client" to "tailscale", "state" to "down"))),
+            exitActions = listOf(TemplateAction("vpn.tunnel", "Turn the VPN on", mapOf("client" to "tailscale", "state" to "up"))),
+        ),
+        // Day and night are two templates because a blueprint installs exactly one profile.
+        ProfileTemplate(
+            id = "wallpaper-at-sunrise",
+            title = "Day wallpaper at sunrise",
+            summary = "Switch to your daytime wallpaper when the sun comes up.",
+            category = "Display",
+            availability = TemplateAvailability.Ready,
+            safetyNote = SUN_WALLPAPER_NOTE,
+            inputs = sunLocationInputs() + TemplateSlot("image", "Day image", "/storage/emulated/0/Pictures/day.jpg", hint = WALLPAPER_IMAGE_HINT),
+            contexts = listOf(atSun("sunrise")),
+            actions = listOf(TemplateAction("wallpaper.set", "Set the day wallpaper", mapOf("path" to "{image}", "target" to "both"))),
+        ),
+        ProfileTemplate(
+            id = "wallpaper-at-sunset",
+            title = "Night wallpaper at sunset",
+            summary = "Switch to your nighttime wallpaper when the sun goes down.",
+            category = "Display",
+            availability = TemplateAvailability.Ready,
+            safetyNote = SUN_WALLPAPER_NOTE,
+            inputs = sunLocationInputs() + TemplateSlot("image", "Night image", "/storage/emulated/0/Pictures/night.jpg", hint = WALLPAPER_IMAGE_HINT),
+            contexts = listOf(atSun("sunset")),
+            actions = listOf(TemplateAction("wallpaper.set", "Set the night wallpaper", mapOf("path" to "{image}", "target" to "both"))),
+        ),
     )
+
+    private const val SUN_WALLPAPER_NOTE = "Creates a disabled profile. Before turning it on, open its action and pick the image with Browse, " +
+        "since OpenTasker can't read a typed photo path by itself. Sun times come from the latitude and longitude you enter, so no location access is needed."
+
+    private const val WALLPAPER_IMAGE_HINT = "Pick it with Browse in the action after installing"
+
+    private fun sunLocationInputs() = listOf(
+        TemplateSlot("latitude", "Latitude", "40.7580", hint = "Decimal degrees; your town is close enough", selector = BlueprintSelectorKind.DECIMAL, minimum = -90.0, maximum = 90.0),
+        TemplateSlot("longitude", "Longitude", "-73.9855", hint = "Decimal degrees", selector = BlueprintSelectorKind.DECIMAL, minimum = -180.0, maximum = 180.0),
+    )
+
+    /** The At sunrise / At sunset preset, placed at the coordinates entered. */
+    private fun atSun(event: String) = TemplateContext(
+        ContextType.EVENT,
+        // The at-preset's blank elevation is only there to undo a twilight preset in the editor.
+        CalendarSunEventPresets.presetsFor(event).first().config.filterValues(String::isNotBlank) +
+            mapOf("latitude" to "{latitude}", "longitude" to "{longitude}"),
+    )
+
+    private fun homeWifiInput() =
+        TemplateSlot("ssid", "Home Wi-Fi name", "Home WiFi", hint = "Exact SSID", selector = BlueprintSelectorKind.WIFI_SSID)
+
+    private fun onHomeWifi() = TemplateContext(ContextType.STATE, mapOf("key" to "wifi", "value" to "{ssid}"))
+
+    private fun wireGuardArgs(state: String) = mapOf("client" to "wireguard", "state" to state, "tunnel" to "{tunnel}")
 
     fun get(id: String): ProfileTemplate? = all.firstOrNull { it.id == id }
 }

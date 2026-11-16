@@ -3,6 +3,7 @@
    <configuration>
       <verify-metadata>true</verify-metadata>
       <verify-signatures>true</verify-signatures>
+      <keyring-format>armored</keyring-format>
       <ignored-keys>
          <ignored-key id="6A65176A0FB1CD0B" reason="Key couldn't be downloaded from any key server; SHA-256 checksums remain pinned" />
          <ignored-key id="E2F38302C8075E3D" reason="Key couldn't be downloaded from any key server" />
@@ -12,6 +13,7 @@
          <ignored-key id="D9C565AA72BA2FDD" reason="Key couldn't be downloaded from any key server; SHA-256 checksums remain pinned" />
          <ignored-key id="056ACA74D46000BF" reason="Key couldn't be downloaded from any key server; SHA-256 checksums remain pinned" />
          <ignored-key id="571A5291E827E1C7" reason="Key couldn't be downloaded from any key server; SHA-256 checksums remain pinned" />
+         <ignored-key id="51FBF517CE6D6B80" reason="Gradle Plugin Portal signing subkey since 2026-08 (replaces E2F38302C8075E3D); no official Gradle source confirms it yet, so SHA-256 checksums remain pinned" />
       </ignored-keys>
       <trusted-keys>
          <trusted-key id="04543577D6A9CC626239C50C7ECBD740FF06AEB5">
@@ -25,16 +27,20 @@
          <trusted-key id="0E225917414670F4442C250DFD533C07C264648F">
             <trusting group="androidx.activity" />
             <trusting group="androidx.benchmark" />
+            <trusting group="androidx.collection" />
             <trusting group="androidx.core" />
             <trusting group="androidx.databinding" />
             <trusting group="androidx.datastore" />
             <trusting group="androidx.lifecycle" />
+            <trusting group="androidx.room" />
             <trusting group="androidx.sqlite" name="sqlite" version="2.7.0" />
             <trusting group="androidx.sqlite" name="sqlite-android" version="2.7.0" />
             <trusting group="androidx.sqlite" name="sqlite-framework" version="2.7.0" />
             <trusting group="androidx.sqlite" name="sqlite-framework-android" version="2.7.0" />
             <trusting group="androidx.sqlite" name="sqlite-jvm" version="2.7.0" />
             <trusting group="androidx.test.uiautomator" />
+            <trusting group="androidx.tracing" />
+            <trusting group="androidx.transition" />
             <trusting group="androidx.work" />
             <trusting group="^androidx[.]compose($|([.].*))" regex="true" />
             <trusting group="^com[.]android($|([.].*))" regex="true" />
@@ -44,6 +50,8 @@
             <trusting group="androidx.collection" />
             <trusting group="androidx.core" />
             <trusting group="androidx.databinding" />
+            <trusting group="androidx.dynamicanimation" name="dynamicanimation" version="1.1.0" />
+            <trusting group="androidx.health.connect" />
             <trusting group="androidx.lifecycle" />
             <trusting group="androidx.navigationevent" />
             <trusting group="androidx.room" />
@@ -76,7 +84,10 @@
          <trusted-key id="32118CF76C9EC5D918E54967CA80D1F0EB6CA4BA" group="org.codehaus.mojo" />
          <trusted-key id="33FD4BFD33554634053D73C0C2148900BCD3C2AF" group="org.jetbrains" name="annotations" version="23.0.0" />
          <trusted-key id="34441E504A937F43EB0DAEF96A65176A0FB1CD0B" group="org.codehaus.groovy" name="groovy" version="3.0.22" />
-         <trusted-key id="41CD49B4EF5876F9E9F691DABAC30622339994C4" group="org.jspecify" name="jspecify" version="1.0.0" />
+         <trusted-key id="41CD49B4EF5876F9E9F691DABAC30622339994C4">
+            <trusting group="org.jspecify" name="jspecify" version="1.0.0" />
+            <trusting group="org.jspecify" name="jspecify" version="1.0.1" />
+         </trusted-key>
          <trusted-key id="47504B76CF89C15C0512D9AFE16AB52D79FD224F" group="com.google.api.grpc" name="proto-google-common-protos" />
          <trusted-key id="475F3B8E59E6E63AA78067482C7B12F2A511E325" group="org.slf4j" />
          <trusted-key id="4BF79B8259007B566D2FCE82296CD27F60EED12C" group="com.google.crypto.tink" name="tink" version="1.7.0" />
@@ -93,6 +104,7 @@
          <trusted-key id="600EA202B1EC682F4A788E5AAC7A514BC9F9BB70" group="io.opencensus" name="opencensus-api" version="0.31.0" />
          <trusted-key id="61DEBD732F3F07771269972E2F87304808D40CEC" group="net.zetetic" name="sqlcipher-android" version="4.17.0" />
          <trusted-key id="61DEBD732F3F07771269972E2F87304808D40CEC" group="net.zetetic" name="sqlcipher-android" version="4.18.0" />
+         <trusted-key id="61DEBD732F3F07771269972E2F87304808D40CEC" group="net.zetetic" name="sqlcipher-android" version="4.20.0" />
          <trusted-key id="694621A7227D8D5289699830ABE9F3126BB741C1" group="^com[.]google($|([.].*))" regex="true" />
          <trusted-key id="696B6199A2A9D8C29CE78CC0D041CAD2E452550F" group="com.google.protobuf" />
          <trusted-key id="6DD3B8C64EF75253BEB2C53AD908A43FB7EC07AC" group="jakarta.activation" />
@@ -141,6 +153,7 @@
          <trusted-key id="BDB5FA4FE719D787FB3D3197F6D4A1D411E9D1AE" group="^com[.]google($|([.].*))" regex="true" />
          <trusted-key id="B801E2F8EF035068EC1139CC29579F18FA8FD93B" group="com.google.j2objc" name="j2objc-annotations" version="1.3" />
          <trusted-key id="C1CBA75EC9BD0BAF8061935459E05CE618187ED4" group="org.xerial" name="sqlite-jdbc" version="3.41.2.2" />
+         <trusted-key id="C3259D20DAEC4ACE6D57CC83340B090F727518D8" group="com.google.j2objc" name="j2objc-annotations" version="3.1" />
          <trusted-key id="C6F7D1C804C821F49AF3BFC13AD93C3C677A106E" group="io.perfmark" name="perfmark-api" />
          <trusted-key id="C7BE5BCC9FEC15518CFDA882B0F3710FA64900E7">
             <trusting group="com.google.code.gson" />
@@ -149,6 +162,7 @@
          <trusted-key id="D233B6C6E7EDC0866D486C166054D87C226DFDC2" group="com.code-intelligence" />
          <trusted-key id="D477D51812E692011DB11E66A6EA2E2BF22E0543" group="io.github.java-diff-utils" />
          <trusted-key id="DBD744ACE7ADE6AA50DD591F66B50994442D2D40" group="com.squareup" />
+         <trusted-key id="E77417AC194160A3FABD04969A259C7EE636C5ED" group="com.google.errorprone" />
          <trusted-key id="E7DC75FC24FB3C8DFE8086AD3D5839A2262CBBFB" group="org.jetbrains.kotlinx" />
          <trusted-key id="EB1B3DE71713C9EC2E87CC26EE92349AD86DE446" group="com.google.j2objc" name="j2objc-annotations" version="2.8" />
          <trusted-key id="EE0CA873074092F806F59B65D364ABAA39A47320" group="com.google.errorprone" />
@@ -311,6 +325,12 @@
          </artifact>
          <artifact name="autofill-1.0.0.pom">
             <sha256 value="3677abead5d4e06cf76cbacb954151e051779c2274494451fb424e375aa9e450" origin="OpenTasker: Google Maven direct artifact SHA-256 (no upstream .sha256/.asc)" reason="Artifact is not signed" />
+         </artifact>
+      </component>
+      <component group="androidx.baselineprofile" name="androidx.baselineprofile.gradle.plugin" version="1.5.0">
+         <artifact name="androidx.baselineprofile.gradle.plugin-1.5.0.pom">
+            <pgp value="0E225917414670F4442C250DFD533C07C264648F" />
+            <sha256 value="e07ba8da09e3aff020680f6b70700db8ad43390408f5ab0ae95f22957a7e3b26" origin="OpenTasker: Google Maven published .sha256" />
          </artifact>
       </component>
       <component group="androidx.baselineprofile" name="androidx.baselineprofile.gradle.plugin" version="1.5.0-rc02">
@@ -1750,6 +1770,11 @@
             <sha256 value="54a4e456f3f7110e91a3d30196cadd98a7478691679f5d63f2c4023a48d2ec61" origin="OpenTasker: Google Maven published .sha256" />
          </artifact>
       </component>
+      <component group="androidx.core" name="core" version="1.19.1">
+         <artifact name="core-1.19.1.aar">
+            <sha256 value="08108ea780205bd54603088a62a6dd5378f63bd25542674be24cd4cdb8191a09" origin="OpenTasker: Google Maven published .sha256" />
+         </artifact>
+      </component>
       <component group="androidx.core" name="core" version="1.9.0">
          <artifact name="core-1.9.0.aar">
             <sha256 value="8bda3ee3a88887d54f6679fb6b6cd788629f73234ac91c8bbed924e721ec85b8" origin="OpenTasker: Google Maven published .sha256" reason="Artifact is not signed" />
@@ -2004,6 +2029,30 @@
          </artifact>
          <artifact name="graphics-path-1.0.1.module">
             <sha256 value="3f6fc7e96f8a1fd21045da7f2e332aef528aa1f56b6455fb8f25043aafa0e1b8" origin="OpenTasker: Google Maven published .sha256" />
+         </artifact>
+      </component>
+      <component group="androidx.health.connect" name="connect-client" version="1.1.0">
+         <artifact name="connect-client-1.1.0.aar">
+            <sha256 value="ce1601af0ef671ec6a76b0f29d2af22acc578e408c7107d08ea23067d3822593" origin="OpenTasker: Google Maven published .sha256" />
+         </artifact>
+         <artifact name="connect-client-1.1.0.module">
+            <sha256 value="5ebbc6bb5b06963427c069505334fc339890f88c84823de9834b666f320966b4" origin="OpenTasker: Google Maven published .sha256" />
+         </artifact>
+      </component>
+      <component group="androidx.health.connect" name="connect-client-external-protobuf" version="1.1.0">
+         <artifact name="connect-client-external-protobuf-1.1.0.jar">
+            <sha256 value="6f5418471228a80f16ba7de9c3e8f8c42c58238c0f49fd70d4b43ab187fce502" origin="OpenTasker: Google Maven published .sha256" />
+         </artifact>
+         <artifact name="connect-client-external-protobuf-1.1.0.module">
+            <sha256 value="1f8c3d87346654130e405254d382b4867dcfbc8e6859d297b5c32c454906045f" origin="OpenTasker: Google Maven published .sha256" />
+         </artifact>
+      </component>
+      <component group="androidx.health.connect" name="connect-client-proto" version="1.1.0">
+         <artifact name="connect-client-proto-1.1.0.jar">
+            <sha256 value="291137e68e47521ae996e6c0fac3d6437f794274f10b0e4d4616763225b1d218" origin="OpenTasker: Google Maven published .sha256" />
+         </artifact>
+         <artifact name="connect-client-proto-1.1.0.module">
+            <sha256 value="d57dd99d2cd7e1a5212b73fe53961900aeaddaa2741099c4aca2a22c90a0f45c" origin="OpenTasker: Google Maven published .sha256" />
          </artifact>
       </component>
       <component group="androidx.interpolator" name="interpolator" version="1.0.0">
@@ -4489,6 +4538,11 @@
             <sha256 value="a1a16684e6446bbe5cbeacb40f99c98f40003269e1a0bd0c970a9b8526ecd9a8" origin="OpenTasker: Maven Central published .sha256" />
          </artifact>
       </component>
+      <component group="com.google.errorprone" name="error_prone_annotations" version="2.11.0">
+         <artifact name="error_prone_annotations-2.11.0.pom">
+            <sha256 value="0261ca01f2d2e9ac2ae2ece75d42c56323b385fb294b6bc943f62ef4e92ddf08" origin="OpenTasker: Maven Central published .asc + artifact SHA-256" />
+         </artifact>
+      </component>
       <component group="com.google.errorprone" name="error_prone_annotations" version="2.18.0">
          <artifact name="error_prone_annotations-2.18.0.pom">
             <sha256 value="920135797dcca5917b5a5c017642a58d340a4cd1bcd12f56f892a5663bd7bddc" origin="OpenTasker: Maven Central published .asc + artifact SHA-256" />
@@ -4558,6 +4612,11 @@
          </artifact>
          <artifact name="error_prone_annotations-2.41.0.pom">
             <sha256 value="a151df1e2e0b48618d8b06a180748a29b3abb39b1b2396f6a1c879a727488c6e" origin="OpenTasker: Maven Central published .sha256" />
+         </artifact>
+      </component>
+      <component group="com.google.errorprone" name="error_prone_parent" version="2.11.0">
+         <artifact name="error_prone_parent-2.11.0.pom">
+            <sha256 value="8283f0cb44c624a79d330b6fd80b8b8a715a68b3685c9a951c3de837d4540551" origin="OpenTasker: Maven Central published .asc + artifact SHA-256" />
          </artifact>
       </component>
       <component group="com.google.errorprone" name="error_prone_parent" version="2.18.0">
@@ -4672,6 +4731,11 @@
          </artifact>
          <artifact name="guava-33.4.0-jre.module">
             <sha256 value="820e817e86c493aa7affd6cbb991ee60925b6c8b74541f742cb22070f6f20459" origin="OpenTasker: Maven Central published .asc + artifact SHA-256" />
+         </artifact>
+      </component>
+      <component group="com.google.guava" name="guava" version="33.7.2-android">
+         <artifact name="guava-33.7.2-jre.jar">
+            <sha256 value="b530942257fb935f8b2cfaa5f8eb5bd59c555fd8e8d01b8ce98912e077ea606c" origin="OpenTasker: Maven Central published .sha256" />
          </artifact>
       </component>
       <component group="com.google.guava" name="guava-parent" version="26.0-android">
@@ -5673,6 +5737,14 @@
             <sha256 value="31ce606f4e9518936299bb0d27c978fa61e185fd1de7c9874fe959a53e34a685" origin="OpenTasker: Maven Central direct artifact SHA-256 (no upstream .sha256/.asc)" reason="Artifact is not signed" />
          </artifact>
       </component>
+      <component group="net.zetetic" name="sqlcipher-android" version="4.20.0">
+         <artifact name="sqlcipher-android-4.20.0.aar">
+            <sha256 value="1e57857adfd29e2f5ddb4686e1e5ec6659920220d4bf182fdb5ef085b5577100" origin="OpenTasker: Maven Central published .sha256" />
+         </artifact>
+         <artifact name="sqlcipher-android-4.20.0.module">
+            <sha256 value="92a4483933d8406e4de4698e28091c58845579895f897fc522d3ff05df6b37f8" origin="OpenTasker: Maven Central published .sha256" />
+         </artifact>
+      </component>
       <component group="net.zetetic" name="sqlcipher-android" version="4.18.0">
          <artifact name="sqlcipher-android-4.18.0.aar">
             <sha256 value="f59aaf02ffd4de649f85a6c0d296f9a91763764c07707997834abc0cfc745222" origin="OpenTasker: Maven Central published .sha256" />
@@ -5769,6 +5841,19 @@
             <sha256 value="4345debfc767b1aeac68abdd72fc67d18b521d4b390372a11b63ff0c586b2320" origin="OpenTasker: Maven Central published .asc + artifact SHA-256" />
          </artifact>
       </component>
+      <component group="org.apache.groovy" name="groovy" version="4.0.29">
+         <artifact name="groovy-4.0.29.jar">
+            <sha256 value="16b1259f5404bc43bf066556e043769b1f7570b2ca23fdaf169f12499677e936" origin="OpenTasker: Maven Central published .sha256" />
+         </artifact>
+         <artifact name="groovy-4.0.29.module">
+            <sha256 value="e7af04464263212199236dd8f136a2ef56662654ff9125fe3573f1968b147738" origin="OpenTasker: Maven Central published .sha256" />
+         </artifact>
+      </component>
+      <component group="org.apache.groovy" name="groovy-bom" version="4.0.29">
+         <artifact name="groovy-bom-4.0.29.module">
+            <sha256 value="2392853c20ff3b7474791d66f831909f25396cb397cf63bf15e1998a5c0b82fc" origin="OpenTasker: Maven Central published .sha256" />
+         </artifact>
+      </component>
       <component group="org.apache.httpcomponents" name="httpclient" version="4.5.14">
          <artifact name="httpclient-4.5.14.jar">
             <sha256 value="c8bc7e1c51a6d4ce72f40d2ebbabf1c4b68bfe76e732104b04381b493478e9d6" origin="OpenTasker: Maven Central published .asc + artifact SHA-256" />
@@ -5832,6 +5917,11 @@
          </artifact>
          <artifact name="jose4j-0.9.5.pom">
             <sha256 value="bad024180a1b469cbd94e5f2db12841bcac5443d9545607f673cfde677c1d872" origin="OpenTasker: Maven Central published .asc + artifact SHA-256" />
+         </artifact>
+      </component>
+      <component group="org.bouncycastle" name="bc-jdk18on-bom" version="1.80.2">
+         <artifact name="bc-jdk18on-bom-1.80.2.pom">
+            <sha256 value="5f59cc51b21d92ddc08cc93b488983ea43dd211fe8d950335ef31bcdd7b15b47" origin="OpenTasker: Maven Central published .sha256" />
          </artifact>
       </component>
       <component group="org.bouncycastle" name="bcpkix-jdk18on" version="1.85">
@@ -6002,6 +6092,14 @@
             <sha256 value="d83b7e15ebcd97461e7bb6c42e34382c79051bc705a1daa95eccd3d91671e587" origin="OpenTasker: Gradle Plugin Portal published .asc + artifact SHA-256" reason="A key couldn't be downloaded" />
          </artifact>
       </component>
+      <component group="org.gradle.kotlin" name="gradle-kotlin-dsl-plugins" version="6.7.13">
+         <artifact name="gradle-kotlin-dsl-plugins-6.7.13.jar">
+            <sha256 value="096d5996d4c84b0b5d189d4ea2cf420f60005a1cd4c3e9e96cb0ba3a53a0a3c6" origin="OpenTasker: Gradle Plugin Portal published .asc + artifact SHA-256" reason="Signing key is ignored" />
+         </artifact>
+         <artifact name="gradle-kotlin-dsl-plugins-6.7.13.module">
+            <sha256 value="7a8ced402b333fbeeb0d6ca3d65cfcd409e16a5b34dc2d03d2e12903cc1ba653" origin="OpenTasker: Gradle Plugin Portal published .asc + artifact SHA-256" reason="Signing key is ignored" />
+         </artifact>
+      </component>
       <component group="org.gradle.kotlin.kotlin-dsl" name="org.gradle.kotlin.kotlin-dsl.gradle.plugin" version="6.5.2">
          <artifact name="org.gradle.kotlin.kotlin-dsl.gradle.plugin-6.5.2.pom">
             <sha256 value="e5a6af17b58560d746cab42c795fe3a42a1ebe4050e55a4f00d8cf54cf31f1ea" origin="OpenTasker: Gradle Plugin Portal direct artifact SHA-256 (no upstream .sha256/.asc)" reason="Artifact is not signed" />
@@ -6015,6 +6113,11 @@
       <component group="org.gradle.kotlin.kotlin-dsl" name="org.gradle.kotlin.kotlin-dsl.gradle.plugin" version="6.7.3">
          <artifact name="org.gradle.kotlin.kotlin-dsl.gradle.plugin-6.7.3.pom">
             <sha256 value="1d1b62a1dd8af85ef21808361197da4649393d5cea7efa422ab9a8016f5e6dd1" origin="OpenTasker: Gradle Plugin Portal direct artifact SHA-256 (no upstream .sha256/.asc)" reason="Artifact is not signed" />
+         </artifact>
+      </component>
+      <component group="org.gradle.kotlin.kotlin-dsl" name="org.gradle.kotlin.kotlin-dsl.gradle.plugin" version="6.7.13">
+         <artifact name="org.gradle.kotlin.kotlin-dsl.gradle.plugin-6.7.13.pom">
+            <sha256 value="770d3e472164cfbdb5f8f8a6cd008b07e8c25f484ed7d3bd823b57ae5a4252da" origin="OpenTasker: Gradle Plugin Portal direct artifact SHA-256 (no upstream .sha256/.asc)" reason="Artifact is not signed" />
          </artifact>
       </component>
       <component group="org.hamcrest" name="hamcrest-core" version="1.3">
@@ -6781,6 +6884,11 @@
          </artifact>
          <artifact name="kotlin-gradle-plugins-bom-2.4.20.pom">
             <sha256 value="70b071dc4074995076c97c749792ebcff69f10e636d1e2f2c68de0de023e0239" origin="OpenTasker: Maven Central published .asc + artifact SHA-256" />
+         </artifact>
+      </component>
+      <component group="org.jetbrains.kotlin" name="kotlin-gradle-plugins-bom" version="2.4.21">
+         <artifact name="kotlin-gradle-plugins-bom-2.4.21.pom">
+            <sha256 value="624c0c869b3fcf1665afec9c5c51a807be0a8c983931ebb188548ddcdb055780" origin="OpenTasker: Maven Central published .asc + artifact SHA-256" />
          </artifact>
       </component>
       <component group="org.jetbrains.kotlin" name="kotlin-klib-abi-reader" version="2.3.0">

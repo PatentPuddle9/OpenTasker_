@@ -6,6 +6,9 @@ import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.IBinder
 import com.opentasker.app.BuildConfig
+import com.opentasker.core.scripting.ShizukuScriptPolicy
+import com.opentasker.core.scripting.ShizukuScriptReply
+import com.opentasker.core.scripting.ShizukuScriptRequest
 import rikka.shizuku.Shizuku
 import java.io.File
 import java.util.concurrent.CountDownLatch
@@ -19,8 +22,9 @@ import java.util.concurrent.TimeUnit
  */
 object ShizukuShellRunner {
     private const val USER_SERVICE_TAG = "opentasker-power"
-    private const val USER_SERVICE_VERSION = 1
+    private const val USER_SERVICE_VERSION = 3
     private const val CONNECTION_TIMEOUT_SECONDS = 2L
+    private const val POWER_MODE_OFF = "Shizuku power mode is off, so nothing ran. Turn it on from its row in Setup."
 
     private val lock = Any()
     private val connection = object : ServiceConnection {
@@ -31,6 +35,9 @@ object ShizukuShellRunner {
                 bindingLatch?.countDown()
                 bindingLatch = null
             }
+            // The first bind can outlast the wait in remoteServiceForUse, which leaves Setup
+            // showing "cannot reach its helper service" for a transport that is now up.
+            ShizukuPowerBackend.notifyStatusChanged()
         }
 
         override fun onServiceDisconnected(name: ComponentName) {
@@ -80,7 +87,7 @@ object ShizukuShellRunner {
                 ShellResult.Failure("Invalid variant index $variantIndex for action '$actionId'")
             }
         if (ShizukuPowerBackend.killSwitchEnabled) {
-            return ShellResult.Failure("Shizuku kill switch is active")
+            return ShellResult.Failure(POWER_MODE_OFF)
         }
         val service = remoteServiceForUse()
             ?: return unavailable()
@@ -101,7 +108,7 @@ object ShizukuShellRunner {
     /** Runs the fixed screenshot command and lets the privileged process write only app storage. */
     fun captureScreenshot(path: String): ShellResult {
         if (ShizukuPowerBackend.killSwitchEnabled) {
-            return ShellResult.Failure("Shizuku kill switch is active")
+            return ShellResult.Failure(POWER_MODE_OFF)
         }
         if (!isSafeScreenshotPath(path)) {
             return ShellResult.Failure("Screenshot path must stay inside OpenTasker's app-specific external storage")
@@ -118,6 +125,84 @@ object ShizukuShellRunner {
         }.getOrElse { error ->
             invalidateRemoteService()
             ShellResult.Failure(error.message ?: "Shizuku user service disconnected")
+        }
+    }
+
+    /** Blocks until Android reports the new state, up to about 20 seconds, so this belongs on a background thread. */
+    fun setWifiHotspot(enabled: Boolean): ShellResult {
+        if (ShizukuPowerBackend.killSwitchEnabled) {
+            return ShellResult.Failure(POWER_MODE_OFF)
+        }
+        val service = remoteServiceForUse()
+            ?: return unavailable()
+        return runCatching {
+            val code = service.setWifiHotspot(enabled)
+            if (code == WifiHotspotPolicy.OK) {
+                ShellResult.Success(if (enabled) "on" else "off", 0)
+            } else {
+                ShellResult.Failure(WifiHotspotPolicy.failureMessage(code, enabled))
+            }
+        }.getOrElse { error ->
+            invalidateRemoteService()
+            ShellResult.Failure(error.message ?: "Shizuku user service disconnected")
+        }
+    }
+
+    /** Succeeds with "on" or "off". */
+    fun readWifiHotspot(): ShellResult {
+        if (ShizukuPowerBackend.killSwitchEnabled) {
+            return ShellResult.Failure(POWER_MODE_OFF)
+        }
+        val service = remoteServiceForUse()
+            ?: return unavailable()
+        return runCatching {
+            when (val state = service.readWifiHotspot()) {
+                WifiHotspotPolicy.STATE_ON -> ShellResult.Success("on", 0)
+                WifiHotspotPolicy.STATE_OFF -> ShellResult.Success("off", 0)
+                WifiHotspotPolicy.STATE_UNKNOWN -> ShellResult.Failure("Android didn't report a Wi-Fi hotspot state.")
+                else -> ShellResult.Failure(WifiHotspotPolicy.failureMessage(state, enabled = true))
+            }
+        }.getOrElse { error ->
+            invalidateRemoteService()
+            ShellResult.Failure(error.message ?: "Shizuku user service disconnected")
+        }
+    }
+
+    /** Blocks for as long as the script runs, so this belongs on a background thread. */
+    internal fun runScript(request: ShizukuScriptRequest): ShizukuScriptReply {
+        if (ShizukuPowerBackend.killSwitchEnabled) {
+            return ShizukuScriptReply.refused(ShizukuScriptPolicy.STATUS_FAILED, POWER_MODE_OFF)
+        }
+        val service = remoteServiceForUse()
+            ?: return ShizukuScriptReply.refused(
+                ShizukuScriptPolicy.STATUS_FAILED,
+                (unavailable() as ShellResult.Failure).reason,
+            )
+        val outcome = IntArray(4)
+        val stderr = arrayOfNulls<String>(1)
+        return runCatching {
+            val stdout = service.runScript(
+                request.path,
+                request.expectedSha256,
+                request.arguments.toTypedArray(),
+                request.timeoutMs,
+                outcome,
+                stderr,
+            )
+            ShizukuScriptReply(
+                status = outcome[0],
+                exitCode = outcome[1],
+                stdout = stdout.orEmpty(),
+                stderr = stderr[0].orEmpty(),
+                stdoutBytes = outcome[2],
+                stderrBytes = outcome[3],
+            )
+        }.getOrElse { error ->
+            invalidateRemoteService()
+            ShizukuScriptReply.refused(
+                ShizukuScriptPolicy.STATUS_FAILED,
+                error.message ?: "Shizuku user service disconnected",
+            )
         }
     }
 
@@ -205,17 +290,20 @@ object ShizukuShellRunner {
         }
     }
 
+    /** The only outcome without a transport: ordinary app processes are never used as a fallback. */
     private fun unavailable(): ShellResult =
         ShellResult.Failure(
-            "No privileged Shizuku user-service transport is available; ordinary app processes are never used as a fallback",
+            "Can't reach Shizuku, so nothing ran. Start Shizuku and allow OpenTasker in it, then check its row in Setup.",
         )
 }
 
 internal object ShizukuCommandPolicy {
     private val commands: Map<String, List<List<String>>> = mapOf(
+        // Writing airplane_mode_on only flips the switch on screen: no broadcast goes out, so the
+        // modem and Wi-Fi stay on. This command is the route that tells the radios.
         "airplane.toggle" to listOf(
-            listOf("settings", "put", "global", "airplane_mode_on", "1"),
-            listOf("settings", "put", "global", "airplane_mode_on", "0"),
+            listOf("cmd", "connectivity", "airplane-mode", "enable"),
+            listOf("cmd", "connectivity", "airplane-mode", "disable"),
         ),
         "mobile.toggle" to listOf(
             listOf("svc", "data", "enable"),
@@ -230,8 +318,9 @@ internal object ShizukuCommandPolicy {
         "screenshot.take" to listOf(
             listOf("screencap", "-p"),
         ),
+        // Whatever follows "reboot" is a reason that reaches init as the boot target.
         "reboot" to listOf(
-            listOf("svc", "power", "reboot", "false"),
+            listOf("svc", "power", "reboot"),
         ),
         "screen.off" to listOf(
             listOf("input", "keyevent", "223"),

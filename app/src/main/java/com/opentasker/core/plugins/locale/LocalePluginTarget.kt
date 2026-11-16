@@ -8,6 +8,7 @@ import android.os.Bundle
 import com.opentasker.core.external.AutomationTargetContract
 import com.opentasker.core.external.InternalTaskRunSource
 import com.opentasker.core.logging.AppLogger
+import com.opentasker.core.platform.ForeignParcels
 
 /**
  * Exposes OpenTasker as a Locale-compatible setting plugin so Tasker, MacroDroid,
@@ -32,9 +33,6 @@ object LocalePluginTarget {
             putString(BUNDLE_KEY_GRANT, grant)
         }
 
-    fun buildBlurb(taskName: String): String =
-        "Run task: $taskName"
-
     fun parseTaskId(bundle: Bundle?): Long? {
         if (bundle == null) return null
         val id = bundle.getLong(BUNDLE_KEY_TASK_ID, -1L)
@@ -56,6 +54,7 @@ class LocaleSettingFireReceiver : BroadcastReceiver() {
         // and a class this process does not have throws where an uncaught exception would take
         // down the automation engine. A bundle that cannot be read is not a bundle we can trust,
         // so it is discarded rather than partially parsed.
+        ForeignParcels.guard(intent)
         val bundle = runCatching {
             intent.getBundleExtra(LocalePluginContract.EXTRA_BUNDLE)
         }.getOrElse { error ->

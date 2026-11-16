@@ -7,12 +7,14 @@ import com.opentasker.core.capabilities.AutomationLintFinding
 import com.opentasker.core.actions.ResolvedActionOutput
 import com.opentasker.core.actions.resolveOutputs
 import com.opentasker.core.capabilities.AutomationLintStrings
+import com.opentasker.core.contexts.readableContextSummary
 import com.opentasker.core.model.ActionSpec
 import com.opentasker.core.model.AutomationInvariant
 import com.opentasker.core.model.ContextSpec
 import com.opentasker.core.model.ContextType
 import com.opentasker.core.model.Profile
 import com.opentasker.core.model.Task
+import com.opentasker.core.model.enterTaskIdOrNull
 
 data class AutomationFlowGraph(
     val profileId: Long,
@@ -22,6 +24,7 @@ data class AutomationFlowGraph(
     val warnings: List<String> = emptyList(),
     val strings: AutomationFlowStrings = AutomationFlowStrings.English,
     val lintFindings: List<AutomationLintFinding> = emptyList(),
+    val hasEnterTask: Boolean = true,
 ) {
     val contextNodes: List<AutomationFlowNode>
         get() = nodes.filter { it.kind == AutomationFlowNodeKind.CONTEXT }
@@ -50,7 +53,7 @@ data class AutomationFlowGraph(
 
     fun accessibilitySummary(): String {
         val actionCount = nodes.count { it.kind == AutomationFlowNodeKind.ACTION }
-        val enterTask = enterTaskNode?.title ?: strings.missingTaskTitle("enter")
+        val enterTask = enterTaskNode?.title ?: if (hasEnterTask) strings.missingTaskTitle("enter") else strings.noEnterTask()
         val exitTask = exitTaskNode?.title ?: strings.noExitTask()
         val warningText = if (warnings.isEmpty()) "no warnings" else "${warnings.size} warning${plural(warnings.size)}"
         return strings.accessibilitySummary(title, contextNodes.size, actionCount, enterTask, exitTask, warningText)
@@ -143,7 +146,7 @@ object AutomationFlowGraphBuilder {
             title = profile.name,
             detail = listOf(
                 strings.profileDetail(profile.enabled, profile.automationMode.name.lowercase(), profile.cooldownSec),
-            ).joinToString(" - "),
+            ).joinToString(FLOW_DETAIL_SEPARATOR),
             muted = !profile.enabled,
             changed = "profile:${profile.id}" in changedNodeKeys,
             target = AutomationFlowTarget.Profile(profile.id),
@@ -164,23 +167,26 @@ object AutomationFlowGraphBuilder {
             )
         }
 
-        val enterTaskNodeId = addTaskLane(
-            nodes = nodes,
-            edges = edges,
-            warnings = warnings,
-            sourceNodeId = profileNodeId,
-            profileId = profile.id,
-            profileName = profile.name,
-            taskId = profile.enterTaskId,
-            task = tasksById[profile.enterTaskId],
-            kind = AutomationFlowNodeKind.ENTER_TASK,
-            edgeLabel = "enter",
-            strings = strings,
-            changedNodeKeys = changedNodeKeys,
-        )
+        // A profile with only an exit task has no enter lane to draw.
+        profile.enterTaskIdOrNull?.let { enterTaskId ->
+            val enterTaskNodeId = addTaskLane(
+                nodes = nodes,
+                edges = edges,
+                warnings = warnings,
+                sourceNodeId = profileNodeId,
+                profileId = profile.id,
+                profileName = profile.name,
+                taskId = enterTaskId,
+                task = tasksById[enterTaskId],
+                kind = AutomationFlowNodeKind.ENTER_TASK,
+                edgeLabel = "enter",
+                strings = strings,
+                changedNodeKeys = changedNodeKeys,
+            )
 
-        if (enterTaskNodeId == null) {
-            warnings += strings.missingTaskWarning("enter", profile.enterTaskId)
+            if (enterTaskNodeId == null) {
+                warnings += strings.missingTaskWarning("enter", enterTaskId)
+            }
         }
 
         profile.exitTaskId?.let { exitTaskId ->
@@ -210,6 +216,7 @@ object AutomationFlowGraphBuilder {
             edges = edges,
             warnings = warnings.distinct(),
             strings = strings,
+            hasEnterTask = profile.enterTaskIdOrNull != null,
             lintFindings = AutomationLint.analyze(
                 profile,
                 tasksById.values.toList(),
@@ -285,20 +292,28 @@ private fun ContextSpec.toNode(
     index: Int,
     strings: AutomationFlowStrings,
     changedNodeKeys: Set<String>,
-): AutomationFlowNode =
-    AutomationFlowNode(
+): AutomationFlowNode {
+    val structuralKeys = STRUCTURAL_CONTEXT_KEYS[type].orEmpty()
+    // The Inspector's "battery level <= 20", with the fields it doesn't cover masked as below.
+    val readable = readableContextSummary(
+        this,
+        entries = { it.summaryOrNull(actionType = null, structuralKeys = structuralKeys).orEmpty() },
+        quote = { it.trim().safePreview() },
+    )
+    return AutomationFlowNode(
         id = id,
         kind = AutomationFlowNodeKind.CONTEXT,
         title = strings.contextTitle(index + 1, type.name.lowercase().replaceFirstChar { it.uppercase() }),
         detail = strings.contextDetail(
             invert,
-            config.summaryOrNull(actionType = null, structuralKeys = STRUCTURAL_CONTEXT_KEYS[type].orEmpty()),
+            readable ?: config.summaryOrNull(actionType = null, structuralKeys = structuralKeys),
         ),
         muted = invert,
         changed = "profile:$profileId:context:$index" in changedNodeKeys,
         target = AutomationFlowTarget.Context(profileId, index),
         strings = strings,
     )
+}
 
 private fun ActionSpec.toNode(
     id: String,
@@ -322,6 +337,8 @@ private fun ActionSpec.toNode(
         target = AutomationFlowTarget.Action(taskId, index),
         condition = condition?.trim()?.takeUnless { it.isBlank() },
         isSubTask = subTaskRef != null,
+        // A step turned off is drawn like a disabled profile.
+        muted = !enabled,
         strings = strings,
         outputs = ActionMetadataRegistry.get(type)?.resolveOutputs(this@toNode, actionIndex = index).orEmpty(),
     )

@@ -1,7 +1,10 @@
 [CmdletBinding()]
 param(
     [switch]$SeedFailure,
-    [switch]$BootstrapOnly
+    [switch]$BootstrapOnly,
+    # The device the gate's connectedDebugAndroidTest runs on. Without it the gate needs exactly
+    # one attached device or an ANDROID_SERIAL already set.
+    [string]$Serial
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,9 +20,9 @@ $SbomPath = Join-Path $ReportDirectory "sbom.cdx.json"
 $OsvReportPath = Join-Path $ReportDirectory "osv-advisories.json"
 $SummaryPath = Join-Path $ReportDirectory "local-release-gate.json"
 $JvmTestReportPath = Join-Path $ReportDirectory "jvm-test-count.json"
-$ExpectedGradleVersion = "9.7.1"
-$ExpectedGradleDistributionSha256 = "acd53f1edaf02f1a8ff99879f8a34b302661a057d9b063ae9e35b552f804d20a"
-$ExpectedGradleWrapperJarSha256 = "7a9ce74cff467ca1bf60a4fcd9f05185acceda4d0f382434d393e17864262c5d"
+$ExpectedGradleVersion = "9.9.1"
+$ExpectedGradleDistributionSha256 = "d8a18a7a841dd5df825d35a685fad6f2d7f12ac0c280e57b67c27b4a520ba228"
+$ExpectedGradleWrapperJarSha256 = "621008afc4f5d59357fcf06ffa644dd5aade5e091bdc363742710445f73cdaf8"
 
 function Resolve-GitSafeDirectory {
     $rootPath = [IO.Path]::GetFullPath($Root)
@@ -87,6 +90,31 @@ if ($BootstrapOnly) {
     return
 }
 
+function Select-ConnectedTestDevice {
+    # localQualityGate depends on connectedDebugAndroidTest, which installs, instruments and then
+    # uninstalls on every device adb can see, phones and other people's emulators included. AGP
+    # honors ANDROID_SERIAL, so name one device before Gradle starts.
+    if (-not [string]::IsNullOrWhiteSpace($Serial)) { $env:ANDROID_SERIAL = $Serial }
+    $sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } elseif ($env:ANDROID_SDK_ROOT) { $env:ANDROID_SDK_ROOT } else { Join-Path $env:LOCALAPPDATA "Android\Sdk" }
+    $adb = Join-Path $sdk "platform-tools\adb.exe"
+    if (-not (Test-Path -LiteralPath $adb -PathType Leaf)) { throw "adb not found at $adb" }
+    $attached = @(& $adb devices | Select-Object -Skip 1 | Where-Object { $_ -match "^(\S+)\s+device$" } | ForEach-Object { ($_ -split "\s+")[0] })
+    if (-not [string]::IsNullOrWhiteSpace($env:ANDROID_SERIAL)) {
+        if ($attached -notcontains $env:ANDROID_SERIAL) {
+            throw "ANDROID_SERIAL $($env:ANDROID_SERIAL) is not an attached device. Attached: $($attached -join ', ')"
+        }
+        Write-Host "Connected tests run on $($env:ANDROID_SERIAL) only."
+        return
+    }
+    if ($attached.Count -ne 1) {
+        throw "adb sees $($attached.Count) devices ($($attached -join ', ')). The gate's connected tests would run on all of them; pass -Serial <device> for the one this run may use."
+    }
+    Write-Host "Connected tests run on $($attached[0]), the only attached device."
+}
+
+# A seeded-failure run never reaches the connected tests, so it needs no device.
+if (-not $SeedFailure) { Select-ConnectedTestDevice }
+
 if (-not (Test-Path -LiteralPath $DependencyVerificationScript -PathType Leaf)) {
     throw "Dependency verification script not found at $DependencyVerificationScript"
 }
@@ -125,10 +153,15 @@ function Invoke-Gradle {
     }
 }
 
+# The gate forks one single-use daemon that also hosts the Kotlin compiler, lint and the
+# connected-test platform, so it sizes that JVM itself. A user-home gradle.properties beats the
+# repo's jvmargs, and only the command line beats that; a 512 MB metaspace cap there ran out
+# three tests into connectedDebugAndroidTest.
 $CommonGradleArguments = @(
     "--no-daemon",
     "--console=plain",
-    "--project-prop=kotlin.compiler.execution.strategy=in-process"
+    "--project-prop=kotlin.compiler.execution.strategy=in-process",
+    "-Dorg.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=1g -XX:+UseG1GC -Dfile.encoding=UTF-8"
 )
 
 if ($SeedFailure) {

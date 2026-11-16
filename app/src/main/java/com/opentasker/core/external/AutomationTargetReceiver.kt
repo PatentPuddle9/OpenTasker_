@@ -11,6 +11,7 @@ import com.opentasker.core.engine.AutomationService
 import com.opentasker.core.engine.ExecutionEnvelope
 import com.opentasker.core.engine.ExecutionProducer
 import com.opentasker.core.logging.AppLogger
+import com.opentasker.core.platform.ForeignParcels
 import com.opentasker.core.storage.toEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -162,6 +163,7 @@ object AutomationTargetContract {
 
 class AutomationTargetReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        ForeignParcels.guard(intent)
         val pending = goAsync()
         requestScope.launch {
             val response = runCatching {

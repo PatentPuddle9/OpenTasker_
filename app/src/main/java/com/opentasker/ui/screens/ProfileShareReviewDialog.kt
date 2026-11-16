@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.opentasker.app.R
@@ -250,6 +251,17 @@ internal fun ProfileShareReviewDialog(
     )
 }
 
+/**
+ * The review for a bundle opened from a file or pasted in. It skips the share form, since nobody
+ * importing a file is writing a share, but a bundle from anywhere is still an unverified share:
+ * whatever the share check blocks on blocks the import too.
+ */
+internal fun ProfileShareReviewState.asImportReview(): OpenTaskerBundleReviewState {
+    val blockers = manifest.findings.filter { it.severity == ShareFindingSeverity.Blocker }.map(ShareSafetyFinding::message)
+    val gated = if (blockers.isEmpty()) plan else plan.copy(canImport = false, warnings = (plan.warnings + blockers).distinct())
+    return OpenTaskerBundleReviewState(bundle = draft.bundle, plan = gated)
+}
+
 private fun androidx.compose.foundation.lazy.LazyListScope.findingsSection(
     findings: List<ShareSafetyFinding>,
     title: String,
@@ -274,7 +286,11 @@ private fun TaskerImportListSectionForShare(
 ) {
     InlineNotice(
         title = title,
-        body = values.take(6).joinToString("\n") + if (values.size > 6) "\n${values.size - 6} more" else "",
+        body = values.take(6).joinToString("\n") + if (values.size > 6) {
+            "\n" + pluralStringResource(R.plurals.import_review_more, values.size - 6, values.size - 6)
+        } else {
+            ""
+        },
         color = color,
     )
 }

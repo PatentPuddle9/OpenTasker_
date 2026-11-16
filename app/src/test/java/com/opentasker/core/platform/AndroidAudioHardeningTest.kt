@@ -1,5 +1,6 @@
 package com.opentasker.core.platform
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -77,7 +78,10 @@ class AndroidAudioHardeningTest {
 
     @Test
     fun exactAlarmPermissionOnlyExemptsAlarmUsage() {
-        val eligibility = AudioRuntimeEligibility(exactAlarmPermission = true)
+        val eligibility = AudioRuntimeEligibility(
+            foregroundService = AudioForegroundServiceEligibility.BACKGROUND_STARTED,
+            exactAlarmPermission = true,
+        )
 
         val alarm = AndroidAudioHardening.evaluate(
             eligibility = eligibility,
@@ -92,6 +96,50 @@ class AndroidAudioHardeningTest {
 
         assertTrue(alarm.allowed)
         assertFalse(general.allowed)
+    }
+
+    @Test
+    fun exactAlarmAccessDoesNotCoverAlarmAudioWithNoForegroundServiceRunning() {
+        val decision = AndroidAudioHardening.evaluate(
+            eligibility = AudioRuntimeEligibility(
+                foregroundService = AudioForegroundServiceEligibility.NONE,
+                exactAlarmPermission = true,
+            ),
+            usage = AudioUsageEligibility.ALARM,
+            sdkInt = 37,
+        )
+
+        assertFalse(decision.allowed)
+        assertTrue(decision.reason, decision.reason.contains("No eligible foreground service"))
+    }
+
+    @Test
+    fun theAlarmStreamIsTheOneThingABackgroundStartCanPlay() {
+        val backgroundStart = AudioRuntimeEligibility(
+            foregroundService = AudioForegroundServiceEligibility.BACKGROUND_STARTED,
+            exactAlarmPermission = true,
+        )
+
+        fun decide(stream: AudioOutputStream?) = AndroidAudioHardening.evaluate(
+            eligibility = backgroundStart,
+            usage = stream!!.usage,
+            sdkInt = 37,
+            offersAlarmStream = stream == AudioOutputStream.MUSIC,
+        )
+
+        assertTrue(decide(AudioOutputStream.parse("alarm")).allowed)
+        val music = decide(AudioOutputStream.parse(null))
+        assertFalse(music.allowed)
+        assertTrue(music.reason, music.reason.contains("stream to Alarm"))
+    }
+
+    @Test
+    fun theStreamArgumentKeepsSavedActionsOnMusicAndRefusesAnythingElse() {
+        assertEquals(AudioOutputStream.MUSIC, AudioOutputStream.parse(null))
+        assertEquals(AudioOutputStream.MUSIC, AudioOutputStream.parse(""))
+        assertEquals(AudioOutputStream.MUSIC, AudioOutputStream.parse(" Music "))
+        assertEquals(AudioOutputStream.ALARM, AudioOutputStream.parse("alarm"))
+        assertEquals(null, AudioOutputStream.parse("voice"))
     }
 
     @Test

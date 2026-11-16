@@ -1,5 +1,9 @@
 package com.opentasker.core.diagnostics
 
+import com.opentasker.core.apps.TargetSignerPin
+import com.opentasker.core.apps.TargetSignerPinSource
+import com.opentasker.core.apps.TargetSignerState
+import com.opentasker.core.apps.TargetSignerStatus
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
@@ -57,6 +61,68 @@ class DiagnosticExportTest {
         assertFalse(result.contains("secondary-token"))
         assertTrue(result.contains("Authorization: [REDACTED]"))
         assertTrue(result.contains("Bearer [REDACTED]"))
+    }
+
+    /** Issue #30's report listed exact alarms as denied while its own log showed exact ticks being scheduled. */
+    @Test
+    fun specialAccessPermissionsReportWhatSettingsAllowsNotTheInstallFlag() {
+        assertEquals(
+            "  SCHEDULE_EXACT_ALARM: granted (special access)",
+            DiagnosticExport.permissionLine("android.permission.SCHEDULE_EXACT_ALARM", grantFlag = false, definedOnDevice = true) { true },
+        )
+        assertEquals(
+            "  ACCESS_NOTIFICATION_POLICY: denied (special access)",
+            DiagnosticExport.permissionLine("android.permission.ACCESS_NOTIFICATION_POLICY", grantFlag = true, definedOnDevice = true) { false },
+        )
+        assertEquals(
+            "  SYSTEM_ALERT_WINDOW: special access, couldn't check",
+            DiagnosticExport.permissionLine("android.permission.SYSTEM_ALERT_WINDOW", grantFlag = false, definedOnDevice = true) {
+                throw SecurityException("blocked")
+            },
+        )
+    }
+
+    @Test
+    fun aPermissionThisDeviceDoesNotDefineIsNotReportedAsDenied() {
+        assertEquals(
+            "  QUERY_ADVANCED_PROTECTION_MODE: not defined on this device",
+            DiagnosticExport.permissionLine("android.permission.QUERY_ADVANCED_PROTECTION_MODE", grantFlag = false, definedOnDevice = false, specialAccess = null),
+        )
+        assertEquals(
+            "  com.termux.permission.RUN_COMMAND: not defined on this device",
+            DiagnosticExport.permissionLine("com.termux.permission.RUN_COMMAND", grantFlag = false, definedOnDevice = false, specialAccess = null),
+        )
+    }
+
+    @Test
+    fun ordinaryPermissionsKeepTheirGrantFlag() {
+        assertEquals(
+            "  READ_CONTACTS: denied",
+            DiagnosticExport.permissionLine("android.permission.READ_CONTACTS", grantFlag = false, definedOnDevice = true, specialAccess = null),
+        )
+        assertEquals(
+            "  moe.shizuku.manager.permission.API_V23: granted",
+            DiagnosticExport.permissionLine("moe.shizuku.manager.permission.API_V23", grantFlag = true, definedOnDevice = true, specialAccess = null),
+        )
+    }
+
+    @Test
+    fun pinnedTargetLineShowsPackagePrefixSourceAndStateOnly() {
+        val digest = "0123456789abcdef".repeat(4)
+        val firstUse = TargetSignerPin("com.termux", listOf(digest), TargetSignerPinSource.FIRST_USE, 5L)
+        val approved = TargetSignerPin("com.example.plugin", listOf("f".repeat(64), digest), TargetSignerPinSource.APPROVED, 6L)
+
+        assertEquals(
+            "  com.termux: sha256 0123456789ab, pinned on first use, match",
+            DiagnosticExport.pinnedTargetLine(TargetSignerStatus(firstUse, TargetSignerState.MATCH)),
+        )
+        assertEquals(
+            "  com.example.plugin: sha256 ffffffffffff+0123456789ab, pinned at approval, mismatch",
+            DiagnosticExport.pinnedTargetLine(TargetSignerStatus(approved, TargetSignerState.MISMATCH)),
+        )
+        val gone = DiagnosticExport.pinnedTargetLine(TargetSignerStatus(firstUse, TargetSignerState.NOT_INSTALLED))
+        assertEquals("  com.termux: sha256 0123456789ab, pinned on first use, not installed", gone)
+        assertFalse("The export carries a prefix, never the whole digest", gone.contains(digest))
     }
 
     @Test

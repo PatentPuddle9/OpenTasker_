@@ -1,6 +1,7 @@
 package com.opentasker.core.engine
 
 import com.opentasker.core.actions.ActionArgumentSensitivity
+import com.opentasker.core.actions.multipleVariablesFilledNames
 import com.opentasker.core.actions.FALLBACK_ACTION_BLOCK_ARGUMENT
 import com.opentasker.core.capabilities.AutomationSensitivityRegistry
 import com.opentasker.core.capabilities.ActionCapabilityRegistry
@@ -883,7 +884,11 @@ class TaskRunner(
         } else {
             rawResult
         }
-        val changes = variableChangesBetween(before, ctx.variables.toTemplateScope())
+        val changes = variableChangesBetween(before, ctx.variables.toTemplateScope()).map { change ->
+            val hidden = ActionArgumentSensitivity.hidesWrittenValue(spec.type, spec.args, change.name) ||
+                ActionArgumentSensitivity.hidesWrittenValue(spec.type, expansionReport.args, change.name)
+            if (change.sensitive || !hidden) change else change.copy(sensitive = true)
+        }
         return result to traceFor(index, spec, started, result, expansionReport, changes)
     }
 
@@ -1073,8 +1078,34 @@ class TaskRunner(
             result.value
         }
 
-        return ActionArgumentExpansionReport(expandedArgs, expansions, actionType)
+        // Variable names can themselves be secret-bearing. Hide the value trace when it is
+        // written to a secret-looking name, including names assembled from other variables.
+        fun namesFilledInAsSecret() = actionType == "var.set_multiple" &&
+            ctx.variables.multipleVariablesFilledNames(expandedArgs, ctx.eventVariables)
+                .any(ActionArgumentSensitivity::isSensitiveArgumentName)
+        val traces = expansions.map { trace ->
+            val hidden = ActionArgumentSensitivity.isSensitive(actionType, trace.argName, args) ||
+                ActionArgumentSensitivity.isSensitive(actionType, trace.argName, expandedArgs) ||
+                (trace.argName == "values" && namesFilledInAsSecret())
+            if (hidden) trace.withValueHidden() else trace
+        }
+        return ActionArgumentExpansionReport(expandedArgs, traces, actionType)
     }
+
+    private fun ActionArgumentExpansionTrace.withValueHidden() = copy(
+        rawValue = REDACTED_VALUE,
+        expandedValue = REDACTED_VALUE,
+        expressions = expressions.map {
+            it.copy(
+                rawExpression = REDACTED_VALUE,
+                expression = REDACTED_VALUE,
+                value = REDACTED_VALUE,
+                path = REDACTED_VALUE,
+                warning = it.warning?.let { REDACTED_VALUE },
+            )
+        },
+        warnings = warnings.map { REDACTED_VALUE },
+    )
 
     /**
      * Array inputs consume a variable name, not the array's rendered contents. A typed chip uses

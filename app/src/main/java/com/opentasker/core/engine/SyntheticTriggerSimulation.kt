@@ -5,6 +5,9 @@ import com.opentasker.core.contexts.ContextEvent
 import com.opentasker.core.contexts.ContextMatchEvaluator
 import com.opentasker.core.contexts.DaySchedule
 import com.opentasker.core.contexts.SunEventCalculator
+import com.opentasker.core.contexts.TimeContextBounds
+import com.opentasker.core.contexts.parseStatePredicate as stateContextPredicate
+import com.opentasker.core.engine.variables.VariableExpander
 import com.opentasker.core.model.ContextSpec
 import com.opentasker.core.model.ContextType
 import com.opentasker.core.model.Profile
@@ -46,6 +49,8 @@ data class SyntheticContextResult(
     val effectiveMatched: Boolean,
     val status: SyntheticContextStatus,
     val explanation: String,
+    /** The event carries no value for this context, so a NOT over it doesn't match either. */
+    val valueUnknown: Boolean = false,
 ) {
     val event: ContextEvent get() = template.event
     val displayMetadata: Map<String, String> get() = template.displayMetadata
@@ -73,6 +78,10 @@ data class SyntheticTriggerSimulation(
  * constructing a report therefore cannot write run-log state or fire an action.
  */
 object SyntheticTriggerSimulator {
+    private const val ASSUMED_GLOBAL_START = 6 * 60
+    private const val ASSUMED_GLOBAL_END = 18 * 60
+    private val taskerPatternMatcher = VariableExpander()
+
     fun simulate(
         profile: Profile,
         nowMs: Long = System.currentTimeMillis(),
@@ -90,15 +99,19 @@ object SyntheticTriggerSimulator {
                 )
             } ?: template(spec, nowMs)
             val rawMatched = template.issue == null && ContextMatchEvaluator.matches(spec, template.event)
-            val effectiveMatched = if (spec.invert) !rawMatched else rawMatched
+            // Same rule as the engine: a context whose value is unknown stays off inverted, and so
+            // does a NOT group over it.
+            val unknown = !rawMatched && ContextMatchEvaluator.valueUnknown(spec, template.event.metadata)
+            val effectiveMatched = if (spec.invert) !rawMatched && !unknown else rawMatched
+            val event = if (index in pinnedEvents) "The pinned event" else "The synthetic event"
             val explanation = when {
                 template.issue != null -> template.issue
-                spec.invert && effectiveMatched ->
-                    "The pinned synthetic event fails the raw predicate, so inversion passes it."
-                spec.invert && rawMatched ->
-                    "The pinned synthetic event satisfies the raw predicate, so inversion blocks it."
-                effectiveMatched -> "The pinned synthetic event satisfies this predicate."
-                else -> "The pinned synthetic event does not satisfy this predicate."
+                spec.invert && unknown -> "$event has no value for this context, so the inverted context stays off."
+                unknown -> "$event has no value for this context, so it counts as unknown and can't turn the profile on, even under a NOT."
+                spec.invert && effectiveMatched -> "$event fails the raw predicate, so inversion passes it."
+                spec.invert && rawMatched -> "$event satisfies the raw predicate, so inversion blocks it."
+                effectiveMatched -> "$event satisfies this predicate."
+                else -> "$event does not satisfy this predicate."
             }
             SyntheticContextResult(
                 index = index,
@@ -108,6 +121,7 @@ object SyntheticTriggerSimulator {
                 effectiveMatched = effectiveMatched,
                 status = if (effectiveMatched) SyntheticContextStatus.PASSED else SyntheticContextStatus.BLOCKED,
                 explanation = explanation,
+                valueUnknown = unknown,
             )
         }
         val aggregateMatch = if (results.isEmpty()) {
@@ -120,6 +134,7 @@ object SyntheticTriggerSimulator {
                         pulseContext = result.spec.type == ContextType.EVENT,
                         pulseSequence = if (result.spec.type == ContextType.EVENT && result.rawMatched) 1L else 0L,
                         event = result.event.takeIf { result.rawMatched },
+                        unknown = result.valueUnknown,
                     )
                 }.toTypedArray(),
                 profile.contexts,
@@ -136,8 +151,8 @@ object SyntheticTriggerSimulator {
             !aggregateMatch -> results.firstOrNull { !it.effectiveMatched }?.let {
                 "Context ${it.index + 1} blocks the profile: ${it.explanation}"
             } ?: "The configured context expression is invalid or did not match."
-            profile.gracePeriodSec > 0 -> "All pinned predicates pass; the ${profile.gracePeriodSec}s activation/deactivation grace period still applies."
-            else -> "All pinned predicates pass the configured context logic."
+            profile.gracePeriodSec > 0 -> "All context predicates pass; the ${profile.gracePeriodSec}s activation/deactivation grace period still applies."
+            else -> "All context predicates pass the configured context logic."
         }
         return SyntheticTriggerSimulation(
             profileId = profile.id,
@@ -188,12 +203,27 @@ object SyntheticTriggerSimulator {
     private fun timeTemplate(spec: ContextSpec, nowMs: Long): SyntheticContextTemplate {
         val startRaw = first(spec.config, "start", "from")
         val endRaw = first(spec.config, "end", "to")
-        val start = parseClock(startRaw)
-        val end = parseClock(endRaw)
+        // A bound that reads a global (%Sunrise) has no value here, so it stands in as 06:00 or 18:00.
+        val startGlobal = TimeContextBounds.variableName(startRaw)
+        val endGlobal = TimeContextBounds.variableName(endRaw)
+        val start = if (startGlobal != null) ASSUMED_GLOBAL_START else parseClock(startRaw)
+        val end = if (endGlobal != null) ASSUMED_GLOBAL_END else parseClock(endRaw)
         val minute = if (start != null && end != null) midpoint(start, end) else 12 * 60
+        val assumed = buildMap {
+            if (startGlobal != null) put(TimeContextBounds.START_VALUE, formatClock(ASSUMED_GLOBAL_START))
+            if (endGlobal != null) put(TimeContextBounds.END_VALUE, formatClock(ASSUMED_GLOBAL_END))
+        }
+        val assumptions = listOfNotNull(
+            startGlobal?.let { "%$it as ${formatClock(ASSUMED_GLOBAL_START)}" },
+            endGlobal?.let { "%$it as ${formatClock(ASSUMED_GLOBAL_END)}" },
+        )
         return template(
-            event = ContextEvent("time", true, mapOf("time" to formatClock(minute), "epochMs" to nowMs.toString())),
-            description = "Midpoint of the configured time window",
+            event = ContextEvent("time", true, mapOf("time" to formatClock(minute), "epochMs" to nowMs.toString()) + assumed),
+            description = if (assumptions.isEmpty()) {
+                "Midpoint of the configured time window"
+            } else {
+                "Midpoint of the time window, taking ${assumptions.joinToString(" and ")}"
+            },
             issue = when {
                 startRaw.isBlank() || endRaw.isBlank() -> "Time context needs both a start and end time."
                 start == null || end == null -> "Time context contains an invalid clock value."
@@ -260,10 +290,15 @@ object SyntheticTriggerSimulator {
         })
         val normalizedKey = parsed?.first?.let(::normalizeStateKey).orEmpty()
         val expected = parsed?.third.orEmpty()
+        val namePattern = normalizedKey == "wifi" && parsed?.second == "~"
+        val patternExample = if (namePattern) taskerPatternExample(expected) else null
         val actual = stateSyntheticValue(normalizedKey, parsed?.second.orEmpty(), expected)
         val metadata = mutableMapOf<String, String>()
         if (normalizedKey.isNotBlank()) metadata[normalizedKey] = actual
-        if (normalizedKey == "wifi") {
+        if (namePattern) {
+            metadata["wifi_connected"] = "true"
+            metadata["wifi"] = patternExample.orEmpty()
+        } else if (normalizedKey == "wifi") {
             metadata["wifi_connected"] = if (expected.equals("connected", true) || expected.equals("true", true)) "true" else "false"
             if (expected !in setOf("connected", "disconnected", "true", "false", "on", "off")) {
                 metadata["wifi"] = expected
@@ -271,6 +306,9 @@ object SyntheticTriggerSimulator {
         }
         val issue = when {
             parsed == null -> "State context needs a key, operator, and value predicate."
+            namePattern && patternExample == null ->
+                "No made-up network name matches this Wi-Fi name pattern, so it needs a real network to try."
+            namePattern -> null
             parsed.second !in setOf("=", ">=", "<=", ">", "<") -> "State context uses an unsupported comparison operator."
             parsed.second != "=" && expected.toIntOrNull() == null ->
                 "Numeric state comparisons need a numeric threshold."
@@ -302,13 +340,29 @@ object SyntheticTriggerSimulator {
         first(spec.config, "topic", "topics").takeIf(String::isNotBlank)?.let { metadata["topic"] = csvFirst(it) }
         spec.config["eventId"]?.trim()?.takeIf(String::isNotBlank)?.let { metadata["eventId"] = it }
         first(spec.config, "tagId", "tagIds", "tag").takeIf(String::isNotBlank)?.let { metadata["tagId"] = csvFirst(it) }
-        spec.config["title"]?.trim()?.takeIf(String::isNotBlank)?.let { metadata["title"] = it }
-        spec.config["body"]?.trim()?.takeIf(String::isNotBlank)?.let { metadata["body"] = it }
+        // A Tasker import's title and text are Tasker patterns, so each gets a made-up value it matches.
+        val taskerPatterns = spec.config["patterns"] == ContextMatchEvaluator.TASKER_PATTERNS
+        val patternExamples = if (taskerPatterns) {
+            listOf("title", "body").filter { spec.config[it].orEmpty().isNotEmpty() }
+                .associateWith { taskerPatternExample(spec.config[it].orEmpty()) }
+        } else {
+            emptyMap()
+        }
+        if (taskerPatterns) {
+            patternExamples.forEach { (field, example) -> metadata[field] = example.orEmpty() }
+        } else {
+            spec.config["title"]?.trim()?.takeIf(String::isNotBlank)?.let { metadata["title"] = it }
+            spec.config["body"]?.trim()?.takeIf(String::isNotBlank)?.let { metadata["body"] = it }
+        }
         first(spec.config, "sender", "from", "originatingAddress").takeIf(String::isNotBlank)?.let { metadata["sender"] = it }
         if (actualEvent.equals("share", true)) {
             first(spec.config, "mime", "mimeType", "type").takeIf(String::isNotBlank)?.let { metadata["mime"] = csvFirst(it) }
             spec.config["text"]?.trim()?.takeIf(String::isNotBlank)?.let { metadata["text"] = it }
             spec.config["uri"]?.trim()?.takeIf(String::isNotBlank)?.let { metadata["uris"] = it }
+        }
+        if (actualEvent.equals("incoming_call", true)) {
+            spec.config["knownContact"]?.trim()?.takeIf(String::isNotBlank)?.let { metadata["knownContact"] = it }
+            spec.config["number"]?.trim()?.takeIf(String::isNotBlank)?.let { metadata["number"] = it }
         }
         if (filter.isNotBlank()) metadata["filter"] = filter
         val issue = when {
@@ -317,6 +371,8 @@ object SyntheticTriggerSimulator {
             first(spec.config, "beforeMinutes", "withinMinutes").isNotBlank() &&
                 first(spec.config, "beforeMinutes", "withinMinutes").toIntOrNull() == null ->
                 "Event before-window must be a number of minutes."
+            null in patternExamples.values ->
+                "No made-up text matches this notification's title or text pattern, so it needs a real notification to try."
             else -> null
         }
         return template(
@@ -333,8 +389,10 @@ object SyntheticTriggerSimulator {
         val longitude = longitudeRaw.toDoubleOrNull()
         val zone = ZoneId.systemDefault()
         val date = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
-        val baseMinute = if (latitude != null && longitude != null) {
-            SunEventCalculator.eventMinuteOfDay(date, latitude, longitude, expectedEvent, zone)
+        val elevationRaw = first(spec.config, "elevation")
+        val elevation = SunEventCalculator.elevationDegrees(elevationRaw)
+        val crossing = if (latitude != null && longitude != null && elevation != null) {
+            SunEventCalculator.eventLocalDateTime(date, latitude, longitude, expectedEvent, zone, elevation)
         } else {
             null
         }
@@ -342,17 +400,19 @@ object SyntheticTriggerSimulator {
         val windowRaw = first(spec.config, "windowMinutes", "window")
         val offset = offsetRaw.toIntOrNull() ?: 0
         val window = (windowRaw.toIntOrNull() ?: 1).coerceIn(1, 180)
-        val minute = Math.floorMod((baseMinute ?: 12 * 60) + offset, 24 * 60)
+        // The tick carries the date the window opens on, which is the next date for a dusk past midnight.
+        val at = (crossing ?: date.atTime(12, 0)).plusMinutes(offset.toLong())
         val metadata = mapOf(
             "event" to "sun_tick",
-            "date" to date.toString(),
-            "time" to formatClock(minute),
+            "date" to at.toLocalDate().toString(),
+            "time" to formatClock(at.hour * 60 + at.minute),
             "zone" to zone.id,
         )
         val issue = when {
             latitude == null || longitude == null -> "Sun event needs valid latitude and longitude."
             latitude !in -90.0..90.0 || longitude !in -180.0..180.0 -> "Sun event coordinates are out of range."
-            baseMinute == null -> "The configured sun event is unavailable at these coordinates."
+            elevation == null -> "Sun elevation must be civil, nautical, astronomical, or degrees from -90 to 90, not '$elevationRaw'."
+            crossing == null -> "The configured sun event is unavailable at these coordinates."
             offsetRaw.isNotBlank() && offsetRaw.toIntOrNull() == null -> "Sun event offset must be numeric."
             windowRaw.isNotBlank() && windowRaw.toIntOrNull() == null -> "Sun event window must be numeric."
             else -> null
@@ -368,11 +428,13 @@ object SyntheticTriggerSimulator {
         val configuredPackage = first(spec.config, "package")
         val packageName = configuredPackage.ifBlank { "com.example.synthetic.plugin" }
         val bundle = first(spec.config, "bundleJson").ifBlank { "{}" }
+        val blurb = ContextMatchEvaluator.pluginConditionBlurb(spec.config)
         return template(
             event = ContextEvent(
                 "plugin",
                 true,
-                mapOf("package" to packageName, "bundleJson" to bundle, "state" to "satisfied"),
+                mapOf("package" to packageName, "bundleJson" to bundle, "state" to "satisfied") +
+                    listOfNotNull(blurb.takeIf(String::isNotEmpty)?.let { "blurb" to it }),
             ),
             description = "Satisfied plugin condition result",
             issue = if (configuredPackage.isBlank()) "Plugin context has no configured package." else null,
@@ -439,10 +501,24 @@ object SyntheticTriggerSimulator {
     }
 
     private fun parseStatePredicate(value: String): Triple<String, String, String>? {
+        // A Wi-Fi name pattern can hold any sign, so it's read the way the matcher reads it.
+        stateContextPredicate(value)?.takeIf { it.second == "~" }?.let { return it.takeIf { it.third.isNotBlank() } }
         val operator = listOf(">=", "<=", ">", "<", "=").firstOrNull { value.contains(it) } ?: return null
         val parts = value.split(operator, limit = 2)
         if (parts.size != 2 || parts[0].isBlank() || parts[1].isBlank()) return null
         return Triple(parts[0].trim(), operator, parts[1].trim())
+    }
+
+    /**
+     * A value the Tasker pattern [pattern] matches: its first alternative with the wildcards filled
+     * in, or a plain word for a pattern that only says what to leave out. Null when neither matches,
+     * as for most regexes.
+     */
+    private fun taskerPatternExample(pattern: String): String? {
+        val alternative = pattern.takeUnless { it.startsWith("!") || it.startsWith("~R") }
+            ?.trim('/')?.split('/')?.firstOrNull(String::isNotEmpty)
+            ?.replace("*", "")?.replace("+", "x")?.ifEmpty { "x" }
+        return listOfNotNull(alternative, "x").firstOrNull { taskerPatternMatcher.matches(it, pattern) }
     }
 
     private fun normalizeStateKey(key: String): String = when (key.trim().lowercase(Locale.US)) {

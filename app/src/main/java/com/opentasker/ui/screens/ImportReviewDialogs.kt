@@ -2,6 +2,9 @@ package com.opentasker.ui.screens
 
 import android.content.ClipboardManager
 import android.content.Context
+import android.os.Build
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
@@ -17,6 +21,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
@@ -24,15 +32,22 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.opentasker.app.R
 import com.opentasker.core.capabilities.ActionCapabilityRegistry
 import com.opentasker.core.capabilities.AutomationPower
+import com.opentasker.core.capabilities.CapabilityLevel
+import com.opentasker.core.capabilities.SetupRequirement
+import com.opentasker.core.capabilities.SetupRequirementResolver
+import com.opentasker.core.model.ActionSpec
 import com.opentasker.core.transfer.RecipePowerRequest
 import com.opentasker.core.transfer.VariableConflictAction
 import com.opentasker.core.transfer.VariableConflictResolution
 import com.opentasker.core.transfer.VariableImportConflict
 import com.opentasker.ui.theme.DesignSystem
+import java.text.NumberFormat
 
 /**
  * The pasted draft is held in `rememberSaveable`, which rides `onSaveInstanceState` through a
@@ -42,6 +57,13 @@ import com.opentasker.ui.theme.DesignSystem
  * import, which streams and has its own 8 MB decode bound.
  */
 internal const val MAX_PASTED_BUNDLE_CHARS = 256 * 1024
+
+/**
+ * A draft longer than this shows as a count instead of in the text field. Laying out a paste at
+ * [MAX_PASTED_BUNDLE_CHARS] took the field about 80 seconds on an API 35 emulator and ran it out
+ * of memory, and an export that long isn't something anyone edits by hand on a phone.
+ */
+internal const val MAX_EDITABLE_PASTE_CHARS = 16 * 1024
 
 internal fun readClipboardText(context: Context): String {
     val clipboard = context.getSystemService(ClipboardManager::class.java) ?: return ""
@@ -63,31 +85,57 @@ internal fun OpenTaskerBundleTextImportDialog(
     onCancel: () -> Unit = {},
     onConfirm: () -> Unit,
 ) {
+    // Text at the cap was cut there, and a cut export would only come back as damaged.
+    val cutOff = text.length >= MAX_PASTED_BUNDLE_CHARS
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.import_paste_json_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.sm)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.sm),
+            ) {
                 Text(
                     stringResource(R.string.import_paste_json_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = onTextChanged,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 180.dp, max = 360.dp),
-                    placeholder = { Text(stringResource(R.string.import_paste_json_hint)) },
-                    minLines = 8,
-                    maxLines = 16,
-                )
+                if (text.length > MAX_EDITABLE_PASTE_CHARS) {
+                    Text(
+                        pluralStringResource(
+                            R.plurals.import_paste_hidden,
+                            text.length,
+                            NumberFormat.getIntegerInstance().format(text.length),
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    if (cutOff) {
+                        Text(
+                            stringResource(R.string.import_paste_too_long),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    TextButton(onClick = { onTextChanged("") }, enabled = !busy) {
+                        Text(stringResource(R.string.action_clear))
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = text,
+                        onValueChange = onTextChanged,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 180.dp, max = 360.dp),
+                        placeholder = { Text(stringResource(R.string.import_paste_json_hint)) },
+                        minLines = 8,
+                        maxLines = 16,
+                    )
+                }
             }
         },
         confirmButton = {
             Button(
-                enabled = text.isNotBlank() && !busy,
+                enabled = text.isNotBlank() && !busy && !cutOff,
                 onClick = onConfirm,
             ) {
                 Text(
@@ -114,6 +162,8 @@ internal fun OpenTaskerBundleReviewDialog(
     onVariableConflictResolution: (String, VariableConflictResolution) -> Unit = { _, _ -> },
     progress: TransferProgress? = null,
     onCancel: () -> Unit = {},
+    // What Setup still lists as missing; null until the first read comes back.
+    pendingSetup: Set<SetupRequirement>? = null,
     onConfirm: () -> Unit,
 ) {
     val bundle = state.bundle
@@ -248,10 +298,18 @@ internal fun OpenTaskerBundleReviewDialog(
                             title = stringResource(R.string.import_capability_review),
                             values = capabilityRequirements.map { requirement ->
                                 val capability = ActionCapabilityRegistry.get(requirement.actionId)
+                                // Same rule as a task's action row, so the review doesn't ask for
+                                // a grant that's already in place.
+                                val ready = requirement.level == CapabilityLevel.RequiresSetup &&
+                                    !SetupRequirementResolver.stillNeedsSetup(
+                                        ActionSpec(type = requirement.actionId),
+                                        Build.VERSION.SDK_INT,
+                                        pendingSetup,
+                                    )
                                 stringResource(
                                     R.string.import_capability_item,
                                     actionDisplayName(requirement.actionId),
-                                    stringResource(capabilityLevelLabelRes(requirement.level)),
+                                    stringResource(if (ready) R.string.status_ready else capabilityLevelLabelRes(requirement.level)),
                                     stringResource(capability.reasonRes),
                                 )
                             },
@@ -514,6 +572,63 @@ internal fun automationPowerLabel(power: AutomationPower): String = stringResour
         AutomationPower.DESTRUCTIVE -> R.string.automation_power_destructive
     },
 )
+
+/**
+ * Asks for the password a MacroDroid `.emdr` was exported with. It lives in plain `remember` so it
+ * never lands in saved instance state, and it goes when the dialog does.
+ */
+@Composable
+internal fun MacroDroidPasswordDialog(
+    wrongPassword: Boolean,
+    busy: Boolean,
+    progress: TransferProgress?,
+    onSubmit: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    var password by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text(stringResource(R.string.dialog_macrodroid_password_title)) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(stringResource(R.string.dialog_macrodroid_password_body))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text(stringResource(R.string.dialog_macrodroid_password_label)) },
+                    singleLine = true,
+                    isError = wrongPassword,
+                    supportingText = if (wrongPassword) {
+                        { Text(stringResource(R.string.dialog_macrodroid_password_wrong)) }
+                    } else {
+                        null
+                    },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        autoCorrectEnabled = false,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                TransferProgressRow(progress)
+            }
+        },
+        confirmButton = {
+            Button(enabled = !busy && password.isNotEmpty(), onClick = { onSubmit(password) }) {
+                Text(stringResource(R.string.dialog_macrodroid_password_open))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = if (busy) onCancel else onDismiss) {
+                Text(stringResource(if (busy) R.string.action_stop else R.string.action_cancel))
+            }
+        },
+    )
+}
 
 @Composable
 private fun TaskerImportListSection(

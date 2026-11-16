@@ -1,0 +1,8 @@
+Tasker imports bring over many more actions, like Variable Clear, Stop Task, Return and Get Sunrise/Sunset Times.
+Tasker's built-in variables like %TIME and %BATT fill in.
+Deleting happens on the first tap, with Undo.
+Profiles can react to Health Connect.
+Sun contexts can wait for twilight.
+A Set Wallpaper action changes the home or lock screen.
+Other apps can't fake an NFC tap anymore.
+Releases are set up for F-Droid's reproducible builds.

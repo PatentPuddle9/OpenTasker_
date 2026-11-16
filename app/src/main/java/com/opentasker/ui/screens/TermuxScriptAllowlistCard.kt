@@ -34,6 +34,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.opentasker.ui.theme.DesignSystem
 import com.opentasker.app.R
+import com.opentasker.core.apps.TargetSignerGuard
+import com.opentasker.core.scripting.TermuxScriptBackend
 import com.opentasker.core.scripting.TermuxAllowlistSaveResult
 import com.opentasker.core.scripting.TermuxScriptAllowlistStore
 import com.opentasker.core.scripting.TermuxScriptPolicy
@@ -127,6 +129,10 @@ internal fun TermuxScriptAllowlistCard(onMessage: (String) -> Unit) {
                     val result = store.approve(executable, sha256)
                     val message = when (result) {
                         TermuxAllowlistSaveResult.SAVED -> {
+                            // Pin the Termux signer when a user approves a script for it.
+                            runCatching {
+                                TargetSignerGuard.forContext(context).recordApproval(TermuxScriptBackend.TERMUX_PACKAGE)
+                            }
                             executable = ""
                             sha256 = ""
                             revision++

@@ -1,11 +1,43 @@
 package com.opentasker.ui.screens
 
+import com.opentasker.app.R
 import com.opentasker.core.model.ProfileLifetime
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EditorValidationTest {
+    @Test
+    fun sceneCreateSaveMatchesTheSizesASceneIsStoredAt() {
+        assertTrue(sceneCreateCanSave("Scene", 120, 80))
+        assertTrue(sceneCreateCanSave("Scene", 1440, 2560))
+        assertFalse(sceneCreateCanSave("Scene", 119, 240))
+        assertFalse(sceneCreateCanSave("Scene", 1441, 240))
+        assertFalse(sceneCreateCanSave("Scene", 320, 79))
+        assertFalse(sceneCreateCanSave("Scene", 320, 2561))
+        assertFalse(sceneCreateCanSave(" ", 320, 240))
+        assertFalse(sceneCreateCanSave("Scene", null, 240))
+    }
+
+    @Test
+    fun aProfileTheReviewSwitchedOffDoesNotClaimAPlainSave() {
+        val updated = R.string.ui_message_profile_updated
+        assertEquals(R.string.ui_message_profile_left_off_for_review, profileSavedMessageRes(true, false, updated))
+        assertEquals(updated, profileSavedMessageRes(true, true, updated))
+        assertEquals(updated, profileSavedMessageRes(false, false, updated))
+    }
+
+    @Test
+    fun cooldownParsesOnlyWhatTheSaveAccepts() {
+        assertEquals(0, parseProfileCooldown("0"))
+        assertEquals(3600, parseProfileCooldown("3600"))
+        assertNull(parseProfileCooldown("3601"))
+        assertNull(parseProfileCooldown("-1"))
+        assertNull(parseProfileCooldown("soon"))
+    }
+
     @Test
     fun taskEditorSaveRequiresNameAndBoundedPriority() {
         assertFalse(taskEditorCanSave("", 5))

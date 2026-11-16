@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.core.content.ContextCompat
 import com.opentasker.app.BuildConfig
 import com.opentasker.app.R
+import com.opentasker.core.apps.TargetSignerGuard
+import com.opentasker.core.apps.TargetSignerState
 import com.opentasker.core.actions.hasWriteSecureSettings
 import com.opentasker.core.actions.secureSettingsGrantCommand
 import com.opentasker.core.permissions.OemBatteryGuidance
@@ -508,8 +510,31 @@ internal fun buildPermissionItems(
             requiredFor = context.getString(R.string.setup_app_visibility_required_for),
             allowActionWhenGranted = true,
         ),
-    ).map { item -> item.withRuntimePermissionRecovery(context, permissionHistory) }
+    ).plus(targetSignerRows(context)).map { item -> item.withRuntimePermissionRecovery(context, permissionHistory) }
 }
+
+/** Make a signer mismatch visible in Setup, with an explicit user-controlled re-approval path. */
+private fun targetSignerRows(context: Context): List<PermissionSetupItem> =
+    runCatching {
+        TargetSignerGuard.forContext(context).statuses()
+            .filter { it.state == TargetSignerState.MISMATCH }
+    }.onFailure { logFailedCheck("pinned app signing certificates", it) }
+        .getOrDefault(emptyList())
+        .map { status ->
+            val packageName = status.pin.packageName
+            val explanation = context.getString(R.string.setup_target_signer_body, packageName)
+            PermissionSetupItem(
+                title = context.getString(R.string.setup_target_signer_title, packageName),
+                body = explanation,
+                granted = false,
+                actionLabel = context.getString(R.string.setup_target_signer_reapprove),
+                action = PermissionAction.ReapproveTargetSigner(packageName),
+                requiredFor = context.getString(R.string.setup_target_signer_required_for),
+                optional = true,
+                section = SetupSection.OPTIONAL,
+                note = explanation,
+            )
+        }
 
 private fun PermissionSetupItem.withRuntimePermissionRecovery(
     context: Context,

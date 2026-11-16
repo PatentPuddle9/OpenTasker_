@@ -86,17 +86,27 @@ object MacroDroidImporter {
         rawJson: String,
         appVersion: String,
         importedAtEpochMs: Long = System.currentTimeMillis(),
-    ): MacroDroidImportReport = parse(rawJson, appVersion, importedAtEpochMs, ImportResourceBudget.Default)
+    ): MacroDroidImportReport = parse(
+        rawJson = rawJson,
+        appVersion = appVersion,
+        importedAtEpochMs = importedAtEpochMs,
+        budget = ImportResourceBudget.Default,
+        sourceBudget = ImportResourceBudget.MacroDroidSource,
+    )
 
     internal fun parse(
         rawJson: String,
         appVersion: String,
         importedAtEpochMs: Long,
         budget: ImportResourceBudget,
+        sourceBudget: ImportResourceBudget = budget,
     ): MacroDroidImportReport {
         val normalized = rawJson.removePrefix(BYTE_ORDER_MARK).trim()
         require(normalized.isNotEmpty()) { "MacroDroid import is empty." }
-        ImportResourceGuard.requireJsonPreflight(normalized, budget)
+        // Checked before the scan: a file that was never JSON otherwise fails on token or depth
+        // limits, which reads as "too big" when it's the wrong kind of file.
+        require(normalized.startsWith("{")) { "MacroDroid import root must be a JSON object." }
+        ImportResourceGuard.requireJsonPreflight(normalized, sourceBudget, allowComments = false)
 
         val root = json.parseToJsonElement(normalized) as? JsonObject
             ?: throw IllegalArgumentException("MacroDroid import root must be a JSON object.")
@@ -314,6 +324,24 @@ object MacroDroidImporter {
             )
         }
         "SetVariableAction" -> mapSetVariableAction(action)
+        "ClipboardAction" -> {
+            val text = action.string("m_clipboardText")
+            if (text.isEmpty()) return null
+            ActionMapping(
+                actions = listOf(
+                    ActionSpec(
+                        type = "clipboard.set",
+                        label = "MacroDroid fill clipboard",
+                        args = mapOf("text" to text),
+                    ),
+                ),
+                lossyWarning = if (MACRODROID_MAGIC_TEXT.containsMatchIn(text)) {
+                    "its magic text was kept as written, and OpenTasker won't fill it in"
+                } else {
+                    null
+                },
+            )
+        }
         "SetAirplaneModeAction" -> {
             val state = when (action.int("m_state")) {
                 0 -> "on"
@@ -668,4 +696,5 @@ object MacroDroidImporter {
     private const val LOOP_DELIMITER = "|"
     private const val MAX_FIXED_LOOP_COUNT = 1_000
     private const val UNSUPPORTED_EVENT_NAME = "macrodroid_unsupported"
+    private val MACRODROID_MAGIC_TEXT = Regex("""\[[^\]\s]+\]|\{l?v=[^}]+\}""")
 }

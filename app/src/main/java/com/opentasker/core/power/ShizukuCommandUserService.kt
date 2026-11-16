@@ -1,19 +1,36 @@
 package com.opentasker.core.power
 
 import android.os.Parcel
+import com.opentasker.core.scripting.ShizukuScriptExecutor
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 /**
- * Runs only the commands approved by [ShizukuCommandPolicy] in the Shizuku shell/root process.
+ * The Binder code Shizuku's server ends a user service with. The library keeps its constant
+ * (`ShizukuApiConstants.USER_SERVICE_TRANSACTION_destroy`) to its own group, so the number lives
+ * here and a test holds it to the library's value. An AIDL method pinned with `= 16777114` lands
+ * on the same code, because Binder codes start one above AIDL's ids.
+ */
+internal const val SHIZUKU_DESTROY_TRANSACTION = 16777115
+
+internal fun isShizukuDestroyTransaction(code: Int): Boolean = code == SHIZUKU_DESTROY_TRANSACTION
+
+/**
+ * Runs the commands approved by [ShizukuCommandPolicy] and the user's approved scripts in the
+ * Shizuku shell/root process.
  *
  * This class is instantiated by Shizuku, not Android's app process. It deliberately has no
- * application fallback and exposes no general-purpose shell method to the host.
+ * application fallback. [execute] takes only exact allowlisted commands. [runScript] is the one
+ * route to arbitrary shell text, and it runs only a file whose bytes match the hash the host
+ * sends, so the allowlist the user manages in Settings is what stands behind it.
  */
 class ShizukuCommandUserService : IShizukuCommandService.Stub() {
+    private val runningScripts = ConcurrentHashMap.newKeySet<Process>()
+
     override fun execute(actionId: String, argv: Array<out String>, exitCode: IntArray): String {
         if (!ShizukuCommandPolicy.isExact(actionId, argv.toList())) {
             setExitCode(exitCode, EXIT_REJECTED)
@@ -78,12 +95,48 @@ class ShizukuCommandUserService : IShizukuCommandService.Stub() {
         }.getOrElse { EXIT_EXECUTION_ERROR }
     }
 
+    override fun runScript(
+        path: String,
+        expectedSha256: String,
+        args: Array<out String>,
+        timeoutMs: Long,
+        outcome: IntArray,
+        stderr: Array<String?>,
+    ): String {
+        var started: Process? = null
+        val reply = try {
+            ShizukuScriptExecutor.run(path, expectedSha256, args.toList(), timeoutMs) { command ->
+                Runtime.getRuntime().exec(command.toTypedArray()).also {
+                    started = it
+                    runningScripts += it
+                }
+            }
+        } finally {
+            started?.let(runningScripts::remove)
+        }
+        if (outcome.size >= 4) {
+            outcome[0] = reply.status
+            outcome[1] = reply.exitCode
+            outcome[2] = reply.stdoutBytes
+            outcome[3] = reply.stderrBytes
+        }
+        if (stderr.isNotEmpty()) stderr[0] = reply.stderr
+        return reply.stdout
+    }
+
+    /** Starting or stopping tethering is a framework call, so no shell command goes through [execute]. */
+    override fun setWifiHotspot(enabled: Boolean): Int = ShizukuTethering.set(enabled)
+
+    override fun readWifiHotspot(): Int = ShizukuTethering.read()
+
     override fun destroy() {
+        // A script's timeout is enforced from this process, so its shell can't outlive it.
+        runningScripts.forEach { it.destroyForcibly() }
         System.exit(0)
     }
 
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
-        if (code == DESTROY_TRANSACTION_CODE) {
+        if (isShizukuDestroyTransaction(code)) {
             destroy()
             return true
         }
@@ -143,7 +196,6 @@ class ShizukuCommandUserService : IShizukuCommandService.Stub() {
         const val COMMAND_TIMEOUT_SECONDS = 10L
         const val STREAM_JOIN_TIMEOUT_MILLIS = 1_000L
         const val MAX_OUTPUT_BYTES = 8 * 1024
-        const val DESTROY_TRANSACTION_CODE = 16777114
         /** `/sdcard/Android/data/<pkg>/files`, plus the raw storage paths that resolve to it. */
         private val APP_EXTERNAL_FILES_ROOTS = listOf(
             "/storage/emulated/0/Android/data/com.opentasker.app/files",

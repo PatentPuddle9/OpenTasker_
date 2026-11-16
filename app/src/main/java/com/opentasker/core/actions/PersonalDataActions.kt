@@ -13,12 +13,13 @@ import com.opentasker.core.engine.ActionContext
 import com.opentasker.core.engine.ActionResult
 import com.opentasker.core.model.VariableNamePolicy
 import com.opentasker.core.platform.AppVisibilityTracker
+import com.opentasker.core.platform.BackgroundActivityStart
 import kotlinx.coroutines.withTimeoutOrNull
 
 private const val MAX_CLIPBOARD_CHARS = 64 * 1024
 private const val MAX_CONTACT_QUERY_CHARS = 128
 private const val MAX_CONTACT_RESULTS = 50
-private const val CONTACT_PICKER_TIMEOUT_MS = 120_000L
+internal const val CONTACT_PICKER_TIMEOUT_MS = 120_000L
 
 class ClipboardGetAction : DeclaredAction(ActionCatalog.require("clipboard.get")) {
 
@@ -33,9 +34,12 @@ class ClipboardGetAction : DeclaredAction(ActionCatalog.require("clipboard.get")
         // or the default IME. Automations run from the background service, so that is the normal
         // case, and treating null as "" reported Success with an empty value - indistinguishable
         // from a genuinely empty clipboard, and silently feeding blank data to whatever came next.
-        if (clip == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !AppVisibilityTracker.isAppVisible) {
+        // Being on screen isn't enough: split screen or the notification shade takes the focus.
+        // Only activity windows are tracked, so with one of the app's own dialogs in focus a truly
+        // empty clipboard lands here too, and the message doesn't claim which of the two it was.
+        if (clip == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !AppVisibilityTracker.hasWindowFocus) {
             return ActionResult.Failure(
-                "Android blocks clipboard reads from the background; run this action while OpenTasker is open",
+                "The clipboard came back empty, and Android only lets the app in focus read it, so run this action while OpenTasker is open and in front",
             )
         }
 
@@ -120,6 +124,10 @@ class ContactsLookupAction : DeclaredAction(ActionCatalog.require("contacts.look
     private suspend fun findWithPicker(ctx: ActionContext, query: String): List<ContactRecord> {
         if (Build.VERSION.SDK_INT < 37) {
             throw IllegalStateException("the Android 17 contact picker is unavailable on this device")
+        }
+        // Android would drop the picker and this would sit out the whole timeout for nothing.
+        if (BackgroundActivityStart.likelyBlocked(ctx.app)) {
+            throw IllegalStateException(BackgroundActivityStart.failureMessage("the contact picker"))
         }
         val requestId = ContactPickerCoordinator.nextRequestId()
         val result = ContactPickerCoordinator.register(requestId)

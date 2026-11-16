@@ -1,6 +1,9 @@
 package com.opentasker.core.capabilities
 
 import com.opentasker.core.contexts.DaySchedule
+import com.opentasker.core.contexts.WIFI_CONNECTED_WORDS
+import com.opentasker.core.contexts.WIFI_DISCONNECTED_WORDS
+import com.opentasker.core.contexts.parseStatePredicate
 import com.opentasker.core.location.FossGeofenceEvaluator
 import com.opentasker.core.model.ActionSpec
 import com.opentasker.core.model.AutomationInvariant
@@ -10,6 +13,7 @@ import com.opentasker.core.model.ContextType
 import com.opentasker.core.model.Profile
 import com.opentasker.core.model.ProfileLifetime
 import com.opentasker.core.model.Task
+import com.opentasker.core.model.enterTaskIdOrNull
 import com.opentasker.core.model.isValidForContextCount
 import java.util.Locale
 
@@ -110,7 +114,7 @@ object AutomationLint {
                 )
             }
 
-            unreachableReason(profile, enterTask, nowMs)?.let { reason ->
+            unreachableReason(profile, enterTask, profile.exitTaskId?.let(taskById::get), nowMs)?.let { reason ->
                 val copy = strings.unreachableRule(profile.name, reason)
                 findings += AutomationLintFinding(
                     code = AutomationLintCode.UNREACHABLE_RULE,
@@ -139,8 +143,12 @@ object AutomationLint {
                 )
             }
 
-            if (profile.contexts.any { it.type == ContextType.STATE } && !hasRetriggerGuard(profile, enterTask)) {
-                val copy = strings.repeatedTriggering(profile.name)
+            if (profile.contexts.any { it.type == ContextType.STATE } && !hasRetriggerGuard(profile, enterTask, taskById)) {
+                val copy = if (profile.enterTaskIdOrNull == null) {
+                    strings.repeatedExitTriggering(profile.name)
+                } else {
+                    strings.repeatedTriggering(profile.name)
+                }
                 findings += AutomationLintFinding(
                     code = AutomationLintCode.REPEATED_TRIGGERING,
                     severity = AutomationLintSeverity.WARNING,
@@ -267,12 +275,18 @@ object AutomationLint {
         return AutomationLintReport(findings.toList())
     }
 
-    private fun unreachableReason(profile: Profile, enterTask: Task?, nowMs: Long?): String? {
+    private fun unreachableReason(profile: Profile, enterTask: Task?, exitTask: Task?, nowMs: Long?): String? {
         // Bound locally: contextExpression is a public property of another module now, so it does
         // not smart-cast.
         val contextExpression = profile.contextExpression
         return when {
-            enterTask == null -> "its enter task ${profile.enterTaskId} is missing"
+            profile.enterTaskIdOrNull == null && profile.exitTaskId == null -> "it has no enter or exit task"
+            // A profile with only an exit task runs it when its contexts stop matching.
+            profile.enterTaskIdOrNull == null && exitTask == null -> "its exit task ${profile.exitTaskId} is missing"
+            // An event fires and is over, so the engine never holds such a profile on.
+            profile.enterTaskIdOrNull == null && profile.contexts.any { it.type == ContextType.EVENT } ->
+                "it has no enter task, and an event never stops matching, so its exit task never runs"
+            profile.enterTaskIdOrNull != null && enterTask == null -> "its enter task ${profile.enterTaskId} is missing"
             contextExpression != null && !contextExpression.isValidForContextCount(profile.contexts.size) ->
                 "its context expression is invalid"
             profile.contexts.size > 1 && profile.contexts.indices.any { leftIndex ->
@@ -302,8 +316,10 @@ object AutomationLint {
         return profile.contexts.none { context -> !contextPairMayOverlap(context, guard) }
     }
 
-    private fun hasRetriggerGuard(profile: Profile, enterTask: Task?): Boolean {
-        if (profile.cooldownSec > 0) return true
+    private fun hasRetriggerGuard(profile: Profile, enterTask: Task?, taskById: Map<Long, Task>): Boolean {
+        // With no enter task only the exit task runs, and a cooldown never holds that back.
+        val guardedTask = if (profile.enterTaskIdOrNull == null) profile.exitTaskId?.let(taskById::get) else enterTask
+        if (profile.enterTaskIdOrNull != null && profile.cooldownSec > 0) return true
         if (profile.gracePeriodSec > 0) return true
         if (profile.contexts.any { spec ->
                 val dwell = listOf("dwellMillis", "dwellMs", "dwellSeconds", "dwellSec")
@@ -311,10 +327,12 @@ object AutomationLint {
                 dwell != null && dwell > 0L
             }
         ) return true
-        return enterTask?.actions.orEmpty().any { action ->
-            action.condition?.trim()?.isNotEmpty() == true ||
-                action.args["idempotent"].equals("true", ignoreCase = true) ||
-                action.args["guard"].equals("true", ignoreCase = true)
+        return guardedTask?.actions.orEmpty().any { action ->
+            action.enabled && (
+                action.condition?.trim()?.isNotEmpty() == true ||
+                    action.args["idempotent"].equals("true", ignoreCase = true) ||
+                    action.args["guard"].equals("true", ignoreCase = true)
+                )
         }
     }
 
@@ -332,6 +350,8 @@ object AutomationLint {
         ?: emptySet()
 
     private fun ActionSpec.toSettingWrite(task: Task): SettingWrite? {
+        // A step turned off writes nothing, so it can't need a reversal or conflict with another.
+        if (!enabled) return null
         val key = when (type) {
             "wifi.toggle" -> "wifi"
             "bluetooth.toggle" -> "bluetooth"
@@ -339,6 +359,7 @@ object AutomationLint {
             "volume.set" -> "volume:${args["stream"].orEmpty().ifBlank { "music" }.lowercase(Locale.US)}"
             "airplane.toggle" -> "airplane"
             "mobile.toggle" -> "mobile"
+            "hotspot.toggle" -> "hotspot"
             "screen.timeout" -> "screen_timeout"
             "dnd.set", "zen.rule.set", "zen.rule.clear" -> "dnd"
             "ringer.set" -> "ringer"
@@ -430,8 +451,14 @@ object AutomationLint {
         val leftPredicate = statePredicate(left) ?: return true
         val rightPredicate = statePredicate(right) ?: return true
         if (normalizeStateKey(leftPredicate.first) != normalizeStateKey(rightPredicate.first)) return true
+        // A Wi-Fi name pattern can match many names, `+5` among them, so it's neither one name
+        // nor one number.
+        if (leftPredicate.second == "~" || rightPredicate.second == "~") return true
         val leftValue = leftPredicate.third.lowercase(Locale.US)
         val rightValue = rightPredicate.third.lowercase(Locale.US)
+        if (normalizeStateKey(leftPredicate.first) == "wifi" && leftPredicate.second == "=" && rightPredicate.second == "=") {
+            return wifiOverlap(leftValue, rightValue)
+        }
         if (leftPredicate.second == "=" && rightPredicate.second == "=" && leftValue != rightValue) return false
         if (leftPredicate.second == "=" && rightPredicate.second == "!=" && leftValue == rightValue) return false
         if (leftPredicate.second == "!=" && rightPredicate.second == "=" && leftValue == rightValue) return false
@@ -443,6 +470,17 @@ object AutomationLint {
             return leftRange.first <= rightRange.second && rightRange.first <= leftRange.second
         }
         return true
+    }
+
+    /**
+     * Whether two Wi-Fi values can hold at once. A network's name means connected to it, so it can
+     * hold with "connected" (or `wifi_connected = true`) but never with "disconnected".
+     */
+    private fun wifiOverlap(left: String, right: String): Boolean {
+        val leftOff = left in WIFI_DISCONNECTED_WORDS
+        val rightOff = right in WIFI_DISCONNECTED_WORDS
+        if (leftOff || rightOff) return leftOff && rightOff
+        return left == right || left in WIFI_CONNECTED_WORDS || right in WIFI_CONNECTED_WORDS
     }
 
     private fun eventOverlap(left: ContextSpec, right: ContextSpec): Boolean {
@@ -489,7 +527,7 @@ object AutomationLint {
     private fun directTaskReferences(task: Task, tasks: List<Task>): List<Task> {
         val byId = tasks.associateBy(Task::id)
         val byName = tasks.groupBy { it.name.trim().lowercase(Locale.US) }
-        return task.actions.filter { it.type == "task.run" }.flatMap { action ->
+        return task.actions.filter { it.enabled && it.type == "task.run" }.flatMap { action ->
             val reference = listOf("task", "name", "id")
                 .firstNotNullOfOrNull { key -> action.args[key]?.trim()?.takeIf(String::isNotBlank) }
                 ?: return@flatMap emptyList()
@@ -508,11 +546,11 @@ object AutomationLint {
         return Triple(key.lowercase(Locale.US), spec.config["operator"]?.trim().orEmpty().ifBlank { "=" }, value)
     }
 
+    /** [value] read the way matching reads it, so `wifi ~ a=b` is a pattern, not `wifi ~ a` equal to `b`. */
     private fun parsePredicate(value: String): Triple<String, String, String>? {
-        val operator = listOf(">=", "<=", "!=", ">", "<", "=").firstOrNull { value.contains(it) } ?: return null
-        val parts = value.split(operator, limit = 2)
-        if (parts.size != 2 || parts[0].isBlank() || parts[1].isBlank()) return null
-        return Triple(parts[0].trim().lowercase(Locale.US), operator, parts[1].trim())
+        val (key, operator, rhs) = parseStatePredicate(value) ?: return null
+        if (key.isBlank() || rhs.isBlank()) return null
+        return Triple(key.trim().lowercase(Locale.US), operator, rhs)
     }
 
     private fun numericRange(operator: String, value: Int): Pair<Int, Int> = when (operator) {

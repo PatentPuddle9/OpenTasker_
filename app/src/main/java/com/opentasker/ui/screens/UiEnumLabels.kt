@@ -6,6 +6,7 @@ import androidx.compose.ui.res.stringResource
 import com.opentasker.app.R
 import com.opentasker.core.actions.ActionMetadataRegistry
 import com.opentasker.core.capabilities.CapabilityLevel
+import com.opentasker.core.capabilities.PlatformSupport
 import com.opentasker.core.capabilities.SetupRequirement
 import com.opentasker.core.logging.AppLogger
 import com.opentasker.core.model.AutomationMode
@@ -57,6 +58,7 @@ internal fun setupRequirementLabelRes(requirement: SetupRequirement): Int = when
     SetupRequirement.BACKGROUND_LOCATION -> R.string.setup_background_location_title
     SetupRequirement.NEARBY_WIFI -> R.string.setup_nearby_wifi_title
     SetupRequirement.BLUETOOTH -> R.string.setup_bluetooth_title
+    SetupRequirement.BLUETOOTH_SCAN -> R.string.setup_bluetooth_scan_title
     SetupRequirement.LOCAL_NETWORK -> R.string.setup_local_network_title
     SetupRequirement.SMS -> R.string.setup_sms_title
     SetupRequirement.DND -> R.string.setup_dnd_title
@@ -64,6 +66,21 @@ internal fun setupRequirementLabelRes(requirement: SetupRequirement): Int = when
     SetupRequirement.SCREEN_RECORDING -> R.string.setup_screen_recording_title
     SetupRequirement.PHYSICAL_ACTIVITY -> R.string.setup_activity_recognition_title
     SetupRequirement.PHONE_STATE -> R.string.setup_phone_state_title
+    SetupRequirement.CALL_LOG -> R.string.setup_call_log_title
+    SetupRequirement.SMS_RECEIVE -> R.string.setup_sms_receive_title
+    SetupRequirement.POST_NOTIFICATIONS -> R.string.setup_notifications_card_title
+    SetupRequirement.SECURE_SETTINGS -> R.string.setup_secure_settings_title
+    SetupRequirement.NFC_TAGS -> R.string.setup_nfc_tags_title
+    SetupRequirement.HEALTH_CONNECT -> R.string.setup_health_title
+}
+
+@StringRes
+internal fun platformFamilyLabelRes(family: PlatformSupport.BlockedFamily): Int = when (family) {
+    PlatformSupport.BlockedFamily.CAMERA_MIC -> R.string.platform_family_camera_mic
+    PlatformSupport.BlockedFamily.BROADCAST_SENDER -> R.string.platform_family_broadcast_sender
+    PlatformSupport.BlockedFamily.SCREEN_RECORDING -> R.string.platform_family_screen_recording
+    PlatformSupport.BlockedFamily.ADVANCED_PROTECTION -> R.string.platform_family_advanced_protection
+    PlatformSupport.BlockedFamily.BLUETOOTH_SECURITY -> R.string.platform_family_bluetooth_security
 }
 
 @StringRes
