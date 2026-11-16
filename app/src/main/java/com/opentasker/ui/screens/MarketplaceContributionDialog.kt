@@ -185,6 +185,11 @@ internal fun MarketplaceContributionDialog(onDismiss: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )
+                Text(
+                    "Personal triggers and context rules are not shared. Imported copies start turned off so the recipient can review and configure them first.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
                 Text("GitHub account", style = MaterialTheme.typography.titleSmall)
                 if (account != null) {
                     Text("Signed in as @" + account, color = MaterialTheme.colorScheme.primary)
