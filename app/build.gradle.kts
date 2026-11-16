@@ -240,6 +240,15 @@ android {
         versionName = appVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "DISTRIBUTION", "\"$selectedDistribution\"")
+        val marketplacePublicKey = providers.environmentVariable("MARKETPLACE_PUBLIC_KEY_X509_BASE64")
+            .orElse("")
+            .get()
+            .trim()
+        buildConfigField(
+            "String",
+            "MARKETPLACE_PUBLIC_KEY_X509_BASE64",
+            marketplacePublicKey.toBuildConfigStringLiteral(),
+        )
         buildConfigField("String", "BUILD_BRANCH", appBuildBranch.toBuildConfigStringLiteral())
         buildConfigField("String", "UPDATE_SOURCE_BRANCH", appUpdateSourceBranch.toBuildConfigStringLiteral())
         buildConfigField("String", "BUILD_CHANNEL", (if (appIsBetaBuild) "Beta" else "Experimental").toBuildConfigStringLiteral())
