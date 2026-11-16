@@ -337,6 +337,15 @@ private fun output(
     requiredArgumentValues = requiredArgumentValues,
 )
 
+/**
+ * Scalar variable names written by one action, including each destination listed in Multiple Variables Set.
+ */
+internal fun writtenScalarVariables(actionId: String, args: Map<String, String>): List<String> =
+    declaredActionOutputs(actionId)
+        .filter { it.type != ActionValueType.ARRAY }
+        .mapNotNull { it.resolveName(args) } +
+        if (actionId == "var.set_multiple") multipleVariablesTargets(args) else emptyList()
+
 /** Output declarations for the built-in actions whose runtime writes variables. */
 internal fun declaredActionOutputs(actionId: String): List<ActionOutputDefinition> = when (actionId) {
     "var.set" -> listOf(output("value", ActionValueType.ANY, nameArgumentKeys = listOf("name"), basePath = true))

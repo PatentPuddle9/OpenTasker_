@@ -47,6 +47,12 @@ data class Profile(
     @Transient val marketplacePackageId: String? = null,
 )
 
+/**
+ * A profile with enterTaskId == 0 has no enter action; negative IDs remain broken references.
+ */
+val Profile.enterTaskIdOrNull: Long?
+    get() = enterTaskId.takeIf { it != 0L }
+
 @Serializable
 enum class ProfileLifetime {
     NEVER,

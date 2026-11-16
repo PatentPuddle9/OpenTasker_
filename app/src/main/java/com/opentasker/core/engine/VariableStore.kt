@@ -1,6 +1,8 @@
 package com.opentasker.core.engine
 
+import com.opentasker.core.data.JsonNesting
 import com.opentasker.core.engine.variables.ArrayStore
+import com.opentasker.core.engine.variables.TaskerBuiltIns
 import com.opentasker.core.engine.variables.VariableExpander
 import com.opentasker.core.expressions.InertTemplateText
 import com.opentasker.core.expressions.TemplateExpressionEngine
@@ -17,11 +19,11 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 data class TrackedExpansion(
-    /** Ready for template expansion; nested templates from variables stay inert. */
+    /** Ready for the template engine: a `{{` that came out of a variable's value stays inert. */
     val value: String,
     val isSecretDerived: Boolean,
 ) {
-    /** Finished text when no template stage follows. */
+    /** The finished text, when no template stage follows. */
     val text: String get() = InertTemplateText.restore(value)
 }
 
@@ -43,26 +45,38 @@ data class TrackedExpansion(
 class VariableStore {
     private val globals = ConcurrentHashMap<String, String>()
     private val rootLocals = ConcurrentHashMap<String, String>()
+    /** Live device/system values are execution-scoped and never persisted as user globals. */
     private val systemValues = ConcurrentHashMap<String, String>()
     private val localStack = java.util.Collections.synchronizedList(mutableListOf<MutableMap<String, String>>())
     private val globalSensitiveNames = ConcurrentHashMap.newKeySet<String>()
     private val declaredSecretGlobals = ConcurrentHashMap.newKeySet<String>()
     private val rootLocalSensitiveNames = ConcurrentHashMap.newKeySet<String>()
     private val localSensitiveStack = java.util.Collections.synchronizedList(mutableListOf<MutableSet<String>>())
+    /** Parallel to [localStack]: true for a scope that holds a sub-task's inputs. */
+    private val inputScopes = java.util.Collections.synchronizedList(mutableListOf<Boolean>())
+    /** Parallel to [localStack]: names [clearForTask] hid there, so a caller's value doesn't show through. */
+    private val hiddenStack = java.util.Collections.synchronizedList(mutableListOf<MutableSet<String>>())
     private val sensitiveArrayNames = ConcurrentHashMap.newKeySet<String>()
     private val sensitiveWriteDepth = AtomicInteger(0)
     private val expander = VariableExpander()
     private val arrayStore = ArrayStore()
 
-    fun pushScope() {
-        localStack.add(java.util.concurrent.ConcurrentHashMap())
-        localSensitiveStack.add(ConcurrentHashMap.newKeySet())
+    /** [holdsInputs] marks the scope Perform Task puts a sub-task's inputs (`%par1`, ...) in. */
+    fun pushScope(holdsInputs: Boolean = false) {
+        synchronized(localStack) {
+            localStack.add(java.util.concurrent.ConcurrentHashMap())
+            localSensitiveStack.add(ConcurrentHashMap.newKeySet())
+            inputScopes.add(holdsInputs)
+            hiddenStack.add(ConcurrentHashMap.newKeySet())
+        }
     }
     fun popScope() {
         synchronized(localStack) {
             if (localStack.isNotEmpty()) {
                 localStack.removeAt(localStack.size - 1)
                 localSensitiveStack.removeAt(localSensitiveStack.size - 1)
+                inputScopes.removeAt(inputScopes.size - 1)
+                hiddenStack.removeAt(hiddenStack.size - 1)
             }
         }
     }
@@ -99,9 +113,193 @@ class VariableStore {
         synchronized(localStack) {
             for (i in localStack.indices.reversed()) {
                 localStack[i][normalizedName]?.let { return it }
+                if (normalizedName in hiddenStack[i]) return TaskerBuiltIns.value(normalizedName)
             }
         }
-        return rootLocals[normalizedName] ?: globals[normalizedName]
+        // A Tasker built-in fills in when nothing is stored under its name, or only an empty value
+        // is (a Variable Set to nothing).
+        val stored = rootLocals[normalizedName] ?: globals[normalizedName]
+        return if (stored.isNullOrEmpty()) TaskerBuiltIns.value(normalizedName) ?: systemValues[normalizedName.lowercase()] ?: stored else stored
+    }
+
+    /**
+     * Unsets [name] in the scope [get] reads it from, so it reads as never set. Returns whether it
+     * was set. A global's taint stays, as it does in [set].
+     */
+    fun remove(name: String): Boolean {
+        val normalizedName = VariableNamePolicy.normalize(name) ?: return false
+        if (VariableNamePolicy.isGlobal(normalizedName)) return globals.remove(normalizedName) != null
+        synchronized(localStack) {
+            for (index in localStack.indices.reversed()) {
+                if (localStack[index].remove(normalizedName) != null) {
+                    localSensitiveStack[index] -= normalizedName
+                    return true
+                }
+                if (normalizedName in hiddenStack[index]) return false
+            }
+            if (rootLocals.remove(normalizedName) == null) return false
+            rootLocalSensitiveNames -= normalizedName
+            return true
+        }
+    }
+
+    /**
+     * Unsets [name] for the running task only, the way Tasker's Reset Return Variable clears it: a
+     * local goes from that task's own scopes (the innermost input scope and every one above it, or
+     * all of them in a task nothing called), and a caller's variable of that name stays as it is
+     * but reads as unset here until the task ends. A global is unset everywhere, as in [remove].
+     */
+    fun clearForTask(name: String) {
+        val normalizedName = VariableNamePolicy.normalize(name) ?: return
+        if (VariableNamePolicy.isGlobal(normalizedName)) {
+            globals.remove(normalizedName)
+            return
+        }
+        synchronized(localStack) {
+            val ownFrom = inputScopes.lastIndexOf(true)
+            for (index in maxOf(ownFrom, 0) until localStack.size) {
+                localStack[index].remove(normalizedName)
+                localSensitiveStack[index] -= normalizedName
+            }
+            if (ownFrom < 0) {
+                rootLocals.remove(normalizedName)
+                rootLocalSensitiveNames -= normalizedName
+            } else {
+                hiddenStack[ownFrom] += normalizedName
+            }
+        }
+    }
+
+    /**
+     * Tasker's Variable Clear of a pattern, or of everything: unsets each variable the running task
+     * sees whose name, written with its `%`, matches [pattern] (Tasker's Matches, so `%item*` or
+     * `%a/%b`), or each one when [pattern] is null. Locals go the way [clearForTask] clears them,
+     * globals only with [includeGlobals], and so do the arrays [setArray] keeps under a matching
+     * name (see [removeArray]). Built-ins aren't stored, so they stay. Returns how many.
+     */
+    fun clearMatching(pattern: String?, includeGlobals: Boolean): Int {
+        fun matches(name: String) = pattern == null || expander.matches("%$name", pattern)
+        val locals = synchronized(localStack) {
+            visibleLocalNames().filter(::matches).onEach(::clearForTask)
+        }
+        val removedGlobals = if (includeGlobals) globals.keys.filter(::matches).filter { globals.remove(it) != null } else emptyList()
+        val removedArrays = arrayStore.snapshot().keys
+            .filter { (includeGlobals || !VariableNamePolicy.isGlobal(it)) && matches(it) }
+            .filter(arrayStore::remove)
+        return (locals + removedGlobals + removedArrays).toSet().size
+    }
+
+    /**
+     * Drops the array [setArray] keeps under [name] (Split Text's, Wi-Fi Scan's, ...), so its
+     * `%name(#)` reads 0, and returns whether there was one. These arrays aren't scoped, so a
+     * sub-task drops its caller's, the way its own Split Text would replace it.
+     */
+    fun removeArray(name: String): Boolean = arrayStore.remove(storedArrayName(name))
+
+    /** The local names [get] finds a stored value for. Call it holding the [localStack] lock. */
+    private fun visibleLocalNames(): Set<String> {
+        val names = mutableSetOf<String>()
+        val hidden = mutableSetOf<String>()
+        for (index in localStack.indices.reversed()) {
+            localStack[index].keys.filterTo(names) { it !in hidden }
+            hidden += hiddenStack[index]
+        }
+        rootLocals.keys.filterTo(names) { it !in hidden }
+        return names
+    }
+
+    /**
+     * Tasker's array elements: the variables named [base] plus a whole number from 1 (`arr1`,
+     * `arr2`, ...), in the scope [base] belongs to, by index. Each one reads the way [get] reads it.
+     */
+    fun numberedItems(base: String): java.util.NavigableMap<Int, String> {
+        val items = java.util.TreeMap<Int, String>()
+        val normalizedBase = VariableNamePolicy.normalize(base) ?: return items
+        val names = if (VariableNamePolicy.isGlobal(normalizedBase)) {
+            globals.keys.toSet()
+        } else {
+            synchronized(localStack) { arrayScopes(normalizedBase).flatMapTo(mutableSetOf()) { (values, _) -> values.keys } }
+        }
+        names.forEach { name ->
+            val index = numberedIndex(normalizedBase, name) ?: return@forEach
+            get(name)?.let { items[index] = it }
+        }
+        return items
+    }
+
+    /**
+     * Replaces [base]'s numbered elements with [items] (index to value and secret flag). The old
+     * elements are unset in every local scope [arrayScopes] covers, so none left in a caller's
+     * scope shows through after a sub-task set one of its own, and the new ones go into the
+     * outermost of those scopes that held an element, else the one [set] writes to. A sub-task
+     * changing its caller's array changes it there, instead of writing the new elements into its
+     * own scope, gone when it returns.
+     */
+    fun replaceNumberedItems(base: String, items: Map<Int, Pair<String, Boolean>>) {
+        val normalizedBase = VariableNamePolicy.normalize(base) ?: return
+        if (VariableNamePolicy.isGlobal(normalizedBase)) {
+            globals.keys.filter { numberedIndex(normalizedBase, it) != null }.forEach(globals::remove)
+            items.forEach { (index, item) -> set("$normalizedBase$index", item.first, sensitive = item.second) }
+            return
+        }
+        val tainted = sensitiveWriteDepth.get() > 0
+        synchronized(localStack) {
+            val scopes = arrayScopes(normalizedBase)
+            val (values, sensitiveNames) = scopes.firstOrNull { (values, _) ->
+                values.keys.any { numberedIndex(normalizedBase, it) != null }
+            } ?: scopes.last()
+            scopes.forEach { (scopeValues, scopeSensitiveNames) ->
+                scopeValues.keys.filter { numberedIndex(normalizedBase, it) != null }.forEach { name ->
+                    scopeValues.remove(name)
+                    scopeSensitiveNames -= name
+                }
+            }
+            items.forEach { (index, item) ->
+                val name = VariableNamePolicy.normalize("$normalizedBase$index") ?: return@forEach
+                values[name] = item.first
+                if (item.second || tainted) sensitiveNames += name
+            }
+        }
+    }
+
+    /** True when any of [base]'s numbered elements holds a secret or a value derived from one. */
+    fun anyNumberedItemSensitive(base: String): Boolean {
+        val normalizedBase = VariableNamePolicy.normalize(base) ?: return false
+        if (VariableNamePolicy.isGlobal(normalizedBase)) {
+            return globalSensitiveNames.any { numberedIndex(normalizedBase, it) != null }
+        }
+        return synchronized(localStack) {
+            arrayScopes(normalizedBase).any { (_, sensitiveNames) -> sensitiveNames.any { numberedIndex(normalizedBase, it) != null } }
+        }
+    }
+
+    /**
+     * The local scopes, outermost first, that hold the local array [base]: every one, unless a
+     * sub-task was handed elements of it as inputs or [clearForTask] hid one of its elements there.
+     * Then the array starts at the innermost such input scope, so a sub-task's `%par` is its own
+     * and a Pop on it leaves its caller's `%par1` and `%par2` alone, and an array changed after a
+     * Reset Return Variable on one element doesn't rewrite the caller's. `%par` always starts at the
+     * innermost input scope, even one given no inputs, so a sub-task run without any never sees or
+     * pops its caller's. Call it holding the [localStack] lock.
+     */
+    private fun arrayScopes(base: String): List<Pair<MutableMap<String, String>, MutableSet<String>>> {
+        val scopes = listOf<Pair<MutableMap<String, String>, MutableSet<String>>>(rootLocals to rootLocalSensitiveNames) +
+            localStack.zip(localSensitiveStack)
+        val inputs = localStack.indices.lastOrNull { index ->
+            inputScopes[index] && (
+                base == INPUT_ARRAY ||
+                    localStack[index].keys.any { numberedIndex(base, it) != null } ||
+                    hiddenStack[index].any { numberedIndex(base, it) != null }
+                )
+        } ?: return scopes
+        return scopes.drop(inputs + 1)
+    }
+
+    private fun numberedIndex(base: String, name: String): Int? {
+        if (name.length <= base.length || !name.startsWith(base)) return null
+        val digits = name.substring(base.length)
+        if (digits.first() == '0' || !digits.all { it in '0'..'9' }) return null
+        return digits.toIntOrNull()
     }
 
     fun isSensitive(name: String): Boolean {
@@ -109,6 +307,7 @@ class VariableStore {
         synchronized(localStack) {
             for (index in localStack.indices.reversed()) {
                 if (normalizedName in localStack[index]) return normalizedName in localSensitiveStack[index]
+                if (normalizedName in hiddenStack[index]) return false
             }
         }
         if (rootLocals.containsKey(normalizedName)) return normalizedName in rootLocalSensitiveNames
@@ -127,10 +326,7 @@ class VariableStore {
         globalSensitiveNames += declaredSecretGlobals
     }
 
-    /**
-     * Replace the live system snapshot for this execution. System values are isolated from task
-     * and global namespaces and are never included in the persisted-global snapshot.
-     */
+    /** Replace this run's isolated system-variable snapshot. */
     fun seedSystemVariables(values: Map<String, String>) {
         systemValues.clear()
         values.forEach { (rawName, value) ->
@@ -150,22 +346,28 @@ class VariableStore {
      * Arrays can be accessed via %arrayName(#) for length, %arrayName(0) for index, etc.
      */
     fun setArray(name: String, values: List<String>, sensitive: Boolean = false) {
+        // Named the way [set] names it, so an output field written as %parts stores parts.
+        val normalizedName = VariableNamePolicy.normalize(name) ?: return
         // Array taint is monotonic for the same reason global taint is (see [set]): mark before
         // publishing and never clear, so a later plain write can't race a secret array's flag off.
-        if (sensitive || sensitiveWriteDepth.get() > 0 || name in sensitiveArrayNames) {
-            sensitiveArrayNames += name
+        if (sensitive || sensitiveWriteDepth.get() > 0 || normalizedName in sensitiveArrayNames) {
+            sensitiveArrayNames += normalizedName
         }
-        arrayStore.put(name, values)
+        arrayStore.put(normalizedName, values)
     }
 
     /**
-     * Returns the elements of a stored array by name, or null if no array with that name exists.
-     * Used by the `flow.foreach` control action to iterate over array variables.
+     * Returns the elements of a stored array by name, or else Tasker's numbered elements (`arr1`,
+     * `arr2`, ...) in index order, or null when neither exists. Used by the `flow.foreach` control
+     * action to iterate over array variables. [name] may carry its percent sign, as a For list does.
      */
     fun getArrayItems(name: String): List<String>? =
-        arrayStore.snapshot()[name]
+        arrayStore.snapshot()[storedArrayName(name)] ?: numberedItems(name).values.toList().ifEmpty { null }
 
-    fun isArraySensitive(name: String): Boolean = name in sensitiveArrayNames
+    fun isArraySensitive(name: String): Boolean = storedArrayName(name) in sensitiveArrayNames || anyNumberedItemSensitive(name)
+
+    /** The key [setArray] stores [name] under, so a lookup and its taint check find the same array. */
+    private fun storedArrayName(name: String): String = VariableNamePolicy.normalize(name) ?: name
 
     /** Expand all variable references in [s] using the current scope chain. */
     fun expand(s: String): String {
@@ -174,7 +376,8 @@ class VariableStore {
 
     /**
      * Expands a legacy expression while retaining whether any referenced input was secret.
-     * [conditionals] false leaves a leading ternary as text; [unset] controls missing variables.
+     * [conditionals] false keeps a leading `(cond) ? a : b` as text. [unset] says how an unset
+     * `%name` reads, as written unless told otherwise.
      */
     fun expandTracked(
         s: String,
@@ -184,7 +387,8 @@ class VariableStore {
         value = expander.expand(s, this, arrayStore, InertTemplateText::hide, conditionals, unset),
         isSecretDerived = variableReference.findAll(s).any { match ->
             val name = match.groupValues[1]
-            isSensitive(name) || name in sensitiveArrayNames
+            isSensitive(name) || name in sensitiveArrayNames ||
+                (s.startsWith("(", match.range.last + 1) && anyNumberedItemSensitive(name))
         },
     )
 
@@ -204,9 +408,10 @@ class VariableStore {
     }
 
     /**
-     * Evaluates the condition as authored: parse its operators and grouping before expanding each
-     * operand. External text in a variable therefore cannot introduce a new branch or another
-     * variable reference. The same path is used by the run preview.
+     * Evaluates a condition the way a run does: its structure is read from [expr] as typed, then
+     * each operand goes through legacy `%var` expansion and the bounded `{{ ... }}` stage once.
+     * Pass [expr] unexpanded, because a value that has already been substituted would be parsed
+     * as part of the condition.
      */
     fun evaluateCondition(
         expr: String,
@@ -214,6 +419,7 @@ class VariableStore {
         eventVariables: Map<String, String> = emptyMap(),
     ): Boolean {
         val scope by lazy(LazyThreadSafetyMode.NONE) { toTemplateScope(eventVariables) }
+        // A template the engine can't read fails the whole condition, whichever branch holds it.
         if (expr.contains("{{") && templates.expand(expandTracked(expr).value, scope).warnings.isNotEmpty()) {
             return false
         }
@@ -230,7 +436,10 @@ class VariableStore {
     fun toTemplateScope(event: Map<String, String> = emptyMap()): TemplateScope {
         val taskValues = rootLocals.toMutableMap()
         synchronized(localStack) {
-            localStack.forEach { scope -> taskValues += scope }
+            localStack.forEachIndexed { index, scope ->
+                taskValues -= hiddenStack[index]
+                taskValues += scope
+            }
         }
         return TemplateScope(
             global = globals.toMap(),
@@ -263,7 +472,8 @@ class VariableStore {
      * If no selectors are found, this falls through to a flat [set].
      * If the base variable does not exist or is not valid JSON, a new JSON structure is created.
      *
-     * Returns true if the write succeeded, false if the path is unparseable.
+     * Returns true if the write succeeded, false if the path is unparseable or the variable holds
+     * JSON nested deeper than [JsonNesting.MAX_DATA_DEPTH], which is left as it is.
      */
     fun setAtPath(fullPath: String, value: String): Boolean {
         val parsed = parsePathSelectors(fullPath) ?: return false
@@ -273,7 +483,9 @@ class VariableStore {
         }
 
         val current = get(parsed.base)
-        val root: JsonElement = if (current != null) {
+        val depth = current?.let(JsonNesting::depth)
+        if (depth != null && depth != JsonNesting.NOT_JSON && depth > JsonNesting.MAX_DATA_DEPTH) return false
+        val root: JsonElement = if (current != null && depth != JsonNesting.NOT_JSON) {
             try { jsonCodec.parseToJsonElement(current) } catch (_: Exception) { JsonObject(emptyMap()) }
         } else {
             JsonObject(emptyMap())
@@ -392,5 +604,8 @@ class VariableStore {
          * entries, hanging the task thread and OOM-ing the process. Writes above this fail closed.
          */
         internal const val MAX_ARRAY_INDEX = 100_000
+
+        /** The array Perform Task hands a sub-task its inputs in, as `%par1` and `%par2`. */
+        private const val INPUT_ARRAY = "par"
     }
 }

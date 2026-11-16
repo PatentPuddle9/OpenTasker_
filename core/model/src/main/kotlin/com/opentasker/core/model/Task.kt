@@ -30,6 +30,12 @@ data class ActionSpec(
     val args: Map<String, String> = emptyMap(),
     val continueOnError: Boolean = false,
     val condition: String? = null,          // optional %var-based condition
+    /**
+     * A step switched off remains in the task but is skipped during execution.
+     * Omit the default from serialized bundles for backward compatibility.
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val enabled: Boolean = true,
     /** Whether the next action must wait for this action to finish. Defaults to sequential. */
     val waitForCompletion: Boolean = true,
 )

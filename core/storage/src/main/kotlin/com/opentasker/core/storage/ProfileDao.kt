@@ -156,6 +156,10 @@ interface ProfileDao {
     @Insert suspend fun insert(p: ProfileEntity): Long
     @Upsert suspend fun upsert(p: ProfileEntity)
     @Update suspend fun update(p: ProfileEntity)
+
+    /** A reviewed profile cannot be enabled until its risk acknowledgement has been cleared. */
+    @Query("UPDATE profiles SET enabled = :enabled WHERE id = :id AND (:enabled = 0 OR requiresRiskAcknowledgement = 0)")
+    suspend fun setEnabled(id: Long, enabled: Boolean): Int
     @Query("DELETE FROM profiles WHERE id = :profileId AND widgetId IS NULL")
     suspend fun deleteRegularProfile(profileId: Long): Int
 

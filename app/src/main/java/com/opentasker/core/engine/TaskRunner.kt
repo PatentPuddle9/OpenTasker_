@@ -1178,6 +1178,19 @@ const val MAX_SUBTASK_DEPTH = 8
 /** Argument keys `task.run` accepts as its target, in precedence order. */
 val SUB_TASK_REF_KEYS = listOf("task", "name", "id")
 
+/** A Tasker-compatible action that returns a value to the caller and ends this task. */
+const val STOP_TASK_ACTION_ID = "task.stop"
+/** task.run fields that configure the invocation rather than becoming child inputs. */
+const val SUB_TASK_RETURN_KEY = "returnVariable"
+const val SUB_TASK_RESET_RETURN_KEY = "resetReturnVariable"
+val SUB_TASK_SETTING_KEYS = setOf(SUB_TASK_RETURN_KEY, SUB_TASK_RESET_RETURN_KEY)
+
+/** Whether task.run should clear its requested return variable before starting the child. */
+fun resetsReturnVariable(args: Map<String, String>): Boolean =
+    args[SUB_TASK_RESET_RETURN_KEY]?.trim().equals("true", ignoreCase = true)
+
+
+
 /** Safety cap on total interpreted steps to bound pathological flow.foreach loops. */
 private const val MAX_FLOW_STEPS = 100_000
 private const val FLOW_ERROR_JSON = TaskFailureVariables.JSON
@@ -1429,3 +1442,14 @@ private const val VARIABLE_CHANGE_PREFIX = "Var:"
 private const val VARIABLE_CHANGE_ADDED = "added"
 private const val VARIABLE_CHANGE_UPDATED = "updated"
 private const val MAX_TEMPLATE_TRACE_FIELD_LENGTH = 120
+
+/**
+ * Why a Run Task step's return variable can't hold the returned value, from the name as written
+ * and as it came out. The run and Preflight both use this wording.
+ */
+internal fun unusableReturnVariable(written: String, expanded: String, sensitive: Boolean): String = when {
+    expanded.isBlank() -> "'${written.trim()}' came out empty, so the returned value has nowhere to go"
+    sensitive -> "${REDACTED_VALUE} isn't a variable name, so the returned value has nowhere to go"
+    else -> "'${expanded.trim()}' isn't a variable name, so the returned value has nowhere to go"
+}
+

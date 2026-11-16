@@ -73,6 +73,16 @@ enum class TemplateValueSource {
  * - Pipe functions include `default`, `upper`, `lower`, `trim`, `add`, `sub`,
  *   `mul`, `div`, `round`, `floor`, `count`, `join`, and `date`.
  */
+/**
+ * Text arriving inside a variable value is data, not a second template expression.
+ * The legacy %variable expansion pass uses this marker to keep nested {{...}} inert.
+ */
+internal object InertTemplateText {
+    private val MARK = "${Char(0xE000)}${Char(0xE001)}"
+    fun hide(value: String): String = value.replace("{{", MARK)
+    fun restore(text: String): String = text.replace(MARK, "{{")
+}
+
 class TemplateExpressionEngine(
     private val limits: TemplateExpressionLimits = TemplateExpressionLimits(),
 ) {
