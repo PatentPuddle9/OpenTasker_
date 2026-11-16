@@ -201,4 +201,52 @@
     <string name="capability_media_key_ready" formatted="false">Media-key dispatch is available.</string>
     <string name="capability_volume_restricted" formatted="false">Android 17 restricts volume changes unless OpenTasker has a while-in-use eligible foreground-service path.</string>
     <string name="capability_volume_policy" formatted="false">May require Do Not Disturb policy access.</string>
+
+
+<string name="context_field_application_component_label" formatted="false">Foreground component (optional)</string>
+
+<string name="context_field_application_component_hint" formatted="false">com.example.app.PlayerActivity or com.example.app.*</string>
+
+<string name="context_field_state_poll_minutes_label" formatted="false">Check every (minutes)</string>
+
+<string name="context_field_state_poll_minutes_hint" formatted="false">Health readings only. 15 to 1440, default 15</string>
+
+<string name="context_state_preset_health_steps" formatted="false">10,000 steps today</string>
+
+<string name="context_state_preset_health_heart_rate" formatted="false">Heart rate over 100</string>
+
+<string name="context_state_preset_health_sleep" formatted="false">Under 6 hours of sleep</string>
+
+<string name="context_state_preset_health_exercise" formatted="false">30 min of exercise today</string>
+
+<string name="context_field_event_elevation_label" formatted="false">Sun elevation</string>
+
+<string name="context_field_event_elevation_hint" formatted="false">Blank for sunrise or sunset, civil, nautical, astronomical, or degrees like -4</string>
+
+<string name="locale_plugin_configure">Set up in the plugin</string>
+
+<string name="locale_plugin_configure_missing">That app doesn\'t have a plugin settings screen OpenTasker can open.</string>
+
+<string name="locale_plugin_configure_failed">The plugin\'s settings couldn\'t be saved: %1$s</string>
+
+<string name="locale_plugin_configure_refused">OpenTasker didn\'t open the plugin\'s settings: %1$s</string>
+
+<string name="context_preset_civil_dawn" formatted="false">Civil dawn</string>
+
+<string name="context_preset_nautical_dawn" formatted="false">Nautical dawn</string>
+
+<string name="context_preset_astronomical_dawn" formatted="false">Astronomical dawn</string>
+
+<string name="context_preset_civil_dusk" formatted="false">Civil dusk</string>
+
+<string name="context_preset_nautical_dusk" formatted="false">Nautical dusk</string>
+
+<string name="context_preset_astronomical_dusk" formatted="false">Astronomical dusk</string>
+
+<plurals name="widget_saved_task_count">
+        <item quantity="one">%1$d saved task available. Choose the task this widget should run when tapped.</item>
+        <item quantity="other">%1$d saved tasks available. Choose the task this widget should run when tapped.</item>
+    </plurals>
+
+<string name="capability_sun_times_setup" formatted="false">Needs location access only when latitude or longitude is left blank, to read the phone\'s location.</string>
 </resources>

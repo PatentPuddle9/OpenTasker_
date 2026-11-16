@@ -8,7 +8,15 @@
     <string name="catalog_action_notify_show_field_title_hint" formatted="false">通知标题</string>
     <string name="catalog_action_notify_show_field_text_label" formatted="false">消息</string>
     <string name="catalog_action_notify_show_field_text_hint" formatted="false">通知内容</string>
-                                    <string name="catalog_action_notify_show_field_button1_label_label" formatted="false">按钮1标签</string>
+    <string name="catalog_action_notify_show_field_channel_label" formatted="false">频道</string>
+    <string name="catalog_action_notify_show_field_channel_hint" formatted="false">安静 / 默认 / 紧急</string>
+    <string name="catalog_action_notify_show_field_persistent_label" formatted="false">持久</string>
+    <string name="catalog_action_notify_show_field_persistent_hint" formatted="false">保持到取消为止</string>
+    <string name="catalog_action_notify_show_field_tag_label" formatted="false">标签</string>
+    <string name="catalog_action_notify_show_field_tag_hint" formatted="false">替换标签（相同标签会替换）</string>
+    <string name="catalog_action_notify_show_field_id_label" formatted="false">ID</string>
+    <string name="catalog_action_notify_show_field_id_hint" formatted="false">通知ID（相同ID会替换）</string>
+    <string name="catalog_action_notify_show_field_button1_label_label" formatted="false">按钮1标签</string>
     <string name="catalog_action_notify_show_field_button1_label_hint" formatted="false">操作按钮标签</string>
     <string name="catalog_action_notify_show_field_button1_task_id_label" formatted="false">按钮1任务</string>
     <string name="catalog_action_notify_show_field_button1_task_id_hint" formatted="false">点击时运行的任务</string>
@@ -33,13 +41,34 @@
     <string name="catalog_action_var_set_field_name_hint" formatted="false">%var 变量名</string>
     <string name="catalog_action_var_set_field_value_label" formatted="false">值</string>
     <string name="catalog_action_var_set_field_value_hint" formatted="false">支持%展开</string>
-                                                <string name="catalog_action_var_persist_name" formatted="false">持久化变量</string>
+    <string name="catalog_action_var_set_multiple_name" formatted="false">设置多个变量</string>
+    <string name="catalog_action_var_set_multiple_description" formatted="false">一步设置多个变量，每个名称取相同位置的值</string>
+    <string name="catalog_action_var_set_multiple_field_names_label" formatted="false">名称</string>
+    <string name="catalog_action_var_set_multiple_field_names_hint" formatted="false">每行一个 %name。不填值且有多行时，名称后可加值分隔符和值，如 %count,0</string>
+    <string name="catalog_action_var_set_multiple_field_values_label" formatted="false">值</string>
+    <string name="catalog_action_var_set_multiple_field_values_hint" formatted="false">每行一个值，顺序与名称相同。没有对应值的名称会被取消设置</string>
+    <string name="catalog_action_var_set_multiple_field_names_splitter_label" formatted="false">名称分隔符</string>
+    <string name="catalog_action_var_set_multiple_field_values_splitter_label" formatted="false">值分隔符</string>
+    <string name="catalog_action_var_set_multiple_field_splitter_hint" formatted="false">条目之间的文字。留空则按换行分隔，只有一行时按逗号分隔</string>
+    <string name="catalog_action_var_set_multiple_field_keep_existing_label" formatted="false">保留已有值</string>
+    <string name="catalog_action_var_set_multiple_field_keep_existing_hint" formatted="false">变量已有值时不覆盖</string>
+    <string name="catalog_action_var_persist_name" formatted="false">持久化变量</string>
     <string name="catalog_action_var_persist_description" formatted="false">将变量的当前值复制到全局作用域，使其在任务运行后仍然保留</string>
     <string name="catalog_action_var_persist_field_name_label" formatted="false">源变量</string>
     <string name="catalog_action_var_persist_field_name_hint" formatted="false">局部变量名</string>
     <string name="catalog_action_var_persist_field_global_name_label" formatted="false">全局名称</string>
     <string name="catalog_action_var_persist_field_global_name_hint" formatted="false">省略时自动从源变量转为大写</string>
-                                            <string name="catalog_action_clipboard_get_name" formatted="false">读取剪贴板</string>
+    <string name="catalog_action_var_clear_name" formatted="false">变量清除</string>
+    <string name="catalog_action_var_clear_description" formatted="false">取消设置一个变量、名称匹配模式的所有变量，或所有局部变量</string>
+    <string name="catalog_action_var_clear_field_name_label" formatted="false">名称或模式</string>
+    <string name="catalog_action_var_clear_field_name_hint" formatted="false">%name，开启模式匹配时可写 %item*。留空则清除所有局部变量</string>
+    <string name="catalog_action_var_clear_field_pattern_label" formatted="false">模式匹配</string>
+    <string name="catalog_action_var_clear_field_pattern_hint" formatted="false">清除名称匹配的所有变量，如 %item* 或 %a/%b</string>
+    <string name="catalog_action_var_clear_field_local_only_label" formatted="false">仅局部变量</string>
+    <string name="catalog_action_var_clear_field_local_only_hint" formatted="false">开启模式匹配时，不清除全局变量</string>
+    <string name="catalog_action_var_clear_field_clear_all_label" formatted="false">清除所有变量</string>
+    <string name="catalog_action_var_clear_field_clear_all_hint" formatted="false">名称留空时，也清除所有全局变量</string>
+    <string name="catalog_action_clipboard_get_name" formatted="false">读取剪贴板</string>
     <string name="catalog_action_clipboard_get_description" formatted="false">从系统剪贴板读取文本并存入敏感变量</string>
     <string name="catalog_action_clipboard_get_field_var_label" formatted="false">输出变量</string>
     <string name="catalog_action_clipboard_get_field_var_hint" formatted="false">默认：Clipboard（同时设置 %Clipboard_has_text）</string>
@@ -112,7 +141,13 @@
     <string name="catalog_action_text_replace_field_replacement_hint" formatted="false">可引用 $1、$2 等</string>
     <string name="catalog_action_text_replace_field_var_label" formatted="false">输出变量</string>
     <string name="catalog_action_text_replace_field_var_hint" formatted="false">默认：result</string>
-                            <string name="catalog_action_text_split_name" formatted="false">拆分文本</string>
+    <string name="catalog_action_text_replace_field_first_only_label" formatted="false">仅第一个匹配</string>
+    <string name="catalog_action_text_replace_field_first_only_hint" formatted="false">只替换和存储第一个匹配</string>
+    <string name="catalog_action_text_replace_field_matches_label" formatted="false">将匹配存入数组</string>
+    <string name="catalog_action_text_replace_field_matches_hint" formatted="false">%found 依次得到每个匹配：%found1、%found2……</string>
+    <string name="catalog_action_text_replace_field_search_only_label" formatted="false">仅查找匹配</string>
+    <string name="catalog_action_text_replace_field_search_only_hint" formatted="false">只存储匹配，不改动输出变量</string>
+    <string name="catalog_action_text_split_name" formatted="false">拆分文本</string>
     <string name="catalog_action_text_split_description" formatted="false">按字面分隔符或正则模式拆分为数组</string>
     <string name="catalog_action_text_split_field_source_label" formatted="false">源文本</string>
     <string name="catalog_action_text_split_field_delimiter_label" formatted="false">分隔符</string>
@@ -138,7 +173,74 @@
     <string name="catalog_action_text_substring_field_end_hint" formatted="false">不含结尾；省略表示到字符串末尾</string>
     <string name="catalog_action_text_substring_field_var_label" formatted="false">输出变量</string>
     <string name="catalog_action_text_substring_field_var_hint" formatted="false">默认：substring</string>
-                                                                                                                                                                                                                                                                                <string name="catalog_action_tts_speak_name" formatted="false">朗读（文本转语音）</string>
+    <string name="catalog_action_text_length_name" formatted="false">文本长度</string>
+    <string name="catalog_action_text_length_description" formatted="false">统计文本中的字符数</string>
+    <string name="catalog_action_text_length_field_source_label" formatted="false">文本</string>
+    <string name="catalog_action_text_length_field_var_label" formatted="false">输出变量</string>
+    <string name="catalog_action_text_length_field_var_hint" formatted="false">默认：length</string>
+    <string name="catalog_action_var_split_name" formatted="false">变量拆分</string>
+    <string name="catalog_action_var_split_description" formatted="false">像 Tasker 一样把变量拆分为编号元素（%text1、%text2……）</string>
+    <string name="catalog_action_var_split_field_name_label" formatted="false">名称</string>
+    <string name="catalog_action_var_split_field_name_hint" formatted="false">%text 变为 %text1、%text2……</string>
+    <string name="catalog_action_var_split_field_values_label" formatted="false">值</string>
+    <string name="catalog_action_var_split_field_values_hint" formatted="false">拆分这段文本而不是变量自身的值，同 Tasker 的数组设置</string>
+    <string name="catalog_action_var_split_field_splitter_label" formatted="false">分隔符</string>
+    <string name="catalog_action_var_split_field_splitter_hint" formatted="false">留空则按空格和换行拆分</string>
+    <string name="catalog_action_var_split_field_regex_label" formatted="false">分隔符为正则</string>
+    <string name="catalog_action_var_split_field_delete_base_label" formatted="false">拆分后删除原变量</string>
+    <string name="catalog_action_var_join_name" formatted="false">变量合并</string>
+    <string name="catalog_action_var_join_description" formatted="false">把编号元素（%arr1、%arr2……）合并回一个变量</string>
+    <string name="catalog_action_var_join_field_name_label" formatted="false">名称</string>
+    <string name="catalog_action_var_join_field_name_hint" formatted="false">%arr 把 %arr1、%arr2……合并到 %arr</string>
+    <string name="catalog_action_var_join_field_joiner_label" formatted="false">连接符</string>
+    <string name="catalog_action_var_join_field_delete_parts_label" formatted="false">合并后删除各元素</string>
+    <string name="catalog_action_var_convert_name" formatted="false">变量转换</string>
+    <string name="catalog_action_var_convert_description" formatted="false">转换变量的值，例如字节转兆字节、秒数转日期或文本转 Base64</string>
+    <string name="catalog_action_var_convert_field_name_label" formatted="false">变量</string>
+    <string name="catalog_action_var_convert_field_name_hint" formatted="false">%name，其值会被转换</string>
+    <string name="catalog_action_var_convert_field_function_label" formatted="false">转换方式</string>
+    <string name="catalog_action_var_convert_field_var_label" formatted="false">结果存入</string>
+    <string name="catalog_action_var_convert_field_var_hint" formatted="false">留空则替换该变量自身的值</string>
+    <string name="catalog_action_var_convert_field_url_safe_label" formatted="false">URL 安全的 Base64（仅用于 Base64 解码）</string>
+    <string name="catalog_action_array_push_name" formatted="false">数组插入</string>
+    <string name="catalog_action_array_push_description" formatted="false">向数组插入一个值，后面的元素依次后移</string>
+    <string name="catalog_action_array_push_field_array_label" formatted="false">数组</string>
+    <string name="catalog_action_array_push_field_array_hint" formatted="false">%arr，元素为 %arr1、%arr2……</string>
+    <string name="catalog_action_array_push_field_position_label" formatted="false">位置</string>
+    <string name="catalog_action_array_push_field_position_hint" formatted="false">默认：1；超出末尾则追加</string>
+    <string name="catalog_action_array_push_field_value_label" formatted="false">值</string>
+    <string name="catalog_action_array_push_field_fill_spaces_label" formatted="false">填补空位</string>
+    <string name="catalog_action_array_push_field_fill_spaces_hint" formatted="false">只移动到第一个空位为止的元素</string>
+    <string name="catalog_action_array_pop_name" formatted="false">数组弹出</string>
+    <string name="catalog_action_array_pop_description" formatted="false">从数组移除一个元素，后面的元素依次前移</string>
+    <string name="catalog_action_array_pop_field_array_label" formatted="false">数组</string>
+    <string name="catalog_action_array_pop_field_array_hint" formatted="false">%arr，元素为 %arr1、%arr2……</string>
+    <string name="catalog_action_array_pop_field_position_label" formatted="false">位置</string>
+    <string name="catalog_action_array_pop_field_position_hint" formatted="false">默认：1；超出末尾则弹出最后一个</string>
+    <string name="catalog_action_array_pop_field_to_var_label" formatted="false">存入变量</string>
+    <string name="catalog_action_array_pop_field_to_var_hint" formatted="false">可选，接收被移除的值</string>
+    <string name="catalog_action_array_clear_name" formatted="false">数组清空</string>
+    <string name="catalog_action_array_clear_description" formatted="false">取消设置数组的所有元素</string>
+    <string name="catalog_action_array_clear_field_array_label" formatted="false">数组</string>
+    <string name="catalog_action_array_clear_field_array_hint" formatted="false">%arr，元素为 %arr1、%arr2……</string>
+    <string name="catalog_action_array_process_name" formatted="false">数组处理</string>
+    <string name="catalog_action_array_process_description" formatted="false">将数组元素作为一组排序、反转、轮换、打乱、去重或压缩</string>
+    <string name="catalog_action_array_process_field_array_label" formatted="false">数组</string>
+    <string name="catalog_action_array_process_field_array_hint" formatted="false">%arr，元素为 %arr1、%arr2……</string>
+    <string name="catalog_action_array_process_field_type_label" formatted="false">操作</string>
+    <string name="catalog_action_sun_times_name" formatted="false">获取日出/日落时间</string>
+    <string name="catalog_action_sun_times_description" formatted="false">按 Tasker 的算法计算某地某天的日出、日落、晨昏蒙影和正午时间</string>
+    <string name="catalog_action_sun_times_field_latitude_label" formatted="false">纬度</string>
+    <string name="catalog_action_sun_times_field_latitude_hint" formatted="false">北纬为正，南纬为负。留空则使用手机位置</string>
+    <string name="catalog_action_sun_times_field_longitude_label" formatted="false">经度</string>
+    <string name="catalog_action_sun_times_field_longitude_hint" formatted="false">东经为正，西经为负。留空则使用手机位置</string>
+    <string name="catalog_action_sun_times_field_time_label" formatted="false">日期</string>
+    <string name="catalog_action_sun_times_field_time_hint" formatted="false">当天任意时刻，以 1970 年起的秒数表示。留空则为今天</string>
+    <string name="catalog_action_sun_times_field_elevations_label" formatted="false">自定义太阳高度角</string>
+    <string name="catalog_action_sun_times_field_elevations_hint" formatted="false">地平线以上为正、以下为负的度数，每行一个或以逗号分隔。对应时间存入 %ss_custom_morning 和 %ss_custom_evening</string>
+    <string name="catalog_action_sun_times_field_var_label" formatted="false">变量前缀</string>
+    <string name="catalog_action_sun_times_field_var_hint" formatted="false">默认为 ss，生成 %ss_sunrise、%ss_sunset 等变量。时间均为 1970 年起的秒数</string>
+    <string name="catalog_action_tts_speak_name" formatted="false">朗读（文本转语音）</string>
     <string name="catalog_action_tts_speak_description" formatted="false">使用设备扬声器朗读文本</string>
     <string name="catalog_action_tts_speak_field_text_label" formatted="false">要朗读的文本</string>
     <string name="catalog_action_flow_wait_name" formatted="false">等待</string>
@@ -146,11 +248,24 @@
     <string name="catalog_category_flow" formatted="false">流程</string>
     <string name="catalog_action_flow_wait_field_millis_label" formatted="false">毫秒</string>
     <string name="catalog_action_flow_wait_field_millis_hint" formatted="false">时长（毫秒）</string>
-                        <string name="catalog_action_task_run_name" formatted="false">运行任务</string>
+    <string name="catalog_action_profile_set_name" formatted="false">配置文件状态</string>
+    <string name="catalog_action_profile_set_description" formatted="false">按名称开启或关闭一个配置文件</string>
+    <string name="catalog_action_profile_set_field_profile_label" formatted="false">配置文件名称</string>
+    <string name="catalog_action_profile_set_field_profile_hint" formatted="false">与配置文件列表中显示的一致。应用本身不会开启的配置文件（例如仍在等待审核的）在这里也不会被开启。</string>
+    <string name="catalog_action_profile_set_field_state_label" formatted="false">设置</string>
+    <string name="catalog_action_task_run_name" formatted="false">运行任务</string>
     <string name="catalog_action_task_run_description" formatted="false">将另一个任务作为可复用的子任务运行（共享变量；最多8层嵌套）</string>
     <string name="catalog_action_task_run_field_task_label" formatted="false">任务ID或名称</string>
     <string name="catalog_action_task_run_field_task_hint" formatted="false">切换Wi-Fi</string>
-                                    <string name="catalog_action_flow_if_name" formatted="false">如果</string>
+    <string name="catalog_action_task_run_field_return_variable_label" formatted="false">将返回值存入</string>
+    <string name="catalog_action_task_run_field_return_variable_hint" formatted="false">%result</string>
+    <string name="catalog_action_task_run_field_reset_return_variable_label" formatted="false">任务运行前先清除它</string>
+    <string name="catalog_action_task_run_field_reset_return_variable_hint" formatted="false">如果任务没有返回值，该变量保持未设置，而不会保留旧值</string>
+    <string name="catalog_action_task_stop_name" formatted="false">停止任务</string>
+    <string name="catalog_action_task_stop_description" formatted="false">停止正在运行的另一个任务。填写本任务时，会像“停止”一样在此结束本任务。</string>
+    <string name="catalog_action_task_stop_field_task_label" formatted="false">任务ID或名称</string>
+    <string name="catalog_action_task_stop_field_task_hint" formatted="false">重复闹钟</string>
+    <string name="catalog_action_flow_if_name" formatted="false">如果</string>
     <string name="catalog_action_flow_if_description" formatted="false">仅当条件为真时运行以下操作（以“结束如果”关闭）</string>
     <string name="catalog_action_flow_if_field_condition_label" formatted="false">条件</string>
     <string name="catalog_action_flow_if_field_condition_hint" formatted="false">%battery &lt; 20</string>
@@ -162,13 +277,17 @@
     <string name="catalog_action_flow_foreach_description" formatted="false">对数组变量或一组值迭代执行以下操作（以“结束遍历”关闭）</string>
     <string name="catalog_action_flow_foreach_field_list_label" formatted="false">数组变量名</string>
     <string name="catalog_action_flow_foreach_field_list_hint" formatted="false">myList</string>
-            <string name="catalog_action_flow_foreach_field_var_label" formatted="false">元素变量名</string>
+    <string name="catalog_action_flow_foreach_field_values_label" formatted="false">或这些值（不填数组时使用）</string>
+    <string name="catalog_action_flow_foreach_field_values_hint" formatted="false">1:10, apple, %fruit, %arr()</string>
+    <string name="catalog_action_flow_foreach_field_var_label" formatted="false">元素变量名</string>
     <string name="catalog_action_flow_foreach_field_var_hint" formatted="false">item</string>
     <string name="catalog_action_flow_endfor_name" formatted="false">结束遍历</string>
     <string name="catalog_action_flow_endfor_description" formatted="false">关闭匹配的“遍历”循环</string>
       <string name="catalog_action_flow_stop_name" formatted="false">停止</string>
       <string name="catalog_action_flow_stop_description" formatted="false">立即终止任务的其余部分</string>
-                  <string name="catalog_action_flow_try_name" formatted="false">尝试</string>
+      <string name="catalog_action_flow_stop_field_value_label" formatted="false">将此值返回给运行本任务的任务</string>
+      <string name="catalog_action_flow_stop_field_value_hint" formatted="false">%total</string>
+      <string name="catalog_action_flow_try_name" formatted="false">尝试</string>
       <string name="catalog_action_flow_try_description" formatted="false">运行一个有界、可重试的块，并可选用“捕获”处理其失败</string>
       <string name="catalog_action_flow_try_field_max_attempts_label" formatted="false">最大尝试次数</string>
       <string name="catalog_action_flow_try_field_max_attempts_hint" formatted="false">1到5。下方块审查会列出可重试的操作。</string>
@@ -181,7 +300,20 @@
       <string name="catalog_action_flow_catch_description" formatted="false">使用 FLOW_ERROR_* 变量处理失败的“尝试”块</string>
       <string name="catalog_action_flow_endtry_name" formatted="false">结束尝试</string>
       <string name="catalog_action_flow_endtry_description" formatted="false">关闭匹配的“尝试/捕获”块</string>
-                                                                                    <string name="catalog_action_intent_launch_name" formatted="false">启动Intent</string>
+      <string name="catalog_action_flow_goto_name" formatted="false">跳转</string>
+      <string name="catalog_action_flow_goto_description" formatted="false">按编号或标签跳转到此任务中的另一步</string>
+      <string name="catalog_action_flow_goto_field_step_label" formatted="false">步骤编号</string>
+      <string name="catalog_action_flow_goto_field_step_hint" formatted="false">从1开始计数。也可以使用 %step 这样的变量。</string>
+      <string name="catalog_action_flow_goto_field_label_label" formatted="false">步骤标签</string>
+      <string name="catalog_action_flow_goto_field_label_hint" formatted="false">跳转到第一个带有此标签的步骤。设置后优先于编号。</string>
+      <string name="catalog_action_flow_goto_field_to_label" formatted="false">跳转到</string>
+      <string name="catalog_action_flow_goto_field_to_hint" formatted="false">选“无”时按步骤编号或标签跳转。其他选项作用于此步骤所在的“遍历”或“如果”块，并优先于编号和标签。</string>
+      <string name="catalog_action_flow_goto_to_loop_top" formatted="false">循环开头（下一项）</string>
+      <string name="catalog_action_flow_goto_to_loop_end" formatted="false">跳出循环</string>
+      <string name="catalog_action_flow_goto_to_if_end" formatted="false">“如果”块末尾</string>
+      <string name="catalog_action_flow_anchor_name" formatted="false">锚点</string>
+      <string name="catalog_action_flow_anchor_description" formatted="false">不执行任何操作。给它一个标签，供“跳转”使用。</string>
+      <string name="catalog_action_intent_launch_name" formatted="false">启动Intent</string>
     <string name="catalog_action_intent_launch_description" formatted="false">派发一个有界的Activity、广播或服务Intent</string>
     <string name="catalog_category_app" formatted="false">应用</string>
     <string name="catalog_action_intent_launch_field_package_label" formatted="false">包名</string>
@@ -368,7 +500,16 @@
     <string name="action_option_tile_icon_star" formatted="false">星标</string>
     <string name="action_option_tile_icon_settings" formatted="false">设置</string>
     <string name="action_option_tile_icon_bolt" formatted="false">闪电</string>
-                                        <string name="catalog_action_app_launch_name" formatted="false">启动应用</string>
+    <string name="catalog_action_wallpaper_set_name" formatted="false">设置壁纸</string>
+    <string name="catalog_action_wallpaper_set_description" formatted="false">将主屏幕或锁屏壁纸换成一张图片</string>
+    <string name="catalog_action_wallpaper_set_field_path_label" formatted="false">图片</string>
+    <string name="catalog_action_wallpaper_set_field_path_hint" formatted="false">点按“浏览”选择图片，重启后仍可读取</string>
+    <string name="catalog_action_wallpaper_set_field_target_label" formatted="false">屏幕</string>
+    <string name="catalog_action_wallpaper_set_field_target_hint" formatted="false">默认两者都设置</string>
+    <string name="action_option_wallpaper_both" formatted="false">主屏幕和锁屏</string>
+    <string name="action_option_wallpaper_home" formatted="false">主屏幕</string>
+    <string name="action_option_wallpaper_lock" formatted="false">锁屏</string>
+    <string name="catalog_action_app_launch_name" formatted="false">启动应用</string>
     <string name="catalog_action_app_launch_description" formatted="false">启动一个已安装的应用</string>
     <string name="catalog_action_app_launch_field_package_label" formatted="false">包名</string>
     <string name="catalog_action_app_launch_field_package_hint" formatted="false">com.example.app</string>
@@ -542,7 +683,14 @@
     <string name="catalog_action_sound_play_field_path_label" formatted="false">声音文件路径</string>
     <string name="catalog_action_sound_play_field_volume_label" formatted="false">音量（0-100）</string>
     <string name="catalog_action_sound_play_field_volume_hint" formatted="false">可选；为空时使用当前音量</string>
-                                <string name="catalog_action_sound_stop_name" formatted="false">停止声音</string>
+    <string name="catalog_action_sound_beep_name" formatted="false">蜂鸣</string>
+    <string name="catalog_action_sound_beep_description" formatted="false">以设定的音高播放一个音</string>
+    <string name="catalog_action_sound_beep_field_frequency_label" formatted="false">频率（Hz）</string>
+    <string name="catalog_action_sound_beep_field_frequency_hint" formatted="false">音高，0 到 10000。440 是中央 C 上方的 A 音。</string>
+    <string name="catalog_action_sound_beep_field_duration_label" formatted="false">时长（毫秒）</string>
+    <string name="catalog_action_sound_beep_field_amplitude_label" formatted="false">振幅（0-100）</string>
+    <string name="catalog_action_sound_beep_field_amplitude_hint" formatted="false">为空时为 50</string>
+    <string name="catalog_action_sound_stop_name" formatted="false">停止声音</string>
     <string name="catalog_action_sound_stop_description" formatted="false">停止播放</string>
     <string name="catalog_action_sound_pause_name" formatted="false">暂停声音</string>
     <string name="catalog_action_sound_pause_description" formatted="false">暂停播放</string>
@@ -550,7 +698,15 @@
     <string name="catalog_action_track_next_description" formatted="false">播放下一曲</string>
     <string name="catalog_action_track_previous_name" formatted="false">上一曲</string>
     <string name="catalog_action_track_previous_description" formatted="false">播放上一曲</string>
-                                    <string name="catalog_action_media_mute_name" formatted="false">静音</string>
+    <string name="catalog_action_sound_resume_name" formatted="false">继续播放</string>
+    <string name="catalog_action_sound_resume_description" formatted="false">恢复播放</string>
+    <string name="catalog_action_sound_toggle_name" formatted="false">播放/暂停</string>
+    <string name="catalog_action_sound_toggle_description" formatted="false">在播放和暂停之间切换</string>
+    <string name="catalog_action_track_rewind_name" formatted="false">快退</string>
+    <string name="catalog_action_track_rewind_description" formatted="false">快退当前曲目</string>
+    <string name="catalog_action_track_fastforward_name" formatted="false">快进</string>
+    <string name="catalog_action_track_fastforward_description" formatted="false">快进当前曲目</string>
+    <string name="catalog_action_media_mute_name" formatted="false">静音</string>
     <string name="catalog_action_media_mute_description" formatted="false">静音音频</string>
     <string name="catalog_action_media_mute_field_stream_label" formatted="false">音频流</string>
     <string name="catalog_action_media_mute_field_stream_hint" formatted="false">音乐、铃声、通知、闹钟、系统、通话（默认：音乐）</string>

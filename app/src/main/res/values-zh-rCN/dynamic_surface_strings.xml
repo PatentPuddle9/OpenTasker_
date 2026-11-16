@@ -18,7 +18,9 @@
 
     <string name="context_field_application_package_label" formatted="false">包名</string>
     <string name="context_field_application_package_hint" formatted="false">com.example.app（工作资料中的应用不可见）</string>
-            <string name="context_field_time_start_label" formatted="false">开始 HH:mm</string>
+    <string name="context_field_application_component_label" formatted="false">前台组件（可选）</string>
+    <string name="context_field_application_component_hint" formatted="false">com.example.app.PlayerActivity 或 com.example.app.*</string>
+    <string name="context_field_time_start_label" formatted="false">开始 HH:mm</string>
     <string name="context_field_time_start_hint" formatted="false">09:00，或全局变量如 %Sunrise</string>
     <string name="context_field_time_end_label" formatted="false">结束 HH:mm</string>
     <string name="context_field_time_end_hint" formatted="false">17:00，或全局变量如 %Sunset</string>
@@ -36,7 +38,9 @@
     <string name="context_field_location_outside_hint" formatted="false">离开此地而不是在此地时触发（带停留）</string>
     <string name="context_field_state_key_label" formatted="false">状态键</string>
     <string name="context_field_state_key_hint" formatted="false">battery_level、charging、orientation、proximity、activity、speed、roaming、tethering、call_state、bt_near、health_steps、health_heart_rate、health_sleep_minutes、health_exercise_minutes</string>
-            <string name="context_field_state_operator_label" formatted="false">运算符</string>
+    <string name="context_field_state_poll_minutes_label" formatted="false">检查间隔（分钟）</string>
+    <string name="context_field_state_poll_minutes_hint" formatted="false">仅用于健康读数。15 到 1440，默认 15</string>
+    <string name="context_field_state_operator_label" formatted="false">运算符</string>
     <string name="context_field_state_operator_hint" formatted="false">=、&gt;=、&lt;=、&gt;、&lt;、~（Wi-Fi 名称模式）</string>
     <string name="context_field_state_value_label" formatted="false">期望值</string>
     <string name="context_field_state_value_hint" formatted="false">portrait、near、walking、10、true、ringing 或现有的状态值</string>
@@ -47,7 +51,11 @@
     <string name="context_state_preset_roaming" formatted="false">漫游</string>
     <string name="context_state_preset_tethering" formatted="false">网络共享</string>
     <string name="context_state_preset_call" formatted="false">来电</string>
-                    <string name="context_field_event_type_label" formatted="false">事件类型</string>
+    <string name="context_state_preset_health_steps" formatted="false">今天走满 10,000 步</string>
+    <string name="context_state_preset_health_heart_rate" formatted="false">心率超过 100</string>
+    <string name="context_state_preset_health_sleep" formatted="false">睡眠不足 6 小时</string>
+    <string name="context_state_preset_health_exercise" formatted="false">今天锻炼 30 分钟</string>
+    <string name="context_field_event_type_label" formatted="false">事件类型</string>
     <string name="context_field_event_type_hint" formatted="false">boot_completed、notification、nfc、bluetooth、bluetooth_key_missing、bluetooth_encryption_change、calendar、sunrise、sunset、shake、camera、mic、package_added、package_removed、package_replaced</string>
     <string name="context_field_event_state_label" formatted="false">事件状态</string>
     <string name="context_field_event_state_hint" formatted="false">during、upcoming、connected、disconnected</string>
@@ -67,7 +75,9 @@
     <string name="context_field_event_offset_hint" formatted="false">-30</string>
     <string name="context_field_event_window_label" formatted="false">太阳窗口分钟数</string>
     <string name="context_field_event_window_hint" formatted="false">5</string>
-            <string name="context_field_event_topic_label" formatted="false">推送主题</string>
+    <string name="context_field_event_elevation_label" formatted="false">太阳高度角</string>
+    <string name="context_field_event_elevation_hint" formatted="false">留空为日出或日落，也可填 civil、nautical、astronomical 或度数，如 -4</string>
+    <string name="context_field_event_topic_label" formatted="false">推送主题</string>
     <string name="context_field_event_topic_hint" formatted="false">topic-name</string>
     <string name="context_field_event_id_label" formatted="false">推送事件ID</string>
     <string name="context_field_event_id_hint" formatted="false">可选的精确投递ID</string>
@@ -82,7 +92,11 @@
     <string name="context_field_plugin_package_hint" formatted="false">com.example.plugin</string>
     <string name="context_field_plugin_bundle_label" formatted="false">插件配置JSON</string>
     <string name="context_field_plugin_bundle_hint" formatted="false">{&quot;key&quot;:&quot;value&quot;,&quot;count&quot;:{&quot;int&quot;:3}}</string>
-                    <string name="context_field_plugin_blurb_label" formatted="false">描述</string>
+    <string name="locale_plugin_configure">在插件中设置</string>
+    <string name="locale_plugin_configure_missing">该应用没有 OpenTasker 可以打开的插件设置界面。</string>
+    <string name="locale_plugin_configure_failed">无法保存插件设置：%1$s</string>
+    <string name="locale_plugin_configure_refused">OpenTasker 没有打开插件设置：%1$s</string>
+    <string name="context_field_plugin_blurb_label" formatted="false">描述</string>
     <string name="context_field_plugin_blurb_hint" formatted="false">来自插件配置的可选标签</string>
     <string name="context_field_plugin_timeout_label" formatted="false">查询超时毫秒</string>
     <string name="context_field_plugin_timeout_hint" formatted="false">5000</string>
@@ -102,7 +116,13 @@
     <string name="context_preset_at_sunrise" formatted="false">日出时</string>
     <string name="context_preset_at_sunset" formatted="false">日落时</string>
     <string name="context_preset_30_after" formatted="false">延后30分钟</string>
-                            <string name="context_preset_all_bluetooth_disconnected" formatted="false">所有蓝牙设备已断开</string>
+    <string name="context_preset_civil_dawn" formatted="false">民用晨光始</string>
+    <string name="context_preset_nautical_dawn" formatted="false">航海晨光始</string>
+    <string name="context_preset_astronomical_dawn" formatted="false">天文晨光始</string>
+    <string name="context_preset_civil_dusk" formatted="false">民用昏影终</string>
+    <string name="context_preset_nautical_dusk" formatted="false">航海昏影终</string>
+    <string name="context_preset_astronomical_dusk" formatted="false">天文昏影终</string>
+    <string name="context_preset_all_bluetooth_disconnected" formatted="false">所有蓝牙设备已断开</string>
     <string name="context_preset_bluetooth_key_missing" formatted="false">蓝牙密钥缺失</string>
     <string name="context_preset_bluetooth_encrypted" formatted="false">蓝牙链路已加密</string>
     <string name="context_preset_bluetooth_unencrypted" formatted="false">蓝牙链路未加密</string>
@@ -132,7 +152,11 @@
         <item quantity="one">%1$d 个操作</item>
         <item quantity="other">%1$d 个操作</item>
     </plurals>
-    
+    <plurals name="widget_saved_task_count">
+        <item quantity="one">有 %1$d 个已保存任务可用。选择这个小部件在点击时应运行的任务。</item>
+        <item quantity="other">有 %1$d 个已保存任务可用。选择这个小部件在点击时应运行的任务。</item>
+    </plurals>
+
     <!-- Scene overlay service and fallback views. -->
     <string name="scene_overlay_default_button" formatted="false">按钮</string>
     <string name="scene_overlay_unsupported_element">%1$s 不可用</string>
@@ -160,7 +184,8 @@
     <string name="capability_zen_rule_access" formatted="false">需要勿扰模式访问权限；Android 15及以上使用带设备效果的专有Zen规则。</string>
     <string name="capability_torch_ready" formatted="false">使用相机闪光灯。</string>
     <string name="capability_aod_unsupported" formatted="false">更改常亮显示需要Shizuku权限及其特权用户服务传输，某些版本会完全忽略该设置。屏幕常亮会消耗更多电量。</string>
-        <string name="capability_wifi_scan_setup" formatted="false">扫描需要位置访问权限，以及Android 13及以上版本的“附近Wi-Fi设备”权限。Android会限制扫描频率，因此结果可能是最近一次缓存扫描而非全新扫描。</string>
+    <string name="capability_sun_times_setup" formatted="false">仅当纬度或经度留空时需要位置访问权限，用于读取手机位置。</string>
+    <string name="capability_wifi_scan_setup" formatted="false">扫描需要位置访问权限，以及Android 13及以上版本的“附近Wi-Fi设备”权限。Android会限制扫描频率，因此结果可能是最近一次缓存扫描而非全新扫描。</string>
     <string name="capability_airplane_unsupported" formatted="false">更改飞行模式需要Shizuku权限及其特权用户服务传输。开启后，通话、移动数据和（通常）Wi-Fi 会中断，直到有操作将其关闭。</string>
     <string name="capability_mobile_data_unsupported" formatted="false">更改移动数据需要Shizuku权限及其特权用户服务传输。关闭后，依赖数据的功能都会停止，包括对这台手机的远程访问。</string>
     <string name="capability_screenshot_unsupported" formatted="false">屏幕截图需要Shizuku权限及其特权用户服务传输。会把屏幕上的所有内容（包括密码和消息）保存到 OpenTasker 的存储空间。</string>

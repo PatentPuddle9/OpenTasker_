@@ -667,4 +667,317 @@
     <string name="catalog_action_shortcut_publish_field_mode_hint" formatted="false">Dynamic updates immediately; pinned asks the launcher</string>
     <string name="action_option_shortcut_dynamic" formatted="false">Dynamic</string>
     <string name="action_option_shortcut_pinned" formatted="false">Pinned</string>
+
+
+<string name="catalog_action_notify_show_field_channel_label" formatted="false">Channel</string>
+
+<string name="catalog_action_notify_show_field_channel_hint" formatted="false">quiet / default / urgent</string>
+
+<string name="catalog_action_notify_show_field_persistent_label" formatted="false">Persistent</string>
+
+<string name="catalog_action_notify_show_field_persistent_hint" formatted="false">Keep until cancelled</string>
+
+<string name="catalog_action_notify_show_field_tag_label" formatted="false">Tag</string>
+
+<string name="catalog_action_notify_show_field_tag_hint" formatted="false">Replacement tag (same tag replaces)</string>
+
+<string name="catalog_action_notify_show_field_id_label" formatted="false">ID</string>
+
+<string name="catalog_action_notify_show_field_id_hint" formatted="false">Notification ID (same ID replaces)</string>
+
+<string name="catalog_action_var_set_multiple_name" formatted="false">Multiple Variables Set</string>
+
+<string name="catalog_action_var_set_multiple_description" formatted="false">Set several variables in one step, each name to the value in the same place</string>
+
+<string name="catalog_action_var_set_multiple_field_names_label" formatted="false">Names</string>
+
+<string name="catalog_action_var_set_multiple_field_names_hint" formatted="false">One %name per line. With no values and two or more lines, a name can take its own after the values splitter, like %count,0</string>
+
+<string name="catalog_action_var_set_multiple_field_values_label" formatted="false">Values</string>
+
+<string name="catalog_action_var_set_multiple_field_values_hint" formatted="false">One value per line, in the same order as the names. A name without a value is unset</string>
+
+<string name="catalog_action_var_set_multiple_field_names_splitter_label" formatted="false">Names splitter</string>
+
+<string name="catalog_action_var_set_multiple_field_values_splitter_label" formatted="false">Values splitter</string>
+
+<string name="catalog_action_var_set_multiple_field_splitter_hint" formatted="false">Text between entries. Leave blank for a new line, or a comma when there\'s only one line</string>
+
+<string name="catalog_action_var_set_multiple_field_keep_existing_label" formatted="false">Keep existing</string>
+
+<string name="catalog_action_var_set_multiple_field_keep_existing_hint" formatted="false">Leave a variable alone when it already has a value</string>
+
+<string name="catalog_action_var_clear_name" formatted="false">Variable Clear</string>
+
+<string name="catalog_action_var_clear_description" formatted="false">Unset a variable, every variable matching a pattern, or every local variable</string>
+
+<string name="catalog_action_var_clear_field_name_label" formatted="false">Name or pattern</string>
+
+<string name="catalog_action_var_clear_field_name_hint" formatted="false">%name, or %item* with pattern matching. Leave it empty to clear every local variable</string>
+
+<string name="catalog_action_var_clear_field_pattern_label" formatted="false">Pattern matching</string>
+
+<string name="catalog_action_var_clear_field_pattern_hint" formatted="false">Clear every variable whose name matches, like %item* or %a/%b</string>
+
+<string name="catalog_action_var_clear_field_local_only_label" formatted="false">Local variables only</string>
+
+<string name="catalog_action_var_clear_field_local_only_hint" formatted="false">With pattern matching, leave global variables alone</string>
+
+<string name="catalog_action_var_clear_field_clear_all_label" formatted="false">Clear all variables</string>
+
+<string name="catalog_action_var_clear_field_clear_all_hint" formatted="false">With no name, clear every global variable too</string>
+
+<string name="catalog_action_text_replace_field_first_only_label" formatted="false">First match only</string>
+
+<string name="catalog_action_text_replace_field_first_only_hint" formatted="false">Replace and store only the first match</string>
+
+<string name="catalog_action_text_replace_field_matches_label" formatted="false">Store matches in array</string>
+
+<string name="catalog_action_text_replace_field_matches_hint" formatted="false">%found gets each match as %found1, %found2, ...</string>
+
+<string name="catalog_action_text_replace_field_search_only_label" formatted="false">Only find matches</string>
+
+<string name="catalog_action_text_replace_field_search_only_hint" formatted="false">Store the matches and leave the output variable as it is</string>
+
+<string name="catalog_action_text_length_name" formatted="false">Text Length</string>
+
+<string name="catalog_action_text_length_description" formatted="false">Count the characters in some text</string>
+
+<string name="catalog_action_text_length_field_source_label" formatted="false">Text</string>
+
+<string name="catalog_action_text_length_field_var_label" formatted="false">Output variable</string>
+
+<string name="catalog_action_text_length_field_var_hint" formatted="false">default: length</string>
+
+<string name="catalog_action_var_split_name" formatted="false">Variable Split</string>
+
+<string name="catalog_action_var_split_description" formatted="false">Split a variable into numbered elements, the way Tasker does (%text1, %text2, …)</string>
+
+<string name="catalog_action_var_split_field_name_label" formatted="false">Name</string>
+
+<string name="catalog_action_var_split_field_name_hint" formatted="false">%text becomes %text1, %text2, …</string>
+
+<string name="catalog_action_var_split_field_values_label" formatted="false">Values</string>
+
+<string name="catalog_action_var_split_field_values_hint" formatted="false">split this text instead of the variable\'s own value, like Tasker\'s Array Set</string>
+
+<string name="catalog_action_var_split_field_splitter_label" formatted="false">Splitter</string>
+
+<string name="catalog_action_var_split_field_splitter_hint" formatted="false">blank splits on spaces and new lines</string>
+
+<string name="catalog_action_var_split_field_regex_label" formatted="false">Splitter is a regex</string>
+
+<string name="catalog_action_var_split_field_delete_base_label" formatted="false">Delete the variable after splitting</string>
+
+<string name="catalog_action_var_join_name" formatted="false">Variable Join</string>
+
+<string name="catalog_action_var_join_description" formatted="false">Join numbered elements (%arr1, %arr2, …) back into one variable</string>
+
+<string name="catalog_action_var_join_field_name_label" formatted="false">Name</string>
+
+<string name="catalog_action_var_join_field_name_hint" formatted="false">%arr joins %arr1, %arr2, … into %arr</string>
+
+<string name="catalog_action_var_join_field_joiner_label" formatted="false">Joiner</string>
+
+<string name="catalog_action_var_join_field_delete_parts_label" formatted="false">Delete the elements after joining</string>
+
+<string name="catalog_action_var_convert_name" formatted="false">Variable Convert</string>
+
+<string name="catalog_action_var_convert_description" formatted="false">Convert a variable\'s value, such as bytes to megabytes, seconds to a date or text to Base64</string>
+
+<string name="catalog_action_var_convert_field_name_label" formatted="false">Variable</string>
+
+<string name="catalog_action_var_convert_field_name_hint" formatted="false">%name, whose value gets converted</string>
+
+<string name="catalog_action_var_convert_field_function_label" formatted="false">Conversion</string>
+
+<string name="catalog_action_var_convert_field_var_label" formatted="false">Store result in</string>
+
+<string name="catalog_action_var_convert_field_var_hint" formatted="false">Leave blank to replace the variable\'s own value</string>
+
+<string name="catalog_action_var_convert_field_url_safe_label" formatted="false">URL-safe Base64 (Base64 decode only)</string>
+
+<string name="catalog_action_array_push_name" formatted="false">Array Push</string>
+
+<string name="catalog_action_array_push_description" formatted="false">Insert a value into an array and move later elements up</string>
+
+<string name="catalog_action_array_push_field_array_label" formatted="false">Array</string>
+
+<string name="catalog_action_array_push_field_array_hint" formatted="false">%arr, with elements %arr1, %arr2, …</string>
+
+<string name="catalog_action_array_push_field_position_label" formatted="false">Position</string>
+
+<string name="catalog_action_array_push_field_position_hint" formatted="false">default: 1; past the end appends</string>
+
+<string name="catalog_action_array_push_field_value_label" formatted="false">Value</string>
+
+<string name="catalog_action_array_push_field_fill_spaces_label" formatted="false">Fill spaces</string>
+
+<string name="catalog_action_array_push_field_fill_spaces_hint" formatted="false">only move elements up to the first gap</string>
+
+<string name="catalog_action_array_pop_name" formatted="false">Array Pop</string>
+
+<string name="catalog_action_array_pop_description" formatted="false">Remove an element from an array and move later elements down</string>
+
+<string name="catalog_action_array_pop_field_array_label" formatted="false">Array</string>
+
+<string name="catalog_action_array_pop_field_array_hint" formatted="false">%arr, with elements %arr1, %arr2, …</string>
+
+<string name="catalog_action_array_pop_field_position_label" formatted="false">Position</string>
+
+<string name="catalog_action_array_pop_field_position_hint" formatted="false">default: 1; past the end pops the last</string>
+
+<string name="catalog_action_array_pop_field_to_var_label" formatted="false">To variable</string>
+
+<string name="catalog_action_array_pop_field_to_var_hint" formatted="false">optional, gets the removed value</string>
+
+<string name="catalog_action_array_clear_name" formatted="false">Array Clear</string>
+
+<string name="catalog_action_array_clear_description" formatted="false">Unset every element of an array</string>
+
+<string name="catalog_action_array_clear_field_array_label" formatted="false">Array</string>
+
+<string name="catalog_action_array_clear_field_array_hint" formatted="false">%arr, with elements %arr1, %arr2, …</string>
+
+<string name="catalog_action_array_process_name" formatted="false">Array Process</string>
+
+<string name="catalog_action_array_process_description" formatted="false">Sort, reverse, rotate, shuffle, dedupe or squash an array\'s elements as a group</string>
+
+<string name="catalog_action_array_process_field_array_label" formatted="false">Array</string>
+
+<string name="catalog_action_array_process_field_array_hint" formatted="false">%arr, with elements %arr1, %arr2, …</string>
+
+<string name="catalog_action_array_process_field_type_label" formatted="false">Operation</string>
+
+<string name="catalog_action_sun_times_name" formatted="false">Get Sunrise/Sunset Times</string>
+
+<string name="catalog_action_sun_times_description" formatted="false">Work out sunrise, sunset, twilight and solar noon for a place and day, the way Tasker does</string>
+
+<string name="catalog_action_sun_times_field_latitude_label" formatted="false">Latitude</string>
+
+<string name="catalog_action_sun_times_field_latitude_hint" formatted="false">Degrees north, negative for south. Leave blank to use the phone\'s location</string>
+
+<string name="catalog_action_sun_times_field_longitude_label" formatted="false">Longitude</string>
+
+<string name="catalog_action_sun_times_field_longitude_hint" formatted="false">Degrees east, negative for west. Leave blank to use the phone\'s location</string>
+
+<string name="catalog_action_sun_times_field_time_label" formatted="false">Day</string>
+
+<string name="catalog_action_sun_times_field_time_hint" formatted="false">Any moment of the day, in seconds since 1970. Leave blank for today</string>
+
+<string name="catalog_action_sun_times_field_elevations_label" formatted="false">Custom sun elevations</string>
+
+<string name="catalog_action_sun_times_field_elevations_hint" formatted="false">Degrees above the horizon, negative below, one per line or comma separated. Their times go in %ss_custom_morning and %ss_custom_evening</string>
+
+<string name="catalog_action_sun_times_field_var_label" formatted="false">Variable prefix</string>
+
+<string name="catalog_action_sun_times_field_var_hint" formatted="false">ss by default, giving %ss_sunrise, %ss_sunset and the rest. Times are seconds since 1970</string>
+
+<string name="catalog_action_profile_set_name" formatted="false">Profile Status</string>
+
+<string name="catalog_action_profile_set_description" formatted="false">Turn a profile on or off by its name</string>
+
+<string name="catalog_action_profile_set_field_profile_label" formatted="false">Profile name</string>
+
+<string name="catalog_action_profile_set_field_profile_hint" formatted="false">As it shows in the profile list. A profile the app wouldn\'t turn on, such as one still waiting for its review, stays off here too.</string>
+
+<string name="catalog_action_profile_set_field_state_label" formatted="false">Set</string>
+
+<string name="catalog_action_task_run_field_return_variable_label" formatted="false">Store the returned value in</string>
+
+<string name="catalog_action_task_run_field_return_variable_hint" formatted="false">%result</string>
+
+<string name="catalog_action_task_run_field_reset_return_variable_label" formatted="false">Clear it before the task runs</string>
+
+<string name="catalog_action_task_run_field_reset_return_variable_hint" formatted="false">If the task returns nothing, the variable stays unset instead of keeping an older value</string>
+
+<string name="catalog_action_task_stop_name" formatted="false">Stop Task</string>
+
+<string name="catalog_action_task_stop_description" formatted="false">Stop another task while it runs. Naming this task ends it here, like Stop.</string>
+
+<string name="catalog_action_task_stop_field_task_label" formatted="false">Task id or name</string>
+
+<string name="catalog_action_task_stop_field_task_hint" formatted="false">Repeat Alarm</string>
+
+<string name="catalog_action_flow_foreach_field_values_label" formatted="false">Or these values (used when no array is named)</string>
+
+<string name="catalog_action_flow_foreach_field_values_hint" formatted="false">1:10, apple, %fruit, %arr()</string>
+
+<string name="catalog_action_flow_stop_field_value_label" formatted="false">Return this value to the task that ran it</string>
+
+<string name="catalog_action_flow_stop_field_value_hint" formatted="false">%total</string>
+
+<string name="catalog_action_flow_goto_name" formatted="false">Go To</string>
+
+<string name="catalog_action_flow_goto_description" formatted="false">Jump to another step in this task, by number or by its label</string>
+
+<string name="catalog_action_flow_goto_field_step_label" formatted="false">Step number</string>
+
+<string name="catalog_action_flow_goto_field_step_hint" formatted="false">Counts from 1. A variable such as %step works too.</string>
+
+<string name="catalog_action_flow_goto_field_label_label" formatted="false">Step label</string>
+
+<string name="catalog_action_flow_goto_field_label_hint" formatted="false">Jumps to the first step with this label. Used instead of the number when set.</string>
+
+<string name="catalog_action_flow_goto_field_to_label" formatted="false">Jump to</string>
+
+<string name="catalog_action_flow_goto_field_to_hint" formatted="false">None jumps by the step number or label. The others act on the For Each or If this step sits in, and win over the number and label.</string>
+
+<string name="catalog_action_flow_goto_to_loop_top" formatted="false">Top of the loop (next item)</string>
+
+<string name="catalog_action_flow_goto_to_loop_end" formatted="false">Out of the loop</string>
+
+<string name="catalog_action_flow_goto_to_if_end" formatted="false">End of the If</string>
+
+<string name="catalog_action_flow_anchor_name" formatted="false">Anchor</string>
+
+<string name="catalog_action_flow_anchor_description" formatted="false">Does nothing. Give it a label for Go To to jump to.</string>
+
+<string name="catalog_action_wallpaper_set_name" formatted="false">Set Wallpaper</string>
+
+<string name="catalog_action_wallpaper_set_description" formatted="false">Change the home or lock screen wallpaper to an image</string>
+
+<string name="catalog_action_wallpaper_set_field_path_label" formatted="false">Image</string>
+
+<string name="catalog_action_wallpaper_set_field_path_hint" formatted="false">Tap Browse to pick it, so it can still be read after a restart</string>
+
+<string name="catalog_action_wallpaper_set_field_target_label" formatted="false">Screen</string>
+
+<string name="catalog_action_wallpaper_set_field_target_hint" formatted="false">Both by default</string>
+
+<string name="action_option_wallpaper_both" formatted="false">Home and lock screen</string>
+
+<string name="action_option_wallpaper_home" formatted="false">Home screen</string>
+
+<string name="action_option_wallpaper_lock" formatted="false">Lock screen</string>
+
+<string name="catalog_action_sound_beep_name" formatted="false">Beep</string>
+
+<string name="catalog_action_sound_beep_description" formatted="false">Play a tone at a set pitch</string>
+
+<string name="catalog_action_sound_beep_field_frequency_label" formatted="false">Frequency (Hz)</string>
+
+<string name="catalog_action_sound_beep_field_frequency_hint" formatted="false">Pitch of the tone, 0 to 10000. 440 is the A above middle C.</string>
+
+<string name="catalog_action_sound_beep_field_duration_label" formatted="false">Duration (ms)</string>
+
+<string name="catalog_action_sound_beep_field_amplitude_label" formatted="false">Amplitude (0-100)</string>
+
+<string name="catalog_action_sound_beep_field_amplitude_hint" formatted="false">50 when empty</string>
+
+<string name="catalog_action_sound_resume_name" formatted="false">Resume Sound</string>
+
+<string name="catalog_action_sound_resume_description" formatted="false">Resume playback</string>
+
+<string name="catalog_action_sound_toggle_name" formatted="false">Play/Pause</string>
+
+<string name="catalog_action_sound_toggle_description" formatted="false">Switch between playing and paused</string>
+
+<string name="catalog_action_track_rewind_name" formatted="false">Rewind</string>
+
+<string name="catalog_action_track_rewind_description" formatted="false">Rewind the current track</string>
+
+<string name="catalog_action_track_fastforward_name" formatted="false">Fast Forward</string>
+
+<string name="catalog_action_track_fastforward_description" formatted="false">Fast forward the current track</string>
 </resources>
