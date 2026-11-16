@@ -1,5 +1,7 @@
 package com.opentasker.core.marketplace
 
+import com.opentasker.app.BuildConfig
+
 /**
  * Trust anchors for the official GitHub-hosted marketplace.
  *
@@ -11,5 +13,5 @@ internal object MarketplaceTrust {
     const val OFFICIAL_MARKETPLACE_ID = "opentasker-official"
     const val CATALOG_BASE_URL =
         "https://raw.githubusercontent.com/PatentPuddle9/OpenTasker_Makrketplace/main"
-    const val OFFICIAL_PUBLIC_KEY_X509_BASE64 = ""
+    val OFFICIAL_PUBLIC_KEY_X509_BASE64: String = BuildConfig.MARKETPLACE_PUBLIC_KEY_X509_BASE64
 }
