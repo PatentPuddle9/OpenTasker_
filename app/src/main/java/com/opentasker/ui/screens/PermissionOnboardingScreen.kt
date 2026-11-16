@@ -835,6 +835,8 @@ fun PermissionOnboardingScreen(
         }
 
         if (settingsOnly) {
+            item { SettingsSectionLabel("Account") }
+            item { GitHubAccountSettingsCard() }
             item { SettingsSectionLabel(stringResource(R.string.settings_section_general)) }
             if (UpdateCheckAvailability.isAvailable()) {
                 item {
@@ -970,8 +972,6 @@ fun PermissionOnboardingScreen(
                     }
                 }
             }
-            item { SettingsSectionLabel("Account") }
-            item { GitHubAccountSettingsCard() }
             item { SettingsSectionLabel(stringResource(R.string.settings_section_data_recovery)) }
             item {
                 BackupSetupCard(

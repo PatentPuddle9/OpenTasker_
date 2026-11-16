@@ -35,14 +35,17 @@ import kotlinx.coroutines.launch
 internal fun GitHubAccountSettingsCard() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var account by remember { mutableStateOf<String?>(null) }
-    var checkingAccount by remember { mutableStateOf(true) }
+    var account by remember(context) { mutableStateOf(GitHubDeviceAuth.savedLogin(context)) }
+    var checkingAccount by remember { mutableStateOf(account == null) }
     var signingIn by remember { mutableStateOf(false) }
     var challenge by remember { mutableStateOf<GitHubDeviceChallenge?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        account = runCatching { GitHubDeviceAuth.verifySavedLogin(context) }.getOrNull()
+        val verified = runCatching { GitHubDeviceAuth.verifySavedLogin(context) }.getOrNull()
+        // Keep the locally saved account visible while GitHub is temporarily unreachable
+        // and refresh-token rotation is retried on the next authenticated request.
+        account = verified ?: GitHubDeviceAuth.savedLogin(context)
         checkingAccount = false
     }
 

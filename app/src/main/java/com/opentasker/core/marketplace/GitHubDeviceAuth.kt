@@ -39,6 +39,8 @@ internal data class GitHubTokenGrant(
  * User access tokens are encrypted with an Android Keystore AES-GCM key before persistence.
  */
 internal object GitHubDeviceAuth {
+    // Keep these identifiers stable: Android retains app-private preferences and Keystore keys
+    // across an in-place APK update, which lets the same encrypted GitHub session survive updates.
     private const val PREFS = "opentasker_github_auth"
     private const val ENCRYPTED_TOKEN = "encrypted_access_token"
     private const val USER_LOGIN = "github_login"
@@ -157,7 +159,10 @@ internal object GitHubDeviceAuth {
     }
 
     suspend fun verifySavedLogin(context: Context): String? = withContext(Dispatchers.IO) {
-        val token = TokenStore.read(context.applicationContext) ?: return@withContext null
+        // A null token can mean that refresh failed because the device is temporarily offline.
+        // TokenStore removes the saved login itself only when the encrypted session is invalid
+        // or GitHub rejects/revokes it, so preserve the account label for transient failures.
+        val token = TokenStore.read(context.applicationContext) ?: return@withContext savedLogin(context)
         try {
             val user = apiRequestBlocking(token, "GET", "/user")
             val login = user.optString("login").trim()
@@ -275,11 +280,14 @@ internal object GitHubDeviceAuth {
             } else {
                 0L
             }
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            val saved = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putString(ENCRYPTED_TOKEN, encoded)
                 .putLong(ACCESS_EXPIRES_AT, expiresAt)
                 .putString(USER_LOGIN, login)
-                .apply()
+                // This runs on Dispatchers.IO. Commit before reporting sign-in success so an
+                // immediate app update or process recreation cannot race an async preferences write.
+                .commit()
+            check(saved) { "Couldn't save the GitHub sign-in session on this device." }
         }
 
         fun read(context: Context): String? {
