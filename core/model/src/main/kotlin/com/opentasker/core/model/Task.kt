@@ -1,5 +1,6 @@
 package com.opentasker.core.model
 
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.Serializable
 
 /**
