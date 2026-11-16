@@ -1,5 +1,6 @@
 package com.opentasker.ui.screens
 
+import com.opentasker.BuildConfig
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
@@ -185,6 +186,7 @@ internal fun MarketplaceScreen(
             MarketplacePackageCard(
                 packageEntry = packageEntry,
                 installing = installingPackageId == packageEntry.id,
+                compatible = isVersionAtLeast(BuildConfig.VERSION_NAME, packageEntry.minimumAppVersion),
                 protectionEnabled = watchdogStatus[packageEntry.id]?.first ?: true,
                 locallyDisabled = watchdogStatus[packageEntry.id]?.second ?: false,
                 onProtectionChanged = { enabled ->
@@ -227,6 +229,7 @@ internal fun MarketplaceScreen(
 private fun MarketplacePackageCard(
     packageEntry: MarketplacePackage,
     installing: Boolean,
+    compatible: Boolean,
     protectionEnabled: Boolean,
     locallyDisabled: Boolean,
     onProtectionChanged: (Boolean) -> Unit,
@@ -245,6 +248,13 @@ private fun MarketplacePackageCard(
         ) {
             Text(packageEntry.name, style = MaterialTheme.typography.titleMedium)
             Text(packageEntry.summary, style = MaterialTheme.typography.bodyMedium)
+            if (!compatible) {
+                Text(
+                    "Requires OpenTasker ${packageEntry.minimumAppVersion} or newer.",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             if (locallyDisabled) {
                 Text(
                     "! Disabled on this device after repeated rapid executions.",
@@ -303,7 +313,7 @@ private fun MarketplacePackageCard(
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onInstall, enabled = !installing && !locallyDisabled) {
+                Button(onClick = onInstall, enabled = !installing && !locallyDisabled && compatible) {
                     Text(if (installing) "Checking…" else "Install")
                 }
                 TextButton(onClick = onReport) {
@@ -389,4 +399,20 @@ private fun MarketplaceInputsDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         },
     )
+}
+
+private fun isVersionAtLeast(current: String, required: String): Boolean {
+    fun parts(value: String): List<Int>? {
+        val pieces = value.substringBefore("-").substringBefore("+").split(".")
+        if (pieces.size < 3) return null
+        return pieces.take(3).map { it.toIntOrNull() ?: return null }
+    }
+    val currentParts = parts(current) ?: return false
+    val requiredParts = parts(required) ?: return false
+    for (index in 0..2) {
+        if (currentParts[index] != requiredParts[index]) {
+            return currentParts[index] > requiredParts[index]
+        }
+    }
+    return true
 }
