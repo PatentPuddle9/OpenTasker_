@@ -144,6 +144,24 @@ jobs:
           fi
           echo "GitHub OAuth Client ID secret is present (value hidden)."
 
+      - name: Verify official marketplace signing key
+        env:
+          MARKETPLACE_PUBLIC_KEY_X509_BASE64: ${{ secrets.MARKETPLACE_PUBLIC_KEY_X509_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$MARKETPLACE_PUBLIC_KEY_X509_BASE64" ]]; then
+            echo "::error::Repository secret MARKETPLACE_PUBLIC_KEY_X509_BASE64 is missing. Add the official marketplace X.509 public key to PatentPuddle9/OpenTasker_ > Settings > Secrets and variables > Actions. Follow OpenTasker_Makrketplace/docs/SIGNING_KEYS.md."
+            exit 1
+          fi
+          temp_dir="$(mktemp -d)"
+          trap 'rm -rf "$temp_dir"' EXIT
+          printf '%s' "$MARKETPLACE_PUBLIC_KEY_X509_BASE64" | base64 --decode > "$temp_dir/marketplace-public.der"
+          openssl pkey -pubin -inform DER -in "$temp_dir/marketplace-public.der" -out "$temp_dir/marketplace-public.pem" >/dev/null
+          curl --fail --silent --show-error "https://raw.githubusercontent.com/PatentPuddle9/OpenTasker_Makrketplace/main/catalog/v1/index.json" --output "$temp_dir/index.json"
+          curl --fail --silent --show-error "https://raw.githubusercontent.com/PatentPuddle9/OpenTasker_Makrketplace/main/catalog/v1/index.sig" --output "$temp_dir/index.sig.txt"
+          base64 --decode "$temp_dir/index.sig.txt" > "$temp_dir/index.sig"
+          openssl dgst -sha256 -verify "$temp_dir/marketplace-public.pem" -signature "$temp_dir/index.sig" "$temp_dir/index.json"
+          echo "Marketplace public key matches the currently published official catalogue."
       - name: Build debug APK
         env:
           MARKETPLACE_PUBLIC_KEY_X509_BASE64: ${{ secrets.MARKETPLACE_PUBLIC_KEY_X509_BASE64 }}
