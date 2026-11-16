@@ -74,6 +74,7 @@ shizuku-aidl = { module = "dev.rikka.shizuku:aidl", version.ref = "shizuku" }
 shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
 unifiedpush-connector = { module = "org.unifiedpush.android:connector", version.ref = "unifiedPush" }
 work-runtime = { module = "androidx.work:work-runtime", version.ref = "work" }
+work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 work-testing = { module = "androidx.work:work-testing", version.ref = "work" }
 health-connect-client = { module = "androidx.health.connect:connect-client", version.ref = "healthConnect" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
