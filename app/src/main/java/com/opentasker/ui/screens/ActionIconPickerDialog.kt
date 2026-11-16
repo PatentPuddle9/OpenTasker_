@@ -97,14 +97,15 @@ private data class IconPickerEntry(
 )
 
 /**
- * Searchable, categorized picker shared by profiles, widgets, and popup actions. Uploaded icons
- * appear in their own Custom category alongside the original Coolicons collection.
+ * Searchable, categorized picker shared by Actions, widgets, and popup actions. Builder-created
+ * icons appear in their own Custom category alongside the original Coolicons collection.
  */
 @Composable
 internal fun ActionIconPickerDialog(
     selectedIcon: String,
     onIconSelected: (String) -> Unit,
     onDismiss: () -> Unit,
+    includeCustomIcons: Boolean = true,
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var appliedSearchQuery by rememberSaveable { mutableStateOf("") }
@@ -118,7 +119,7 @@ internal fun ActionIconPickerDialog(
     }
     val context = LocalContext.current.applicationContext
     val customIcons by CustomWidgetIconStore.observe(context).collectAsState()
-    val pickerIcons = remember(customIcons) {
+    val pickerIcons = remember(customIcons, includeCustomIcons) {
         WidgetIconCatalog.all.map { option ->
             IconPickerEntry(
                 key = option.key,
@@ -126,13 +127,17 @@ internal fun ActionIconPickerDialog(
                 category = WidgetIconCatalog.categoryFor(option),
                 drawableRes = option.drawableRes,
             )
-        } + customIcons.map { icon ->
-            IconPickerEntry(
-                key = icon.key,
-                label = icon.name,
-                category = "Custom",
-                customIcon = icon,
-            )
+        } + if (includeCustomIcons) {
+            customIcons.map { icon ->
+                IconPickerEntry(
+                    key = icon.key,
+                    label = icon.name,
+                    category = "Custom",
+                    customIcon = icon,
+                )
+            }
+        } else {
+            emptyList()
         }
     }
     val categories = remember(pickerIcons) {
@@ -142,7 +147,7 @@ internal fun ActionIconPickerDialog(
             "Time", "Other",
         )
         listOf("All") + order.filter { category ->
-            category == "Custom" || pickerIcons.any { it.category == category }
+            pickerIcons.any { it.category == category }
         }
     }
     val filteredIcons = remember(pickerIcons, appliedSearchQuery, selectedCategory) {
@@ -156,7 +161,7 @@ internal fun ActionIconPickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Choose action icon") },
+        title = { Text(if (includeCustomIcons) "Choose action icon" else "Choose symbol") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
@@ -188,7 +193,7 @@ internal fun ActionIconPickerDialog(
                     ) {
                         Text(
                             if (selectedCategory == "Custom") {
-                                "No custom icons yet. Upload icons in Settings > General > Custom icons."
+                                "No custom icons yet. Build one in Settings > General > Icon builder."
                             } else {
                                 "No icons match this search."
                             },

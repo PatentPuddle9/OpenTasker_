@@ -17,7 +17,7 @@ import androidx.compose.ui.res.painterResource
 import com.opentasker.widget.CustomWidgetIconStore
 import com.opentasker.widget.WidgetIconCatalog
 
-/** Renders a bundled Coolicons vector or a user-uploaded icon in the same icon slot. */
+/** Renders a bundled Coolicons vector or an icon created with the in-app builder. */
 @Composable
 fun WidgetIconImage(
     iconKey: String?,

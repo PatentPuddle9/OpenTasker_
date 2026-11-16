@@ -1,9 +1,7 @@
 package com.opentasker.ui.screens
 
 import android.graphics.Bitmap
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,7 +15,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -39,9 +36,9 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.opentasker.ui.theme.DesignSystem
 import com.opentasker.widget.CustomWidgetIcon
 import com.opentasker.widget.CustomWidgetIconStore
-import com.opentasker.ui.theme.DesignSystem
 import kotlinx.coroutines.launch
 
 @Composable
@@ -49,12 +46,7 @@ internal fun PopupIconsSettingsCard() {
     val context = LocalContext.current.applicationContext
     val icons by CustomWidgetIconStore.observe(context).collectAsState()
     val scope = rememberCoroutineScope()
-    var showCropDialog by rememberSaveable { mutableStateOf(false) }
-    var showAddDialog by rememberSaveable { mutableStateOf(false) }
-    var selectedImageUri by rememberSaveable { mutableStateOf<String?>(null) }
-    var croppedImage by remember { mutableStateOf<Bitmap?>(null) }
-    var addName by rememberSaveable { mutableStateOf("") }
-    var addRecolorable by rememberSaveable { mutableStateOf(true) }
+    var showBuilder by rememberSaveable { mutableStateOf(false) }
     var adding by remember { mutableStateOf(false) }
     var addError by remember { mutableStateOf<String?>(null) }
     var editingIcon by remember { mutableStateOf<CustomWidgetIcon?>(null) }
@@ -62,47 +54,43 @@ internal fun PopupIconsSettingsCard() {
     var editName by remember { mutableStateOf("") }
     var actionError by remember { mutableStateOf<String?>(null) }
 
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            selectedImageUri = uri.toString()
-            croppedImage = null
-            addName = ""
-            addRecolorable = true
-            addError = null
-            showCropDialog = true
-        }
-    }
-
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
+        ),
         shape = RoundedCornerShape(DesignSystem.Radii.lg),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text("Custom icons", style = MaterialTheme.typography.titleMedium)
+            Text("Icon builder", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Upload your own images here. They appear in the Custom category beside the built-in icons and can be used for profiles, widgets, and popup titles.",
+                "Create icons without uploading images. Choose a symbol, shape, colors, gradient, and outline, then save them for Actions, widgets, and popup titles.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            OutlinedButton(
-                onClick = { imagePicker.launch(arrayOf("image/*")) },
+            Button(
+                onClick = {
+                    addError = null
+                    showBuilder = true
+                },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !adding,
             ) {
-                Text("Upload custom icon")
+                Text("Create custom icon")
             }
+
             if (icons.isEmpty()) {
                 Text(
-                    "Your uploaded icons will appear in the Custom category of the shared icon picker.",
+                    "Icons you build will appear in the Custom category of the shared icon picker.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
+                Text("Saved icons", style = MaterialTheme.typography.labelLarge)
                 icons.forEach { icon ->
                     PopupIconSettingsRow(
                         icon = icon,
@@ -110,8 +98,9 @@ internal fun PopupIconsSettingsCard() {
                             scope.launch {
                                 runCatching {
                                     CustomWidgetIconStore.update(context, icon.copy(recolorable = enabled))
-                                    
-                                }.onFailure { actionError = it.message ?: "Could not update the icon." }
+                                }.onFailure {
+                                    actionError = it.message ?: "Could not update the icon."
+                                }
                             }
                         },
                         onRename = {
@@ -122,134 +111,36 @@ internal fun PopupIconsSettingsCard() {
                     )
                 }
             }
-            actionError?.let {
+            (actionError ?: addError)?.let {
                 Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
 
-    if (showCropDialog) {
-        val sourceUri = selectedImageUri?.let(Uri::parse)
-        if (sourceUri != null) {
-            SquareImageCropDialog(
-                source = sourceUri,
-                onDismiss = {
-                    showCropDialog = false
-                    selectedImageUri = null
-                    croppedImage = null
-                },
-                onCropped = { bitmap ->
-                    croppedImage = bitmap
-                    showCropDialog = false
-                    showAddDialog = true
-                },
-            )
-        }
-    }
-
-    if (showAddDialog) {
-        val squarePreview = croppedImage
-        AlertDialog(
-            onDismissRequest = {
-                if (!adding) {
-                    showAddDialog = false
-                    selectedImageUri = null
-                    croppedImage = null
-                }
-            },
-            title = { Text("Upload custom icon") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
-                        value = addName,
-                        onValueChange = { addName = it.take(48) },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Icon name") },
-                        singleLine = true,
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Recolorable", style = MaterialTheme.typography.labelLarge)
-                            Text(
-                                "When enabled, this image can be tinted with the system dialog accent color.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(checked = addRecolorable, onCheckedChange = { addRecolorable = it })
-                    }
-                    if (squarePreview != null) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(18.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Image(
-                                    bitmap = squarePreview.asImageBitmap(),
-                                    contentDescription = "Square-cropped icon preview",
-                                    modifier = Modifier.size(64.dp),
-                                )
-                                Text("Square crop", style = MaterialTheme.typography.labelSmall)
-                            }
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Image(
-                                    bitmap = squarePreview.asImageBitmap(),
-                                    contentDescription = "Recolored square icon preview",
-                                    modifier = Modifier.size(64.dp),
-                                    colorFilter = if (addRecolorable) {
-                                        ColorFilter.tint(MaterialTheme.colorScheme.primary, BlendMode.SrcIn)
-                                    } else {
-                                        null
-                                    },
-                                )
-                                Text(
-                                    if (addRecolorable) "Recolored preview" else "Unchanged preview",
-                                    style = MaterialTheme.typography.labelSmall,
-                                )
-                            }
-                        }
-                    }
-                    addError?.let {
-                        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+    if (showBuilder) {
+        IconBuilderDialog(
+            onDismiss = { if (!adding) showBuilder = false },
+            saving = adding,
+            error = addError,
+            onSave = { bitmap, name ->
+                adding = true
+                addError = null
+                scope.launch {
+                    runCatching {
+                        CustomWidgetIconStore.add(
+                            context = context,
+                            croppedImage = bitmap,
+                            name = name,
+                            recolorable = false,
+                        )
+                    }.onSuccess {
+                        adding = false
+                        showBuilder = false
+                    }.onFailure {
+                        adding = false
+                        addError = it.message ?: "Could not save this icon."
                     }
                 }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val imageToSave = croppedImage ?: return@Button
-                        adding = true
-                        scope.launch {
-                            runCatching {
-                                CustomWidgetIconStore.add(context, imageToSave, addName, addRecolorable)
-                            }.onSuccess {
-                                adding = false
-                                showAddDialog = false
-                                selectedImageUri = null
-                                croppedImage = null
-                            }.onFailure {
-                                adding = false
-                                addError = it.message ?: "Could not save this icon."
-                            }
-                        }
-                    },
-                    enabled = squarePreview != null && addName.isNotBlank() && !adding,
-                ) {
-                    Text(if (adding) "Saving…" else "Save icon")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    if (!adding) {
-                        showAddDialog = false
-                        selectedImageUri = null
-                        croppedImage = null
-                    }
-                }) { Text("Cancel") }
             },
         )
     }
@@ -269,14 +160,20 @@ internal fun PopupIconsSettingsCard() {
             confirmButton = {
                 Button(
                     onClick = {
-                        runCatching { CustomWidgetIconStore.update(context, icon.copy(name = editName)) }
-                            .onSuccess { editingIcon = null }
-                            .onFailure { actionError = it.message ?: "Could not rename this icon." }
+                        runCatching {
+                            CustomWidgetIconStore.update(context, icon.copy(name = editName))
+                        }.onSuccess {
+                            editingIcon = null
+                        }.onFailure {
+                            actionError = it.message ?: "Could not rename this icon."
+                        }
                     },
                     enabled = editName.isNotBlank(),
                 ) { Text("Save") }
             },
-            dismissButton = { TextButton(onClick = { editingIcon = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { editingIcon = null }) { Text("Cancel") }
+            },
         )
     }
 
@@ -285,18 +182,19 @@ internal fun PopupIconsSettingsCard() {
             onDismissRequest = { deletingIcon = null },
             title = { Text("Delete custom icon?") },
             text = {
-                Text("“${icon.name}” will be removed from the Custom category. Places using it will fall back to the default icon.")
+                Text("“" + icon.name + "” will be removed from the Custom category. Places using it will fall back to the default icon.")
             },
             confirmButton = {
                 Button(
                     onClick = {
                         CustomWidgetIconStore.delete(context, icon.id)
-                        
                         deletingIcon = null
                     },
                 ) { Text("Delete") }
             },
-            dismissButton = { TextButton(onClick = { deletingIcon = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { deletingIcon = null }) { Text("Cancel") }
+            },
         )
     }
 }
@@ -321,13 +219,20 @@ private fun PopupIconSettingsRow(
             modifier = Modifier.fillMaxWidth().padding(10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 if (previewBitmap != null) {
                     Image(
                         bitmap = previewBitmap!!.asImageBitmap(),
                         contentDescription = icon.name,
                         modifier = Modifier.size(42.dp),
-                        colorFilter = if (icon.recolorable) ColorFilter.tint(MaterialTheme.colorScheme.primary, BlendMode.SrcIn) else null,
+                        colorFilter = if (icon.recolorable) {
+                            ColorFilter.tint(MaterialTheme.colorScheme.primary, BlendMode.SrcIn)
+                        } else {
+                            null
+                        },
                     )
                 } else {
                     Surface(
@@ -339,12 +244,15 @@ private fun PopupIconSettingsRow(
                 Column(Modifier.weight(1f)) {
                     Text(icon.name, style = MaterialTheme.typography.titleSmall)
                     Text(
-                        if (icon.recolorable) "Tint preview · recolorable" else "Original colors · not recolorable",
+                        if (icon.recolorable) "Tint preview · recolorable" else "Original colors · fixed",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Switch(checked = icon.recolorable, onCheckedChange = onRecolorableChange)
+                Switch(
+                    checked = icon.recolorable,
+                    onCheckedChange = onRecolorableChange,
+                )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onRename) { Text("Rename") }

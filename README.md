@@ -142,8 +142,8 @@ The **Widgets** area manages two home-screen widget types. Widgets launch or dis
 The shared built-in icon picker includes the original OpenTasker **bolt** plus **all 442 Coolicons v4.1 Line icons** from the Coolicons Line Oval collection.
 
 - Search and browse the built-in icons in the shared picker.
-- Upload custom images from Settings. OpenTasker guides you through cropping each image into a square.
-- Built-in and custom icons appear together in the picker; custom icons are not a replacement for the included library.
+- Create custom icons directly in **Settings → General → Icon builder**. Choose a built-in glyph, background shape, foreground and background colors, optional gradient, outline, and glyph size, with a live preview before saving.
+- Builder-created icons appear in the **Custom** category beside the built-in library. No image upload or external image editor is needed.
 - Use the shared icon set for Action cards, widgets, and popup/toast headings where an icon is supported.
 
 Icon artwork and other third-party components are documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
