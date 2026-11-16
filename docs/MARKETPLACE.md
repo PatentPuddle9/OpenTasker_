@@ -33,7 +33,11 @@ Users can change the global threshold/window or turn protection off in Settings.
 
 ## Contributions and reports
 
-The Contribute action opens the marketplace repository's CONTRIBUTING.md. Package submissions are pull requests validated by GitHub Actions. Report opens the package-report issue form, which routes reports to the marketplace owner.
+Contributors can submit an enabled Action or an app-style Shortcut Widget directly from the Marketplace screen. Widget Displays and Scene layouts are not contribution types. A Shortcut Widget submission includes its linked enabled Action plus the widget's icon, colors, gradient, and shape; the Android app-widget ID is never exported. Disabled Actions and widgets whose linked Action is disabled are excluded and are checked again immediately before upload.
+
+GitHub sign-in uses the OAuth Device Flow. The app displays a one-time code and GitHub verification page; the contributor approves the requested public-repository access on GitHub. The access token is encrypted with a device-bound Android Keystore AES-GCM key and is never written into package files, logs, or source code. Only the OAuth application's public client ID is supplied to the build as the optional `GITHUB_OAUTH_CLIENT_ID` Actions secret. No OAuth client secret is used in the Android app.
+
+After sign-in, the app creates a branch in the contributor's Marketplace repository (or a fork when needed), uploads `manifest.json` and the data-only `bundle.json`, then opens a pull request against the official Marketplace repository. The existing GitHub Actions validator and moderator review remain authoritative. Contributors must enable Device Flow on the GitHub OAuth App and set the repository Actions secret `GITHUB_OAUTH_CLIENT_ID` before building APKs with sign-in enabled.
 
 ## Offline behavior
 
