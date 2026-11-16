@@ -2,6 +2,7 @@ package com.opentasker.core.engine
 
 import com.opentasker.core.actions.ActionArgumentSensitivity
 import com.opentasker.core.actions.multipleVariablesFilledNames
+import com.opentasker.core.actions.declaredActionOutputs
 import com.opentasker.core.actions.FALLBACK_ACTION_BLOCK_ARGUMENT
 import com.opentasker.core.capabilities.AutomationSensitivityRegistry
 import com.opentasker.core.capabilities.ActionCapabilityRegistry
@@ -1131,6 +1132,19 @@ class TaskRunner(
     }
 }
 
+internal class OutputNameArguments(private val actionType: String) {
+    private val keys = declaredActionOutputs(actionType).flatMapTo(hashSetOf()) { it.nameArgumentKeys }
+
+    fun keepsAsWritten(argumentName: String, rawValue: String): Boolean =
+        ((argumentName in keys || (actionType == "text.join" && argumentName == "array")) && SINGLE_VARIABLE.matches(rawValue.trim())) ||
+            (actionType == "var.clear" && argumentName == "name") ||
+            (actionType == "var.set_multiple" && argumentName == "names")
+
+    private companion object {
+        val SINGLE_VARIABLE = Regex("%[A-Za-z][A-Za-z0-9_]*")
+    }
+}
+
 data class TaskRunReport(
     val taskId: Long,
     val taskName: String,
@@ -1172,6 +1186,9 @@ private const val MEDIA_ACTION_TIMEOUT_MS = 600_000L // 10 minutes
 // before the action parses its arguments, so an equal budget deterministically failed a
 // wait at the documented maximum.
 private const val MAX_WAIT_TIMEOUT_MS = 1_860_000L // 30 minutes + 60 s margin
+
+/** What the run log and Preflight say for a step turned off. */
+const val STEP_TURNED_OFF = "step is turned off"
 
 const val SUB_TASK_ACTION_ID = "task.run"
 const val MAX_SUBTASK_DEPTH = 8
@@ -1405,7 +1422,7 @@ private fun ActionArgumentExpansionTrace.toTemplateDiagnosticLines(actionType: S
         ).joinToString("\t")
     }
 
-private fun summarizeArgValue(
+internal fun summarizeArgValue(
     actionType: String?,
     argName: String,
     value: String,

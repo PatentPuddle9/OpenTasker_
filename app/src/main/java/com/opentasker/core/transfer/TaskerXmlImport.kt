@@ -556,7 +556,7 @@ object TaskerXmlImporter {
                             owner?.let { put("package", it) }
                             if (title.isNotEmpty()) put("title", title)
                             if (text.isNotEmpty()) put("body", text)
-                            if (title.isNotEmpty() || text.isNotEmpty()) put("patterns", ContextMatchEvaluator.TASKER_PATTERNS)
+                            if (title.isNotEmpty() || text.isNotEmpty()) put("patterns", ContextMatchEvaluator.ContextMatchEvaluator.TASKER_PATTERNS)
                         },
                     )
                 }

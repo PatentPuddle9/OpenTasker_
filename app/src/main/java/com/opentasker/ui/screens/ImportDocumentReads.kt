@@ -54,3 +54,7 @@ internal fun readBoundedDocumentBytes(
         return output.toByteArray()
     }
 }
+
+/** Text compatibility reader for the current Tasker/MacroDroid preview flow. */
+internal fun readBoundedTaskerOrMacroDroid(context: Context, uri: Uri): String =
+    readBoundedTaskerOrMacroDroidBytes(context, uri).toString(Charsets.UTF_8)

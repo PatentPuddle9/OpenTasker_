@@ -1,6 +1,8 @@
 package com.opentasker.core.contexts
 
 import com.google.re2j.Pattern as Re2Pattern
+import com.opentasker.core.engine.variables.VariableExpander
+import com.opentasker.core.health.HealthPolling
 import com.opentasker.core.model.ContextSpec
 import com.opentasker.core.model.ContextType
 import com.opentasker.core.location.FossGeofenceEvaluator
@@ -43,45 +45,44 @@ object ContextMatchEvaluator {
         }
     }
 
+    /**
+     * True when [spec] can't tell yet whether it holds: a Health reading that wasn't read, a Time
+     * bound whose global holds no time, or a Wi-Fi name Android is withholding. An inverted context
+     * stays off then too, since "not between %Sunrise and %Sunset" isn't true just because
+     * %Sunrise isn't set, and "not on Office" isn't true just because the name is hidden.
+     */
+    fun valueUnknown(spec: ContextSpec, metadata: Map<String, String>): Boolean =
+        HealthPolling.readingMissing(spec, metadata) ||
+            TimeContextBounds.unresolvedBounds(spec, metadata).isNotEmpty() ||
+            (stateSpecReadsWifiSsid(spec) && wifiNameWithheld(metadata))
+
     private fun matchesApplication(spec: ContextSpec, event: ContextEvent): Boolean {
+        val foreground = event.metadata["foreground"].orEmpty().ifBlank { event.metadata["package"].orEmpty() }
+        if (foreground.isBlank()) return false
         val configuredPackages = firstConfig(spec, "package", "packages", "apps")
             .splitCsv()
             .map { it.lowercase(Locale.US) }
-            .toSet()
         if (configuredPackages.isEmpty()) return false
+        if (foreground.lowercase(Locale.US) !in configuredPackages) return false
 
-        val condition = spec.config["condition"]?.trim()?.lowercase(Locale.US)
-        val eventName = event.metadata["event"].orEmpty().lowercase(Locale.US)
-        val changedPackage = event.metadata["package"].orEmpty().lowercase(Locale.US)
-        when (condition) {
-            "installed" -> return eventName == "package_added" && changedPackage in configuredPackages
-            "updated" -> return eventName == "package_replaced" && changedPackage in configuredPackages
-            "uninstalled" -> return eventName == "package_removed" && changedPackage in configuredPackages
-        }
-
-        // Package lifecycle pulses share the Application source, but must never satisfy a
-        // foreground condition simply because they have no foreground package metadata.
-        if (eventName.isNotBlank() && eventName != "application") return false
-        val foreground = event.metadata["foreground"].orEmpty()
-        val previousForeground = event.metadata["previous_foreground"].orEmpty()
-        val currentMatches = foreground.lowercase(Locale.US) in configuredPackages
-        val previousMatches = previousForeground.lowercase(Locale.US) in configuredPackages
-        return when (condition) {
-            "opened" -> currentMatches && event.metadata["transition"] == "opened"
-            "closed" -> previousMatches && !currentMatches
-            "not_foreground" -> !currentMatches
-            // The default also covers older saved profiles that do not have a condition key.
-            else -> currentMatches
-        }
+        val configuredComponent = firstConfig(spec, "component", "activity", "class")
+        if (configuredComponent.isBlank()) return true
+        val observedComponent = event.metadata["component"].orEmpty()
+        return ApplicationComponentMatcher.matches(configuredComponent, observedComponent)
     }
 
     private fun matchesTime(spec: ContextSpec, event: ContextEvent): Boolean {
-        val start = firstConfig(spec, "start", "from").takeIf { it.isNotBlank() } ?: return false
-        val end = firstConfig(spec, "end", "to").takeIf { it.isNotBlank() } ?: return false
+        val startMinutes = timeBoundMinutes(firstConfig(spec, "start", "from"), event, TimeContextBounds.START_VALUE) ?: return false
+        val endMinutes = timeBoundMinutes(firstConfig(spec, "end", "to"), event, TimeContextBounds.END_VALUE) ?: return false
         val current = event.metadata["time"]?.let(::parseClockMinutes) ?: currentMinuteOfDay()
-        val startMinutes = parseClockMinutes(start) ?: return false
-        val endMinutes = parseClockMinutes(end) ?: return false
         return minuteInWindow(current, startMinutes, endMinutes)
+    }
+
+    /** A bound naming a global takes the clock time the engine read from it into [event]; without one it never matches. */
+    private fun timeBoundMinutes(configured: String, event: ContextEvent, valueKey: String): Int? {
+        if (configured.isBlank()) return null
+        val clock = if (TimeContextBounds.isVariable(configured)) event.metadata[valueKey] ?: return null else configured
+        return parseClockMinutes(clock)
     }
 
     private fun matchesDay(spec: ContextSpec, event: ContextEvent): Boolean {
@@ -210,6 +211,20 @@ object ContextMatchEvaluator {
             }
         }
 
+        if (actualEvent.equals(CallContextEvents.EVENT_INCOMING_CALL, ignoreCase = true)) {
+            // Exact on purpose: a caller nobody could check must not read as a stranger, so "unknown"
+            // satisfies neither "true" nor "false".
+            val expectedKnown = spec.config["knownContact"]?.trim().orEmpty()
+            if (expectedKnown.isNotBlank() &&
+                !event.metadata["knownContact"].orEmpty().equals(expectedKnown, ignoreCase = true)
+            ) return false
+
+            val numberFilter = spec.config["number"]?.trim().orEmpty()
+            if (numberFilter.isNotBlank() &&
+                !textMatches(event.metadata["number"].orEmpty(), numberFilter, regex)
+            ) return false
+        }
+
         val topicAllowlist = firstConfig(spec, "topic", "topics")
             .splitCsv()
             .map { it.lowercase(Locale.US) }
@@ -232,13 +247,21 @@ object ContextMatchEvaluator {
             if (actualTagId !in configuredTagIds) return false
         }
 
-        val titleFilter = spec.config["title"]?.trim().orEmpty()
-        if (titleFilter.isNotBlank() && !textMatches(event.metadata["title"].orEmpty(), titleFilter, regex)) {
-            return false
-        }
-        val bodyFilter = spec.config["body"]?.trim().orEmpty()
-        if (bodyFilter.isNotBlank() && !textMatches(event.metadata["body"].orEmpty(), bodyFilter, regex)) {
-            return false
+        // A Tasker import keeps Tasker's own title and text patterns, which match the whole value.
+        if (spec.config["patterns"] == TASKER_PATTERNS) {
+            for (field in listOf("title", "body")) {
+                val pattern = spec.config[field].orEmpty()
+                if (pattern.isNotEmpty() && !taskerPatternMatcher.matches(event.metadata[field].orEmpty(), pattern)) return false
+            }
+        } else {
+            val titleFilter = spec.config["title"]?.trim().orEmpty()
+            if (titleFilter.isNotBlank() && !textMatches(event.metadata["title"].orEmpty(), titleFilter, regex)) {
+                return false
+            }
+            val bodyFilter = spec.config["body"]?.trim().orEmpty()
+            if (bodyFilter.isNotBlank() && !textMatches(event.metadata["body"].orEmpty(), bodyFilter, regex)) {
+                return false
+            }
         }
 
         val senderFilter = firstConfig(spec, "sender", "from", "originatingAddress")
@@ -290,8 +313,17 @@ object ContextMatchEvaluator {
         if (!actualPackage.equals(expectedPackage, ignoreCase = true)) return false
         val expectedBundle = spec.config["bundleJson"]?.trim().orEmpty().ifBlank { "{}" }
         val actualBundle = event.metadata["bundleJson"].orEmpty().ifBlank { "{}" }
-        return expectedBundle == actualBundle
+        return expectedBundle == actualBundle && pluginBlurbMatches(spec, event)
     }
+
+    /**
+     * The blurb a Plugin context's query sends. Locale and Tasker send it with every query, and some
+     * plugins pick the condition by it rather than by the bundle (primitive FTPd's "server running?").
+     */
+    fun pluginConditionBlurb(config: Map<String, String>): String = config["blurb"].orEmpty().take(MAX_PLUGIN_BLURB_CHARS)
+
+    private fun pluginBlurbMatches(spec: ContextSpec, event: ContextEvent): Boolean =
+        pluginConditionBlurb(spec.config) == event.metadata["blurb"].orEmpty()
 
     private fun matchesPlugin(spec: ContextSpec, event: ContextEvent): Boolean {
         val expectedPackage = spec.config["package"]?.trim().orEmpty()
@@ -301,6 +333,7 @@ object ContextMatchEvaluator {
         val expectedBundle = spec.config["bundleJson"]?.trim().orEmpty().ifBlank { "{}" }
         val actualBundle = event.metadata["bundleJson"].orEmpty().ifBlank { "{}" }
         if (expectedBundle != actualBundle) return false
+        if (!pluginBlurbMatches(spec, event)) return false
         return event.metadata["state"].equals("satisfied", ignoreCase = true)
     }
 
@@ -316,21 +349,30 @@ object ContextMatchEvaluator {
         val zone = event.metadata["zone"]?.let { runCatching { ZoneId.of(it) }.getOrNull() }
             ?: ZoneId.systemDefault()
         val currentMinute = event.metadata["time"]?.let(::parseClockMinutes) ?: currentMinuteOfDay()
-        val baseMinute = SunEventCalculator.eventMinuteOfDay(date, latitude, longitude, expectedEvent, zone) ?: return null
+        val elevation = SunEventCalculator.elevationDegrees(firstConfig(spec, "elevation")) ?: return null
         val offset = firstConfig(spec, "offsetMinutes", "offset").toIntOrNull() ?: 0
         val windowMinutes = (firstConfig(spec, "windowMinutes", "window").toIntOrNull() ?: 1).coerceIn(1, 180)
-        val start = Math.floorMod(baseMinute + offset, MINUTES_PER_DAY)
-        val end = Math.floorMod(start + windowMinutes - 1, MINUTES_PER_DAY)
-        if (!minuteInWindow(currentMinute, start, end)) return null
-        // A window that wraps midnight still belongs to the evening's occurrence. Ticks after
-        // 00:00 carry the next calendar date, so identity uses the date of the window start.
-        val occurrenceDate = if (start > end && currentMinute <= end) date.minusDays(1) else date
-        return SunWindow(
-            event = expectedEvent.lowercase(Locale.US),
-            date = occurrenceDate.toString(),
-            start = start,
-            end = end,
-        )
+        val tick = date.atStartOfDay().plusMinutes(currentMinute.toLong())
+        // A late dusk can cross after midnight, and an offset or a window can carry a day's
+        // occurrence into the next date, so the tick is checked against the crossings of the dates
+        // around it. Identity uses the crossing's own date, which keeps ticks either side of
+        // midnight on one occurrence.
+        val around = tick.minusMinutes(offset.toLong()).toLocalDate()
+        for (days in -SOLAR_DATE_REACH..SOLAR_DATE_REACH) {
+            val solarDate = around.plusDays(days)
+            val crossing = SunEventCalculator.eventLocalDateTime(solarDate, latitude, longitude, expectedEvent, zone, elevation)
+                ?: continue
+            val start = crossing.plusMinutes(offset.toLong())
+            val end = start.plusMinutes(windowMinutes - 1L)
+            if (tick < start || tick > end) continue
+            return SunWindow(
+                event = expectedEvent.lowercase(Locale.US),
+                date = solarDate.toString(),
+                start = start.hour * 60 + start.minute,
+                end = end.hour * 60 + end.minute,
+            )
+        }
+        return null
     }
 
     private data class SunWindow(
@@ -376,9 +418,17 @@ object ContextMatchEvaluator {
         return if (start <= end) current in start..end else current >= start || current <= end
     }
 
+    /** An event's `patterns` value when its title and body are Tasker patterns. */
+    const val TASKER_PATTERNS = "tasker"
+    private val taskerPatternMatcher = VariableExpander()
+
+    /** The plugin editors and the Tasker import keep at most this much of a blurb. */
+    private const val MAX_PLUGIN_BLURB_CHARS = 120
     private const val MAX_REGEX_PATTERN_CHARS = 160
     private const val MAX_REGEX_INPUT_CHARS = 1_000
-    private const val MINUTES_PER_DAY = 24 * 60
+
+    /** A crossing's local time, plus its window, stays within two dates of its own date for any coordinates and zone. */
+    private const val SOLAR_DATE_REACH = 2L
 }
 
 private fun String.isSunEvent(): Boolean =

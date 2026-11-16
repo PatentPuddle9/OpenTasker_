@@ -1,6 +1,6 @@
 package com.opentasker.ui.screens
 
-import com.opentasker.BuildConfig
+import com.opentasker.app.BuildConfig
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement

@@ -5,14 +5,15 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import com.opentasker.app.OpenTaskerApp_NoHilt
 import androidx.core.content.ContextCompat
+import com.opentasker.core.capabilities.ProfileTurnOnChecks
 import com.opentasker.core.engine.AutomationService
 import com.opentasker.core.engine.ExecutionEnvelope
 import com.opentasker.core.engine.ExecutionProducer
 import com.opentasker.core.logging.AppLogger
 import com.opentasker.core.platform.ForeignParcels
-import com.opentasker.core.storage.toEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,7 +26,6 @@ enum class InternalTaskRunSource(
 ) {
     LOCALE_PLUGIN("locale_plugin", "Locale plugin"),
     SCENE_OVERLAY("scene_overlay", "Scene overlay"),
-    POPUP_DIALOG("popup_dialog", "Popup dialog"),
     QUICK_SETTINGS_TILE("quick_settings_tile", "Quick Settings tile"),
     APP_FUNCTION("app_function", "App function"),
 }
@@ -144,8 +144,15 @@ object AutomationTargetContract {
      */
     fun extractVariableExtras(extras: Bundle?): Map<String, String> {
         if (extras == null) return emptyMap()
-        return extractVariableExtras(extras.keySet().associateWith { key -> extras.getString(key) })
+        return extractVariableExtras(extras.keySet(), extras::getString)
     }
+
+    /**
+     * Reads only the variable keys. Bundle.getString on an extra that isn't a string logs a
+     * ClassCastException stack trace, and every v2 request carries the int protocol version.
+     */
+    internal fun extractVariableExtras(keys: Set<String>, read: (String) -> String?): Map<String, String> =
+        extractVariableExtras(keys.filter { it.startsWith(VARIABLE_EXTRA_PREFIX) }.associateWith(read))
 
     internal fun extractVariableExtras(values: Map<String, String?>): Map<String, String> = values.keys
             .asSequence()
@@ -164,20 +171,26 @@ object AutomationTargetContract {
 class AutomationTargetReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         ForeignParcels.guard(intent)
+        // Read before goAsync(), which detaches the pending result and makes this read false.
+        // Scene buttons, widgets and the tile send plain broadcasts, and setting a result on one
+        // logs an error per fire; only ordered senders like the Locale plugin host get the result.
+        val ordered = isOrderedBroadcast
         val pending = goAsync()
         requestScope.launch {
             val response = runCatching {
                 when (intent.action) {
                     AutomationTargetContract.ACTION_RUN_TASK -> runTask(context.applicationContext, intent)
-                    AutomationTargetContract.ACTION_SET_PROFILE_ENABLED -> setProfileEnabled(intent)
+                    AutomationTargetContract.ACTION_SET_PROFILE_ENABLED -> setProfileEnabled(context.applicationContext, intent)
                     AutomationTargetContract.ACTION_QUERY_STATUS -> queryStatus(intent)
                     AutomationTargetContract.ACTION_QUERY_EXECUTION -> queryExecution(context.applicationContext, intent)
                     else -> failure("Unsupported action: ${intent.action}")
                 }
             }.getOrElse { failure(it.message ?: "Automation target request failed") }
             try {
-                pending.setResultCode(response.resultCode)
-                pending.setResultExtras(response.extras)
+                if (ordered) {
+                    pending.setResultCode(response.resultCode)
+                    pending.setResultExtras(response.extras)
+                }
             } catch (e: Exception) {
                 AppLogger.error(TAG, "Failed to publish automation target result", e)
             } finally {
@@ -222,7 +235,6 @@ class AutomationTargetReceiver : BroadcastReceiver() {
             .getStringExtra(AutomationTargetContract.EXTRA_PARENT_EXECUTION_ID)
             ?.trim()
             ?.takeIf(ExecutionEnvelope::isValidExecutionId)
-        val existing = requestedExecutionId?.let { ExternalExecutions.get(appContext, it) }
         val producer = intent.getStringExtra(AutomationTargetContract.EXTRA_EXECUTION_PRODUCER)
             ?.trim()
             ?.takeIf { value -> ExecutionProducer.entries.any { it.wireValue == value } }
@@ -230,7 +242,7 @@ class AutomationTargetReceiver : BroadcastReceiver() {
                 .firstOrNull { it.wireValue == intent.getStringExtra(AutomationTargetContract.EXTRA_RUN_SOURCE) }
                 ?.wireValue
             ?: ExecutionProducer.fromSource(runSource).wireValue
-        val executionId = ExternalExecutions.accept(
+        val acceptance = ExternalExecutions.accept(
             context = appContext,
             taskId = task.id,
             taskName = task.name,
@@ -239,8 +251,12 @@ class AutomationTargetReceiver : BroadcastReceiver() {
             parentExecutionId = requestedParentExecutionId,
         )
 
-        // Re-delivery of a command with the same id is an acknowledgement, not a second run.
-        if (existing != null) return acceptedResponse(existing)
+        // Re-delivery of a command with the same id is an acknowledgement, not a second run. The
+        // ledger answers that in the step that records the id: two copies arriving together used
+        // to both start the service, and the engine then failed the id on the second copy while
+        // the first was still running.
+        if (!acceptance.isNew) return acceptedResponse(acceptance.record)
+        val executionId = acceptance.record.executionId
 
         val serviceIntent = Intent(appContext, AutomationService::class.java).apply {
             action = AutomationService.ACTION_RUN_EXTERNAL_TASK
@@ -313,7 +329,7 @@ class AutomationTargetReceiver : BroadcastReceiver() {
         )
     }
 
-    private suspend fun setProfileEnabled(intent: Intent): TargetResponse {
+    private suspend fun setProfileEnabled(appContext: Context, intent: Intent): TargetResponse {
         val db = OpenTaskerApp_NoHilt.db
         val profile = resolveProfile(intent)
             ?: return failure("Profile not found. Provide ${AutomationTargetContract.EXTRA_PROFILE_ID} or ${AutomationTargetContract.EXTRA_PROFILE_NAME}.")
@@ -321,7 +337,11 @@ class AutomationTargetReceiver : BroadcastReceiver() {
         if (enabled && profile.requiresRiskAcknowledgement) {
             return failure("Imported profile requires in-app power review before its first enable.")
         }
-        db.profileDao().upsert(profile.copy(enabled = enabled).toEntity())
+        // Turning a profile on passes what the app checks from its list. Only the enabled column is
+        // written: a whole-row write lost edits saved in the meantime and brought back a profile
+        // deleted in the meantime.
+        ProfileTurnOnChecks.switchSaved(db, profile.id, enabled, Settings.System.canWrite(appContext))
+            ?.let { return failure(it.replaceFirstChar(Char::uppercaseChar)) }
         return TargetResponse(
             Activity.RESULT_OK,
             Bundle().apply {

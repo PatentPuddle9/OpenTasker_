@@ -196,6 +196,7 @@ internal data class PermissionSetupItem(
     val allowActionWhenGranted: Boolean = false,
     val section: SetupSection = SetupSection.ENGINE,
     val requirements: Set<SetupRequirement> = emptySet(),
+    val note: String? = null,
     /** The check behind [granted] threw on this device, so [granted] is a fallback, not an answer. */
     val unavailable: Boolean = false,
 )

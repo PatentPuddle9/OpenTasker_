@@ -575,6 +575,7 @@ fun ActiveAutomationUi(
         OpenTaskerScreen.RunLog -> stringResource(R.string.header_run_log_detail, runLogPage.totalCount)
         OpenTaskerScreen.Diagnostics -> stringResource(R.string.header_diagnostics_detail)
         OpenTaskerScreen.Settings -> stringResource(R.string.header_settings_detail)
+        OpenTaskerScreen.Marketplace -> ""
     }
 
     Scaffold(
@@ -587,7 +588,7 @@ fun ActiveAutomationUi(
             Column {
                 OpenTaskerHeader(
                     screen = screen,
-                    detail = headerDetail.takeUnless { screen == OpenTaskerScreen.Settings },
+                    detail = headerDetail.takeIf { it.isNotBlank() },
                     onOpenSearch = { showGlobalSearchDialog = true },
                     showSearch = screen != OpenTaskerScreen.Settings && screen != OpenTaskerScreen.Marketplace,
                 )
