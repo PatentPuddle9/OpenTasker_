@@ -407,3 +407,12 @@ To contribute a translation:
 4. Run ./gradlew :app:verifyLocaleResources and submit the locale directory only when it passes.
 
 No incomplete locale directories are kept as release placeholders. The gate reports the exact translated-string count when a locale falls below the threshold.
+
+## Community Marketplace
+
+The Experimental branch includes a GitHub-hosted community marketplace for reusable actions, automations, and widget scenes. Marketplace packages are signed, versioned data-only bundles; imported content still passes through OpenTasker's normal capability and permission review.
+
+- Marketplace architecture, signing setup, privacy disclosures, and rapid-execution protection: [docs/MARKETPLACE.md](docs/MARKETPLACE.md)
+- Package submissions, moderation, and catalogue: [OpenTasker Marketplace](https://github.com/PatentPuddle9/OpenTasker_Makrketplace)
+
+The official marketplace remains disabled until its public verification key is pinned in the app and the repository's private signing key is configured as a GitHub Actions secret.
