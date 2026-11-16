@@ -95,36 +95,41 @@ internal object MarketplaceClient {
 
     suspend fun loadCatalog(context: Context): MarketplaceCatalogResult = withContext(Dispatchers.IO) {
         val preferences = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val remote = runCatching {
+
+        // Cache fallback is only for transport failures. Never hide a bad signature, malformed
+        // catalogue, or trust-key mismatch behind an older cached catalogue.
+        val remoteContent = try {
             val root = MarketplaceTrust.CATALOG_BASE_URL
-            val rawCatalog = readText("$root/catalog/v1/index.json", MAX_CATALOG_BYTES)
-            val signature = readText("$root/catalog/v1/index.sig", 16 * 1024)
-            verifyCatalogSignature(rawCatalog, signature)
-            val decoded = json.decodeFromString<MarketplaceCatalog>(rawCatalog)
-            require(decoded.schemaVersion == 1) { "Unsupported marketplace catalogue version." }
-            require(decoded.marketplaceId == MarketplaceTrust.OFFICIAL_MARKETPLACE_ID) {
-                "The catalogue belongs to a different marketplace."
-            }
-            preferences.edit()
-                .putString(CATALOG_CACHE, rawCatalog)
-                .putString(SIGNATURE_CACHE, signature)
-                .apply()
-            MarketplaceCatalogResult(decoded, fromCache = false)
-        }
-        remote.getOrElse { remoteError ->
+            readText("$root/catalog/v1/index.json", MAX_CATALOG_BYTES) to
+                readText("$root/catalog/v1/index.sig", 16 * 1024)
+        } catch (networkError: Exception) {
             val cachedCatalog = preferences.getString(CATALOG_CACHE, null)
             val cachedSignature = preferences.getString(SIGNATURE_CACHE, null)
             if (cachedCatalog != null && cachedSignature != null) {
-                runCatching {
-                    verifyCatalogSignature(cachedCatalog, cachedSignature)
-                    val decoded = json.decodeFromString<MarketplaceCatalog>(cachedCatalog)
-                    require(decoded.marketplaceId == MarketplaceTrust.OFFICIAL_MARKETPLACE_ID)
-                    MarketplaceCatalogResult(decoded, fromCache = true)
-                }.getOrElse { throw remoteError }
-            } else {
-                throw remoteError
+                verifyCatalogSignature(cachedCatalog, cachedSignature)
+                val decoded = json.decodeFromString<MarketplaceCatalog>(cachedCatalog)
+                require(decoded.schemaVersion == 1) { "Unsupported marketplace catalogue version." }
+                require(decoded.marketplaceId == MarketplaceTrust.OFFICIAL_MARKETPLACE_ID) {
+                    "The cached catalogue belongs to a different marketplace."
+                }
+                return@withContext MarketplaceCatalogResult(decoded, fromCache = true)
             }
+            throw networkError
         }
+
+        val (rawCatalog, signature) = remoteContent
+        verifyCatalogSignature(rawCatalog, signature)
+        val decoded = json.decodeFromString<MarketplaceCatalog>(rawCatalog)
+        require(decoded.schemaVersion == 1) { "Unsupported marketplace catalogue version." }
+        require(decoded.marketplaceId == MarketplaceTrust.OFFICIAL_MARKETPLACE_ID) {
+            "The catalogue belongs to a different marketplace."
+        }
+
+        preferences.edit()
+            .putString(CATALOG_CACHE, rawCatalog)
+            .putString(SIGNATURE_CACHE, signature)
+            .apply()
+        MarketplaceCatalogResult(decoded, fromCache = false)
     }
 
     suspend fun downloadAndConfigure(
