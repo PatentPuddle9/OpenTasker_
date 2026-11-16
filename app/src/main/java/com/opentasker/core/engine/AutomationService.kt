@@ -33,6 +33,8 @@ import com.opentasker.core.actions.NotificationTaskCandidate
 import com.opentasker.core.actions.NotificationTaskReference
 import com.opentasker.core.actions.NotificationTaskResolution
 import com.opentasker.core.logging.AppLogger
+import com.opentasker.core.marketplace.MarketplacePackageWatchdog
+import com.opentasker.core.marketplace.MarketplaceWatchdogResult
 import com.opentasker.core.storage.recoveryMessage
 import com.opentasker.core.contexts.BluetoothContextEvents
 import com.opentasker.core.contexts.BootContextEvents
@@ -651,12 +653,31 @@ class AutomationService : Service() {
      * enter dispatch consumes the profile cooldown — cooldown gates re-triggering, not the
      * cleanup work users rely on when a profile deactivates.
      */
-    private fun dispatchTask(
+    private suspend fun dispatchTask(
         profile: Profile,
         task: Task,
         isExit: Boolean,
         initialVariables: Map<String, String> = emptyMap(),
     ) {
+        val marketplacePackageId = profile.marketplacePackageId
+        if (!isExit && !marketplacePackageId.isNullOrBlank()) {
+            when (val watchdog = MarketplacePackageWatchdog.recordExecution(this, marketplacePackageId)) {
+                MarketplaceWatchdogResult.AlreadyDisabled -> {
+                    logProfileSkippedRun(profile, task, "Marketplace package is disabled by local rapid-execution protection.")
+                    return
+                }
+                is MarketplaceWatchdogResult.Disabled -> {
+                    disableMarketplacePackage(marketplacePackageId, profile.name, watchdog)
+                    logProfileSkippedRun(
+                        profile,
+                        task,
+                        "Marketplace package disabled after ${watchdog.executions} executions in ${watchdog.windowSeconds} seconds.",
+                    )
+                    return
+                }
+                else -> Unit
+            }
+        }
         val causal = ExecutionCausality.nextForProfile(profile.id, profile.name, isExit = isExit)
         if (!causal.allowed) {
             val reason = requireNotNull(causal.blockedReason)
@@ -745,6 +766,79 @@ class AutomationService : Service() {
             }
             DispatchStep.ENQUEUE -> AppLogger.info(TAG, "Profile ${profile.id} queued retrigger")
             else -> Unit
+        }
+    }
+
+    private suspend fun disableMarketplacePackage(
+        packageId: String,
+        triggeringProfileName: String,
+        watchdog: MarketplaceWatchdogResult.Disabled,
+    ) {
+        val affectedProfiles = db.profileDao().getAll()
+            .mapNotNull { entity -> runCatching { entity.toDomain() }.getOrNull() }
+            .filter { it.marketplacePackageId == packageId }
+
+        if (affectedProfiles.isNotEmpty()) {
+            db.withTransaction {
+                affectedProfiles.forEach { profile ->
+                    db.profileDao().upsert(profile.copy(enabled = false).toEntity())
+                }
+            }
+            affectedProfiles.forEach { profile ->
+                matchedProfiles.remove(profile.id)
+                dispatchedProfiles.remove(profile.id)
+            }
+            profileTaskSlots.exclusively { slots ->
+                affectedProfiles.forEach { profile ->
+                    slots.cancel(profile.id)
+                    slots.cancel(-profile.id)
+                }
+            }
+            synchronized(queuedProfileTasks) {
+                affectedProfiles.forEach { profile ->
+                    queuedProfileTasks.remove(profile.id)
+                    queuedProfileTasks.remove(-profile.id)
+                }
+            }
+        }
+
+        AppLogger.warn(
+            TAG,
+            "Package $packageId was disabled after ${watchdog.executions} executions within ${watchdog.windowSeconds} seconds. Triggering profile: $triggeringProfileName.",
+        )
+        notifyMarketplacePackageDisabled(packageId, watchdog)
+    }
+
+    private fun notifyMarketplacePackageDisabled(
+        packageId: String,
+        watchdog: MarketplaceWatchdogResult.Disabled,
+    ) {
+        val channelId = "marketplace_package_safety"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            getSystemService(NotificationManager::class.java)?.createNotificationChannel(
+                NotificationChannel(
+                    channelId,
+                    "Marketplace package safety",
+                    NotificationManager.IMPORTANCE_HIGH,
+                ),
+            )
+        }
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(android.R.drawable.stat_notify_error)
+            .setContentTitle("Marketplace package disabled")
+            .setContentText("Rapid execution detected in $packageId.")
+            .setStyle(
+                NotificationCompat.BigTextStyle().bigText(
+                    "$packageId was disabled after ${watchdog.executions} executions in ${watchdog.windowSeconds} seconds. Check the package before clearing its safety lock.",
+                ),
+            )
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+        runCatching {
+            NotificationManagerCompat.from(this).notify(packageId.hashCode(), notification)
+        }.onFailure { error ->
+            AppLogger.warn(TAG, "Couldn't post marketplace safety notification: ${error.message}")
         }
     }
 
