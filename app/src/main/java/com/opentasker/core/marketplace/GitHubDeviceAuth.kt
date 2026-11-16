@@ -71,7 +71,7 @@ internal object GitHubDeviceAuth {
     suspend fun beginDeviceFlow(): GitHubDeviceChallenge = withContext(Dispatchers.IO) {
         val clientId = BuildConfig.GITHUB_OAUTH_CLIENT_ID.trim()
         require(clientId.isNotBlank()) {
-            "GitHub sign-in is not configured in this APK. Set the GITHUB_OAUTH_CLIENT_ID Actions secret and rebuild."
+            "GitHub sign-in is not configured in this APK. Set the OPENTASKER_GITHUB_OAUTH_CLIENT_ID repository Actions secret and rebuild."
         }
         val response = postFormBlocking(
             DEVICE_CODE_URL,

@@ -133,6 +133,17 @@ jobs:
       - name: Clean stale Android build intermediates
         run: ./gradlew clean --no-build-cache --stacktrace --dependency-verification=off
 
+      - name: Verify GitHub OAuth client ID secret
+        env:
+          OPENTASKER_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.OPENTASKER_GITHUB_OAUTH_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$OPENTASKER_GITHUB_OAUTH_CLIENT_ID" ]]; then
+            echo "::error::Repository secret OPENTASKER_GITHUB_OAUTH_CLIENT_ID is missing. Add the OAuth App Client ID under Settings > Secrets and variables > Actions, then run this workflow again."
+            exit 1
+          fi
+          echo "GitHub OAuth Client ID secret is present (value hidden)."
+
       - name: Build debug APK
         env:
           MARKETPLACE_PUBLIC_KEY_X509_BASE64: ${{ secrets.MARKETPLACE_PUBLIC_KEY_X509_BASE64 }}

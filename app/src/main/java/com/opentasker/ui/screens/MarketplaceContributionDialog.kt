@@ -108,7 +108,7 @@ internal fun MarketplaceContributionDialog(onDismiss: () -> Unit) {
 
     fun startSignIn() {
         if (!GitHubDeviceAuth.isConfigured) {
-            errorMessage = "GitHub sign-in hasn't been configured for this build. The repository owner needs to add the GITHUB_OAUTH_CLIENT_ID Actions secret and rebuild."
+            errorMessage = "GitHub sign-in hasn't been configured for this build. The repository owner needs to add the OPENTASKER_OPENTASKER_GITHUB_OAUTH_CLIENT_ID repository Actions secret and rebuild."
             return
         }
         scope.launch {
@@ -206,7 +206,7 @@ internal fun MarketplaceContributionDialog(onDismiss: () -> Unit) {
                     }
                     if (!GitHubDeviceAuth.isConfigured) {
                         Text(
-                            "GitHub OAuth is not configured in this APK yet. Add the GITHUB_OAUTH_CLIENT_ID repository Actions secret and rebuild to enable sign-in.",
+                            "GitHub OAuth is not configured in this APK yet. Add the OPENTASKER_GITHUB_OAUTH_CLIENT_ID repository Actions secret and rebuild to enable sign-in.",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                         )
