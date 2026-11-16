@@ -26,6 +26,12 @@ internal data class GitHubDeviceChallenge(
     val intervalSeconds: Int,
 )
 
+internal data class GitHubTokenGrant(
+    val accessToken: String,
+    val refreshToken: String?,
+    val expiresInSeconds: Int,
+)
+
 /**
  * GitHub OAuth Device Flow for the in-app Marketplace contributor.
  *
@@ -36,6 +42,7 @@ internal object GitHubDeviceAuth {
     private const val PREFS = "opentasker_github_auth"
     private const val ENCRYPTED_TOKEN = "encrypted_access_token"
     private const val USER_LOGIN = "github_login"
+    private const val ACCESS_EXPIRES_AT = "access_expires_at"
     private const val KEY_ALIAS = "OpenTasker.GitHubOAuth.v1"
     private const val DEVICE_CODE_URL = "https://github.com/login/device/code"
     private const val ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
@@ -56,6 +63,7 @@ internal object GitHubDeviceAuth {
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .remove(ENCRYPTED_TOKEN)
+            .remove(ACCESS_EXPIRES_AT)
             .remove(USER_LOGIN)
             .apply()
     }
@@ -69,7 +77,7 @@ internal object GitHubDeviceAuth {
             DEVICE_CODE_URL,
             linkedMapOf(
                 "client_id" to clientId,
-                "scope" to "public_repo read:user",
+                "scope" to "public_repo read:user offline_access",
             ),
         )
         val error = response.optString("error")
@@ -91,7 +99,7 @@ internal object GitHubDeviceAuth {
         )
     }
 
-    suspend fun waitForAuthorization(challenge: GitHubDeviceChallenge): String {
+    suspend fun waitForAuthorization(challenge: GitHubDeviceChallenge): GitHubTokenGrant {
         var interval = challenge.intervalSeconds
         val expiresAt = System.currentTimeMillis() + challenge.expiresInSeconds * 1_000L
         while (System.currentTimeMillis() < expiresAt) {
@@ -114,7 +122,13 @@ internal object GitHubDeviceAuth {
                 "access_denied" -> throw IOException("GitHub sign-in was cancelled.")
                 "" -> {
                     val token = response.optString("access_token")
-                    if (token.isNotBlank()) return token
+                    if (token.isNotBlank()) {
+                        return GitHubTokenGrant(
+                            accessToken = token,
+                            refreshToken = response.optString("refresh_token").takeIf { it.isNotBlank() },
+                            expiresInSeconds = response.optInt("expires_in", 0),
+                        )
+                    }
                     throw IOException("GitHub completed authorization without returning an access token.")
                 }
                 else -> throw IOException(
@@ -125,14 +139,20 @@ internal object GitHubDeviceAuth {
         throw IOException("The GitHub sign-in code expired. Start sign-in again.")
     }
 
-    suspend fun finishSignIn(context: Context, accessToken: String): String = withContext(Dispatchers.IO) {
-        require(accessToken.isNotBlank()) { "GitHub did not return an access token." }
-        val user = apiRequestBlocking(accessToken, "GET", "/user")
+    suspend fun finishSignIn(context: Context, grant: GitHubTokenGrant): String = withContext(Dispatchers.IO) {
+        require(grant.accessToken.isNotBlank()) { "GitHub did not return an access token." }
+        val user = apiRequestBlocking(grant.accessToken, "GET", "/user")
         val login = user.optString("login").trim()
         require(login.matches(Regex("^[A-Za-z0-9-]{1,39}$"))) {
             "GitHub returned an invalid account name."
         }
-        TokenStore.save(context.applicationContext, accessToken, login)
+        TokenStore.save(
+            context.applicationContext,
+            grant.accessToken,
+            grant.refreshToken,
+            grant.expiresInSeconds,
+            login,
+        )
         login
     }
 
@@ -142,7 +162,9 @@ internal object GitHubDeviceAuth {
             val user = apiRequestBlocking(token, "GET", "/user")
             val login = user.optString("login").trim()
             require(login.isNotBlank()) { "GitHub did not return an account name." }
-            TokenStore.save(context.applicationContext, token, login)
+            // The token store refreshes and rotates encrypted credentials before returning a token.
+            context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putString(USER_LOGIN, login).apply()
             login
         } catch (error: GitHubApiException) {
             if (error.statusCode == 401 || error.statusCode == 403) {
@@ -235,14 +257,27 @@ internal object GitHubDeviceAuth {
         URLEncoder.encode(value, Charsets.UTF_8.name())
 
     private object TokenStore {
-        fun save(context: Context, token: String, login: String) {
+        fun save(
+            context: Context,
+            accessToken: String,
+            refreshToken: String?,
+            expiresInSeconds: Int,
+            login: String,
+        ) {
+            val payload = accessToken + "\n" + refreshToken.orEmpty()
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
-            val encrypted = cipher.doFinal(token.toByteArray(Charsets.UTF_8))
+            val encrypted = cipher.doFinal(payload.toByteArray(Charsets.UTF_8))
             val encoded = Base64.encodeToString(cipher.iv, Base64.NO_WRAP) +
                 "." + Base64.encodeToString(encrypted, Base64.NO_WRAP)
+            val expiresAt = if (expiresInSeconds > 0) {
+                System.currentTimeMillis() + expiresInSeconds * 1_000L
+            } else {
+                0L
+            }
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putString(ENCRYPTED_TOKEN, encoded)
+                .putLong(ACCESS_EXPIRES_AT, expiresAt)
                 .putString(USER_LOGIN, login)
                 .apply()
         }
@@ -250,18 +285,61 @@ internal object GitHubDeviceAuth {
         fun read(context: Context): String? {
             val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val stored = preferences.getString(ENCRYPTED_TOKEN, null) ?: return null
-            return try {
+            val payload = try {
                 val parts = stored.split('.', limit = 2)
                 require(parts.size == 2) { "Stored GitHub token is malformed." }
                 val iv = Base64.decode(parts[0], Base64.NO_WRAP)
                 val encrypted = Base64.decode(parts[1], Base64.NO_WRAP)
                 val cipher = Cipher.getInstance("AES/GCM/NoPadding")
                 cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), javax.crypto.spec.GCMParameterSpec(128, iv))
-                String(cipher.doFinal(encrypted), Charsets.UTF_8).takeIf { it.isNotBlank() }
+                String(cipher.doFinal(encrypted), Charsets.UTF_8)
             } catch (_: Exception) {
                 signOut(context)
-                null
+                return null
             }
+            val parts = payload.split("\n", limit = 2)
+            val accessToken = parts.firstOrNull().orEmpty()
+            val refreshToken = parts.getOrNull(1).orEmpty()
+            if (accessToken.isBlank()) {
+                signOut(context)
+                return null
+            }
+
+            val expiresAt = preferences.getLong(ACCESS_EXPIRES_AT, 0L)
+            if (expiresAt == 0L || expiresAt > System.currentTimeMillis() + 60_000L) return accessToken
+            if (refreshToken.isBlank()) {
+                signOut(context)
+                return null
+            }
+
+            // GitHub rotates refresh tokens; persist the new encrypted pair together.
+            val response = try {
+                postFormBlocking(
+                    ACCESS_TOKEN_URL,
+                    linkedMapOf(
+                        "client_id" to BuildConfig.GITHUB_OAUTH_CLIENT_ID.trim(),
+                        "grant_type" to "refresh_token",
+                        "refresh_token" to refreshToken,
+                    ),
+                )
+            } catch (_: Exception) {
+                // Keep the encrypted session intact during network failures so the next request can retry.
+                return null
+            }
+            val refreshedAccess = response.optString("access_token")
+            if (refreshedAccess.isBlank()) {
+                signOut(context)
+                return null
+            }
+            val refreshedRefresh = response.optString("refresh_token").takeIf { it.isNotBlank() } ?: refreshToken
+            save(
+                context,
+                refreshedAccess,
+                refreshedRefresh,
+                response.optInt("expires_in", 0),
+                preferences.getString(USER_LOGIN, "").orEmpty(),
+            )
+            return refreshedAccess
         }
 
         private fun getOrCreateKey(): SecretKey {
