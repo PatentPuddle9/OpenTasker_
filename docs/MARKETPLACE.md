@@ -37,7 +37,9 @@ Contributors can submit an enabled Action or an app-style Shortcut Widget direct
 
 GitHub sign-in uses the OAuth Device Flow. The app displays a one-time code and GitHub verification page; the contributor approves the requested public-repository access on GitHub. The access token is encrypted with a device-bound Android Keystore AES-GCM key and is never written into package files, logs, or source code. Only the OAuth application's public client ID is supplied to the build as the optional `GITHUB_OAUTH_CLIENT_ID` Actions secret. No OAuth client secret is used in the Android app.
 
-After sign-in, the app creates a branch in the contributor's Marketplace repository (or a fork when needed), uploads `manifest.json` and the data-only `bundle.json`, then opens a pull request against the official Marketplace repository. The existing GitHub Actions validator and moderator review remain authoritative. Contributors must enable Device Flow on the GitHub OAuth App and set the repository Actions secret `GITHUB_OAUTH_CLIENT_ID` before building APKs with sign-in enabled.
+To configure sign-in, create a GitHub OAuth App under Settings → Developer settings → OAuth Apps, enable Device Flow in the app settings, and copy its Client ID into the OpenTasker_ repository's Actions secret named `GITHUB_OAUTH_CLIENT_ID`. No client secret is needed for this flow. Re-run the Build OpenTasker APK workflow after adding the secret. The app requests only `public_repo` (write access to public repositories, needed to upload package files and open pull requests) and `read:user` (to show the signed-in account). Review this consent before approving it.
+
+After sign-in, the app creates a branch in the contributor's Marketplace repository (or a fork when needed), uploads `manifest.json` and the data-only `bundle.json`, then opens a pull request against the official Marketplace repository. The existing GitHub Actions validator and moderator review remain authoritative.
 
 ## Offline behavior
 
