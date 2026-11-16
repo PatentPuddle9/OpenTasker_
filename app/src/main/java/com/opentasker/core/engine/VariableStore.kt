@@ -2,6 +2,8 @@ package com.opentasker.core.engine
 
 import com.opentasker.core.engine.variables.ArrayStore
 import com.opentasker.core.engine.variables.VariableExpander
+import com.opentasker.core.expressions.InertTemplateText
+import com.opentasker.core.expressions.TemplateExpressionEngine
 import com.opentasker.core.expressions.TemplateScope
 import com.opentasker.core.model.VariableNamePolicy
 import kotlinx.serialization.json.Json
@@ -15,9 +17,13 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 data class TrackedExpansion(
+    /** Ready for template expansion; nested templates from variables stay inert. */
     val value: String,
     val isSecretDerived: Boolean,
-)
+) {
+    /** Finished text when no template stage follows. */
+    val text: String get() = InertTemplateText.restore(value)
+}
 
 /**
  * In-memory variable store with a global scope and stack of local scopes.
@@ -166,9 +172,16 @@ class VariableStore {
         return expander.expand(s, this, arrayStore)
     }
 
-    /** Expands a legacy expression while retaining whether any referenced input was secret. */
-    fun expandTracked(s: String): TrackedExpansion = TrackedExpansion(
-        value = expand(s),
+    /**
+     * Expands a legacy expression while retaining whether any referenced input was secret.
+     * [conditionals] false leaves a leading ternary as text; [unset] controls missing variables.
+     */
+    fun expandTracked(
+        s: String,
+        conditionals: Boolean = true,
+        unset: VariableExpander.Unset = VariableExpander.Unset.AS_WRITTEN,
+    ): TrackedExpansion = TrackedExpansion(
+        value = expander.expand(s, this, arrayStore, InertTemplateText::hide, conditionals, unset),
         isSecretDerived = variableReference.findAll(s).any { match ->
             val name = match.groupValues[1]
             isSensitive(name) || name in sensitiveArrayNames
@@ -188,6 +201,30 @@ class VariableStore {
 
     fun evaluateCondition(expr: String): Boolean {
         return expander.evaluateCondition(expr, this, arrayStore)
+    }
+
+    /**
+     * Evaluates the condition as authored: parse its operators and grouping before expanding each
+     * operand. External text in a variable therefore cannot introduce a new branch or another
+     * variable reference. The same path is used by the run preview.
+     */
+    fun evaluateCondition(
+        expr: String,
+        templates: TemplateExpressionEngine,
+        eventVariables: Map<String, String> = emptyMap(),
+    ): Boolean {
+        val scope by lazy(LazyThreadSafetyMode.NONE) { toTemplateScope(eventVariables) }
+        if (expr.contains("{{") && templates.expand(expandTracked(expr).value, scope).warnings.isNotEmpty()) {
+            return false
+        }
+        return expander.evaluateCondition(expr, this, arrayStore) { operand, unset ->
+            val legacy = expandTracked(operand, unset = unset)
+            if (!legacy.value.contains("{{")) {
+                legacy.text
+            } else {
+                InertTemplateText.restore(templates.expand(legacy.value, scope).value)
+            }
+        }
     }
 
     fun toTemplateScope(event: Map<String, String> = emptyMap()): TemplateScope {

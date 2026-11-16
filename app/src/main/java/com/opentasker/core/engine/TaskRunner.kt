@@ -999,15 +999,12 @@ class TaskRunner(
         return evaluateConditionString(condition)
     }
 
-    /** Evaluates a condition string with legacy `%var` then bounded `{{ ... }}` expansion. */
-    private fun evaluateConditionString(condition: String): Boolean {
-        val legacyExpanded = ctx.variables.expand(condition)
-        if (!legacyExpanded.contains("{{")) return ctx.variables.evaluateCondition(legacyExpanded)
-
-        val expanded = templateExpressionEngine.expand(legacyExpanded, ctx.variables.toTemplateScope(ctx.eventVariables))
-        if (expanded.warnings.isNotEmpty()) return false
-        return ctx.variables.evaluateCondition(expanded.value)
-    }
+    /**
+     * Conditions are parsed before any external value is expanded, so a notification or SMS body
+     * cannot inject operators or a second variable reference into the condition.
+     */
+    private fun evaluateConditionString(condition: String): Boolean =
+        ctx.variables.evaluateCondition(condition, templateExpressionEngine, ctx.eventVariables)
 
     private fun traceFor(
         index: Int,

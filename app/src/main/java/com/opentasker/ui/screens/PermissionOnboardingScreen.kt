@@ -134,9 +134,6 @@ import com.opentasker.core.contexts.UnifiedPushEndpointStore
 import com.opentasker.core.contexts.UnifiedPushRegistrationState
 import com.opentasker.core.contexts.UnifiedPushRegistrationStatus
 import com.opentasker.core.engine.DirectBootTriggerStore
-import com.opentasker.core.apps.TargetSignerApproval
-import com.opentasker.core.apps.TargetSignerGuard
-import com.opentasker.core.apps.TargetSignerUnreadableException
 import com.opentasker.core.contexts.CompanionAssociation
 import com.opentasker.core.contexts.CompanionAssociationResult
 import com.opentasker.core.contexts.CompanionDeviceAssociation
@@ -236,8 +233,6 @@ internal sealed interface PermissionAction {
      */
     data class CopyText(val label: String, val text: String) : PermissionAction
     data class ShizukuKillSwitch(val enabled: Boolean) : PermissionAction
-    /** Re-approve a plugin or Termux app after its signing certificate changes. */
-    data class ReapproveTargetSigner(val packageName: String) : PermissionAction
     /** Try each OEM settings component in order, falling back to a web guide URL. */
     data class OemSettings(
         val targets: List<OemBatteryGuidance.SettingsTarget>,
@@ -339,33 +334,6 @@ private class PermissionOnboardingViewModel(appContext: Context) : ViewModel() {
         refreshExternalState()
         refreshUpdateCheckState()
         refreshUpdateBranches()
-    }
-
-    /**
-     * Re-pins [packageName] to its currently installed signer. A missing app returns null;
-     * an unreadable signer leaves the previous pin untouched.
-     */
-    fun reapproveTargetSigner(packageName: String, onDone: (Result<TargetSignerApproval?>) -> Unit) {
-        viewModelScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                try {
-                    Result.success(TargetSignerGuard.forContext(context).approve(packageName))
-                } catch (unreadable: TargetSignerUnreadableException) {
-                    AppLogger.warn("Setup", unreadable.message.orEmpty())
-                    Result.failure(unreadable)
-                }
-            }
-            refresh()
-            onDone(result)
-        }
-    }
-
-    /** Undo a re-approval by restoring the pin that was replaced. */
-    fun undoTargetSignerApproval(approval: TargetSignerApproval) {
-        viewModelScope.launch(Dispatchers.IO) {
-            TargetSignerGuard.forContext(context).restore(approval.pin.packageName, approval.previous)
-            refresh()
-        }
     }
 
     fun setDirectBootEnabled(enabled: Boolean) {
@@ -1083,20 +1051,6 @@ fun PermissionOnboardingScreen(
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
                             clipboard?.setPrimaryClip(ClipData.newPlainText(action.label, action.text))
                             onMessage(grantCommandCopiedMessage)
-                        }
-                        is PermissionAction.ReapproveTargetSigner -> {
-                            setupViewModel.reapproveTargetSigner(action.packageName) { result ->
-                                val approval = result.getOrNull()
-                                if (result.isFailure) {
-                                    onMessage(resources.getString(R.string.setup_target_signer_unreadable, action.packageName))
-                                } else if (approval == null) {
-                                    onMessage(resources.getString(R.string.setup_target_signer_not_installed, action.packageName))
-                                } else {
-                                    onUndoableMessage(resources.getString(R.string.setup_target_signer_reapproved, action.packageName)) {
-                                        setupViewModel.undoTargetSignerApproval(approval)
-                                    }
-                                }
-                            }
                         }
                         PermissionAction.RemoveDeviceAdmin -> {
                             // Android has no "open my admin's page" intent, so removal has to
