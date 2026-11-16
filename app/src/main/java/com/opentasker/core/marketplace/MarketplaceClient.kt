@@ -1,6 +1,8 @@
 package com.opentasker.core.marketplace
 
 import android.content.Context
+import com.opentasker.core.transfer.OpenTaskerBundle
+import com.opentasker.core.transfer.OpenTaskerBundleCodec
 import android.util.Base64
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
@@ -131,6 +133,29 @@ internal object MarketplaceClient {
             .apply()
         MarketplaceCatalogResult(decoded, fromCache = false)
     }
+
+    /**
+     * Downloads and validates the exact bundle listed by the signed catalogue for a read-only
+     * preview. It never imports or executes the package and never substitutes setup inputs.
+     */
+    suspend fun previewPackage(packageEntry: MarketplacePackage): OpenTaskerBundle =
+        withContext(Dispatchers.IO) {
+            require(safeBundlePath.matches(packageEntry.bundlePath)) {
+                "The signed catalogue contains an invalid package path."
+            }
+            val rawBytes = readBytes(
+                "${MarketplaceTrust.CATALOG_BASE_URL}/${packageEntry.bundlePath}",
+                MAX_BUNDLE_BYTES,
+            )
+            val expectedHash = packageEntry.bundleSha256.lowercase()
+            val actualHash = MessageDigest.getInstance("SHA-256")
+                .digest(rawBytes)
+                .joinToString("") { "%02x".format(it) }
+            require(actualHash == expectedHash) {
+                "The package checksum does not match the signed catalogue. Preview was stopped."
+            }
+            OpenTaskerBundleCodec.decode(rawBytes.toString(Charsets.UTF_8))
+        }
 
     suspend fun downloadAndConfigure(
         packageEntry: MarketplacePackage,
