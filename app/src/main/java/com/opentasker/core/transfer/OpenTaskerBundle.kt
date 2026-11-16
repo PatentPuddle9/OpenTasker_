@@ -84,6 +84,20 @@ data class BundleMetadata(
     val capabilityRequirements: List<CapabilityRequirement> = emptyList(),
     val powerRequests: List<RecipePowerRequest> = emptyList(),
     val warnings: List<String> = emptyList(),
+    /** Marketplace contribution discriminator; null for ordinary local exports. */
+    val contributionType: String? = null,
+    /** Optional app-style launcher Shortcut Widget presentation paired with its Action. */
+    val shortcutWidget: MarketplaceShortcutWidget? = null,
+)
+
+@Serializable
+data class MarketplaceShortcutWidget(
+    val name: String,
+    val icon: String,
+    val iconColorArgb: Int,
+    val backgroundColorArgb: Int,
+    val gradient: Boolean,
+    val shape: String,
 )
 
 @Serializable
