@@ -62,6 +62,7 @@
     <string name="nav_run_log">Run Log</string>
     <string name="nav_setup">Setup</string>
     <string name="nav_settings">Settings</string>
+    <string name="nav_marketplace">Marketplace</string>
     <string name="nav_variables">Variables</string>
     <string name="nav_flow">Flow</string>
     <string name="nav_scenes">Scenes</string>
