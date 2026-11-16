@@ -130,6 +130,8 @@ jobs:
         run: ./gradlew clean --no-build-cache --stacktrace --dependency-verification=off
 
       - name: Build debug APK
+        env:
+          MARKETPLACE_PUBLIC_KEY_X509_BASE64: ${{ secrets.MARKETPLACE_PUBLIC_KEY_X509_BASE64 }}
         run: |
           ./gradlew \
             -PopenTaskerVersionName="$OPENTASKER_VERSION_NAME" \
