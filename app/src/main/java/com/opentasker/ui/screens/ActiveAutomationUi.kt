@@ -589,7 +589,7 @@ fun ActiveAutomationUi(
                     screen = screen,
                     detail = headerDetail.takeUnless { screen == OpenTaskerScreen.Settings },
                     onOpenSearch = { showGlobalSearchDialog = true },
-                    showSearch = screen != OpenTaskerScreen.Settings,
+                    showSearch = screen != OpenTaskerScreen.Settings && screen != OpenTaskerScreen.Marketplace,
                 )
                 if (screen in setOf(OpenTaskerScreen.Actions, OpenTaskerScreen.Vars, OpenTaskerScreen.Scenes, OpenTaskerScreen.Flow)) {
                     ProjectScopeBar(
@@ -643,6 +643,7 @@ fun ActiveAutomationUi(
                 OpenTaskerScreen.Setup,
                 OpenTaskerScreen.RunLog,
                 OpenTaskerScreen.Settings,
+                OpenTaskerScreen.Marketplace,
                 -> Unit
                 OpenTaskerScreen.Diagnostics -> Unit
             }
@@ -891,6 +892,13 @@ fun ActiveAutomationUi(
 
             OpenTaskerScreen.Setup -> permissionScreen(false)
             OpenTaskerScreen.Settings -> permissionScreen(true)
+
+            OpenTaskerScreen.Marketplace -> MarketplaceScreen(
+                contentPadding = innerPadding,
+                onInstallBundle = { bundleJson ->
+                    viewModel.previewPastedImport(bundleJson, BuildConfig.VERSION_NAME)
+                },
+            )
 
             OpenTaskerScreen.Inspector -> ContextInspectorScreen(
                 db = db,
