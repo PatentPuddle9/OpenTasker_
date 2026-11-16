@@ -403,3 +403,33 @@ private inline fun numericCompare(
 }
 
 private val STATE_PREDICATE_PATTERN = Regex("^\\s*([^<>=]+?)\\s*(>=|<=|=|>|<)\\s*(.*?)\\s*$")
+
+
+/** A STATE spec's key, operator and value, read from its predicate when it has one. */
+internal fun stateCondition(spec: ContextSpec): Triple<String, String, String> =
+    spec.config["predicate"]?.takeIf(String::isNotBlank)?.let(::parseStatePredicate)
+        ?: Triple(spec.config["key"].orEmpty(), spec.config["operator"].orEmpty(), spec.config["value"].orEmpty())
+
+/** The device a STATE context waits for, or null when it isn't a nearby-device context that can match. */
+internal fun bluetoothNearTarget(spec: ContextSpec): String? {
+    if (spec.type != ContextType.STATE) return null
+    val (key, operator, value) = stateCondition(spec)
+    if (normalizeStateKey(key) != BT_NEAR_STATE_KEY) return null
+    if (operator.trim().ifEmpty { "=" } != "=") return null
+    return value.trim().takeIf(String::isNotEmpty)
+}
+
+internal fun bluetoothNearTargets(specs: Iterable<ContextSpec>): Set<String> =
+    specs.mapNotNullTo(linkedSetOf(), ::bluetoothNearTarget)
+
+/** Private marker for a value published before a sensor has measured a real reading. */
+internal const val STAND_IN_MARKER_PREFIX = "_standin_"
+
+internal fun standInMarkerKey(stateKey: String): String = "$STAND_IN_MARKER_PREFIX$stateKey"
+
+internal fun isStandIn(state: Map<String, String>, stateKey: String): Boolean =
+    state[standInMarkerKey(stateKey)] == "1"
+
+/** Whether Android is withholding the name of the network the device is connected to. */
+internal fun wifiNameWithheld(state: Map<String, String>): Boolean =
+    !state[DeviceStateEvents.WIFI_SSID_SETUP_MARKER].isNullOrBlank()

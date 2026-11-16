@@ -339,6 +339,7 @@ internal fun ContextConfigDialog(
     onSave: (ContextSpec) -> Unit,
     onSimulate: ((ContextSpec) -> Unit)? = null,
 ) {
+    val context = LocalContext.current
     var invert by rememberSaveable(state.profile.id, state.index, state.type) { mutableStateOf(state.existing?.invert ?: false) }
     var config by rememberSaveable(state.profile.id, state.index, state.type, state.initialConfig, state.existing?.config) {
         mutableStateOf(defaultContextConfig(state.type) + state.initialConfig + canonicalContextConfig(state.type, state.existing?.config ?: emptyMap()))

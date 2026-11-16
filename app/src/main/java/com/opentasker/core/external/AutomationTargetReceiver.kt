@@ -28,6 +28,7 @@ enum class InternalTaskRunSource(
     SCENE_OVERLAY("scene_overlay", "Scene overlay"),
     QUICK_SETTINGS_TILE("quick_settings_tile", "Quick Settings tile"),
     APP_FUNCTION("app_function", "App function"),
+    POPUP_DIALOG("popup_dialog", "Popup dialog"),
 }
 
 object AutomationTargetContract {

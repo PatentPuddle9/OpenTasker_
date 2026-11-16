@@ -883,7 +883,7 @@ object TaskerXmlExporter {
     private fun taskerPatternFields(context: ContextSpec): List<String> =
         if (context.type == ContextType.EVENT &&
             context.config["event"]?.trim()?.lowercase() == "notification" &&
-            context.config["patterns"] == ContextMatchEvaluator.ContextMatchEvaluator.TASKER_PATTERNS
+            context.config["patterns"] == ContextMatchEvaluator.TASKER_PATTERNS
         ) listOf("title", "body") else emptyList()
 
     private fun contextSettingsLost(context: ContextSpec): List<String> {
