@@ -980,4 +980,77 @@
 <string name="catalog_action_track_fastforward_name" formatted="false">Fast Forward</string>
 
 <string name="catalog_action_track_fastforward_description" formatted="false">Fast forward the current track</string>
+
+
+<string name="catalog_action_notify_show_field_button1_url_label" formatted="false">Button 1 link</string>
+
+<string name="catalog_action_notify_show_field_button1_url_hint" formatted="false">Web address to open on tap, used when no task is set</string>
+
+<string name="catalog_action_notify_show_field_button2_url_label" formatted="false">Button 2 link</string>
+
+<string name="catalog_action_notify_show_field_button2_url_hint" formatted="false">Web address to open on tap, used when no task is set</string>
+
+<string name="catalog_action_notify_show_field_button3_url_label" formatted="false">Button 3 link</string>
+
+<string name="catalog_action_notify_show_field_button3_url_hint" formatted="false">Web address to open on tap, used when no task is set</string>
+
+<string name="catalog_action_tts_speak_field_stream_label" formatted="false">Audio stream</string>
+
+<string name="catalog_action_tts_speak_field_stream_hint" formatted="false">Music by default. Ringer and Notifications use the ringer or notification volume and go quiet on vibrate or silent, and Do Not Disturb can silence them too. On Android 17 a task started in the background can only be heard on Alarm, which needs exact-alarm access and follows the alarm volume.</string>
+
+<string name="catalog_action_script_shizuku_run_name" formatted="false">Run Shizuku Script</string>
+
+<string name="catalog_action_script_shizuku_run_description" formatted="false">Run an approved shell script through Shizuku and optionally capture bounded output</string>
+
+<string name="catalog_action_script_shizuku_run_field_path_label" formatted="false">Script path</string>
+
+<string name="catalog_action_script_shizuku_run_field_path_hint" formatted="false">/data/local/tmp/my_script.sh</string>
+
+<string name="catalog_action_script_shizuku_run_field_arguments_label" formatted="false">Arguments</string>
+
+<string name="catalog_action_script_shizuku_run_field_arguments_hint" formatted="false">Optional shell-style arguments</string>
+
+<string name="catalog_action_script_shizuku_run_field_captureprefix_label" formatted="false">Output variable prefix</string>
+
+<string name="catalog_action_script_shizuku_run_field_captureprefix_hint" formatted="false">%script</string>
+
+<string name="catalog_action_script_shizuku_run_field_timeoutms_label" formatted="false">Timeout ms</string>
+
+<string name="catalog_action_script_shizuku_run_field_timeoutms_hint" formatted="false">30000 (1000 to 120000)</string>
+
+<string name="catalog_action_vpn_tunnel_name" formatted="false">Connect or Disconnect VPN</string>
+
+<string name="catalog_action_vpn_tunnel_description" formatted="false">Turn a WireGuard or Tailscale tunnel on or off, then check that the VPN really changed.</string>
+
+<string name="catalog_action_vpn_tunnel_field_client_label" formatted="false">VPN app</string>
+
+<string name="catalog_action_vpn_tunnel_field_client_hint" formatted="false">The app that owns the tunnel</string>
+
+<string name="catalog_action_vpn_tunnel_field_state_label" formatted="false">Connection</string>
+
+<string name="catalog_action_vpn_tunnel_field_state_hint" formatted="false">Up connects, down disconnects</string>
+
+<string name="catalog_action_vpn_tunnel_field_tunnel_label" formatted="false">Tunnel name</string>
+
+<string name="catalog_action_vpn_tunnel_field_tunnel_hint" formatted="false">WireGuard only, exactly as the app shows it</string>
+
+<string name="action_option_vpn_wireguard" formatted="false">WireGuard</string>
+
+<string name="action_option_vpn_tailscale" formatted="false">Tailscale</string>
+
+<string name="action_option_vpn_up" formatted="false">Up</string>
+
+<string name="action_option_vpn_down" formatted="false">Down</string>
+
+<string name="catalog_action_hotspot_toggle_name" formatted="false">Toggle Wi-Fi Hotspot</string>
+
+<string name="catalog_action_hotspot_toggle_description" formatted="false">Turn the Wi-Fi hotspot on or off</string>
+
+<string name="catalog_action_hotspot_toggle_field_state_label" formatted="false">State</string>
+
+<string name="catalog_action_hotspot_toggle_field_state_hint" formatted="false">on/off/toggle</string>
+
+<string name="catalog_action_sound_play_field_stream_label" formatted="false">Audio stream</string>
+
+<string name="catalog_action_sound_play_field_stream_hint" formatted="false">Music by default. Ringer and Notifications use the ringer or notification volume and go quiet on vibrate or silent, and Do Not Disturb can silence them too. On Android 17 a task started in the background can only be heard on Alarm, which needs exact-alarm access and follows the alarm volume.</string>
 </resources>

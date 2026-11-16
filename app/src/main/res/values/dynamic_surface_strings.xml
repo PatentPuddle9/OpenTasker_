@@ -249,4 +249,15 @@
     </plurals>
 
 <string name="capability_sun_times_setup" formatted="false">Needs location access only when latitude or longitude is left blank, to read the phone\'s location.</string>
+
+
+<string name="context_state_preset_bt_near" formatted="false">Bluetooth device nearby</string>
+
+<string name="capability_hotspot_unsupported" formatted="false">The Wi-Fi hotspot requires Android 11 or newer, Shizuku permission and its privileged user-service transport. Anyone with the saved password can join, and connected devices use your mobile data.</string>
+
+<string name="capability_hotspot_android_version" formatted="false">The Wi-Fi hotspot action needs Android 11 or newer.</string>
+
+<string name="capability_vpn_tunnel_setup" formatted="false">Requires WireGuard or Tailscale. WireGuard also needs its control permission and Allow remote control apps turned on.</string>
+
+<string name="capability_shizuku_script_setup" formatted="false">Requires Shizuku access and an approved script hash.</string>
 </resources>
