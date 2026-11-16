@@ -43,6 +43,8 @@ data class Profile(
     val icon: String = "bolt",
     /** Android home-screen widget ID when this profile is owned by a widget. */
     @Transient val widgetId: Int? = null,
+    /** Local-only owner tag for profiles installed from a signed marketplace package. */
+    @Transient val marketplacePackageId: String? = null,
 )
 
 @Serializable
