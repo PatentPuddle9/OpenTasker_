@@ -891,7 +891,10 @@ fun ActiveAutomationUi(
             )
 
             OpenTaskerScreen.Setup -> permissionScreen(false)
-            OpenTaskerScreen.Settings -> permissionScreen(true)
+            OpenTaskerScreen.Settings -> Column(Modifier.fillMaxSize()) {
+                Box(Modifier.weight(1f)) { permissionScreen(true) }
+                MarketplaceSafetySettingsCard()
+            }
 
             OpenTaskerScreen.Marketplace -> MarketplaceScreen(
                 contentPadding = innerPadding,
