@@ -43,7 +43,6 @@ import com.opentasker.core.marketplace.MarketplacePackageWatchdog
 import com.opentasker.core.actions.ActionArgumentSensitivity
 import com.opentasker.core.actions.ActionMetadataRegistry
 import com.opentasker.core.model.ActionSpec
-import com.opentasker.core.model.ContextSpec
 import com.opentasker.core.model.Profile
 import com.opentasker.core.transfer.OpenTaskerBundle
 import kotlinx.coroutines.launch
@@ -65,7 +64,6 @@ internal fun MarketplaceScreen(
     var showContributionDialog by remember { mutableStateOf(false) }
     var selectedPreviewPackage by remember { mutableStateOf<MarketplacePackage?>(null) }
     var packagePreview by remember { mutableStateOf<OpenTaskerBundle?>(null) }
-    var previewLoading by remember { mutableStateOf(false) }
     var previewingPackageId by remember { mutableStateOf<String?>(null) }
     var previewError by remember { mutableStateOf<String?>(null) }
     var watchdogStatus by remember { mutableStateOf<Map<String, Pair<Boolean, Boolean>>>(emptyMap()) }
@@ -242,7 +240,7 @@ internal fun MarketplaceScreen(
         MarketplacePackagePreviewDialog(
             packageEntry = packageEntry,
             bundle = packagePreview,
-            loading = previewLoading || previewingPackageId == packageEntry.id,
+            loading = previewingPackageId == packageEntry.id,
             errorMessage = previewError,
             onDismiss = {
                 selectedPreviewPackage = null
@@ -692,6 +690,9 @@ private fun safePreviewArgumentValue(
     value: String,
 ): String {
     val normalized = value.trim()
+    if (normalized.contains("{{input:", ignoreCase = true)) {
+        return "Provided during installation"
+    }
     if (
         normalized.startsWith("content://", ignoreCase = true) ||
         normalized.startsWith("file://", ignoreCase = true) ||
