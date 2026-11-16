@@ -136,7 +136,7 @@ jobs:
       - name: Build debug APK
         env:
           MARKETPLACE_PUBLIC_KEY_X509_BASE64: ${{ secrets.MARKETPLACE_PUBLIC_KEY_X509_BASE64 }}
-          GITHUB_OAUTH_CLIENT_ID: ${{ secrets.GITHUB_OAUTH_CLIENT_ID }}
+          GITHUB_OAUTH_CLIENT_ID: ${{ secrets.OPENTASKER_GITHUB_OAUTH_CLIENT_ID }}
         run: |
           ./gradlew \
             -PopenTaskerVersionName="$OPENTASKER_VERSION_NAME" \
