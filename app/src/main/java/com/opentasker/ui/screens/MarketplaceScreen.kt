@@ -42,9 +42,6 @@ import com.opentasker.core.marketplace.MarketplacePackage
 import com.opentasker.core.marketplace.MarketplacePackageWatchdog
 import kotlinx.coroutines.launch
 
-private const val MARKETPLACE_CONTRIBUTING_URL =
-    "https://github.com/PatentPuddle9/OpenTasker_Makrketplace/blob/main/CONTRIBUTING.md"
-
 @Composable
 internal fun MarketplaceScreen(
     contentPadding: PaddingValues,
@@ -59,6 +56,7 @@ internal fun MarketplaceScreen(
     var fromCache by remember { mutableStateOf(false) }
     var installingPackageId by remember { mutableStateOf<String?>(null) }
     var inputPackage by remember { mutableStateOf<MarketplacePackage?>(null) }
+    var showContributionDialog by remember { mutableStateOf(false) }
     var watchdogStatus by remember { mutableStateOf<Map<String, Pair<Boolean, Boolean>>>(emptyMap()) }
 
     fun refresh() {
@@ -118,7 +116,7 @@ internal fun MarketplaceScreen(
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
-                    "Browse reusable actions, automations, and Widget Display scenes. Every package still goes through OpenTasker's normal import and permission review.",
+                    "Browse reusable Actions and app-style Shortcut Widgets. Widget Displays and Scene layouts aren't Marketplace contribution types. Every package still goes through OpenTasker's normal import and permission review.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -127,11 +125,7 @@ internal fun MarketplaceScreen(
                         Text(if (loading) "Refreshing…" else "Refresh catalogue")
                     }
                     OutlinedButton(
-                        onClick = {
-                            runCatching {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(MARKETPLACE_CONTRIBUTING_URL)))
-                            }
-                        },
+                        onClick = { showContributionDialog = true },
                     ) {
                         Text("Contribute")
                     }
@@ -222,6 +216,10 @@ internal fun MarketplaceScreen(
             onDismiss = { inputPackage = null },
             onInstall = { values -> install(packageEntry, values) },
         )
+    }
+
+    if (showContributionDialog) {
+        MarketplaceContributionDialog(onDismiss = { showContributionDialog = false })
     }
 }
 
