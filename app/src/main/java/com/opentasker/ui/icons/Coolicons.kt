@@ -1492,6 +1492,7 @@ internal object Icons {
         val Settings get() = CooliconVectors.get("settings-future")
         val Tune get() = CooliconVectors.get("slider-01")
         val Widgets get() = CooliconVectors.get("main-component")
+        val ShoppingBag get() = CooliconVectors.get("shopping-bag-01")
         val MoreHoriz get() = CooliconVectors.get("more-horizontal")
         val Palette get() = CooliconVectors.get("swatches-palette")
         val Security get() = CooliconVectors.get("shield-check")
