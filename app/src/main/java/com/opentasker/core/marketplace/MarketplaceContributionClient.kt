@@ -164,7 +164,19 @@ internal object MarketplaceContributionClient {
         val base = OpenTaskerBundleCodec.build(
             appVersion = BuildConfig.VERSION_NAME,
             exportedAtEpochMs = System.currentTimeMillis(),
-            profiles = listOf(profile.copy(projectId = DEFAULT_PROJECT_ID, widgetId = null)),
+            // Share the reusable action flow, not the contributor's personal triggers/contexts.
+            // Imported marketplace profiles start disabled and are configured by the recipient.
+            profiles = listOf(
+                profile.copy(
+                    name = name,
+                    enabled = false,
+                    contexts = emptyList(),
+                    contextExpression = null,
+                    projectId = DEFAULT_PROJECT_ID,
+                    widgetId = null,
+                    marketplacePackageId = null,
+                ),
+            ),
             tasks = tasks.map { it.copy(projectId = DEFAULT_PROJECT_ID) },
             name = name,
             description = description,
