@@ -108,7 +108,7 @@ internal fun MarketplaceContributionDialog(onDismiss: () -> Unit) {
 
     fun startSignIn() {
         if (!GitHubDeviceAuth.isConfigured) {
-            errorMessage = "GitHub sign-in hasn't been configured for this build. The repository owner needs to add the OPENTASKER_OPENTASKER_GITHUB_OAUTH_CLIENT_ID repository Actions secret and rebuild."
+            errorMessage = "GitHub sign-in hasn't been configured for this build. The repository owner needs to add the OPENTASKER_GITHUB_OAUTH_CLIENT_ID repository Actions secret and rebuild."
             return
         }
         scope.launch {
@@ -118,6 +118,9 @@ internal fun MarketplaceContributionDialog(onDismiss: () -> Unit) {
             runCatching {
                 val device = GitHubDeviceAuth.beginDeviceFlow()
                 challenge = device
+                // Open the GitHub device-authorization page automatically; the one-time code remains
+                // visible here so the contributor can enter it in the browser.
+                openUrl(device.verificationUri)
                 val token = GitHubDeviceAuth.waitForAuthorization(device)
                 GitHubDeviceAuth.finishSignIn(context, token)
             }.onSuccess { login ->

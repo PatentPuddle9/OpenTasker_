@@ -970,6 +970,8 @@ fun PermissionOnboardingScreen(
                     }
                 }
             }
+            item { SettingsSectionLabel("Account") }
+            item { GitHubAccountSettingsCard() }
             item { SettingsSectionLabel(stringResource(R.string.settings_section_data_recovery)) }
             item {
                 BackupSetupCard(
@@ -1035,6 +1037,8 @@ fun PermissionOnboardingScreen(
                     onUndoableMessage = onUndoableMessage,
                 )
             }
+            item { SettingsSectionLabel("Marketplace") }
+            item { MarketplaceSafetySettingsCard() }
             item { SettingsSectionLabel(stringResource(R.string.settings_section_about)) }
             item {
                 AboutCard(onOpenLink = { url -> openExternalLink(context, url, onMessage) })
