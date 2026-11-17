@@ -441,6 +441,7 @@ internal object MarketplaceContributionClient {
             .put("category", candidate.kind.category)
             .put("minimumAppVersion", BuildConfig.VERSION_NAME.substringBefore('-').substringBefore('+'))
             .put("bundleFile", "bundle.json")
+            .put("previewFile", "preview.png")
             .put("requiredInputs", JSONArray())
             .put("externalDestinations", JSONArray().apply {
                 destinations.forEach { item ->
@@ -455,6 +456,7 @@ internal object MarketplaceContributionClient {
                         .put("riskNotes", item.riskNotes))
                 }
             })
+        if (iconAssetBytes != null) manifest.put("assetFile", "icon.png")
 
         val upstream = GitHubDeviceAuth.apiRequestBlocking(token, "GET", "/repos/" + REPOSITORY)
         val upstreamBranch = upstream.optString("default_branch").ifBlank { "main" }
@@ -475,7 +477,11 @@ internal object MarketplaceContributionClient {
 
         val folder = "packages/" + id + "/" + version
         putFile(token, targetRepo, branch, folder + "/manifest.json", manifest.toString(2))
-        putFile(token, targetRepo, branch, folder + "/bundle.json", bundleText)
+        putFile(token, targetRepo, branch, folder + "/bundle.json", payloadText)
+        putFileBytes(token, targetRepo, branch, folder + "/preview.png", previewBytes)
+        iconAssetBytes?.let { bytes ->
+            putFileBytes(token, targetRepo, branch, folder + "/icon.png", bytes)
+        }
         val pr = GitHubDeviceAuth.apiRequestBlocking(
             token,
             "POST",
@@ -500,9 +506,21 @@ internal object MarketplaceContributionClient {
                     appendLine("Publisher: @" + login)
                     if (candidate.kind == MarketplaceContributionKind.SHORTCUT_WIDGET) {
                         appendLine("Includes the enabled linked Action and the app-style Shortcut Widget presentation.")
+                    } else if (candidate.kind == MarketplaceContributionKind.WIDGET_DISPLAY) {
+                        appendLine("Includes a reusable Widget Display layout. Publisher-specific Action links are cleared; recipients can connect their own Actions.")
+                    } else if (candidate.kind == MarketplaceContributionKind.THEME) {
+                        appendLine("Includes an OpenTasker appearance preset (theme mode and accent color).")
+                    } else if (candidate.kind == MarketplaceContributionKind.CUSTOM_WIDGET_ICON) {
+                        appendLine("Includes the original custom icon PNG asset.")
                     }
                     appendLine()
-                    appendLine("This is a data-only OpenTasker bundle. Automated GitHub validation and Marketplace moderation remain required.")
+                    appendLine("## Package preview")
+                    appendLine()
+                    appendLine("![Marketplace package preview](https://raw.githubusercontent.com/" + targetRepo + "/" + branch + "/" + folder + "/preview.png)")
+                    appendLine()
+                    appendLine("The preview PNG is included in this pull request so reviewers can inspect the submitted appearance.")
+                    appendLine()
+                    appendLine("Package data is limited to the supported OpenTasker Marketplace format. Automated validation and Marketplace moderation remain required.")
                 })
                 .put("head", if (targetRepo.equals(REPOSITORY, true)) branch else login + ":" + branch)
                 .put("base", upstreamBranch)
@@ -588,6 +606,17 @@ internal object MarketplaceContributionClient {
         GitHubDeviceAuth.apiRequestBlocking(
             token, "PUT", "/repos/" + repo + "/contents/" + path,
             JSONObject().put("message", "Add Marketplace package file " + path).put("content", encoded).put("branch", branch),
+        )
+    }
+
+    private fun putFileBytes(token: String, repo: String, branch: String, path: String, content: ByteArray) {
+        require(content.isNotEmpty() && content.size <= 15 * 1024 * 1024) {
+            "Marketplace image assets must be between 1 byte and 15 MB."
+        }
+        val encoded = Base64.encodeToString(content, Base64.NO_WRAP)
+        GitHubDeviceAuth.apiRequestBlocking(
+            token, "PUT", "/repos/" + repo + "/contents/" + path,
+            JSONObject().put("message", "Add Marketplace package image " + path).put("content", encoded).put("branch", branch),
         )
     }
 
