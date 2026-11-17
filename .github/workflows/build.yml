@@ -2,7 +2,7 @@ name: Build OpenTasker APK
 
 on:
   push:
-    branches: [Experimental]
+    branches: [Experimental, BETA]
     paths:
       - "app/**"
       - "core/**"
