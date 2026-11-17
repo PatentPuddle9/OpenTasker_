@@ -45,16 +45,13 @@ internal object MarketplacePackageAssetStorage {
     }
 
     fun useAppStorage(context: Context) {
-        val app = context.applicationContext
-        selectedTreeUri(app)?.let { previous ->
-            runCatching {
-                app.contentResolver.releasePersistableUriPermission(
-                    previous,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-                )
-            }
-        }
-        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(TREE_URI).apply()
+        // Keep old persisted folder grants: installed Actions and Widget Displays may still
+        // refer to content URIs from a previous storage location.
+        context.applicationContext
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .remove(TREE_URI)
+            .apply()
     }
 
     fun installAssets(
