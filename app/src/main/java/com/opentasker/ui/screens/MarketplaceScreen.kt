@@ -180,15 +180,28 @@ internal fun MarketplaceScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { refresh() }, enabled = !loading) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedButton(
+                        onClick = { refresh() },
+                        enabled = !loading,
+                        modifier = Modifier.weight(1f),
+                    ) {
                         Text(if (loading) "Refreshing…" else "Refresh catalogue")
                     }
                     Button(
                         onClick = { showContributionDialog = true },
+                        modifier = Modifier.weight(1f),
                     ) {
                         Text("Publish package")
                     }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
                     OutlinedButton(
                         onClick = { openMyPackages() },
                         enabled = !checkingManagedAccount,
