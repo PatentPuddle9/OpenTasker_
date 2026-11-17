@@ -70,11 +70,8 @@ internal fun MarketplaceContributionDialog(
     var step by remember(existingPackage?.id) { mutableStateOf(0) }
     var selectedKind by remember(existingPackage?.id) {
         mutableStateOf(
-            if (existingPackage?.category == "Shortcut Widgets") {
-                MarketplaceContributionKind.SHORTCUT_WIDGET
-            } else {
-                MarketplaceContributionKind.ACTION
-            },
+            MarketplaceContributionKind.entries.firstOrNull { it.category == existingPackage?.category }
+                ?: MarketplaceContributionKind.ACTION,
         )
     }
     var selectedKey by remember { mutableStateOf<String?>(null) }
@@ -94,6 +91,12 @@ internal fun MarketplaceContributionDialog(
     var listingShape by remember(existingPackage?.id) { mutableStateOf(existingPackage?.shape ?: "squircle") }
     var changelog by remember(existingPackage?.id) { mutableStateOf(existingPackage?.changelog.orEmpty()) }
     var documentationUrl by remember(existingPackage?.id) { mutableStateOf(existingPackage?.documentationUrl.orEmpty()) }
+    var selectedThemeMode by remember(existingPackage?.id) {
+        mutableStateOf(existingPackage?.themeMode?.takeIf { it.isNotBlank() } ?: "amoled")
+    }
+    var selectedThemeAccent by remember(existingPackage?.id) {
+        mutableStateOf(existingPackage?.themeAccentColor?.takeIf { it.isNotBlank() } ?: "#B69CFF")
+    }
     var showIconPicker by remember { mutableStateOf(false) }
     var provider by remember { mutableStateOf("") }
     var domains by remember { mutableStateOf("") }
@@ -139,6 +142,10 @@ internal fun MarketplaceContributionDialog(
         listingIconColor.matches(Regex("^#?[A-Fa-f0-9]{6}$")) &&
         listingBackgroundColor.matches(Regex("^#?[A-Fa-f0-9]{6}$")) &&
         listingShape in setOf("squircle", "rounded_square", "circle", "square", "teardrop") &&
+        (selectedKind != MarketplaceContributionKind.THEME || (
+            selectedThemeMode in setOf("system", "dark", "amoled", "light", "high_contrast", "dynamic") &&
+                selectedThemeAccent.matches(Regex("^#?[A-Fa-f0-9]{6}$"))
+            )) &&
         tagsText.split(',', ';').map { it.trim() }.filter { it.isNotBlank() }.let { values ->
             values.size <= 10 && values.distinctBy { it.lowercase() }.size == values.size &&
                 values.all { it.matches(Regex("^[A-Za-z0-9][A-Za-z0-9 _+-]{0,23}$")) }
@@ -158,6 +165,10 @@ internal fun MarketplaceContributionDialog(
 
     fun choose(candidate: MarketplaceContributionCandidate) {
         selectedKey = candidate.key
+        if (candidate.kind == MarketplaceContributionKind.THEME) {
+            selectedThemeMode = candidate.themeMode?.toStorageString() ?: selectedThemeMode
+            selectedThemeAccent = candidate.themeAccentColor ?: selectedThemeAccent
+        }
         if (packageName.isBlank()) packageName = candidate.name
         if (summary.isBlank()) summary = candidate.name
         if (packageId.isBlank()) {
@@ -236,6 +247,8 @@ internal fun MarketplaceContributionDialog(
                     changelog = changelog,
                     documentationUrl = documentationUrl,
                     disclosure = external,
+                    themeMode = selectedThemeMode,
+                    themeAccentColor = selectedThemeAccent,
                     previousVersion = existingPackage?.version,
                 )
             }.onSuccess { pull ->
@@ -398,30 +411,27 @@ internal fun MarketplaceContributionDialog(
                         0 -> {
                             Text(
                                 if (existingPackage == null) {
-                                    "Choose the reusable Action or home-screen Shortcut Widget you want to publish."
+                                    "Choose what you want to publish. Every type receives the same automated checks and review process."
                                 } else {
-                                    "Choose the updated local Action or Shortcut Widget for this package."
+                                    "Choose the updated local item for this package."
                                 },
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                             if (existingPackage == null) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    FilterChip(
-                                        selected = selectedKind == MarketplaceContributionKind.ACTION,
-                                        onClick = {
-                                            selectedKind = MarketplaceContributionKind.ACTION
-                                            selectedKey = null
-                                        },
-                                        label = { Text("Actions") },
-                                    )
-                                    FilterChip(
-                                        selected = selectedKind == MarketplaceContributionKind.SHORTCUT_WIDGET,
-                                        onClick = {
-                                            selectedKind = MarketplaceContributionKind.SHORTCUT_WIDGET
-                                            selectedKey = null
-                                        },
-                                        label = { Text("Shortcut widgets") },
-                                    )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    MarketplaceContributionKind.entries.forEach { kind ->
+                                        FilterChip(
+                                            selected = selectedKind == kind,
+                                            onClick = {
+                                                selectedKind = kind
+                                                selectedKey = null
+                                            },
+                                            label = { Text(kind.label) },
+                                        )
+                                    }
                                 }
                             }
                             when {
@@ -434,10 +444,17 @@ internal fun MarketplaceContributionDialog(
                                     color = MaterialTheme.colorScheme.error,
                                 )
                                 visibleCandidates.isEmpty() -> Text(
-                                    if (selectedKind == MarketplaceContributionKind.ACTION) {
-                                        "No eligible Actions found. Turn on an Action and make sure it contains at least one block."
-                                    } else {
-                                        "No eligible Shortcut Widgets found. Add the widget to your home screen and turn on its linked Action."
+                                    when (selectedKind) {
+                                        MarketplaceContributionKind.ACTION ->
+                                            "No eligible Actions found. Turn on an Action and make sure it contains at least one block."
+                                        MarketplaceContributionKind.SHORTCUT_WIDGET ->
+                                            "No eligible Shortcut Widgets found. Add one to your home screen and turn on its linked Action."
+                                        MarketplaceContributionKind.WIDGET_DISPLAY ->
+                                            "No installed Widget Displays were found. Add a Widget Display to your home screen and design at least one state."
+                                        MarketplaceContributionKind.THEME ->
+                                            "Your current OpenTasker appearance is ready to publish as a theme preset."
+                                        MarketplaceContributionKind.CUSTOM_WIDGET_ICON ->
+                                            "Create a custom widget icon in Settings → Icon builder first."
                                     },
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -459,7 +476,18 @@ internal fun MarketplaceContributionDialog(
                                                 Column(modifier = Modifier.weight(1f)) {
                                                     Text(candidate.name, style = MaterialTheme.typography.titleSmall)
                                                     Text(
-                                                        "${candidate.tasks.size} flow(s) · ${candidate.actionCount} blocks",
+                                                        when (candidate.kind) {
+                                                            MarketplaceContributionKind.ACTION ->
+                                                                "${candidate.tasks.size} flow(s) · ${candidate.actionCount} blocks"
+                                                            MarketplaceContributionKind.SHORTCUT_WIDGET ->
+                                                                "Home-screen widget · ${candidate.actionCount} linked blocks"
+                                                            MarketplaceContributionKind.WIDGET_DISPLAY ->
+                                                                "${candidate.widgetDisplayConfig?.states?.size ?: 0} state(s) · reusable layout"
+                                                            MarketplaceContributionKind.THEME ->
+                                                                "Appearance preset · ${candidate.themeMode?.toStorageString() ?: "amoled"}"
+                                                            MarketplaceContributionKind.CUSTOM_WIDGET_ICON ->
+                                                                "Custom PNG icon · ${if (candidate.customIcon?.recolorable == true) "recolorable" else "original colors"}"
+                                                        },
                                                         style = MaterialTheme.typography.bodySmall,
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     )
@@ -657,6 +685,63 @@ internal fun MarketplaceContributionDialog(
                                 singleLine = true,
                                 isError = documentationUrl.isNotBlank() && !documentationUrl.trim().startsWith("https://"),
                             )
+                            if (selectedKind == MarketplaceContributionKind.THEME) {
+                                Card(modifier = Modifier.fillMaxWidth()) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Text("Theme preset", style = MaterialTheme.typography.titleSmall)
+                                        Text(
+                                            "OpenTasker themes use a mode plus an accent color. The app generates matching shades automatically.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        ) {
+                                            listOf(
+                                                "amoled" to "AMOLED",
+                                                "dark" to "Dark",
+                                                "light" to "Light",
+                                                "system" to "System",
+                                                "high_contrast" to "High contrast",
+                                                "dynamic" to "Material You",
+                                            ).forEach { (mode, label) ->
+                                                FilterChip(
+                                                    selected = selectedThemeMode == mode,
+                                                    onClick = { selectedThemeMode = mode },
+                                                    label = { Text(label) },
+                                                )
+                                            }
+                                        }
+                                        OutlinedTextField(
+                                            value = selectedThemeAccent,
+                                            onValueChange = { selectedThemeAccent = it.filter { ch -> ch.isLetterOrDigit() || ch == '#' }.take(7) },
+                                            label = { Text("Accent color") },
+                                            supportingText = { Text("Six-digit HEX, e.g. #B69CFF") },
+                                            isError = !selectedThemeAccent.matches(Regex("^#?[A-Fa-f0-9]{6}$")),
+                                            modifier = Modifier.fillMaxWidth(),
+                                            singleLine = true,
+                                        )
+                                    }
+                                }
+                            }
+                            if (selectedKind == MarketplaceContributionKind.WIDGET_DISPLAY) {
+                                Text(
+                                    "Widget Display states and layout are shared. Links to your personal Actions are removed so the recipient can connect their own.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            if (selectedKind == MarketplaceContributionKind.CUSTOM_WIDGET_ICON) {
+                                Text(
+                                    "The selected custom PNG is included as the installable icon asset. Its preview is attached to the pull request.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                             Text(
                                 if (existingPackage == null) "Starting version" else "Choose the next version",
                                 style = MaterialTheme.typography.titleSmall,
@@ -741,7 +826,15 @@ internal fun MarketplaceContributionDialog(
                                         modifier = Modifier.size(52.dp),
                                         iconSize = 24.dp,
                                     )
-                                    Text("${selected?.tasks?.size ?: 0} flow(s) · ${selected?.actionCount ?: 0} blocks")
+                                    Text(
+                                        when (selectedKind) {
+                                            MarketplaceContributionKind.ACTION -> "${selected?.tasks?.size ?: 0} flow(s) · ${selected?.actionCount ?: 0} blocks"
+                                            MarketplaceContributionKind.SHORTCUT_WIDGET -> "App-style home-screen widget with its linked Action"
+                                            MarketplaceContributionKind.WIDGET_DISPLAY -> "${selected?.widgetDisplayConfig?.states?.size ?: 0} Widget Display state(s)"
+                                            MarketplaceContributionKind.THEME -> "Theme mode: $selectedThemeMode · Accent: $selectedThemeAccent"
+                                            MarketplaceContributionKind.CUSTOM_WIDGET_ICON -> "Custom PNG icon · installable as a shared widget icon"
+                                        },
+                                    )
                                     Text("Publisher: @${account ?: "not signed in"}")
                                 }
                             }
