@@ -111,6 +111,17 @@ internal fun MarketplaceScreen(
     var currentGithubUserId by remember { mutableStateOf<String?>(null) }
     var ratingSubmittingPackageId by remember { mutableStateOf<String?>(null) }
     var featureSubmittingPackageId by remember { mutableStateOf<String?>(null) }
+    var sortMode by remember { mutableStateOf("Recommended") }
+    var collections by remember { mutableStateOf(MarketplaceCollections.load(appContext)) }
+    var activeCollectionName by remember { mutableStateOf<String?>(null) }
+    var packageToCollect by remember { mutableStateOf<MarketplacePackage?>(null) }
+    var showCreateCollectionDialog by remember { mutableStateOf(false) }
+    var collectionNameInput by remember { mutableStateOf("") }
+    var reviewPackage by remember { mutableStateOf<MarketplacePackage?>(null) }
+    var reviewTitle by remember { mutableStateOf("") }
+    var reviewText by remember { mutableStateOf("") }
+    var reviewSubmittingPackageId by remember { mutableStateOf<String?>(null) }
+    var helpfulSubmittingReviewId by remember { mutableStateOf<String?>(null) }
 
     fun refresh() {
         scope.launch {
@@ -196,6 +207,13 @@ internal fun MarketplaceScreen(
                     }
                 }
             }.onSuccess { message ->
+                if (currentGithubLogin != null) {
+                    scope.launch {
+                        runCatching {
+                            MarketplaceCommunityActions.recordDownload(appContext, packageEntry.id, packageEntry.version)
+                        }
+                    }
+                }
                 Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             }.onFailure { error ->
                 errorMessage = error.message ?: "Package download or validation failed."
@@ -276,6 +294,66 @@ internal fun MarketplaceScreen(
         }
     }
 
+    fun submitPackageReview(packageEntry: MarketplacePackage, title: String, review: String) {
+        scope.launch {
+            if (currentGithubLogin == null) {
+                Toast.makeText(context, "Sign in with GitHub in Settings → Account to write a review.", Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            reviewSubmittingPackageId = packageEntry.id
+            runCatching {
+                MarketplaceCommunityActions.submitReview(appContext, packageEntry.id, packageEntry.publisher, title, review)
+            }.onSuccess {
+                Toast.makeText(context, "Your review was submitted. It will appear after the signed catalogue refreshes.", Toast.LENGTH_LONG).show()
+                reviewPackage = null
+            }.onFailure { error ->
+                Toast.makeText(context, error.message ?: "Couldn't submit your review.", Toast.LENGTH_LONG).show()
+            }
+            reviewSubmittingPackageId = null
+        }
+    }
+
+    fun markReviewHelpful(packageEntry: MarketplacePackage, review: com.opentasker.core.marketplace.MarketplaceReview) {
+        scope.launch {
+            if (currentGithubLogin == null) {
+                Toast.makeText(context, "Sign in with GitHub to vote on reviews.", Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            helpfulSubmittingReviewId = review.reviewId
+            runCatching {
+                MarketplaceCommunityActions.markReviewHelpful(appContext, packageEntry.id, review.userId)
+            }.onSuccess {
+                Toast.makeText(context, "Your helpful vote was submitted. Refresh after the catalogue updates.", Toast.LENGTH_LONG).show()
+            }.onFailure { error ->
+                Toast.makeText(context, error.message ?: "Couldn't submit your vote.", Toast.LENGTH_LONG).show()
+            }
+            helpfulSubmittingReviewId = null
+        }
+    }
+
+    fun createCollection() {
+        runCatching { MarketplaceCollections.create(appContext, collectionNameInput) }
+            .onSuccess { updated ->
+                collections = updated
+                activeCollectionName = updated.lastOrNull()?.name
+                collectionNameInput = ""
+                showCreateCollectionDialog = false
+            }.onFailure { error ->
+                Toast.makeText(context, error.message ?: "Couldn't create that collection.", Toast.LENGTH_LONG).show()
+            }
+    }
+
+    fun savePackageToCollection(collectionName: String) {
+        val target = packageToCollect ?: return
+        runCatching { MarketplaceCollections.addPackage(appContext, collectionName, target.id) }
+            .onSuccess { updated ->
+                collections = updated
+                packageToCollect = null
+                Toast.makeText(context, "Saved to $collectionName.", Toast.LENGTH_SHORT).show()
+            }.onFailure { error ->
+                Toast.makeText(context, error.message ?: "Couldn't save this package.", Toast.LENGTH_LONG).show()
+            }
+    }
     fun preview(packageEntry: MarketplacePackage) {
         if (packageEntry.category in setOf("Widget Displays", "Custom Widget Icons")) {
             selectedDetailsPackage = packageEntry
@@ -298,22 +376,28 @@ internal fun MarketplaceScreen(
     LaunchedEffect(Unit) { refresh() }
 
     val packages = catalog?.packages.orEmpty().filterNot { it.category.equals("Themes", ignoreCase = true) }
-    val visiblePackages = remember(packages, searchQuery, categoryFilter) {
+    val visiblePackages = remember(packages, searchQuery, categoryFilter, sortMode, activeCollectionName, collections) {
         val query = searchQuery.trim()
-        packages
-            .filter { item ->
-                val categoryMatches = when (categoryFilter) {
-                    "All" -> true
-                    "Featured" -> item.featured
-                    else -> item.category.equals(categoryFilter, ignoreCase = true)
-                }
-                categoryMatches &&
-                    (query.isBlank() || listOf(
-                        item.name, item.summary, item.description, item.id, item.publisher, item.category,
-                    ).any { it.contains(query, ignoreCase = true) } ||
-                        item.tags.any { it.contains(query, ignoreCase = true) })
+        val filtered = packages.filter { item ->
+            val categoryMatches = when (categoryFilter) {
+                "All" -> true
+                "Featured" -> item.featured
+                else -> item.category.equals(categoryFilter, ignoreCase = true)
             }
-            .sortedWith(compareByDescending<MarketplacePackage> { it.featured }.thenBy { it.name.lowercase() })
+            val collectionMatches = activeCollectionName?.let { name ->
+                collections.firstOrNull { it.name == name }?.packageIds?.contains(item.id) == true
+            } ?: true
+            categoryMatches && collectionMatches &&
+                (query.isBlank() || listOf(item.name, item.summary, item.description, item.id, item.publisher, item.category).any { it.contains(query, ignoreCase = true) } ||
+                    item.tags.any { it.contains(query, ignoreCase = true) })
+        }
+        when (sortMode) {
+            "Trending" -> filtered.sortedWith(compareByDescending<MarketplacePackage> { it.weeklyDownloads }.thenByDescending { it.downloadCount }.thenByDescending { it.ratingAverage })
+            "Top Rated" -> filtered.sortedWith(compareByDescending<MarketplacePackage> { it.ratingCount }.thenByDescending { it.ratingAverage }.thenByDescending { it.downloadCount })
+            "Newest" -> filtered.sortedByDescending { it.publishedAt }
+            "Most Downloaded" -> filtered.sortedWith(compareByDescending<MarketplacePackage> { it.downloadCount }.thenByDescending { it.weeklyDownloads })
+            else -> filtered.sortedWith(compareByDescending<MarketplacePackage> { it.featured }.thenByDescending { it.ratingAverage }.thenByDescending { it.weeklyDownloads }.thenBy { it.name.lowercase() })
+        }
     }
     val actionPackageCount = packages.count { it.category.equals("Actions", ignoreCase = true) }
     val widgetPackageCount = packages.count { it.category.equals("Shortcut Widgets", ignoreCase = true) }
@@ -419,6 +503,29 @@ internal fun MarketplaceScreen(
                         )
                     }
                 }
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf("Recommended", "Trending", "Top Rated", "Newest", "Most Downloaded").forEach { mode ->
+                        FilterChip(selected = sortMode == mode, onClick = { sortMode = mode }, label = { Text(mode) })
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    FilterChip(selected = activeCollectionName == null, onClick = { activeCollectionName = null }, label = { Text("All packages") })
+                    collections.forEach { collection ->
+                        FilterChip(
+                            selected = activeCollectionName == collection.name,
+                            onClick = { activeCollectionName = collection.name },
+                            label = { Text(collection.name) },
+                        )
+                    }
+                    TextButton(onClick = { showCreateCollectionDialog = true }) { Text("New collection") }
+                }
                 if (fromCache) {
                     Text(
                         "Offline catalogue · Showing the last verified copy saved on this device.",
@@ -496,6 +603,7 @@ internal fun MarketplaceScreen(
                     watchdogStatus = watchdogStatus + (packageEntry.id to (isProtected to false))
                 },
                 onDetails = { selectedDetailsPackage = packageEntry },
+                onSaveToCollection = { packageToCollect = packageEntry },
                 onPreview = { preview(packageEntry) },
                 onInstall = {
                     when {
@@ -517,6 +625,18 @@ internal fun MarketplaceScreen(
     selectedDetailsPackage?.let { packageEntry ->
         MarketplacePackageDetailsDialog(
             packageEntry = packageEntry,
+            allPackages = packages,
+            currentUserId = currentGithubUserId?.toLongOrNull(),
+            reviewSubmitting = reviewSubmittingPackageId == packageEntry.id,
+            helpfulSubmittingReviewId = helpfulSubmittingReviewId,
+            onWriteReview = {
+                val existing = packageEntry.reviews.firstOrNull { it.userId == currentGithubUserId?.toLongOrNull() }
+                reviewTitle = existing?.title.orEmpty()
+                reviewText = existing?.body.orEmpty()
+                reviewPackage = packageEntry
+            },
+            onHelpful = { review -> markReviewHelpful(packageEntry, review) },
+            onSaveToCollection = { packageToCollect = packageEntry },
             currentUserRating = currentGithubUserId?.let { packageEntry.ratingVotes[it] },
             signedIn = currentGithubLogin != null,
             publisherOwnsPackage = currentGithubLogin?.equals(packageEntry.publisher, ignoreCase = true) == true,
@@ -555,6 +675,54 @@ internal fun MarketplaceScreen(
         )
     }
 
+    packageToCollect?.let { packageEntry ->
+        MarketplaceSaveToCollectionDialog(
+            packageEntry = packageEntry,
+            collections = collections,
+            onSave = { name -> savePackageToCollection(name) },
+            onCreateCollection = { showCreateCollectionDialog = true },
+            onDismiss = { packageToCollect = null },
+        )
+    }
+
+    if (showCreateCollectionDialog) {
+        AlertDialog(
+            onDismissRequest = { showCreateCollectionDialog = false; collectionNameInput = "" },
+            title = { Text("New collection") },
+            text = {
+                OutlinedTextField(
+                    value = collectionNameInput,
+                    onValueChange = { collectionNameInput = it.take(32) },
+                    label = { Text("Collection name") },
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                Button(onClick = { createCollection() }, enabled = collectionNameInput.trim().isNotEmpty()) { Text("Create") }
+            },
+            dismissButton = { TextButton(onClick = { showCreateCollectionDialog = false; collectionNameInput = "" }) { Text("Cancel") } },
+        )
+    }
+
+    reviewPackage?.let { packageEntry ->
+        AlertDialog(
+            onDismissRequest = { reviewPackage = null },
+            title = { Text(if (packageEntry.reviews.any { it.userId == currentGithubUserId?.toLongOrNull() }) "Edit your review" else "Write a review") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = reviewTitle, onValueChange = { reviewTitle = it.take(100) }, label = { Text("Review title") }, singleLine = true)
+                    OutlinedTextField(value = reviewText, onValueChange = { reviewText = it.take(1200) }, label = { Text("Your experience") }, minLines = 4, maxLines = 8)
+                    Text("Reviews are public and attached to your GitHub account. Don't include personal contact details.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            confirmButton = {
+                Button(onClick = { submitPackageReview(packageEntry, reviewTitle, reviewText) }, enabled = reviewTitle.isNotBlank() && reviewText.isNotBlank() && reviewSubmittingPackageId != packageEntry.id) {
+                    Text(if (reviewSubmittingPackageId == packageEntry.id) "Submitting…" else "Publish review")
+                }
+            },
+            dismissButton = { TextButton(onClick = { reviewPackage = null }) { Text("Cancel") } },
+        )
+    }
     pendingWidgetDisplay?.let { packageEntry ->
         MarketplaceWidgetDisplayTargetDialog(
             packageEntry = packageEntry,
