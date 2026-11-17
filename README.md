@@ -142,7 +142,8 @@ The **Widgets** area manages two home-screen widget types. Widgets launch or dis
 The shared built-in icon picker includes the original OpenTasker **bolt** plus **all 442 Coolicons v4.1 Line icons** from the Coolicons Line Oval collection.
 
 - Search and browse the built-in icons in the shared picker.
-- Create custom icons directly in **Settings → General → Icon builder**. Choose a built-in glyph, background shape, foreground and background colors, optional gradient, outline, and glyph size, with a live preview before saving.
+- Create custom icons directly in **Settings → General → Icon builder**. Icon Studio provides a large, phone-width canvas clipped to the same squircle, rounded-square, circle, square, and teardrop silhouettes used by Widget Shortcuts.
+- Draw freehand with an adjustable brush, add multiple built-in symbols as independently movable layers, resize, recolor, duplicate, delete, and undo edits. Set the canvas background and optional gradient, then save.
 - Builder-created icons appear in the **Custom** category beside the built-in library. No image upload or external image editor is needed.
 - Use the shared icon set for Action cards, widgets, and popup/toast headings where an icon is supported.
 
