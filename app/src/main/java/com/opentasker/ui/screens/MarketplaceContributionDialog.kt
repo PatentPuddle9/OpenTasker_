@@ -305,6 +305,13 @@ internal fun MarketplaceContributionDialog(
                                         Text(if (signingIn) "Waiting…" else "Sign in")
                                     }
                                 }
+                                if (!GitHubDeviceAuth.isConfigured) {
+                                    Text(
+                                        "Publishing isn't available in this build because GitHub sign-in isn't configured.",
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
                                 challenge?.let { device ->
                                     Text("Enter this code on GitHub", style = MaterialTheme.typography.bodySmall)
                                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -410,7 +417,8 @@ internal fun MarketplaceContributionDialog(
                                 value = packageName,
                                 onValueChange = { packageName = it },
                                 label = { Text("Package name") },
-                                supportingText = { Text("1–80 characters") },
+                                supportingText = { Text("${packageName.length}/80 characters") },
+                                isError = packageName.isBlank() || packageName.length > 80,
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth(),
                             )
