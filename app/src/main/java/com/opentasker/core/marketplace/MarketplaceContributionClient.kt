@@ -6,6 +6,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.util.Base64
 import com.opentasker.app.BuildConfig
 import com.opentasker.app.OpenTaskerApp_NoHilt
@@ -25,6 +26,7 @@ import com.opentasker.widget.WidgetStyle
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.URLEncoder
+import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
@@ -98,6 +100,8 @@ internal fun allowedMarketplaceVersions(current: String): List<String> {
 internal object MarketplaceContributionClient {
     private const val REPOSITORY = "PatentPuddle9/OpenTasker_Makrketplace"
     private const val MAX_BUNDLE_BYTES = 8 * 1024 * 1024
+    private const val MAX_PACKAGE_ASSET_BYTES = 10 * 1024 * 1024
+    private const val MAX_TOTAL_PACKAGE_ASSETS_BYTES = 40 * 1024 * 1024
     private val externalIds = setOf("http.request", "http.get", "http.post", "integration.home_assistant.webhook", "mqtt.publish", "download")
     private val email = Regex("(?i)\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b")
     private val phone = Regex("(?<!\\w)(?:\\+?1[ .-]?)?(?:\\(?\\d{3}\\)?[ .-]?)\\d{3}[ .-]?\\d{4}(?!\\w)")
@@ -203,6 +207,7 @@ internal object MarketplaceContributionClient {
         faqs: List<MarketplaceFaqDraft> = emptyList(),
         dependencies: List<MarketplaceDependencyDraft> = emptyList(),
         screenshotUris: List<Uri> = emptyList(),
+        assetUris: List<Uri> = emptyList(),
     ): MarketplacePullRequest = withContext(Dispatchers.IO) {
         val id = packageId.trim()
         val name = packageName.trim()
@@ -396,6 +401,119 @@ internal object MarketplaceContributionClient {
             "The Marketplace package data is too large."
         }
 
+        require(assetUris.size <= 12) { "Add no more than 12 package content files." }
+        require(assetUris.isEmpty() || candidate.kind in setOf(
+            MarketplaceContributionKind.ACTION,
+            MarketplaceContributionKind.SHORTCUT_WIDGET,
+        )) { "Images and audio can only be bundled with Action and Shortcut Widget packages." }
+
+        val packageAssets = assetUris.mapIndexed { index, uri ->
+            val assetNumber = (index + 1).toString().padStart(2, '0')
+            val displayName = app.contentResolver.query(
+                uri,
+                arrayOf(OpenableColumns.DISPLAY_NAME),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) else null
+            }.orEmpty().ifBlank { uri.lastPathSegment.orEmpty() }
+            val extension = displayName.substringAfterLast('.', "").lowercase()
+            val suppliedMime = app.contentResolver.getType(uri)?.lowercase().orEmpty()
+            val rawBytes = app.contentResolver.openInputStream(uri)?.use { input ->
+                val output = ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                var total = 0
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    total += count
+                    require(total <= MAX_PACKAGE_ASSET_BYTES) {
+                        "Package file $assetNumber exceeds the 10 MB per-file limit."
+                    }
+                    output.write(buffer, 0, count)
+                }
+                output.toByteArray()
+            } ?: throw IOException("Could not read package file $assetNumber.")
+            require(rawBytes.isNotEmpty()) { "Package file $assetNumber is empty." }
+
+            val isImage = extension in setOf("png", "jpg", "jpeg", "webp") ||
+                suppliedMime in setOf("image/png", "image/jpeg", "image/webp")
+            if (isImage) {
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size, bounds)
+                require(bounds.outWidth in 1..16384 && bounds.outHeight in 1..16384) {
+                    "Package image $assetNumber has invalid or excessively large dimensions."
+                }
+                var sampleSize = 1
+                while (maxOf(bounds.outWidth, bounds.outHeight) / sampleSize > 2048) {
+                    sampleSize *= 2
+                }
+                val bitmap = BitmapFactory.decodeByteArray(
+                    rawBytes,
+                    0,
+                    rawBytes.size,
+                    BitmapFactory.Options().apply { inSampleSize = sampleSize },
+                ) ?: throw IOException("Package image $assetNumber couldn't be decoded.")
+                val scale = minOf(1f, 2048f / maxOf(bitmap.width, bitmap.height).toFloat())
+                val export = if (scale < 1f) {
+                    Bitmap.createScaledBitmap(
+                        bitmap,
+                        (bitmap.width * scale).toInt().coerceAtLeast(1),
+                        (bitmap.height * scale).toInt().coerceAtLeast(1),
+                        true,
+                    )
+                } else bitmap
+                val output = ByteArrayOutputStream()
+                require(export.compress(Bitmap.CompressFormat.PNG, 100, output)) {
+                    "Could not encode package image $assetNumber."
+                }
+                if (export !== bitmap) export.recycle()
+                bitmap.recycle()
+                val bytes = output.toByteArray()
+                require(bytes.size in 1..5 * 1024 * 1024) {
+                    "Package image $assetNumber exceeds the 5 MB limit after PNG conversion."
+                }
+                MarketplaceSubmissionAsset(
+                    key = "asset-$assetNumber",
+                    file = "assets/image-$assetNumber.png",
+                    mediaType = "image/png",
+                    bytes = bytes,
+                )
+            } else {
+                val audioType = when (extension) {
+                    "mp3" -> "audio/mpeg"
+                    "ogg" -> "audio/ogg"
+                    "wav" -> "audio/wav"
+                    "m4a" -> "audio/mp4"
+                    else -> when (suppliedMime) {
+                        "audio/mpeg", "audio/mp3" -> "audio/mpeg"
+                        "audio/ogg", "application/ogg" -> "audio/ogg"
+                        "audio/wav", "audio/x-wav" -> "audio/wav"
+                        "audio/mp4", "audio/x-m4a" -> "audio/mp4"
+                        else -> throw IllegalArgumentException(
+                            "Package file $assetNumber must be PNG/JPG/WebP, MP3, OGG, WAV, or M4A audio.",
+                        )
+                    }
+                }
+                val audioExtension = when (audioType) {
+                    "audio/mpeg" -> "mp3"
+                    "audio/ogg" -> "ogg"
+                    "audio/wav" -> "wav"
+                    else -> "m4a"
+                }
+                MarketplaceSubmissionAsset(
+                    key = "asset-$assetNumber",
+                    file = "assets/audio-$assetNumber.$audioExtension",
+                    mediaType = audioType,
+                    bytes = rawBytes,
+                )
+            }
+        }
+        require(packageAssets.sumOf { it.bytes.size } <= MAX_TOTAL_PACKAGE_ASSETS_BYTES) {
+            "Combined package image and audio files exceed the 40 MB total limit."
+        }
+
         val previewBitmap = MarketplacePreviewRenderer.render(
             kind = candidate.kind,
             name = name,
@@ -460,6 +578,14 @@ internal object MarketplaceContributionClient {
             .put("bundleFile", "bundle.json")
             .put("previewFile", "preview.png")
             .put("screenshots", JSONArray(screenshotAssets.map { it.first }))
+            .put("assets", JSONArray(packageAssets.map { asset ->
+                JSONObject()
+                    .put("key", asset.key)
+                    .put("file", asset.file)
+                    .put("mediaType", asset.mediaType)
+                    .put("sizeBytes", asset.bytes.size)
+                    .put("sha256", sha256(asset.bytes))
+            }))
             .put("faqs", JSONArray(faqs.map { item ->
                 JSONObject().put("question", item.question.trim()).put("answer", item.answer.trim())
             }))
@@ -508,6 +634,9 @@ internal object MarketplaceContributionClient {
         }
         iconAssetBytes?.let { bytes ->
             putFileBytes(token, targetRepo, branch, folder + "/icon.png", bytes)
+        }
+        packageAssets.forEach { asset ->
+            putFileBytes(token, targetRepo, branch, folder + "/" + asset.file, asset.bytes)
         }
         val pr = GitHubDeviceAuth.apiRequestBlocking(
             token,
@@ -603,6 +732,16 @@ internal object MarketplaceContributionClient {
         MarketplaceDeletionRequest(number, url)
     }
 
+    private data class MarketplaceSubmissionAsset(
+        val key: String,
+        val file: String,
+        val mediaType: String,
+        val bytes: ByteArray,
+    )
+
+    private fun sha256(bytes: ByteArray): String =
+        MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+
     private fun readStyle(context: Context, id: Int): WidgetStyle {
         val prefs = context.getSharedPreferences(TaskWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
         val defaults = WidgetStyle()
@@ -644,7 +783,7 @@ internal object MarketplaceContributionClient {
 
     private fun putFileBytes(token: String, repo: String, branch: String, path: String, content: ByteArray) {
         require(content.isNotEmpty() && content.size <= 15 * 1024 * 1024) {
-            "Marketplace image assets must be between 1 byte and 15 MB."
+            "Marketplace image/audio assets must be between 1 byte and 15 MB."
         }
         val encoded = Base64.encodeToString(content, Base64.NO_WRAP)
         GitHubDeviceAuth.apiRequestBlocking(
