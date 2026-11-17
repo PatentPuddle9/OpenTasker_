@@ -43,6 +43,20 @@ To configure sign-in, create a GitHub OAuth App under Settings → Developer set
 
 After sign-in, the app creates a branch in the contributor's Marketplace repository (or a fork when needed), uploads `manifest.json` and the data-only `bundle.json`, then opens a pull request against the official Marketplace repository. The existing GitHub Actions validator and moderator review remain authoritative.
 
+## Discovery and community features
+
+The signed catalogue powers the Recommended, Trending, Top Rated, Newest, and Most Downloaded sort orders, in addition to category filters and search. Trending uses install events from the previous seven days; Most Downloaded uses the aggregate count; Newest uses the published version's recorded commit time. Featured packages remain highlighted in Recommended and can be viewed with the Featured filter.
+
+Package details can include a gallery of signed PNG screenshots, package activity, FAQs, dependencies and minimum dependency versions, release notes, safety disclosures, star ratings, and written community reviews. Every extra screenshot is listed in the signed catalogue with its SHA-256 checksum and is verified before display.
+
+Signed-in users can write or edit one public review per package, then mark another user's review helpful. Publishers cannot rate or review their own package and cannot vote their own review helpful. Review text is bounded and filtered for likely personal contact details and credential-like values.
+
+Install analytics are opt-in: only GitHub-signed-in installs submit an event, and the backend counts at most one event for the same account/package/day. Guest installs continue normally without analytics. The catalogue shows total install events, unique GitHub accounts, and seven-day activity; these values are not presented as unique-device or unique-person counts.
+
+Collections are stored locally on the device and allow packages to be grouped and filtered. They do not sync to GitHub.
+
+Publishers can add up to ten FAQs, up to ten dependencies, and up to four PNG screenshots from the in-app contribution flow. The app resizes screenshots to a maximum dimension of 2048 pixels and enforces a 2 MB limit per image. The generated listing preview remains attached to the pull request, alongside any additional screenshots. Validation errors and moderator requests for changes are shown on the GitHub pull request.
+
 ## Offline behavior
 
 The app caches only a catalogue that has already passed signature verification. Previously imported automations remain stored locally; the marketplace is not required for them to run.
