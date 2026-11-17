@@ -18,6 +18,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -483,7 +484,24 @@ internal fun MarketplaceContributionDialog(
                                 OutlinedTextField(privacyPolicyUrl, { privacyPolicyUrl = it }, label = { Text("Privacy policy URL (HTTPS)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                                 OutlinedTextField(dataFields, { dataFields = it }, label = { Text("Data fields sent (comma-separated)") }, modifier = Modifier.fillMaxWidth())
                                 OutlinedTextField(purpose, { purpose = it }, label = { Text("Purpose") }, modifier = Modifier.fillMaxWidth())
-                                OutlinedTextField(privacyAssessment, { privacyAssessment = it }, label = { Text("Assessment: not-verified / verified / known-concerns") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                                Text("Privacy assessment", style = MaterialTheme.typography.labelLarge)
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    listOf(
+                                        "not-verified" to "Not verified",
+                                        "verified" to "Verified",
+                                    ).forEach { (value, label) ->
+                                        FilterChip(
+                                            selected = privacyAssessment == value,
+                                            onClick = { privacyAssessment = value },
+                                            label = { Text(label) },
+                                        )
+                                    }
+                                }
+                                FilterChip(
+                                    selected = privacyAssessment == "known-concerns",
+                                    onClick = { privacyAssessment = "known-concerns" },
+                                    label = { Text("Known concerns") },
+                                )
                                 OutlinedTextField(riskNotes, { riskNotes = it }, label = { Text("Additional risk notes (optional)") }, modifier = Modifier.fillMaxWidth())
                             }
                         }
