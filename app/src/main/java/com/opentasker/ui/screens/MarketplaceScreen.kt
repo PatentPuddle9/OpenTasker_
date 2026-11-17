@@ -8,11 +8,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -54,7 +54,6 @@ import com.opentasker.core.actions.ActionMetadataRegistry
 import com.opentasker.core.model.ActionSpec
 import com.opentasker.core.model.Profile
 import com.opentasker.core.transfer.OpenTaskerBundle
-import com.opentasker.widget.WidgetIconCatalog
 import kotlinx.coroutines.launch
 
 @Composable
