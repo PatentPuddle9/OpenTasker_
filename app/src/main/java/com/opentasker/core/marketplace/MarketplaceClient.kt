@@ -61,6 +61,10 @@ internal data class MarketplacePackage(
     val previewSha256: String = "",
     val iconAssetPath: String = "",
     val iconAssetSha256: String = "",
+    val featured: Boolean = false,
+    val ratingAverage: Double = 0.0,
+    val ratingCount: Int = 0,
+    val ratingVotes: Map<String, Int> = emptyMap(),
 )
 
 @Serializable
