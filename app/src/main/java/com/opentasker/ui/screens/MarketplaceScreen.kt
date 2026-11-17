@@ -3,6 +3,7 @@ package com.opentasker.ui.screens
 import com.opentasker.app.BuildConfig
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,7 +15,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,6 +37,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import com.opentasker.core.marketplace.MarketplaceClient
 import com.opentasker.core.marketplace.GitHubDeviceAuth
@@ -47,6 +53,7 @@ import com.opentasker.core.actions.ActionMetadataRegistry
 import com.opentasker.core.model.ActionSpec
 import com.opentasker.core.model.Profile
 import com.opentasker.core.transfer.OpenTaskerBundle
+import com.opentasker.widget.WidgetIconCatalog
 import kotlinx.coroutines.launch
 
 @Composable
@@ -70,6 +77,9 @@ internal fun MarketplaceScreen(
     var previewError by remember { mutableStateOf<String?>(null) }
     var watchdogStatus by remember { mutableStateOf<Map<String, Pair<Boolean, Boolean>>>(emptyMap()) }
     var showMyPackages by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var categoryFilter by remember { mutableStateOf("All") }
+    var selectedDetailsPackage by remember { mutableStateOf<MarketplacePackage?>(null) }
     var managedAccount by remember { mutableStateOf<String?>(null) }
     var checkingManagedAccount by remember { mutableStateOf(false) }
     var editingPackage by remember { mutableStateOf<MarketplacePackage?>(null) }
@@ -159,6 +169,22 @@ internal fun MarketplaceScreen(
 
     LaunchedEffect(Unit) { refresh() }
 
+    val packages = catalog?.packages.orEmpty()
+    val visiblePackages = remember(packages, searchQuery, categoryFilter) {
+        val query = searchQuery.trim()
+        packages
+            .filter { item ->
+                (categoryFilter == "All" || item.category.equals(categoryFilter, ignoreCase = true)) &&
+                    (query.isBlank() || listOf(
+                        item.name, item.summary, item.description, item.id, item.publisher, item.category,
+                    ).any { it.contains(query, ignoreCase = true) } ||
+                        item.tags.any { it.contains(query, ignoreCase = true) })
+            }
+            .sortedBy { it.name.lowercase() }
+    }
+    val actionPackageCount = packages.count { it.category.equals("Actions", ignoreCase = true) }
+    val widgetPackageCount = packages.count { it.category.equals("Shortcut Widgets", ignoreCase = true) }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = contentPadding,
@@ -169,17 +195,47 @@ internal fun MarketplaceScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(
-                    "Community marketplace",
-                    style = MaterialTheme.typography.titleLarge,
-                )
-                Text(
-                    "Browse reusable Actions and app-style Shortcut Widgets. Widget Displays and Scene layouts aren't Marketplace contribution types. Every package still goes through OpenTasker's normal import and permission review.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(
+                                "Community marketplace",
+                                style = MaterialTheme.typography.headlineSmall,
+                            )
+                            Text(
+                                "Discover ready-made Actions and Shortcut Widgets from the OpenTasker community.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("${packages.size} packages", style = MaterialTheme.typography.labelMedium)
+                                Text("${actionPackageCount} Actions", style = MaterialTheme.typography.labelMedium)
+                                Text("${widgetPackageCount} Widgets", style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                        MarketplaceListingIcon(
+                            icon = "shopping-bag-01",
+                            iconColor = "#FFFFFF",
+                            backgroundColor = "#6750A4",
+                            gradient = true,
+                            shapeKey = "squircle",
+                            modifier = Modifier.size(68.dp),
+                            iconSize = 34.dp,
+                        )
+                    }
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -189,7 +245,7 @@ internal fun MarketplaceScreen(
                         enabled = !loading,
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text(if (loading) "Refreshing…" else "Refresh catalogue")
+                        Text(if (loading) "Refreshing…" else "Refresh")
                     }
                     Button(
                         onClick = { showContributionDialog = true },
@@ -198,20 +254,37 @@ internal fun MarketplaceScreen(
                         Text("Publish package")
                     }
                 }
-                Row(
+                OutlinedButton(
+                    onClick = { openMyPackages() },
+                    enabled = !checkingManagedAccount,
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
                 ) {
-                    OutlinedButton(
-                        onClick = { openMyPackages() },
-                        enabled = !checkingManagedAccount,
-                    ) {
-                        Text(if (checkingManagedAccount) "Loading…" else "My Packages")
+                    Text(if (checkingManagedAccount) "Loading your packages…" else "Manage my packages")
+                }
+
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Search packages") },
+                    placeholder = { Text("Name, description, creator, or tag") },
+                    singleLine = true,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf("All", "Actions", "Shortcut Widgets").forEach { filter ->
+                        FilterChip(
+                            selected = categoryFilter == filter,
+                            onClick = { categoryFilter = filter },
+                            label = { Text(filter) },
+                        )
                     }
                 }
                 if (fromCache) {
                     Text(
-                        "Showing the last verified catalogue saved on this device. Refresh when GitHub is available.",
+                        "Offline catalogue · Showing the last verified copy saved on this device.",
                         color = MaterialTheme.colorScheme.tertiary,
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -232,8 +305,8 @@ internal fun MarketplaceScreen(
             }
         }
 
-        val packages = catalog?.packages.orEmpty()
-        if (catalog != null && packages.isEmpty()) {
+        
+        if (catalog != null && visiblePackages.isEmpty()) {
             item {
                 Card(
                     modifier = Modifier
@@ -241,12 +314,19 @@ internal fun MarketplaceScreen(
                         .padding(horizontal = 16.dp),
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(18.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Text("No packages published yet", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "The official marketplace is ready for submissions. Once the signing key is configured and packages are approved, they will appear here.",
+                            if (packages.isEmpty()) "The Marketplace is ready for your first package" else "No packages match",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            if (packages.isEmpty()) {
+                                "Publish an Action or Shortcut Widget to get the community catalogue started."
+                            } else {
+                                "Try another search or switch the category filter."
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -255,7 +335,7 @@ internal fun MarketplaceScreen(
             }
         }
 
-        items(packages, key = { "${it.id}:${it.version}" }) { packageEntry ->
+        items(visiblePackages, key = { "${it.id}:${it.version}" }) { packageEntry ->
             MarketplacePackageCard(
                 packageEntry = packageEntry,
                 installing = installingPackageId == packageEntry.id,
@@ -273,6 +353,7 @@ internal fun MarketplaceScreen(
                     val isProtected = watchdogStatus[packageEntry.id]?.first ?: true
                     watchdogStatus = watchdogStatus + (packageEntry.id to (isProtected to false))
                 },
+                onDetails = { selectedDetailsPackage = packageEntry },
                 onPreview = { preview(packageEntry) },
                 onInstall = {
                     if (packageEntry.requiredInputs.isEmpty()) {
@@ -289,6 +370,16 @@ internal fun MarketplaceScreen(
                 },
             )
         }
+    }
+
+    selectedDetailsPackage?.let { packageEntry ->
+        MarketplacePackageDetailsDialog(
+            packageEntry = packageEntry,
+            onDismiss = { selectedDetailsPackage = null },
+            onOpenUrl = { url ->
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+            },
+        )
     }
 
     selectedPreviewPackage?.let { packageEntry ->
