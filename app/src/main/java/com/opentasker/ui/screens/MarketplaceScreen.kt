@@ -468,44 +468,67 @@ internal fun MarketplaceScreen(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Card(
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(
-                                "Community marketplace",
-                                style = MaterialTheme.typography.headlineSmall,
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Text(
+                                    "Make OpenTasker do more.",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                                Text(
+                                    "Find community-made automations, widgets, and creative extras — all checked before they reach the catalogue.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.82f),
+                                )
+                            }
+                            MarketplaceListingIcon(
+                                icon = "shopping-bag-01",
+                                iconColor = "#FFFFFF",
+                                backgroundColor = "#6750A4",
+                                gradient = true,
+                                shapeKey = "squircle",
+                                modifier = Modifier.size(68.dp),
+                                iconSize = 34.dp,
                             )
-                            Text(
-                                "Discover Actions, home-screen widgets, Widget Displays, and custom widget icons from the OpenTasker community.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text("${packages.size} packages", style = MaterialTheme.typography.labelMedium)
-                                Text("${actionPackageCount} Actions", style = MaterialTheme.typography.labelMedium)
-                                Text("${widgetPackageCount} Widgets", style = MaterialTheme.typography.labelMedium)
-                                Text("${displayPackageCount} Displays", style = MaterialTheme.typography.labelMedium)
-                                Text("${customIconPackageCount} Icons", style = MaterialTheme.typography.labelMedium)
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            listOf(
+                                "${packages.size} packages",
+                                "${actionPackageCount} Actions",
+                                "${widgetPackageCount} Widgets",
+                                "${displayPackageCount} Displays",
+                                "${customIconPackageCount} Icons",
+                            ).forEach { metric ->
+                                Surface(
+                                    shape = RoundedCornerShape(50),
+                                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+                                ) {
+                                    Text(
+                                        metric,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                }
                             }
                         }
-                        MarketplaceListingIcon(
-                            icon = "shopping-bag-01",
-                            iconColor = "#FFFFFF",
-                            backgroundColor = "#6750A4",
-                            gradient = true,
-                            shapeKey = "squircle",
-                            modifier = Modifier.size(68.dp),
-                            iconSize = 34.dp,
-                        )
                     }
                 }
 
@@ -1740,6 +1763,10 @@ private fun MarketplacePackageDetailsDialog(
                                 val count = packageEntry.ratingDistribution[stars.toString()] ?: 0
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text("$stars ★", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(34.dp))
+                                    androidx.compose.material3.LinearProgressIndicator(
+                                        progress = if (packageEntry.ratingCount > 0) count.toFloat() / packageEntry.ratingCount else 0f,
+                                        modifier = Modifier.weight(1f),
+                                    )
                                     Text("$count", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
