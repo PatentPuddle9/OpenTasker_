@@ -32,6 +32,8 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -93,6 +95,7 @@ internal fun MarketplaceContributionDialog(
     var listingShape by remember(existingPackage?.id) { mutableStateOf(existingPackage?.shape ?: "squircle") }
     var changelog by remember(existingPackage?.id) { mutableStateOf(existingPackage?.changelog.orEmpty()) }
     var documentationUrl by remember(existingPackage?.id) { mutableStateOf(existingPackage?.documentationUrl.orEmpty()) }
+    var screenshotUris by remember(existingPackage?.id) { mutableStateOf<List<Uri>>(emptyList()) }
     var faqsText by remember(existingPackage?.id) {
         mutableStateOf(existingPackage?.faqs?.joinToString("\n") { "${it.question} | ${it.answer}" }.orEmpty())
     }
@@ -114,6 +117,12 @@ internal fun MarketplaceContributionDialog(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var pullRequestUrl by remember { mutableStateOf<String?>(null) }
     var pullRequestNumber by remember { mutableStateOf<Int?>(null) }
+
+    val screenshotPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents(),
+    ) { selectedUris ->
+        screenshotUris = selectedUris.take(4)
+    }
 
     LaunchedEffect(Unit) {
         loadingCandidates = true
@@ -275,6 +284,7 @@ internal fun MarketplaceContributionDialog(
                             optional = optional,
                         )
                     },
+                    screenshotUris = screenshotUris,
                 )
             }.onSuccess { pull ->
                 pullRequestNumber = pull.number
@@ -717,6 +727,24 @@ internal fun MarketplaceContributionDialog(
                                 maxLines = 5,
                                 isError = !validDependencies,
                             )
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("Package screenshots", style = MaterialTheme.typography.titleSmall)
+                                    Text("The Marketplace preview is generated automatically. Add up to four extra PNG screenshots for the package page and review pull request.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        OutlinedButton(onClick = { screenshotPicker.launch("image/*") }) {
+                                            Text(if (screenshotUris.isEmpty()) "Choose screenshots" else "Change screenshots")
+                                        }
+                                        if (screenshotUris.isNotEmpty()) {
+                                            TextButton(onClick = { screenshotUris = emptyList() }) { Text("Clear") }
+                                        }
+                                    }
+                                    Text("${screenshotUris.size}/4 selected · Images are resized to 2048 px and must fit within 2 MB each.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    if (existingPackage?.screenshots?.isNotEmpty() == true && screenshotUris.isEmpty()) {
+                                        Text("This is a new immutable version. Re-select any screenshots you want to carry forward.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+                                    }
+                                }
+                            }
                             OutlinedTextField(
                                 value = documentationUrl,
                                 onValueChange = { documentationUrl = it.take(300) },
