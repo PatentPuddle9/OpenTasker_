@@ -3,8 +3,8 @@ package com.opentasker.ui.theme
 import androidx.compose.ui.unit.dp
 
 /**
- * OpenTasker design system: a calm, high-contrast workshop UI with generous spacing,
- * soft sage accents, and rounded surfaces.
+ * OpenTasker design system: a calm, editorial interface with neutral surfaces, controlled spacing,
+ * and crisp hierarchy.
  */
 object DesignSystem {
     object Spacing {
@@ -12,26 +12,26 @@ object DesignSystem {
         val sm = 8.dp
         val md = 12.dp
         val lg = 16.dp
-        val xl = 24.dp
+        val xl = 22.dp
         val xxl = 32.dp
     }
 
     object Screen {
         val horizontalPadding = 20.dp
-        val verticalPadding = 16.dp
-        val cardPadding = 18.dp
-        val heroCardPadding = 22.dp
-        val sectionGap = 22.dp
-        val cardGap = 12.dp
+        val verticalPadding = 18.dp
+        val cardPadding = 16.dp
+        val heroCardPadding = 20.dp
+        val sectionGap = 20.dp
+        val cardGap = 10.dp
     }
 
     object Radii {
-        val xs = 8.dp
-        val sm = 12.dp
-        val md = 16.dp
-        val lg = 20.dp
+        val xs = 5.dp
+        val sm = 9.dp
+        val md = 13.dp
+        val lg = 17.dp
         val xl = 24.dp
-        val xxl = 30.dp
+        val xxl = 26.dp
     }
 
     object Elevation {
@@ -44,9 +44,9 @@ object DesignSystem {
 
     object ComponentSize {
         val buttonSmall = 36.dp
-        val buttonMedium = 48.dp
-        val buttonLarge = 54.dp
-        val buttonXLarge = 60.dp
+        val buttonMedium = 44.dp
+        val buttonLarge = 50.dp
+        val buttonXLarge = 56.dp
 
         val iconSmall = 16.dp
         val iconMedium = 20.dp
@@ -55,11 +55,11 @@ object DesignSystem {
         val iconXLarge = 48.dp
 
         val touchTargetMin = 48.dp
-        val listItemHeight = 72.dp
+        val listItemHeight = 64.dp
         val checkboxSize = 24.dp
         val statusIndicator = 8.dp
         val compactControlHeight = 40.dp
-        val cardActionHeight = 44.dp
+        val cardActionHeight = 40.dp
     }
 
     object SemanticColor {
@@ -75,7 +75,7 @@ object DesignSystem {
         val hintText = 0.64f
         val elevatedSurface = 0.96f
         val restingSurface = 0.88f
-        val selectedSurface = 0.22f
+        val selectedSurface = 0.16f
         val subtleBorder = 0.56f
     }
 }
