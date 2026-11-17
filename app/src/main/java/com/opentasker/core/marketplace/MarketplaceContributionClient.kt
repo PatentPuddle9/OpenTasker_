@@ -4,6 +4,8 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.util.Base64
 import com.opentasker.app.BuildConfig
 import com.opentasker.app.OpenTaskerApp_NoHilt
@@ -200,6 +202,7 @@ internal object MarketplaceContributionClient {
         previousVersion: String? = null,
         faqs: List<MarketplaceFaqDraft> = emptyList(),
         dependencies: List<MarketplaceDependencyDraft> = emptyList(),
+        screenshotUris: List<Uri> = emptyList(),
     ): MarketplacePullRequest = withContext(Dispatchers.IO) {
         val id = packageId.trim()
         val name = packageName.trim()
@@ -248,6 +251,7 @@ internal object MarketplaceContributionClient {
         }) { "Dependencies need a valid package ID and minimum semantic version." }
 
         val app = context.applicationContext
+        require(screenshotUris.size <= 4) { "Add no more than four package screenshots." }
         var tasks: List<Task> = emptyList()
         var destinations: List<MarketplaceExternalDestination> = emptyList()
         var iconAssetBytes: ByteArray? = null
@@ -410,6 +414,28 @@ internal object MarketplaceContributionClient {
         require(previewBytes.size in 1..2 * 1024 * 1024) {
             "The generated preview image exceeds the 2 MB limit."
         }
+        val screenshotAssets = screenshotUris.mapIndexed { index, uri ->
+            val source = app.contentResolver.openInputStream(uri)?.use(BitmapFactory::decodeStream)
+                ?: throw IOException("Could not open screenshot ${index + 1}.")
+            val scale = minOf(1f, 2048f / maxOf(source.width, source.height).toFloat())
+            val export = if (scale < 1f) {
+                Bitmap.createScaledBitmap(
+                    source,
+                    (source.width * scale).toInt().coerceAtLeast(1),
+                    (source.height * scale).toInt().coerceAtLeast(1),
+                    true,
+                )
+            } else source
+            val output = ByteArrayOutputStream()
+            require(export.compress(Bitmap.CompressFormat.PNG, 100, output)) {
+                "Could not encode screenshot ${index + 1} as PNG."
+            }
+            val bytes = output.toByteArray()
+            require(bytes.size in 1..2 * 1024 * 1024) {
+                "Screenshot ${index + 1} exceeds the 2 MB limit."
+            }
+            "screenshots/" + (index + 1).toString().padStart(2, '0') + ".png" to bytes
+        }
         val token = GitHubDeviceAuth.accessToken(app)
         val login = GitHubDeviceAuth.apiRequestBlocking(token, "GET", "/user").optString("login").trim()
         require(login.matches(Regex("^[A-Za-z0-9-]{1,39}$"))) { "GitHub did not return a valid username." }
@@ -433,6 +459,7 @@ internal object MarketplaceContributionClient {
             .put("minimumAppVersion", BuildConfig.VERSION_NAME.substringBefore('-').substringBefore('+'))
             .put("bundleFile", "bundle.json")
             .put("previewFile", "preview.png")
+            .put("screenshots", JSONArray(screenshotAssets.map { it.first }))
             .put("faqs", JSONArray(faqs.map { item ->
                 JSONObject().put("question", item.question.trim()).put("answer", item.answer.trim())
             }))
@@ -476,6 +503,9 @@ internal object MarketplaceContributionClient {
         putFile(token, targetRepo, branch, folder + "/manifest.json", manifest.toString(2))
         putFile(token, targetRepo, branch, folder + "/bundle.json", payloadText)
         putFileBytes(token, targetRepo, branch, folder + "/preview.png", previewBytes)
+        screenshotAssets.forEach { (relativePath, bytes) ->
+            putFileBytes(token, targetRepo, branch, folder + "/" + relativePath, bytes)
+        }
         iconAssetBytes?.let { bytes ->
             putFileBytes(token, targetRepo, branch, folder + "/icon.png", bytes)
         }
@@ -514,6 +544,14 @@ internal object MarketplaceContributionClient {
                     appendLine("![Marketplace package preview](https://raw.githubusercontent.com/" + targetRepo + "/" + branch + "/" + folder + "/preview.png)")
                     appendLine()
                     appendLine("The preview PNG is included in this pull request so reviewers can inspect the submitted appearance.")
+                    if (screenshotAssets.isNotEmpty()) {
+                        appendLine()
+                        appendLine("## Additional package screenshots")
+                        screenshotAssets.forEachIndexed { index, asset ->
+                            appendLine()
+                            appendLine("![Screenshot ${index + 1}](https://raw.githubusercontent.com/" + targetRepo + "/" + branch + "/" + folder + "/" + asset.first + ")")
+                        }
+                    }
                     appendLine()
                     appendLine("Package data is limited to the supported OpenTasker Marketplace format. Automated validation and Marketplace moderation remain required.")
                 })
