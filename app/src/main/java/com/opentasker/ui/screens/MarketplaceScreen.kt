@@ -184,10 +184,10 @@ internal fun MarketplaceScreen(
                     OutlinedButton(onClick = { refresh() }, enabled = !loading) {
                         Text(if (loading) "Refreshing…" else "Refresh catalogue")
                     }
-                    OutlinedButton(
+                    Button(
                         onClick = { showContributionDialog = true },
                     ) {
-                        Text("Contribute")
+                        Text("Publish package")
                     }
                     OutlinedButton(
                         onClick = { openMyPackages() },
