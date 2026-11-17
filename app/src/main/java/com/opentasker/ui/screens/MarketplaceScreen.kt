@@ -624,15 +624,7 @@ private fun MarketplaceMyPackagesDialog(
                                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                                 verticalAlignment = Alignment.CenterVertically,
                                             ) {
-                                                MarketplaceListingIcon(
-                                                    icon = packageEntry.icon,
-                                                    iconColor = packageEntry.iconColor,
-                                                    backgroundColor = packageEntry.backgroundColor,
-                                                    gradient = packageEntry.gradient,
-                                                    shapeKey = packageEntry.shape,
-                                                    modifier = Modifier.size(48.dp),
-                                                    iconSize = 22.dp,
-                                                )
+                                                MarketplacePackageIcon(packageEntry, modifier = Modifier.size(48.dp), iconSize = 22.dp)
                                                 Column(modifier = Modifier.weight(1f)) {
                                                     Text(packageEntry.name, style = MaterialTheme.typography.titleSmall)
                                                     Text(
@@ -776,10 +768,8 @@ private fun MarketplaceWidgetDisplayTargetDialog(
 private fun MarketplacePackageIcon(
     packageEntry: MarketplacePackage,
     modifier: Modifier = Modifier.size(64.dp),
-    fallbackSize: Modifier = modifier,
     iconSize: androidx.compose.ui.unit.Dp = 30.dp,
 ) {
-    val context = LocalContext.current.applicationContext
     val bitmap by produceState<Bitmap?>(null, packageEntry.iconAssetPath, packageEntry.iconAssetSha256) {
         value = runCatching {
             if (packageEntry.iconAssetPath.isBlank()) return@runCatching null
@@ -803,7 +793,7 @@ private fun MarketplacePackageIcon(
             backgroundColor = packageEntry.backgroundColor,
             gradient = packageEntry.gradient,
             shapeKey = packageEntry.shape,
-            modifier = fallbackSize,
+            modifier = modifier,
             iconSize = iconSize,
         )
     }
@@ -839,15 +829,7 @@ private fun MarketplacePackageCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                MarketplaceListingIcon(
-                    icon = packageEntry.icon,
-                    iconColor = packageEntry.iconColor,
-                    backgroundColor = packageEntry.backgroundColor,
-                    gradient = packageEntry.gradient,
-                    shapeKey = packageEntry.shape,
-                    modifier = Modifier.size(64.dp),
-                    iconSize = 30.dp,
-                )
+                MarketplacePackageIcon(packageEntry, modifier = Modifier.size(64.dp), iconSize = 30.dp)
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(3.dp),
@@ -1005,15 +987,7 @@ private fun MarketplacePackageDetailsDialog(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                MarketplaceListingIcon(
-                    icon = packageEntry.icon,
-                    iconColor = packageEntry.iconColor,
-                    backgroundColor = packageEntry.backgroundColor,
-                    gradient = packageEntry.gradient,
-                    shapeKey = packageEntry.shape,
-                    modifier = Modifier.size(56.dp),
-                    iconSize = 26.dp,
-                )
+                MarketplacePackageIcon(packageEntry, modifier = Modifier.size(56.dp), iconSize = 26.dp)
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(packageEntry.name, style = MaterialTheme.typography.titleLarge)
                     Text(
