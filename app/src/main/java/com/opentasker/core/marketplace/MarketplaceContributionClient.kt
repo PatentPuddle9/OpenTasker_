@@ -354,14 +354,21 @@ internal object MarketplaceContributionClient {
                 require(config.states.isNotEmpty() && config.states.size <= WidgetDisplayStore.MAX_STATES) {
                     "The Widget Display has an invalid number of states."
                 }
-                require(config.states.none { state -> state.elements.any { it.type == WidgetDisplayElementType.IMAGE && it.imageUri.isNotBlank() } }) {
-                    "This Widget Display uses images stored privately on this device. Remove those image elements before publishing so the layout can be shared safely."
+                val portableAssetReference = Regex("""^\{\{asset-(?:0[1-9]|1[0-2])}}$""")
+                require(config.states.all { state ->
+                    state.elements.all { element ->
+                        element.type != WidgetDisplayElementType.IMAGE ||
+                            element.imageUri.isBlank() ||
+                            portableAssetReference.matches(element.imageUri)
+                    }
+                }) {
+                    "Widget Display images must use a Marketplace asset reference like {{asset-01}}, not a private device URI."
                 }
                 val sharedConfig = config.copy(
                     states = config.states.map { state ->
                         state.copy(
                             elements = state.elements.map { element ->
-                                element.copy(actionProfileId = null, imageUri = "")
+                                element.copy(actionProfileId = null)
                             },
                         )
                     },
@@ -405,7 +412,8 @@ internal object MarketplaceContributionClient {
         require(assetUris.isEmpty() || candidate.kind in setOf(
             MarketplaceContributionKind.ACTION,
             MarketplaceContributionKind.SHORTCUT_WIDGET,
-        )) { "Images and audio can only be bundled with Action and Shortcut Widget packages." }
+            MarketplaceContributionKind.WIDGET_DISPLAY,
+        )) { "Images and audio can only be bundled with Action, Shortcut Widget, and Widget Display packages." }
 
         val packageAssets = assetUris.mapIndexed { index, uri ->
             val assetNumber = (index + 1).toString().padStart(2, '0')

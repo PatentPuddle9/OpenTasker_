@@ -199,7 +199,13 @@ internal fun MarketplaceScreen(
                         require(WidgetDisplayProvider.isWidgetId(appContext, widgetId)) {
                             "That Widget Display is no longer installed."
                         }
-                        val payload = JSONObject(MarketplaceClient.downloadRawPackage(packageEntry).toString(Charsets.UTF_8))
+                        val rawPayload = MarketplaceClient.downloadRawPackage(packageEntry).toString(Charsets.UTF_8)
+                        val resolvedPayload = MarketplaceClient.resolvePackageAssetReferences(
+                            appContext,
+                            packageEntry,
+                            rawPayload,
+                        )
+                        val payload = JSONObject(resolvedPayload)
                         val configJson = payload.optJSONObject("config")?.toString()
                             ?: throw IllegalStateException("The package has no Widget Display configuration.")
                         val config = Json { ignoreUnknownKeys = true }.decodeFromString<WidgetDisplayConfig>(configJson)
@@ -208,7 +214,7 @@ internal fun MarketplaceScreen(
                         "Applied \"${packageEntry.name}\" to your Widget Display."
                     }
                     else -> {
-                        val bundle = MarketplaceClient.downloadAndConfigure(packageEntry, values)
+                        val bundle = MarketplaceClient.downloadAndConfigure(appContext, packageEntry, values)
                         inputPackage = null
                         onInstallBundle(bundle)
                         "Imported \"${packageEntry.name}\". Review the import before enabling it."

@@ -787,7 +787,7 @@ internal fun MarketplaceContributionDialog(
                                             )
                                         }
                                         Text(
-                                            "Use the matching reference in an Action's file or audio path field. OpenTasker replaces it with the installed local file when someone installs the package.",
+                                            "Use the matching reference in an Action file/audio path or a Widget Display image source. OpenTasker replaces it with the installed local file when someone installs the package.",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
