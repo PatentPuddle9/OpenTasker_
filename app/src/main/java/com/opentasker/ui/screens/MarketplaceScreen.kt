@@ -446,6 +446,15 @@ internal fun MarketplaceScreen(
     val widgetPackageCount = packages.count { it.category.equals("Shortcut Widgets", ignoreCase = true) }
     val displayPackageCount = packages.count { it.category.equals("Widget Displays", ignoreCase = true) }
     val customIconPackageCount = packages.count { it.category.equals("Custom Widget Icons", ignoreCase = true) }
+    val featuredPicks = packages.filter { it.featured }
+        .sortedWith(compareByDescending<MarketplacePackage> { it.ratingAverage }.thenByDescending { it.weeklyDownloads })
+        .take(8)
+    val trendingPicks = packages.filter { it.weeklyDownloads > 0 }
+        .sortedWith(compareByDescending<MarketplacePackage> { it.weeklyDownloads }.thenByDescending { it.ratingAverage })
+        .take(8)
+    val topRatedPicks = packages.filter { it.ratingCount >= 3 }
+        .sortedWith(compareByDescending<MarketplacePackage> { it.ratingAverage }.thenByDescending { it.ratingCount })
+        .take(8)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -593,6 +602,63 @@ internal fun MarketplaceScreen(
         }
 
         
+        if (searchQuery.isBlank() && activeCollectionName == null) {
+            if (featuredPicks.isNotEmpty()) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text("Featured by the community", style = MaterialTheme.typography.titleMedium)
+                            Text("Hand-picked packages worth a look.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            items(featuredPicks, key = { "featured:\${it.id}" }) { entry ->
+                                MarketplaceSpotlightCard(entry) { selectedDetailsPackage = entry }
+                            }
+                        }
+                    }
+                }
+            }
+            if (trendingPicks.isNotEmpty()) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text("Trending this week", style = MaterialTheme.typography.titleMedium)
+                            Text("Packages getting installed recently.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            items(trendingPicks, key = { "trending:\${it.id}" }) { entry ->
+                                MarketplaceSpotlightCard(entry) { selectedDetailsPackage = entry }
+                            }
+                        }
+                    }
+                }
+            }
+            if (topRatedPicks.isNotEmpty()) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text("Top rated", style = MaterialTheme.typography.titleMedium)
+                            Text("Consistently high community ratings.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            items(topRatedPicks, key = { "rated:\${it.id}" }) { entry ->
+                                MarketplaceSpotlightCard(entry) { selectedDetailsPackage = entry }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         if (catalog != null && visiblePackages.isEmpty()) {
             item {
                 Card(
@@ -1232,6 +1298,48 @@ private fun MarketplacePackageIcon(
             modifier = modifier,
             iconSize = iconSize,
         )
+    }
+}
+
+@Composable
+private fun MarketplaceSpotlightCard(
+    packageEntry: MarketplacePackage,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .width(264.dp)
+            .clickable(onClick = onClick),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                MarketplacePackageIcon(packageEntry, modifier = Modifier.size(44.dp), iconSize = 22.dp)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(packageEntry.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("@\${packageEntry.publisher}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Text(packageEntry.summary, style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    if (packageEntry.ratingCount > 0) "★ \${packageEntry.ratingAverage} · \${packageEntry.ratingCount}" else "Not rated yet",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                Text("\${packageEntry.weeklyDownloads}/week", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text("\${packageEntry.category} · v\${packageEntry.version}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+        }
     }
 }
 
