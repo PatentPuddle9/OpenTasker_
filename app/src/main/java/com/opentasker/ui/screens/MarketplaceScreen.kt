@@ -718,6 +718,98 @@ private fun marketplaceVersionKey(version: String): String =
         .let { parts -> (parts + List((3 - parts.size).coerceAtLeast(0)) { "0000000000" }).joinToString(".") }
 
 @Composable
+private fun MarketplaceWidgetDisplayTargetDialog(
+    packageEntry: MarketplacePackage,
+    onDismiss: () -> Unit,
+    onSelect: (Int) -> Unit,
+) {
+    val context = LocalContext.current.applicationContext
+    val displays = remember(packageEntry.id) { WidgetDisplayProvider.instances(context) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Choose a Widget Display") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Choose which installed Widget Display should receive \"${packageEntry.name}\".",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                if (displays.isEmpty()) {
+                    Text(
+                        "You don't have an installed Widget Display yet. Add one from the Widgets tab, then try installing this package again.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    displays.forEach { display ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth().clickable { onSelect(display.widgetId) },
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(display.size.label, style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        "Widget ID ${display.widgetId}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                OutlinedButton(onClick = { onSelect(display.widgetId) }) {
+                                    Text("Apply")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+@Composable
+private fun MarketplacePackageIcon(
+    packageEntry: MarketplacePackage,
+    modifier: Modifier = Modifier.size(64.dp),
+    fallbackSize: Modifier = modifier,
+    iconSize: androidx.compose.ui.unit.Dp = 30.dp,
+) {
+    val context = LocalContext.current.applicationContext
+    val bitmap by produceState<Bitmap?>(null, packageEntry.iconAssetPath, packageEntry.iconAssetSha256) {
+        value = runCatching {
+            if (packageEntry.iconAssetPath.isBlank()) return@runCatching null
+            val bytes = MarketplaceClient.downloadIconAsset(packageEntry)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        }.getOrNull()
+    }
+    if (bitmap != null) {
+        Card(modifier = modifier) {
+            Image(
+                bitmap = bitmap!!.asImageBitmap(),
+                contentDescription = packageEntry.name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit,
+            )
+        }
+    } else {
+        MarketplaceListingIcon(
+            icon = packageEntry.icon,
+            iconColor = packageEntry.iconColor,
+            backgroundColor = packageEntry.backgroundColor,
+            gradient = packageEntry.gradient,
+            shapeKey = packageEntry.shape,
+            modifier = fallbackSize,
+            iconSize = iconSize,
+        )
+    }
+}
+
+@Composable
 private fun MarketplacePackageCard(
     packageEntry: MarketplacePackage,
     installing: Boolean,
@@ -898,6 +990,13 @@ private fun MarketplacePackageDetailsDialog(
     onDismiss: () -> Unit,
     onOpenUrl: (String) -> Unit,
 ) {
+    val context = LocalContext.current.applicationContext
+    val previewBitmap by produceState<Bitmap?>(null, packageEntry.previewPath, packageEntry.previewSha256) {
+        value = runCatching {
+            val bytes = MarketplaceClient.downloadPreviewImage(packageEntry) ?: return@runCatching null
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        }.getOrNull()
+    }
     val highRisk = packageEntry.riskLevel.equals("high", ignoreCase = true)
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -930,6 +1029,26 @@ private fun MarketplacePackageDetailsDialog(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                if (packageEntry.previewPath.isNotBlank()) {
+                    item {
+                        if (previewBitmap != null) {
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Image(
+                                    bitmap = previewBitmap!!.asImageBitmap(),
+                                    contentDescription = "${packageEntry.name} Marketplace preview",
+                                    modifier = Modifier.fillMaxWidth().heightIn(max = 270.dp),
+                                    contentScale = ContentScale.Fit,
+                                )
+                            }
+                        } else {
+                            Text(
+                                "Loading package preview…",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
                 item {
                     Text("About", style = MaterialTheme.typography.titleSmall)
                     Text(
@@ -960,6 +1079,24 @@ private fun MarketplacePackageDetailsDialog(
                         Text(packageEntry.actionIds.joinToString(), style = MaterialTheme.typography.bodySmall)
                     }
                     Text("Setup fields: ${packageEntry.requiredInputs.size}", style = MaterialTheme.typography.bodySmall)
+                    if (packageEntry.category == "Themes" && packageEntry.themeMode.isNotBlank()) {
+                        Text("Theme mode: ${packageEntry.themeMode}", style = MaterialTheme.typography.bodySmall)
+                        Text("Accent: ${packageEntry.themeAccentColor}", style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (packageEntry.category == "Widget Displays") {
+                        Text(
+                            "Installs onto a Widget Display already placed on your home screen. Action links are removed for safety and must be configured locally.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (packageEntry.category == "Custom Widget Icons") {
+                        Text(
+                            "Includes a PNG icon asset that is added to your Custom icon library.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
                 item {
                     Text("Safety and review", style = MaterialTheme.typography.titleSmall)
