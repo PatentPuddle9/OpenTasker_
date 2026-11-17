@@ -15,6 +15,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +38,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -56,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -66,6 +69,7 @@ import com.opentasker.widget.WidgetDisplayProvider
 import com.opentasker.widget.WidgetDisplayStore
 import com.opentasker.widget.WidgetIconCatalog
 import com.opentasker.ui.icons.WidgetIconImage
+import com.opentasker.ui.theme.DesignSystem
 import kotlinx.coroutines.delay
 
 internal enum class OpenTaskerWidgetType { ACTION_SHORTCUT, DISPLAY }
@@ -115,108 +119,228 @@ internal fun ShortcutsScreen(
 
     if (widgets.isEmpty()) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(contentPadding).padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.Center,
         ) {
-            Icon(
-                Icons.Outlined.Widgets,
-                contentDescription = null,
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(Modifier.size(16.dp))
-            Text("No widgets yet", style = MaterialTheme.typography.titleLarge)
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                shape = RoundedCornerShape(22.dp),
+                modifier = Modifier.size(76.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Outlined.Widgets,
+                        contentDescription = null,
+                        modifier = Modifier.size(34.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+            Spacer(Modifier.size(22.dp))
             Text(
-                "Create a one-tap Action widget or build a multi-state Widget Display dashboard.",
+                "YOUR HOME SCREEN",
+                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.2.sp),
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.size(6.dp))
+            Text("No widgets yet", style = MaterialTheme.typography.headlineSmall)
+            Spacer(Modifier.size(6.dp))
+            Text(
+                "Put your most-used Actions one tap away, or create a Widget Display for live information.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.size(10.dp))
+            Spacer(Modifier.size(18.dp))
             Text(
-                "Tap Create to add a Widget Shortcut or a Widget Display.",
-                style = MaterialTheme.typography.bodySmall,
+                "Use Create below to add your first widget.",
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     } else {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(contentPadding),
-            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
+            contentPadding = PaddingValues(
+                horizontal = DesignSystem.Screen.horizontalPadding,
+                top = 18.dp,
+                bottom = 112.dp,
+            ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Widgets on your home screen", style = MaterialTheme.typography.titleMedium)
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom,
+                    ) {
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(
+                                "HOME SCREEN",
+                                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.2.sp),
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                "Your widgets",
+                                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 25.sp),
+                            )
+                            Text(
+                                "Quick access, right where you need it.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         Text(
-                            "Action shortcuts and customizable multi-state displays.",
-                            style = MaterialTheme.typography.bodySmall,
+                            "${widgets.size} ITEMS",
+                            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.6.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 4.dp),
                         )
+                    }
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    "ACTION SHORTCUTS",
+                                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.55.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    widgets.count { it.type == OpenTaskerWidgetType.ACTION_SHORTCUT }.toString(),
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                            Box(
+                                Modifier.width(1.dp).size(height = 34.dp, width = 1.dp)
+                                    .background(MaterialTheme.colorScheme.outlineVariant),
+                            )
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    "WIDGET DISPLAYS",
+                                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.55.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    widgets.count { it.type == OpenTaskerWidgetType.DISPLAY }.toString(),
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                        }
                     }
                 }
             }
+            item {
+                Text(
+                    "INSTALLED WIDGETS",
+                    style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.0.sp),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(top = 5.dp),
+                )
+            }
             items(widgets, key = { "${it.type.name}_${it.widgetId}" }) { widget ->
+                var menuExpanded by rememberSaveable(widget.widgetId) { mutableStateOf(false) }
+                val editWidget = {
+                    val target = if (widget.type == OpenTaskerWidgetType.DISPLAY) {
+                        WidgetDisplayConfigActivity::class.java
+                    } else {
+                        TaskWidgetConfigActivity::class.java
+                    }
+                    context.startActivity(
+                        Intent(context, target)
+                            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widget.widgetId)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(17.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(13.dp),
+                        horizontalArrangement = Arrangement.spacedBy(13.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                            WidgetIconImage(
-                                iconKey = widget.icon,
-                                contentDescription = widget.name,
-                                tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(28.dp),
-                            )
+                        Surface(
+                            modifier = Modifier.size(62.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            shape = RoundedCornerShape(16.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                WidgetIconImage(
+                                    iconKey = widget.icon,
+                                    contentDescription = widget.name,
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(32.dp),
+                                )
+                            }
                         }
-                        Column(Modifier.weight(1f)) {
-                            Text(widget.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
                             Text(
-                                "${widget.variantLabel} · ID ${widget.widgetId}",
+                                widget.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                if (widget.type == OpenTaskerWidgetType.DISPLAY) "WIDGET DISPLAY" else "ACTION SHORTCUT",
+                                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.6.sp),
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                "${widget.variantLabel}  ·  #${widget.widgetId}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        OutlinedButton(
-                            onClick = {
-                                val target = if (widget.type == OpenTaskerWidgetType.DISPLAY) {
-                                    WidgetDisplayConfigActivity::class.java
-                                } else {
-                                    TaskWidgetConfigActivity::class.java
-                                }
-                                context.startActivity(
-                                    Intent(context, target)
-                                        .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widget.widgetId)
-                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            IconButton(onClick = { menuExpanded = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "Widget options")
+                            }
+                            androidx.compose.material3.DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false },
+                            ) {
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text("Edit widget") },
+                                    leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        editWidget()
+                                    },
                                 )
-                            },
-                        ) {
-                            Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(5.dp))
-                            Text("Edit")
-                        }
-                        TextButton(onClick = { pendingDelete = widget }) {
-                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text("Delete widget") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        pendingDelete = widget
+                                    },
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
-
     pendingDelete?.let { widget ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
