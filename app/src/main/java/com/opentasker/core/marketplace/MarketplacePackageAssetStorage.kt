@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
+import androidx.core.content.FileProvider
+import com.opentasker.app.BuildConfig
 import java.io.File
 import java.io.FileOutputStream
 
@@ -114,7 +116,11 @@ internal object MarketplacePackageAssetStorage {
                 temporary.delete()
                 throw IllegalStateException("OpenTasker couldn't save a Marketplace package asset.")
             }
-            asset.key to destination.absolutePath
+            asset.key to FileProvider.getUriForFile(
+                context,
+                BuildConfig.APPLICATION_ID + ".fileprovider",
+                destination,
+            ).toString()
         }
     }
 
