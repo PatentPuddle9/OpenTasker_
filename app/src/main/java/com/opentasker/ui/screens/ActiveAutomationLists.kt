@@ -57,6 +57,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.opentasker.app.R
 import com.opentasker.core.actions.ActionMetadataRegistry
 import com.opentasker.core.actions.ActionSummaryFormatter
@@ -167,39 +168,150 @@ internal fun ProfilesScreen(
     // instead of scanning the full task list for every visible profile.
     val tasksById = remember(allTasks) { allTasks.associateBy(Task::id) }
 
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 168.dp),
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(contentPadding),
-        // Extra bottom inset so the extended FAB never sits on top of the last row; Scaffold's
-        // innerPadding does not reserve floating-action-button height.
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 96.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+    var selectedStatus by rememberSaveable { mutableStateOf("all") }
+    val filteredProfiles = remember(profiles, selectedGroup, profileSearchQuery, selectedStatus) {
+        profiles
+            .filter { selectedGroup == null || it.group == selectedGroup }
+            .filter { profileSearchQuery.isBlank() || profile.name.contains(profileSearchQuery, ignoreCase = true) }
+            .filter {
+                when (selectedStatus) {
+                    "active" -> it.enabled && !it.requiresRiskAcknowledgement
+                    "paused" -> !it.enabled || it.requiresRiskAcknowledgement
+                    else -> true
+                }
+            }
+    }
+    val activeCount = profiles.count { it.enabled && !it.requiresRiskAcknowledgement }
+    val pausedCount = profiles.size - activeCount
+    val triggerCount = profiles.sumOf { it.contexts.size }
+    // Cache the backing execution records once; a long Action list should not be rescanned for
+    // every row while Compose is scrolling.
+    val tasksById = remember(allTasks) { allTasks.associateBy(Task::id) }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(contentPadding),
+        contentPadding = PaddingValues(
+            start = DesignSystem.Screen.horizontalPadding,
+            end = DesignSystem.Screen.horizontalPadding,
+            top = 18.dp,
+            bottom = 112.dp,
+        ),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         if (storageDecodeIssues.isNotEmpty()) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                StorageDecodeWarningCard(storageDecodeIssues)
+            item { StorageDecodeWarningCard(storageDecodeIssues) }
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        Text(
+                            "WORKSPACE",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                letterSpacing = 1.25.sp,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                            ),
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            "Automation overview",
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontSize = 25.sp,
+                                lineHeight = 30.sp,
+                                letterSpacing = (-0.7).sp,
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            "A clear view of what is ready to run.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text(
+                        "${profiles.size} TOTAL",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            letterSpacing = 0.7.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                ) {
+                    listOf(
+                        Triple(activeCount.toString(), "ACTIVE", MaterialTheme.colorScheme.primary),
+                        Triple(pausedCount.toString(), "PAUSED", MaterialTheme.colorScheme.onSurfaceVariant),
+                        Triple(triggerCount.toString(), "TRIGGERS", MaterialTheme.colorScheme.tertiary),
+                    ).forEach { (value, label, tint) ->
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            color = MaterialTheme.colorScheme.surfaceContainerLow,
+                            shape = RoundedCornerShape(13.dp),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                Text(
+                                    value,
+                                    style = MaterialTheme.typography.titleLarge.copy(
+                                        fontSize = 21.sp,
+                                        lineHeight = 24.sp,
+                                    ),
+                                    color = tint,
+                                )
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 9.sp,
+                                        letterSpacing = 0.6.sp,
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
-        item(span = { GridItemSpan(maxLineSpan) }) {
+        item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedTextField(
                     value = profileSearchQuery,
                     onValueChange = { profileSearchQuery = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text(stringResource(R.string.workspace_search_profiles)) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.variables_search_label)) },
+                    placeholder = { Text("Search actions") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = stringResource(R.string.variables_search_label),
+                        )
+                    },
                     trailingIcon = if (profileSearchQuery.isNotEmpty()) {
-                        { IconButton(onClick = { profileSearchQuery = "" }) { Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.variables_search_clear)) } }
+                        {
+                            IconButton(onClick = { profileSearchQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.variables_search_clear))
+                            }
+                        }
                     } else null,
                     singleLine = true,
-                    shape = RoundedCornerShape(DesignSystem.Radii.lg),
+                    shape = RoundedCornerShape(13.dp),
                 )
                 WorkspaceActionsButton(
                     onBrowseTemplates = onBrowseTemplates,
@@ -212,14 +324,37 @@ internal fun ProfilesScreen(
                 )
             }
         }
-        if (groups.isNotEmpty()) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.sm)) {
+        item {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                item {
+                    FilterChip(
+                        selected = selectedStatus == "all",
+                        onClick = { selectedStatus = "all" },
+                        label = { Text("All") },
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = selectedStatus == "active",
+                        onClick = { selectedStatus = "active" },
+                        label = { Text("Active") },
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = selectedStatus == "paused",
+                        onClick = { selectedStatus = "paused" },
+                        label = { Text("Paused") },
+                    )
+                }
+                if (groups.isNotEmpty()) {
                     item {
-                        FilterChip(
-                            selected = selectedGroup == null,
-                            onClick = { selectedGroup = null },
-                            label = { Text(stringResource(R.string.label_all)) },
+                        Box(
+                            Modifier
+                                .padding(horizontal = 2.dp)
+                                .width(1.dp)
+                                .height(28.dp)
+                                .background(MaterialTheme.colorScheme.outlineVariant),
                         )
                     }
                     items(groups, key = { it }) { group ->
@@ -230,6 +365,27 @@ internal fun ProfilesScreen(
                         )
                     }
                 }
+            }
+        }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    "YOUR ACTIONS",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        letterSpacing = 1.0.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    "${filteredProfiles.size} shown",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
         if (filteredProfiles.isEmpty()) {
