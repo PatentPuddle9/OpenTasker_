@@ -57,6 +57,17 @@ internal data class MarketplaceContributionCandidate(
     val actionCount: Int get() = tasks.sumOf { it.actions.size }
 }
 
+internal data class MarketplaceFaqDraft(
+    val question: String,
+    val answer: String,
+)
+
+internal data class MarketplaceDependencyDraft(
+    val id: String,
+    val minimumVersion: String,
+    val optional: Boolean = false,
+)
+
 internal data class MarketplaceExternalDestinationDraft(
     val provider: String,
     val domains: String,
@@ -187,6 +198,8 @@ internal object MarketplaceContributionClient {
         documentationUrl: String,
         disclosure: MarketplaceExternalDestinationDraft?,
         previousVersion: String? = null,
+        faqs: List<MarketplaceFaqDraft> = emptyList(),
+        dependencies: List<MarketplaceDependencyDraft> = emptyList(),
     ): MarketplacePullRequest = withContext(Dispatchers.IO) {
         val id = packageId.trim()
         val name = packageName.trim()
@@ -222,6 +235,17 @@ internal object MarketplaceContributionClient {
                 android.net.Uri.parse(cleanDocumentationUrl).host != null
             )
         ) { "Documentation links must use a valid HTTPS URL." }
+
+        require(faqs.size <= 10 && faqs.all {
+            it.question.isNotBlank() && it.question.length <= 160 &&
+                it.answer.isNotBlank() && it.answer.length <= 1200
+        }) { "Add up to 10 complete FAQ entries. Questions allow 160 characters and answers allow 1,200." }
+        require(dependencies.size <= 10) { "A package can list up to 10 dependencies." }
+        require(dependencies.map { it.id }.distinct().size == dependencies.size) { "Remove duplicate dependencies." }
+        require(dependencies.all {
+            it.id.matches(Regex("^[a-z0-9][a-z0-9._-]{1,79}$")) &&
+                it.id != id && it.minimumVersion.matches(Regex("^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$"))
+        }) { "Dependencies need a valid package ID and minimum semantic version." }
 
         val app = context.applicationContext
         var tasks: List<Task> = emptyList()
@@ -409,6 +433,12 @@ internal object MarketplaceContributionClient {
             .put("minimumAppVersion", BuildConfig.VERSION_NAME.substringBefore('-').substringBefore('+'))
             .put("bundleFile", "bundle.json")
             .put("previewFile", "preview.png")
+            .put("faqs", JSONArray(faqs.map { item ->
+                JSONObject().put("question", item.question.trim()).put("answer", item.answer.trim())
+            }))
+            .put("dependencies", JSONArray(dependencies.map { item ->
+                JSONObject().put("id", item.id).put("minimumVersion", item.minimumVersion).put("optional", item.optional)
+            }))
             .put("requiredInputs", JSONArray())
             .put("externalDestinations", JSONArray().apply {
                 destinations.forEach { item ->
