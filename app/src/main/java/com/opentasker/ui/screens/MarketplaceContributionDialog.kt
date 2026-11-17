@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.opentasker.core.actions.ActionMetadataRegistry
 import com.opentasker.core.marketplace.GitHubDeviceAuth
 import com.opentasker.core.marketplace.GitHubDeviceChallenge
 import com.opentasker.core.marketplace.MarketplaceContributionCandidate
@@ -526,6 +527,29 @@ internal fun MarketplaceContributionDialog(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            Text("Included blocks", style = MaterialTheme.typography.titleSmall)
+                            selected?.tasks?.forEach { task ->
+                                Card {
+                                    Column(
+                                        modifier = Modifier.padding(10.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        Text(task.name, style = MaterialTheme.typography.labelLarge)
+                                        task.actions.forEachIndexed { index, action ->
+                                            val blockName = ActionMetadataRegistry.get(action.type)
+                                                ?.let { metadata -> runCatching { context.getString(metadata.nameRes) }.getOrNull() }
+                                                ?: action.type
+                                                    .split('.', '_', '-')
+                                                    .joinToString(" ") { part -> part.replaceFirstChar { it.uppercase() } }
+                                            Text(
+                                                "${index + 1}. $blockName",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                             if (requiresDisclosure) {
                                 Text(
                                     "External service: $provider · ${domains.split(',', ';').filter { it.isNotBlank() }.joinToString()}",
