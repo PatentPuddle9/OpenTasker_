@@ -40,11 +40,16 @@ import com.opentasker.core.marketplace.GitHubDeviceChallenge
 import com.opentasker.core.marketplace.MarketplaceContributionCandidate
 import com.opentasker.core.marketplace.MarketplaceContributionClient
 import com.opentasker.core.marketplace.MarketplaceContributionKind
+import com.opentasker.core.marketplace.MarketplacePackage
+import com.opentasker.core.marketplace.allowedMarketplaceVersions
 import com.opentasker.core.marketplace.MarketplaceExternalDestinationDraft
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun MarketplaceContributionDialog(onDismiss: () -> Unit) {
+internal fun MarketplaceContributionDialog(
+    onDismiss: () -> Unit,
+    existingPackage: MarketplacePackage? = null,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var candidates by remember { mutableStateOf<List<MarketplaceContributionCandidate>>(emptyList()) }
@@ -53,12 +58,22 @@ internal fun MarketplaceContributionDialog(onDismiss: () -> Unit) {
     var account by remember { mutableStateOf<String?>(null) }
     var signingIn by remember { mutableStateOf(false) }
     var challenge by remember { mutableStateOf<GitHubDeviceChallenge?>(null) }
-    var selectedKind by remember { mutableStateOf(MarketplaceContributionKind.ACTION) }
+    var selectedKind by remember(existingPackage?.id) {
+        mutableStateOf(
+            if (existingPackage?.category == "Shortcut Widgets") {
+                MarketplaceContributionKind.SHORTCUT_WIDGET
+            } else {
+                MarketplaceContributionKind.ACTION
+            },
+        )
+    }
     var selectedKey by remember { mutableStateOf<String?>(null) }
-    var packageName by remember { mutableStateOf("") }
-    var packageId by remember { mutableStateOf("") }
-    var version by remember { mutableStateOf("1.0.0") }
-    var summary by remember { mutableStateOf("") }
+    var packageName by remember(existingPackage?.id) { mutableStateOf(existingPackage?.name.orEmpty()) }
+    var packageId by remember(existingPackage?.id) { mutableStateOf(existingPackage?.id.orEmpty()) }
+    var version by remember(existingPackage?.version) {
+        mutableStateOf(existingPackage?.let { allowedMarketplaceVersions(it.version).first() } ?: "1.0.0")
+    }
+    var summary by remember(existingPackage?.id) { mutableStateOf(existingPackage?.summary.orEmpty()) }
     var provider by remember { mutableStateOf("") }
     var domains by remember { mutableStateOf("") }
     var hostingCountry by remember { mutableStateOf("Unknown") }
@@ -82,6 +97,8 @@ internal fun MarketplaceContributionDialog(onDismiss: () -> Unit) {
     }
 
     val visibleCandidates = candidates.filter { it.kind == selectedKind }
+    val allowedVersions = existingPackage?.let { allowedMarketplaceVersions(it.version) } ?: listOf("1.0.0")
+    val validVersion = version in allowedVersions
     val selected = visibleCandidates.firstOrNull { it.key == selectedKey }
     val requiresDisclosure = selected?.tasks?.any { task ->
         task.actions.any { it.type in setOf("http.request", "http.get", "http.post", "integration.home_assistant.webhook", "mqtt.publish", "download") }
@@ -160,6 +177,7 @@ internal fun MarketplaceContributionDialog(onDismiss: () -> Unit) {
                     version = version,
                     summary = summary,
                     disclosure = external,
+                    previousVersion = existingPackage?.version,
                 )
             }.onSuccess { pull ->
                 pullRequestNumber = pull.number
@@ -173,14 +191,18 @@ internal fun MarketplaceContributionDialog(onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Contribute to Marketplace") },
+        title = { Text(if (existingPackage == null) "Contribute to Marketplace" else "Update published package") },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
-                    "Submit an enabled Action or an app-style Shortcut Widget. Widget Displays and Scene layouts aren't contribution types.",
+                    if (existingPackage == null) {
+                        "Submit an enabled Action or an app-style Shortcut Widget. Widget Displays and Scene layouts aren't contribution types."
+                    } else {
+                        "Create the next version of ${existingPackage.name}. Choose the updated local Action or Shortcut Widget below. Published versions cannot be overwritten."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
@@ -230,14 +252,20 @@ internal fun MarketplaceContributionDialog(onDismiss: () -> Unit) {
 
                 Text("What are you uploading?", style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = {
-                        selectedKind = MarketplaceContributionKind.ACTION
-                        selectedKey = null
-                    }) { Text("Action") }
-                    OutlinedButton(onClick = {
-                        selectedKind = MarketplaceContributionKind.SHORTCUT_WIDGET
-                        selectedKey = null
-                    }) { Text("Shortcut Widget") }
+                    OutlinedButton(
+                        onClick = {
+                            selectedKind = MarketplaceContributionKind.ACTION
+                            selectedKey = null
+                        },
+                        enabled = existingPackage == null,
+                    ) { Text("Action") }
+                    OutlinedButton(
+                        onClick = {
+                            selectedKind = MarketplaceContributionKind.SHORTCUT_WIDGET
+                            selectedKey = null
+                        },
+                        enabled = existingPackage == null,
+                    ) { Text("Shortcut Widget") }
                 }
 
                 when {
@@ -287,13 +315,25 @@ internal fun MarketplaceContributionDialog(onDismiss: () -> Unit) {
                     value = packageId,
                     onValueChange = { packageId = it.lowercase().replace(Regex("[^a-z0-9._-]"), "-") },
                     label = { Text("Package ID (lowercase)") },
+                    supportingText = if (existingPackage != null) { { Text("Package IDs cannot be changed after publication.") } } else null,
+                    enabled = existingPackage == null,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = version,
                     onValueChange = { version = it },
-                    label = { Text("Version") },
+                    label = { Text(if (existingPackage == null) "Initial version" else "Next version") },
+                    supportingText = {
+                        Text(
+                            if (existingPackage == null) {
+                                "New packages start at 1.0.0."
+                            } else {
+                                "From ${existingPackage.version}, the next valid versions are ${allowedVersions.joinToString()}."
+                            },
+                        )
+                    },
+                    isError = !validVersion,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -326,13 +366,21 @@ internal fun MarketplaceContributionDialog(onDismiss: () -> Unit) {
                 }
                 if (pullRequestUrl != null) {
                     Text(
-                        "Pull request #" + pullRequestNumber + " created. The Marketplace's automated checks and moderator review still need to pass.",
+                        if (existingPackage == null) {
+                            "Pull request #" + pullRequestNumber + " created. The Marketplace's automated checks and any required review still need to pass."
+                        } else {
+                            "Update pull request #" + pullRequestNumber + " created. A trusted Marketplace moderator must approve this update before it can be published."
+                        },
                         color = MaterialTheme.colorScheme.primary,
                     )
                     TextButton(onClick = { openUrl(pullRequestUrl!!) }) { Text("View pull request") }
                 } else {
                     Text(
-                        "Your package will be exported as data-only JSON, uploaded on a separate branch, and submitted as a pull request for review.",
+                        if (existingPackage == null) {
+                            "Your package will be exported as data-only JSON, uploaded on a separate branch, and submitted as a pull request."
+                        } else {
+                            "The updated package will be submitted as a new immutable version. It will not replace older versions, and it will remain unpublished until a trusted moderator approves the pull request."
+                        },
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -345,10 +393,10 @@ internal fun MarketplaceContributionDialog(onDismiss: () -> Unit) {
             } else {
                 Button(
                     onClick = { submit() },
-                    enabled = account != null && selected != null && !submitting && packageName.isNotBlank() && packageId.isNotBlank() && version.isNotBlank() && summary.isNotBlank(),
+                    enabled = account != null && selected != null && !submitting && packageName.isNotBlank() && packageId.isNotBlank() && validVersion && summary.isNotBlank(),
                 ) {
                     if (submitting) CircularProgressIndicator()
-                    else Text("Create pull request")
+                    else Text(if (existingPackage == null) "Create pull request" else "Submit update for review")
                 }
             }
         },
