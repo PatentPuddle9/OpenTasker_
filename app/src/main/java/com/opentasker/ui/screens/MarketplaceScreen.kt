@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -123,6 +124,11 @@ internal fun MarketplaceScreen(
     var reviewText by remember { mutableStateOf("") }
     var reviewSubmittingPackageId by remember { mutableStateOf<String?>(null) }
     var helpfulSubmittingReviewId by remember { mutableStateOf<String?>(null) }
+    var publisherResponseReview by remember { mutableStateOf<com.opentasker.core.marketplace.MarketplaceReview?>(null) }
+    var publisherResponseText by remember { mutableStateOf("") }
+    var publisherResponseSubmittingReviewId by remember { mutableStateOf<String?>(null) }
+    var reviewReportTarget by remember { mutableStateOf<Pair<MarketplacePackage, com.opentasker.core.marketplace.MarketplaceReview>?>(null) }
+    var reviewSortMode by remember { mutableStateOf("Helpful") }
 
     fun refresh() {
         scope.launch {
@@ -329,6 +335,42 @@ internal fun MarketplaceScreen(
                 Toast.makeText(context, error.message ?: "Couldn't submit your vote.", Toast.LENGTH_LONG).show()
             }
             helpfulSubmittingReviewId = null
+        }
+    }
+
+
+    fun reportMarketplaceReview(packageEntry: MarketplacePackage, review: com.opentasker.core.marketplace.MarketplaceReview, reason: String) {
+        scope.launch {
+            if (currentGithubLogin == null) {
+                Toast.makeText(context, "Sign in with GitHub to report a review.", Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            helpfulSubmittingReviewId = "report:" + review.reviewId
+            runCatching {
+                MarketplaceCommunityActions.reportReview(appContext, packageEntry.id, review.userId, reason)
+            }.onSuccess {
+                reviewReportTarget = null
+                Toast.makeText(context, "Your report was submitted to Marketplace moderation.", Toast.LENGTH_LONG).show()
+            }.onFailure { error ->
+                Toast.makeText(context, error.message ?: "Couldn't report this review.", Toast.LENGTH_LONG).show()
+            }
+            helpfulSubmittingReviewId = null
+        }
+    }
+
+    fun submitPublisherResponse(packageEntry: MarketplacePackage, review: com.opentasker.core.marketplace.MarketplaceReview, response: String) {
+        scope.launch {
+            publisherResponseSubmittingReviewId = review.reviewId
+            runCatching {
+                MarketplaceCommunityActions.submitPublisherResponse(appContext, packageEntry.id, packageEntry.publisher, review.userId, response)
+            }.onSuccess {
+                publisherResponseReview = null
+                publisherResponseText = ""
+                Toast.makeText(context, "Your response was submitted. Refresh after the catalogue updates.", Toast.LENGTH_LONG).show()
+            }.onFailure { error ->
+                Toast.makeText(context, error.message ?: "Couldn't submit your response.", Toast.LENGTH_LONG).show()
+            }
+            publisherResponseSubmittingReviewId = null
         }
     }
 
@@ -637,6 +679,15 @@ internal fun MarketplaceScreen(
                 reviewPackage = packageEntry
             },
             onHelpful = { review -> markReviewHelpful(packageEntry, review) },
+            onReportReview = { review -> reviewReportTarget = packageEntry to review },
+            onPublisherResponse = { review ->
+                publisherResponseReview = review
+                publisherResponseText = review.publisherResponse?.body.orEmpty()
+            },
+            reviewSortMode = reviewSortMode,
+            onReviewSortChanged = { reviewSortMode = it },
+            currentUserLogin = currentGithubLogin,
+            publisherResponseSubmittingReviewId = publisherResponseSubmittingReviewId,
             onSaveToCollection = { packageToCollect = packageEntry },
             currentUserRating = currentGithubUserId?.let { packageEntry.ratingVotes[it] },
             signedIn = currentGithubLogin != null,
@@ -722,6 +773,62 @@ internal fun MarketplaceScreen(
                 }
             },
             dismissButton = { TextButton(onClick = { reviewPackage = null }) { Text("Cancel") } },
+        )
+    }
+
+    reviewReportTarget?.let { (packageEntry, review) ->
+        AlertDialog(
+            onDismissRequest = { reviewReportTarget = null },
+            title = { Text("Report review") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Choose the reason this review should be checked by a moderator.")
+                    listOf(
+                        "spam" to "Spam or advertising",
+                        "harassment" to "Harassment or abuse",
+                        "misinformation" to "Misleading information",
+                        "unsafe" to "Unsafe or harmful content",
+                        "other" to "Other concern",
+                    ).forEach { (reason, label) ->
+                        OutlinedButton(
+                            onClick = { reportMarketplaceReview(packageEntry, review, reason) },
+                            enabled = helpfulSubmittingReviewId != "report:" + review.reviewId,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(label) }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { reviewReportTarget = null }) { Text("Cancel") } },
+        )
+    }
+
+    publisherResponseReview?.let { review ->
+        AlertDialog(
+            onDismissRequest = { publisherResponseReview = null; publisherResponseText = "" },
+            title = { Text("Respond to review") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Your response appears publicly beneath the review.")
+                    OutlinedTextField(
+                        value = publisherResponseText,
+                        onValueChange = { publisherResponseText = it.take(800) },
+                        label = { Text("Publisher response") },
+                        minLines = 3,
+                        maxLines = 7,
+                    )
+                    Text("\${publisherResponseText.length}/800 characters", style = MaterialTheme.typography.labelSmall)
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val entry = packages.firstOrNull { it.id == (selectedDetailsPackage?.id ?: "") }
+                        if (entry != null) submitPublisherResponse(entry, review, publisherResponseText)
+                    },
+                    enabled = publisherResponseText.isNotBlank() && publisherResponseSubmittingReviewId != review.reviewId,
+                ) { Text(if (publisherResponseSubmittingReviewId == review.reviewId) "Submitting…" else "Post response") }
+            },
+            dismissButton = { TextButton(onClick = { publisherResponseReview = null; publisherResponseText = "" }) { Text("Cancel") } },
         )
     }
     pendingWidgetDisplay?.let { packageEntry ->
@@ -1331,6 +1438,12 @@ private fun MarketplacePackageDetailsDialog(
     helpfulSubmittingReviewId: String?,
     onWriteReview: () -> Unit,
     onHelpful: (com.opentasker.core.marketplace.MarketplaceReview) -> Unit,
+    onReportReview: (com.opentasker.core.marketplace.MarketplaceReview) -> Unit,
+    onPublisherResponse: (com.opentasker.core.marketplace.MarketplaceReview) -> Unit,
+    reviewSortMode: String,
+    onReviewSortChanged: (String) -> Unit,
+    currentUserLogin: String?,
+    publisherResponseSubmittingReviewId: String?,
     onSaveToCollection: () -> Unit,
     currentUserRating: Int?,
     signedIn: Boolean,
@@ -1455,28 +1568,78 @@ private fun MarketplacePackageDetailsDialog(
                         submitting = ratingSubmitting,
                         onRate = onRate,
                     )
+                    if (packageEntry.ratingCount > 0) {
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            (5 downTo 1).forEach { stars ->
+                                val count = packageEntry.ratingDistribution[stars.toString()] ?: 0
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("$stars ★", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(34.dp))
+                                    Text("$count", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
                 }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Community reviews", style = MaterialTheme.typography.titleSmall)
-                        Text("Reviews are public and attached to GitHub accounts. Each account can maintain one review per package.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Community reviews · \${packageEntry.reviewCount}", style = MaterialTheme.typography.titleSmall)
+                        Text("Verified installer badges appear when an account has a recorded install. Reviews can be marked helpful or reported to moderation.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         OutlinedButton(onClick = onWriteReview, enabled = signedIn && !publisherOwnsPackage && !reviewSubmitting, modifier = Modifier.fillMaxWidth()) {
                             Text(if (packageEntry.reviews.any { it.userId == currentUserId }) "Edit your review" else "Write a review")
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Sort", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            listOf("Helpful", "Newest").forEach { mode ->
+                                FilterChip(selected = reviewSortMode == mode, onClick = { onReviewSortChanged(mode) }, label = { Text(mode) })
+                            }
                         }
                     }
                 }
                 if (packageEntry.reviews.isEmpty()) {
                     item { Text("No written reviews yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
-                items(packageEntry.reviews, key = { it.reviewId }) { review ->
+                items(
+                    packageEntry.reviews.sortedWith(
+                        if (reviewSortMode == "Helpful") {
+                            compareByDescending<com.opentasker.core.marketplace.MarketplaceReview> { it.helpfulCount }.thenByDescending { it.updatedAt }
+                        } else {
+                            compareByDescending<com.opentasker.core.marketplace.MarketplaceReview> { it.updatedAt }
+                        },
+                    ),
+                    key = { it.reviewId },
+                ) { review ->
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                             Text(review.title, style = MaterialTheme.typography.titleSmall)
-                            Text("@${review.author} · ${review.updatedAt.substringBefore("T")}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text("@\${review.author} · \${review.updatedAt.substringBefore("T")}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                if (review.verifiedInstaller) {
+                                    Text("Verified installer", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
+                                }
+                            }
                             Text(review.body, style = MaterialTheme.typography.bodyMedium)
+                            review.publisherResponse?.let { response ->
+                                Card(modifier = Modifier.fillMaxWidth()) {
+                                    Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        Text("Publisher response · @\${response.author}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                        Text(response.body, style = MaterialTheme.typography.bodySmall)
+                                        Text("Updated \${response.updatedAt.substringBefore("T")}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
                             val alreadyVoted = currentUserId?.let { it in review.helpfulUserIds } == true
-                            TextButton(onClick = { onHelpful(review) }, enabled = signedIn && currentUserId != review.userId && !alreadyVoted && helpfulSubmittingReviewId != review.reviewId) {
-                                Text(when { helpfulSubmittingReviewId == review.reviewId -> "Submitting…"; alreadyVoted -> "Marked helpful · ${review.helpfulCount}"; else -> "Helpful · ${review.helpfulCount}" })
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                TextButton(onClick = { onHelpful(review) }, enabled = signedIn && currentUserId != review.userId && !alreadyVoted && helpfulSubmittingReviewId != review.reviewId) {
+                                    Text(when { helpfulSubmittingReviewId == review.reviewId -> "Submitting…"; alreadyVoted -> "Marked helpful · \${review.helpfulCount}"; else -> "Helpful · \${review.helpfulCount}" })
+                                }
+                                TextButton(onClick = { onReportReview(review) }, enabled = signedIn && currentUserId != review.userId && helpfulSubmittingReviewId != "report:" + review.reviewId) {
+                                    Text("Report")
+                                }
+                                if (currentUserLogin?.equals(packageEntry.publisher, ignoreCase = true) == true) {
+                                    TextButton(onClick = { onPublisherResponse(review) }, enabled = publisherResponseSubmittingReviewId != review.reviewId) {
+                                        Text(if (review.publisherResponse == null) "Respond" else "Edit response")
+                                    }
+                                }
                             }
                         }
                     }
