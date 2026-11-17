@@ -1313,11 +1313,18 @@ private fun MarketplacePackageDetailsDialog(
     onOpenUrl: (String) -> Unit,
 ) {
     val context = LocalContext.current.applicationContext
-    val previewBitmap by produceState<Bitmap?>(null, packageEntry.previewPath, packageEntry.previewSha256) {
+    val previewBitmaps by produceState<List<Bitmap>>(emptyList(), packageEntry.previewPath, packageEntry.previewSha256, packageEntry.screenshots) {
         value = runCatching {
-            val bytes = MarketplaceClient.downloadPreviewImage(packageEntry) ?: return@runCatching null
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-        }.getOrNull()
+            buildList {
+                MarketplaceClient.downloadPreviewImage(packageEntry)?.let { bytes ->
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.let(::add)
+                }
+                packageEntry.screenshots.forEach { screenshot ->
+                    val bytes = MarketplaceClient.downloadVerifiedAsset(screenshot.path, screenshot.sha256, 2 * 1024 * 1024)
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.let(::add)
+                }
+            }
+        }.getOrDefault(emptyList())
     }
     val highRisk = packageEntry.riskLevel.equals("high", ignoreCase = true)
     AlertDialog(
@@ -1343,20 +1350,24 @@ private fun MarketplacePackageDetailsDialog(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (packageEntry.previewPath.isNotBlank()) {
+                if (packageEntry.previewPath.isNotBlank() || packageEntry.screenshots.isNotEmpty()) {
                     item {
-                        if (previewBitmap != null) {
-                            Card(modifier = Modifier.fillMaxWidth()) {
-                                Image(
-                                    bitmap = previewBitmap!!.asImageBitmap(),
-                                    contentDescription = "${packageEntry.name} Marketplace preview",
-                                    modifier = Modifier.fillMaxWidth().heightIn(max = 270.dp),
-                                    contentScale = ContentScale.Fit,
-                                )
+                        if (previewBitmaps.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                previewBitmaps.forEachIndexed { index, bitmap ->
+                                    Card(modifier = Modifier.fillMaxWidth()) {
+                                        Image(
+                                            bitmap = bitmap.asImageBitmap(),
+                                            contentDescription = "${packageEntry.name} screenshot ${index + 1}",
+                                            modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp),
+                                            contentScale = ContentScale.Fit,
+                                        )
+                                    }
+                                }
                             }
                         } else {
                             Text(
-                                "Loading package preview…",
+                                "Loading verified package screenshots…",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
