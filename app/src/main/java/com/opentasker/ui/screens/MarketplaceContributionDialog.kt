@@ -5,9 +5,12 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Switch
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -554,7 +558,10 @@ internal fun MarketplaceContributionDialog(
                                         }
                                     }
                                     Text("Icon shape", style = MaterialTheme.typography.labelLarge)
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    ) {
                                         listOf(
                                             "squircle" to "Squircle",
                                             "rounded_square" to "Rounded",
@@ -569,6 +576,26 @@ internal fun MarketplaceContributionDialog(
                                             )
                                         }
                                     }
+                                    Text("Background presets", style = MaterialTheme.typography.labelLarge)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        listOf(
+                                            "#6750A4", "#8E78D8", "#006C5B", "#1565C0",
+                                            "#C45500", "#263238", "#DCE2FF", "#F4D8E8",
+                                        ).forEach { swatch ->
+                                            Surface(
+                                                modifier = Modifier.size(30.dp).clickable { listingBackgroundColor = swatch },
+                                                shape = CircleShape,
+                                                color = parseMarketplaceColor(swatch, MaterialTheme.colorScheme.primary),
+                                                border = BorderStroke(
+                                                    if (listingBackgroundColor.equals(swatch, ignoreCase = true)) 3.dp else 1.dp,
+                                                    MaterialTheme.colorScheme.outlineVariant,
+                                                ),
+                                            ) {}
+                                        }
+                                    }
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -577,6 +604,8 @@ internal fun MarketplaceContributionDialog(
                                             value = listingIconColor,
                                             onValueChange = { listingIconColor = it.filter { ch -> ch.isLetterOrDigit() || ch == '#' }.take(7) },
                                             label = { Text("Symbol color") },
+                                            supportingText = { Text("Hex, e.g. #FFFFFF") },
+                                            isError = !listingIconColor.matches(Regex("^#?[A-Fa-f0-9]{6}$")),
                                             modifier = Modifier.weight(1f),
                                             singleLine = true,
                                         )
@@ -584,6 +613,8 @@ internal fun MarketplaceContributionDialog(
                                             value = listingBackgroundColor,
                                             onValueChange = { listingBackgroundColor = it.filter { ch -> ch.isLetterOrDigit() || ch == '#' }.take(7) },
                                             label = { Text("Background") },
+                                            supportingText = { Text("Hex, e.g. #6750A4") },
+                                            isError = !listingBackgroundColor.matches(Regex("^#?[A-Fa-f0-9]{6}$")),
                                             modifier = Modifier.weight(1f),
                                             singleLine = true,
                                         )
