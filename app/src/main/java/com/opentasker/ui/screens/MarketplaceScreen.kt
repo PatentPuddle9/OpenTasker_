@@ -54,6 +54,7 @@ import com.opentasker.core.marketplace.MarketplaceClient
 import com.opentasker.core.marketplace.GitHubDeviceAuth
 import com.opentasker.core.marketplace.MarketplaceContributionClient
 import com.opentasker.core.marketplace.MarketplaceCommunityActions
+import com.opentasker.core.marketplace.MarketplaceCollections
 import com.opentasker.core.marketplace.MarketplaceCatalog
 import com.opentasker.core.marketplace.MarketplaceExternalDestination
 import com.opentasker.core.marketplace.MarketplaceInput
@@ -950,6 +951,36 @@ private fun marketplaceVersionKey(version: String): String =
         .let { parts -> (parts + List((3 - parts.size).coerceAtLeast(0)) { "0000000000" }).joinToString(".") }
 
 @Composable
+private fun MarketplaceSaveToCollectionDialog(
+    packageEntry: MarketplacePackage,
+    collections: List<com.opentasker.core.marketplace.MarketplaceCollection>,
+    onSave: (String) -> Unit,
+    onCreateCollection: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Save ${packageEntry.name}") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (collections.isEmpty()) {
+                    Text("Create a collection to start saving Marketplace packages.")
+                } else {
+                    Text("Choose a collection. Collections are stored on this device.", style = MaterialTheme.typography.bodySmall)
+                    collections.forEach { collection ->
+                        OutlinedButton(onClick = { onSave(collection.name) }, modifier = Modifier.fillMaxWidth()) {
+                            Text("${collection.name} · ${collection.packageIds.size} saved")
+                        }
+                    }
+                }
+                OutlinedButton(onClick = onCreateCollection, modifier = Modifier.fillMaxWidth()) { Text("New collection") }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+    )
+}
+
+@Composable
 private fun MarketplaceWidgetDisplayTargetDialog(
     packageEntry: MarketplacePackage,
     onDismiss: () -> Unit,
@@ -1388,6 +1419,26 @@ private fun MarketplacePackageDetailsDialog(
                         )
                     }
                 }
+                item {
+                    Text("Package activity", style = MaterialTheme.typography.titleSmall)
+                    Text("${packageEntry.downloadCount} downloads · ${packageEntry.uniqueInstallerCount} unique installers", style = MaterialTheme.typography.bodyMedium)
+                    Text("${packageEntry.weeklyDownloads} installs in the last 7 days · Published ${packageEntry.publishedAt.substringBefore("T").ifBlank { "date unavailable" }}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedButton(onClick = onSaveToCollection, modifier = Modifier.fillMaxWidth()) { Text("Save to collection") }
+                }
+                if (packageEntry.dependencies.isNotEmpty()) {
+                    item { Text("Dependencies", style = MaterialTheme.typography.titleSmall) }
+                    items(packageEntry.dependencies) { dependency ->
+                        val available = allPackages.filter { it.id == dependency.id }.maxByOrNull { marketplaceVersionKey(it.version) }
+                        val compatibleDependency = available != null && isVersionAtLeast(available.version, dependency.minimumVersion)
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(dependency.id, style = MaterialTheme.typography.titleSmall)
+                                Text("Requires ${dependency.minimumVersion} or newer${if (dependency.optional) " · optional" else ""}", style = MaterialTheme.typography.bodySmall)
+                                Text(if (compatibleDependency) "Available: v${available!!.version}" else "Required version is not currently available", style = MaterialTheme.typography.labelSmall, color = if (compatibleDependency) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                }
                 if (packageEntry.changelog.isNotBlank()) {
                     item {
                         Text("What's new in v${packageEntry.version}", style = MaterialTheme.typography.titleSmall)
@@ -1404,6 +1455,31 @@ private fun MarketplacePackageDetailsDialog(
                         submitting = ratingSubmitting,
                         onRate = onRate,
                     )
+                }
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Community reviews", style = MaterialTheme.typography.titleSmall)
+                        Text("Reviews are public and attached to GitHub accounts. Each account can maintain one review per package.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        OutlinedButton(onClick = onWriteReview, enabled = signedIn && !publisherOwnsPackage && !reviewSubmitting, modifier = Modifier.fillMaxWidth()) {
+                            Text(if (packageEntry.reviews.any { it.userId == currentUserId }) "Edit your review" else "Write a review")
+                        }
+                    }
+                }
+                if (packageEntry.reviews.isEmpty()) {
+                    item { Text("No written reviews yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                }
+                items(packageEntry.reviews, key = { it.reviewId }) { review ->
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(review.title, style = MaterialTheme.typography.titleSmall)
+                            Text("@${review.author} · ${review.updatedAt.substringBefore("T")}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(review.body, style = MaterialTheme.typography.bodyMedium)
+                            val alreadyVoted = currentUserId?.let { it in review.helpfulUserIds } == true
+                            TextButton(onClick = { onHelpful(review) }, enabled = signedIn && currentUserId != review.userId && !alreadyVoted && helpfulSubmittingReviewId != review.reviewId) {
+                                Text(when { helpfulSubmittingReviewId == review.reviewId -> "Submitting…"; alreadyVoted -> "Marked helpful · ${review.helpfulCount}"; else -> "Helpful · ${review.helpfulCount}" })
+                            }
+                        }
+                    }
                 }
                 if (canManageFeatured) {
                     item {
@@ -1478,6 +1554,17 @@ private fun MarketplacePackageDetailsDialog(
                         "OpenTasker verifies the signed catalogue and package checksum. Imported profiles start disabled and still go through the normal import and permission review.",
                         style = MaterialTheme.typography.bodySmall,
                     )
+                }
+                if (packageEntry.faqs.isNotEmpty()) {
+                    item { Text("Frequently asked questions", style = MaterialTheme.typography.titleSmall) }
+                    items(packageEntry.faqs) { faq ->
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(faq.question, style = MaterialTheme.typography.titleSmall)
+                                Text(faq.answer, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
                 }
                 if (packageEntry.externalDestinations.isNotEmpty()) {
                     item { Text("External services", style = MaterialTheme.typography.titleSmall) }
