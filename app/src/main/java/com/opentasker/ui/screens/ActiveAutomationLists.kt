@@ -159,15 +159,6 @@ internal fun ProfilesScreen(
     val groups = remember(profiles) {
         profiles.mapNotNull { it.group }.distinct().sorted()
     }
-    val filteredProfiles = remember(profiles, selectedGroup, profileSearchQuery) {
-        profiles
-            .filter { selectedGroup == null || it.group == selectedGroup }
-            .filter { profileSearchQuery.isBlank() || it.name.contains(profileSearchQuery, ignoreCase = true) }
-    }
-    // Build this once per task-list update; looking up each card's backing Action is then O(1)
-    // instead of scanning the full task list for every visible profile.
-    val tasksById = remember(allTasks) { allTasks.associateBy(Task::id) }
-
     var selectedStatus by rememberSaveable { mutableStateOf("all") }
     val filteredProfiles = remember(profiles, selectedGroup, profileSearchQuery, selectedStatus) {
         profiles
@@ -520,102 +511,85 @@ private fun ProfileCard(
         profile.enabled -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
+
     Card(
         onClick = onEdit,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        border = BorderStroke(
-            1.dp,
-            if (profile.enabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
-            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f),
-        ),
-        shape = RoundedCornerShape(DesignSystem.Radii.xl),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp, pressedElevation = 5.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
+        shape = RoundedCornerShape(17.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp, pressedElevation = 2.dp),
     ) {
-        Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Surface(
-                modifier = Modifier.fillMaxWidth().height(3.dp),
-                color = if (profile.enabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.82f)
-                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
-            ) {}
-            Column(
-                Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
-                verticalArrangement = Arrangement.spacedBy(13.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = RoundedCornerShape(13.dp),
+                modifier = Modifier.size(50.dp),
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                IconButton(
+                    onClick = onRun,
+                    enabled = testEnabled,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .semantics { this.contentDescription = testDescription },
                 ) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = RoundedCornerShape(18.dp),
-                        modifier = Modifier.size(54.dp),
-                    ) {
-                        IconButton(
-                            onClick = onRun,
-                            enabled = testEnabled,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .semantics { this.contentDescription = testDescription },
-                        ) {
-                            WidgetIconImage(
-                                iconKey = profile.icon,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(27.dp),
-                            )
-                        }
-                    }
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(3.dp),
-                    ) {
-                        Text(
-                            profile.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            stringResource(R.string.label_action_count, actionCount),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    if (!widgetOwned) {
-                        ProfileActionsMenu(
-                            contentDescription = stringResource(R.string.a11y_duplicate_profile, profile.name),
-                            editDescription = stringResource(R.string.a11y_edit_profile, profile.name),
-                            canUndo = canUndo,
-                            canRedo = canRedo,
-                            onEdit = onEdit,
-                            onPreflight = onPreflight,
-                            onTest = onRun,
-                            testEnabled = testEnabled,
-                            onDuplicate = onDuplicate,
-                            onUndo = onUndo,
-                            onRedo = onRedo,
-                            onDelete = onDelete,
-                        )
-                    }
+                    WidgetIconImage(
+                        iconKey = profile.icon,
+                        contentDescription = null,
+                        tint = if (profile.enabled) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(25.dp),
+                    )
                 }
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    profile.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "$actionCount steps  ·  ${profile.contexts.size} triggers",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
                 ) {
                     StatusPill(profileState, statusColor)
                     if (widgetOwned) StatusPill("Widget", MaterialTheme.colorScheme.tertiary)
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        stringResource(R.string.label_context_count, profile.contexts.size),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
                 }
+            }
+            if (!widgetOwned) {
+                ProfileActionsMenu(
+                    contentDescription = stringResource(R.string.a11y_duplicate_profile, profile.name),
+                    editDescription = stringResource(R.string.a11y_edit_profile, profile.name),
+                    canUndo = canUndo,
+                    canRedo = canRedo,
+                    onEdit = onEdit,
+                    onPreflight = onPreflight,
+                    onTest = onRun,
+                    testEnabled = testEnabled,
+                    onDuplicate = onDuplicate,
+                    onUndo = onUndo,
+                    onRedo = onRedo,
+                    onDelete = onDelete,
+                )
             }
         }
     }
