@@ -386,7 +386,7 @@ private fun MarketplaceMyPackagesDialog(
             if (confirmingDelete != null) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "This immediately withdraws the package from the Marketplace without a review. People who already installed it keep their copy; it won't be removed from their devices.",
+                        "This submits a publisher-verified deletion request without human review. After the signed catalogue is republished, the package will no longer be offered to new users. People who already installed it keep their copy; it won't be removed from their devices.",
                     )
                     Text(
                         "New users will no longer be able to find or install it. This package ID cannot be reused after deletion.",
@@ -460,7 +460,7 @@ private fun MarketplaceMyPackagesDialog(
                     }
                     deletionRequestUrl?.let { url ->
                         Text(
-                            "Deletion request submitted. The Marketplace will automatically withdraw the listing; existing installs remain untouched.",
+                            "Deletion request submitted. The listing will be withdrawn automatically after the signed catalogue refreshes; existing installs remain untouched.",
                             color = MaterialTheme.colorScheme.tertiary,
                             style = MaterialTheme.typography.bodySmall,
                         )
