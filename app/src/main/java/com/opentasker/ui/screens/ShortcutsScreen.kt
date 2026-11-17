@@ -162,7 +162,8 @@ internal fun ShortcutsScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(contentPadding),
             contentPadding = PaddingValues(
-                horizontal = DesignSystem.Screen.horizontalPadding,
+                start = DesignSystem.Screen.horizontalPadding,
+                end = DesignSystem.Screen.horizontalPadding,
                 top = 18.dp,
                 bottom = 112.dp,
             ),
