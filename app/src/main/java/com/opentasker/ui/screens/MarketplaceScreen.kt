@@ -816,7 +816,7 @@ internal fun MarketplaceScreen(
                         minLines = 3,
                         maxLines = 7,
                     )
-                    Text("\${publisherResponseText.length}/800 characters", style = MaterialTheme.typography.labelSmall)
+                    Text("${publisherResponseText.length}/800 characters", style = MaterialTheme.typography.labelSmall)
                 }
             },
             confirmButton = {
@@ -1582,7 +1582,7 @@ private fun MarketplacePackageDetailsDialog(
                 }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Community reviews · \${packageEntry.reviewCount}", style = MaterialTheme.typography.titleSmall)
+                        Text("Community reviews · ${packageEntry.reviewCount}", style = MaterialTheme.typography.titleSmall)
                         Text("Verified installer badges appear when an account has a recorded install. Reviews can be marked helpful or reported to moderation.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         OutlinedButton(onClick = onWriteReview, enabled = signedIn && !publisherOwnsPackage && !reviewSubmitting, modifier = Modifier.fillMaxWidth()) {
                             Text(if (packageEntry.reviews.any { it.userId == currentUserId }) "Edit your review" else "Write a review")
@@ -1612,7 +1612,7 @@ private fun MarketplacePackageDetailsDialog(
                         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                             Text(review.title, style = MaterialTheme.typography.titleSmall)
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text("@\${review.author} · \${review.updatedAt.substringBefore("T")}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("@${review.author} · ${review.updatedAt.substringBefore("T")}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 if (review.verifiedInstaller) {
                                     Text("Verified installer", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
                                 }
@@ -1621,16 +1621,16 @@ private fun MarketplacePackageDetailsDialog(
                             review.publisherResponse?.let { response ->
                                 Card(modifier = Modifier.fillMaxWidth()) {
                                     Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                        Text("Publisher response · @\${response.author}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                        Text("Publisher response · @${response.author}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                                         Text(response.body, style = MaterialTheme.typography.bodySmall)
-                                        Text("Updated \${response.updatedAt.substringBefore("T")}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("Updated ${response.updatedAt.substringBefore("T")}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                             }
                             val alreadyVoted = currentUserId?.let { it in review.helpfulUserIds } == true
                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 TextButton(onClick = { onHelpful(review) }, enabled = signedIn && currentUserId != review.userId && !alreadyVoted && helpfulSubmittingReviewId != review.reviewId) {
-                                    Text(when { helpfulSubmittingReviewId == review.reviewId -> "Submitting…"; alreadyVoted -> "Marked helpful · \${review.helpfulCount}"; else -> "Helpful · \${review.helpfulCount}" })
+                                    Text(when { helpfulSubmittingReviewId == review.reviewId -> "Submitting…"; alreadyVoted -> "Marked helpful · ${review.helpfulCount}"; else -> "Helpful · ${review.helpfulCount}" })
                                 }
                                 TextButton(onClick = { onReportReview(review) }, enabled = signedIn && currentUserId != review.userId && helpfulSubmittingReviewId != "report:" + review.reviewId) {
                                     Text("Report")
