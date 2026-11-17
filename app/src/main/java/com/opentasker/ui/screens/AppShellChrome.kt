@@ -32,18 +32,13 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.opentasker.app.R
 import com.opentasker.ui.theme.DesignSystem
-
-/**
- * App-shell chrome: the destination list, its icons, the top header and the small status
- * helpers every screen reuses. Split out of ActiveAutomationUi.kt so the shell composable is
- * not sharing a file with the navigation vocabulary it renders.
- */
 
 internal enum class OpenTaskerScreen(@StringRes val labelRes: Int) {
     Actions(R.string.nav_actions),
@@ -58,6 +53,7 @@ internal enum class OpenTaskerScreen(@StringRes val labelRes: Int) {
     Settings(R.string.nav_settings),
     Marketplace(R.string.nav_marketplace),
 }
+
 internal val primaryNavigationScreens = listOf(
     OpenTaskerScreen.Actions,
     OpenTaskerScreen.Shortcuts,
@@ -85,6 +81,10 @@ internal fun OpenTaskerScreen.icon(): ImageVector = when (this) {
 internal fun shouldNavigateBackToActions(screen: OpenTaskerScreen): Boolean =
     screen != OpenTaskerScreen.Actions
 
+/**
+ * Compact destination header. The old oversized title stack took up nearly a fifth of a phone
+ * screen before the user could reach their content; this keeps a clear title without wasting it.
+ */
 @Composable
 internal fun OpenTaskerHeader(
     screen: OpenTaskerScreen,
@@ -93,83 +93,78 @@ internal fun OpenTaskerHeader(
     showSearch: Boolean = true,
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        color = MaterialTheme.colorScheme.background,
         tonalElevation = 0.dp,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding(),
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(
-                        start = DesignSystem.Screen.horizontalPadding,
-                        end = DesignSystem.Screen.horizontalPadding,
-                        top = 14.dp,
-                        bottom = 13.dp,
+                        horizontal = DesignSystem.Screen.horizontalPadding,
+                        top = 10.dp,
+                        bottom = 12.dp,
                     ),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Surface(
+                    modifier = Modifier.size(42.dp),
+                    shape = RoundedCornerShape(13.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Outlined.Tune,
+                            contentDescription = stringResource(R.string.app_name),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(21.dp),
+                        )
+                    }
+                }
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalArrangement = Arrangement.spacedBy(1.dp),
                 ) {
                     Text(
-                        text = stringResource(R.string.app_name).uppercase(),
+                        text = stringResource(R.string.app_name),
                         style = MaterialTheme.typography.labelSmall.copy(
-                            letterSpacing = 1.8.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            letterSpacing = 1.15.sp,
+                            fontWeight = FontWeight.SemiBold,
                         ),
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                     )
                     Text(
-                        stringResource(screen.labelRes),
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontSize = 28.sp,
-                            lineHeight = 33.sp,
-                            letterSpacing = (-0.7).sp,
+                        text = stringResource(screen.labelRes),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontSize = 23.sp,
+                            lineHeight = 27.sp,
+                            letterSpacing = (-0.45).sp,
                         ),
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     if (!detail.isNullOrBlank()) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Box(
-                                Modifier
-                                    .size(7.dp)
-                                    .background(
-                                        color = when (screen) {
-                                            OpenTaskerScreen.Diagnostics -> MaterialTheme.colorScheme.tertiary
-                                            else -> MaterialTheme.colorScheme.primary
-                                        },
-                                        shape = CircleShape,
-                                    ),
-                            )
-                            Text(
-                                text = detail,
-                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+                        Text(
+                            text = detail,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
                 if (showSearch) {
                     Surface(
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(13.dp),
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     ) {
                         IconButton(
                             onClick = onOpenSearch,
-                            modifier = Modifier.size(48.dp),
+                            modifier = Modifier.size(42.dp),
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Search,
@@ -184,12 +179,13 @@ internal fun OpenTaskerHeader(
                 Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)),
+                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f)),
             )
         }
     }
 }
 
+/** A consistent destination control for both the compact bottom bar and expanded rail. */
 @Composable
 internal fun OpenTaskerNavigationItem(
     selected: Boolean,
@@ -201,39 +197,41 @@ internal fun OpenTaskerNavigationItem(
     val contentColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
     val selectedDescription = stringResource(R.string.a11y_selected)
     val notSelectedDescription = stringResource(R.string.a11y_not_selected)
+
     Column(
         modifier = modifier
-            .heightIn(min = 64.dp)
+            .heightIn(min = 62.dp)
             .clickable(role = Role.Tab, onClick = onClick)
             .semantics(mergeDescendants = true) {
                 this.selected = selected
                 stateDescription = if (selected) selectedDescription else notSelectedDescription
             }
-            .padding(horizontal = 2.dp, vertical = 5.dp),
+            .padding(horizontal = 4.dp, vertical = 5.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Box(
             modifier = Modifier
-                .size(width = 54.dp, height = 32.dp)
+                .size(width = 56.dp, height = 32.dp)
                 .background(
-                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                    shape = RoundedCornerShape(14.dp),
+                    color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else Color.Transparent,
+                    shape = RoundedCornerShape(11.dp),
                 ),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 icon,
                 contentDescription = label,
-                tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else contentColor,
-                modifier = Modifier.size(21.dp),
+                tint = contentColor,
+                modifier = Modifier.size(20.dp),
             )
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(3.dp))
         Text(
             label,
             style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Medium,
+                fontSize = 10.sp,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
             ),
             color = contentColor,
             maxLines = 1,
@@ -245,17 +243,22 @@ internal fun OpenTaskerNavigationItem(
 
 @Composable
 internal fun SummaryMetric(value: String, label: String, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier,
-        color = Color.Transparent,
+    Column(
+        modifier = modifier.padding(horizontal = 2.dp, vertical = 5.dp),
+        verticalArrangement = Arrangement.spacedBy(1.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(value, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        Text(
+            value,
+            style = MaterialTheme.typography.titleLarge.copy(fontSize = 21.sp, lineHeight = 24.sp),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.45.sp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -267,23 +270,23 @@ internal fun StatusPill(
 ) {
     Surface(
         modifier = modifier,
-        color = color.copy(alpha = 0.13f),
-        shape = RoundedCornerShape(percent = 50),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = RoundedCornerShape(9.dp),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 Modifier
-                    .size(7.dp)
-                    .background(color, RoundedCornerShape(percent = 50)),
+                    .size(6.dp)
+                    .background(color, CircleShape),
             )
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
-                color = color,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
