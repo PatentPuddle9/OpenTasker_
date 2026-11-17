@@ -371,6 +371,9 @@ internal object MarketplaceClient {
                                 "The package references ${match.value}, but that file was not included.",
                             )
                     }
+                    require(!replaced.contains("{{asset:")) {
+                        "The package contains an invalid or unresolved asset reference."
+                    }
                     JsonPrimitive(replaced)
                 }
             }

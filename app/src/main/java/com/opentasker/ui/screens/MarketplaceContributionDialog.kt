@@ -754,7 +754,8 @@ internal fun MarketplaceContributionDialog(
                             }
                             if (
                                 selectedKind == MarketplaceContributionKind.ACTION ||
-                                selectedKind == MarketplaceContributionKind.SHORTCUT_WIDGET
+                                selectedKind == MarketplaceContributionKind.SHORTCUT_WIDGET ||
+                                selectedKind == MarketplaceContributionKind.WIDGET_DISPLAY
                             ) {
                                 Card(modifier = Modifier.fillMaxWidth()) {
                                     Column(

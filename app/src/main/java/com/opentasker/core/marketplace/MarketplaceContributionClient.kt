@@ -354,7 +354,7 @@ internal object MarketplaceContributionClient {
                 require(config.states.isNotEmpty() && config.states.size <= WidgetDisplayStore.MAX_STATES) {
                     "The Widget Display has an invalid number of states."
                 }
-                val portableAssetReference = Regex("""^\{\{asset-(?:0[1-9]|1[0-2])}}$""")
+                val portableAssetReference = Regex("""^\{\{asset:asset-(?:0[1-9]|1[0-2])}}$""")
                 require(config.states.all { state ->
                     state.elements.all { element ->
                         element.type != WidgetDisplayElementType.IMAGE ||
@@ -362,7 +362,7 @@ internal object MarketplaceContributionClient {
                             portableAssetReference.matches(element.imageUri)
                     }
                 }) {
-                    "Widget Display images must use a Marketplace asset reference like {{asset-01}}, not a private device URI."
+                    "Widget Display images must use a Marketplace asset reference like {{asset:asset-01}}, not a private device URI."
                 }
                 val sharedConfig = config.copy(
                     states = config.states.map { state ->
