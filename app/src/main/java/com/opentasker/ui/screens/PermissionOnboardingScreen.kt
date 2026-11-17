@@ -1039,6 +1039,7 @@ fun PermissionOnboardingScreen(
             }
             item { SettingsSectionLabel("Marketplace") }
             item { MarketplaceSafetySettingsCard() }
+            item { MarketplacePackageAssetStorageSettingsCard() }
             item { SettingsSectionLabel(stringResource(R.string.settings_section_about)) }
             item {
                 AboutCard(onOpenLink = { url -> openExternalLink(context, url, onMessage) })
