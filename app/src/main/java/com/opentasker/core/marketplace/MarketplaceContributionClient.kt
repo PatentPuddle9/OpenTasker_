@@ -50,6 +50,18 @@ internal data class MarketplaceExternalDestinationDraft(
 
 internal data class MarketplacePullRequest(val number: Int, val url: String)
 
+internal data class MarketplaceDeletionRequest(val number: Int, val url: String)
+
+internal fun allowedMarketplaceVersions(current: String): List<String> {
+    val match = Regex("^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$").matchEntire(current)
+        ?: throw IllegalArgumentException("The published version must use MAJOR.MINOR.PATCH format.")
+    val major = match.groupValues[1].toInt()
+    val minor = match.groupValues[2].toInt()
+    val patch = match.groupValues[3].toInt()
+    return listOf("$major.$minor.${patch + 1}", "$major.${minor + 1}.0", "${major + 1}.0.0")
+}
+
+
 internal object MarketplaceContributionClient {
     private const val REPOSITORY = "PatentPuddle9/OpenTasker_Makrketplace"
     private const val MAX_BUNDLE_BYTES = 8 * 1024 * 1024
@@ -119,13 +131,21 @@ internal object MarketplaceContributionClient {
         version: String,
         summary: String,
         disclosure: MarketplaceExternalDestinationDraft?,
+        previousVersion: String? = null,
     ): MarketplacePullRequest = withContext(Dispatchers.IO) {
         val id = packageId.trim()
         val name = packageName.trim()
         val description = summary.trim()
         require(id.matches(Regex("^[a-z0-9][a-z0-9._-]{1,79}$"))) { "Package ID must be a lowercase slug." }
         require(name.isNotBlank() && name.length <= 80) { "Package name must be 1–80 characters." }
-        require(version.matches(Regex("^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$"))) { "Version must use semantic versioning, such as 1.0.0." }
+        val allowedVersions = previousVersion?.let(::allowedMarketplaceVersions)
+        if (previousVersion == null) {
+            require(version == "1.0.0") { "New Marketplace packages must start at version 1.0.0." }
+        } else {
+            require(version in allowedVersions.orEmpty()) {
+                "Version must increase by exactly one step from $previousVersion. Allowed next versions: ${allowedVersions?.joinToString()}."
+            }
+        }
         require(description.isNotBlank() && description.length <= 400) { "Summary must be 1–400 characters." }
 
         val app = context.applicationContext
@@ -251,9 +271,18 @@ internal object MarketplaceContributionClient {
             "POST",
             "/repos/" + REPOSITORY + "/pulls",
             JSONObject()
-                .put("title", "[Marketplace] " + name + " (" + version + ")")
+                .put(
+                    "title",
+                    (if (previousVersion == null) "[Marketplace] " else "[Marketplace update] ") + name + " (" + version + ")",
+                )
                 .put("body", buildString {
                     appendLine("Submitted from the OpenTasker Android app.")
+                    if (previousVersion != null) {
+                        appendLine()
+                        appendLine("Package update: $id")
+                        appendLine("Previous version: $previousVersion")
+                        appendLine("This update requires a formal APPROVED review from a trusted Marketplace moderator before it can be merged.")
+                    }
                     appendLine()
                     appendLine("Contribution type: " + candidate.kind.label)
                     appendLine("Package: " + id)
@@ -273,6 +302,44 @@ internal object MarketplaceContributionClient {
         val url = pr.optString("html_url")
         require(number > 0 && url.startsWith("https://github.com/")) { "GitHub did not return a valid pull-request link." }
         MarketplacePullRequest(number, url)
+    }
+
+    suspend fun requestDeletion(
+        context: Context,
+        packageEntry: MarketplacePackage,
+    ): MarketplaceDeletionRequest = withContext(Dispatchers.IO) {
+        require(packageEntry.id.matches(Regex("^[a-z0-9][a-z0-9._-]{1,79}$"))) {
+            "The Marketplace package ID is invalid."
+        }
+        val token = GitHubDeviceAuth.accessToken(context.applicationContext)
+        val user = GitHubDeviceAuth.apiRequestBlocking(token, "GET", "/user")
+        val login = user.optString("login").trim()
+        require(login.isNotBlank() && login.equals(packageEntry.publisher, ignoreCase = true)) {
+            "Only the GitHub account that originally published this package can delete it."
+        }
+
+        val requestBody = "<!-- opentasker-marketplace-delete:v1 -->\\n" +
+            JSONObject().put("packageId", packageEntry.id).toString()
+        val issue = GitHubDeviceAuth.apiRequestBlocking(
+            token,
+            "POST",
+            "/repos/" + REPOSITORY + "/issues",
+            JSONObject()
+                .put("title", "[Marketplace deletion] " + packageEntry.id)
+                .put(
+                    "body",
+                    "Please withdraw package ${packageEntry.id} from the official Marketplace. " +
+                        "This publisher-authenticated request does not require review. " +
+                        "Automations already imported by users must remain installed and unchanged.\\n\\n" +
+                        requestBody,
+                ),
+        )
+        val number = issue.optInt("number", 0)
+        val url = issue.optString("html_url")
+        require(number > 0 && url.startsWith("https://github.com/")) {
+            "GitHub did not return a valid deletion request link."
+        }
+        MarketplaceDeletionRequest(number, url)
     }
 
     private fun readStyle(context: Context, id: Int): WidgetStyle {
