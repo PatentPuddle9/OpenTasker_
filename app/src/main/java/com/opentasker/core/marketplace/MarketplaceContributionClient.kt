@@ -318,7 +318,7 @@ internal object MarketplaceContributionClient {
             "Only the GitHub account that originally published this package can delete it."
         }
 
-        val requestBody = "<!-- opentasker-marketplace-delete:v1 -->\\n" +
+        val requestBody = "<!-- opentasker-marketplace-delete:v1 -->\n" +
             JSONObject().put("packageId", packageEntry.id).toString()
         val issue = GitHubDeviceAuth.apiRequestBlocking(
             token,
@@ -330,7 +330,7 @@ internal object MarketplaceContributionClient {
                     "body",
                     "Please withdraw package ${packageEntry.id} from the official Marketplace. " +
                         "This publisher-authenticated request does not require review. " +
-                        "Automations already imported by users must remain installed and unchanged.\\n\\n" +
+                        "Automations already imported by users must remain installed and unchanged.\n\n" +
                         requestBody,
                 ),
         )
