@@ -439,10 +439,6 @@ internal object MarketplaceContributionClient {
             .put("changelog", cleanChangelog)
             .put("documentationUrl", cleanDocumentationUrl)
             .put("category", candidate.kind.category)
-        if (candidate.kind == MarketplaceContributionKind.THEME) {
-            manifest.put("themeMode", activeThemeMode)
-                .put("themeAccentColor", activeThemeAccent.uppercase())
-        }
             .put("minimumAppVersion", BuildConfig.VERSION_NAME.substringBefore('-').substringBefore('+'))
             .put("bundleFile", "bundle.json")
             .put("previewFile", "preview.png")
@@ -460,6 +456,10 @@ internal object MarketplaceContributionClient {
                         .put("riskNotes", item.riskNotes))
                 }
             })
+        if (candidate.kind == MarketplaceContributionKind.THEME) {
+            manifest.put("themeMode", activeThemeMode)
+                .put("themeAccentColor", activeThemeAccent.uppercase())
+        }
         if (iconAssetBytes != null) manifest.put("assetFile", "icon.png")
 
         val upstream = GitHubDeviceAuth.apiRequestBlocking(token, "GET", "/repos/" + REPOSITORY)
