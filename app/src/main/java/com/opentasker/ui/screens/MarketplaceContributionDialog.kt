@@ -96,6 +96,7 @@ internal fun MarketplaceContributionDialog(
     var changelog by remember(existingPackage?.id) { mutableStateOf(existingPackage?.changelog.orEmpty()) }
     var documentationUrl by remember(existingPackage?.id) { mutableStateOf(existingPackage?.documentationUrl.orEmpty()) }
     var screenshotUris by remember(existingPackage?.id) { mutableStateOf<List<Uri>>(emptyList()) }
+    var assetUris by remember(existingPackage?.id) { mutableStateOf<List<Uri>>(emptyList()) }
     var faqsText by remember(existingPackage?.id) {
         mutableStateOf(existingPackage?.faqs?.joinToString("\n") { "${it.question} | ${it.answer}" }.orEmpty())
     }
@@ -122,6 +123,11 @@ internal fun MarketplaceContributionDialog(
         contract = ActivityResultContracts.GetMultipleContents(),
     ) { selectedUris ->
         screenshotUris = selectedUris.take(4)
+    }
+    val packageAssetPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments(),
+    ) { selectedUris ->
+        assetUris = selectedUris.take(12)
     }
 
     LaunchedEffect(Unit) {
@@ -285,6 +291,7 @@ internal fun MarketplaceContributionDialog(
                         )
                     },
                     screenshotUris = screenshotUris,
+                    assetUris = assetUris,
                 )
             }.onSuccess { pull ->
                 pullRequestNumber = pull.number
@@ -742,6 +749,55 @@ internal fun MarketplaceContributionDialog(
                                     Text("${screenshotUris.size}/4 selected · Images are resized to 2048 px and must fit within 2 MB each.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     if (existingPackage?.screenshots?.isNotEmpty() == true && screenshotUris.isEmpty()) {
                                         Text("This is a new immutable version. Re-select any screenshots you want to carry forward.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+                                    }
+                                }
+                            }
+                            if (
+                                selectedKind == MarketplaceContributionKind.ACTION ||
+                                selectedKind == MarketplaceContributionKind.SHORTCUT_WIDGET
+                            ) {
+                                Card(modifier = Modifier.fillMaxWidth()) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Text("Package images & audio", style = MaterialTheme.typography.titleSmall)
+                                        Text(
+                                            "Optional files travel with this package version. Add up to 12 PNG/JPG/WebP images or MP3/OGG/WAV/M4A audio files. Images are converted to clean PNGs before publishing.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            OutlinedButton(onClick = {
+                                                packageAssetPicker.launch(arrayOf("image/*", "audio/*"))
+                                            }) {
+                                                Text(if (assetUris.isEmpty()) "Add files" else "Change files")
+                                            }
+                                            if (assetUris.isNotEmpty()) {
+                                                TextButton(onClick = { assetUris = emptyList() }) { Text("Clear") }
+                                            }
+                                        }
+                                        Text("${assetUris.size}/12 selected", style = MaterialTheme.typography.labelSmall)
+                                        assetUris.forEachIndexed { index, _ ->
+                                            val token = "asset-" + (index + 1).toString().padStart(2, '0')
+                                            Text(
+                                                "{{asset:$token}}",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.primary,
+                                            )
+                                        }
+                                        Text(
+                                            "Use the matching reference in an Action's file or audio path field. OpenTasker replaces it with the installed local file when someone installs the package.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        if (existingPackage?.assets?.isNotEmpty() == true && assetUris.isEmpty()) {
+                                            Text(
+                                                "This is a new immutable version. Re-select any package files you want to carry forward.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.tertiary,
+                                            )
+                                        }
                                     }
                                 }
                             }
