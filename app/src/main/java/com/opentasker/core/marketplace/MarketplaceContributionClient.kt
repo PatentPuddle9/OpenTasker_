@@ -439,6 +439,10 @@ internal object MarketplaceContributionClient {
             .put("changelog", cleanChangelog)
             .put("documentationUrl", cleanDocumentationUrl)
             .put("category", candidate.kind.category)
+        if (candidate.kind == MarketplaceContributionKind.THEME) {
+            manifest.put("themeMode", activeThemeMode)
+                .put("themeAccentColor", activeThemeAccent.uppercase())
+        }
             .put("minimumAppVersion", BuildConfig.VERSION_NAME.substringBefore('-').substringBefore('+'))
             .put("bundleFile", "bundle.json")
             .put("previewFile", "preview.png")
