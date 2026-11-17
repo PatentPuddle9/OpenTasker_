@@ -786,15 +786,15 @@ private fun MarketplacePackageCard(
                     enabled = !previewing && !installing,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text(if (previewing) "Loading…" else "Preview")
+                    Text(if (previewing) "Loading preview…" else "Preview")
                 }
-                Button(
-                    onClick = onInstall,
-                    enabled = !installing && !locallyDisabled && compatible,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(if (installing) "Checking…" else "Install")
-                }
+            }
+            Button(
+                onClick = onInstall,
+                enabled = !installing && !locallyDisabled && compatible,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(if (installing) "Checking package…" else "Install package")
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onReport) { Text("Report listing") }
