@@ -24,17 +24,17 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 
 // Quiet Workshop palette with a customizable purple accent and deep plum/graphite surfaces.
-private val BrandPurple = Color(0xFFB69CFF)
-private val BrandPurpleBright = Color(0xFFDCCBFF)
+private val BrandPurple = Color(0xFFC2A8FF)
+private val BrandPurpleBright = Color(0xFFE8DDFF)
 private val SignalAmber = Color(0xFFFFB42E)
 private val SignalRed = Color(0xFFFF6B66)
 private val Text = Color(0xFFF7FAFF)
 private val TextSecondary = Color(0xFFA7B3C6)
-private val WorkshopBackground = Color(0xFF090710)
-private val WorkshopSurface = Color(0xFF100D19)
-private val WorkshopNavy = Color(0xFF1A1426)
-private val WorkshopElevated = Color(0xFF251C35)
-private val WorkshopOutline = Color(0xFF514365)
+private val WorkshopBackground = Color(0xFF0A0812)
+private val WorkshopSurface = Color(0xFF12101D)
+private val WorkshopNavy = Color(0xFF1D182B)
+private val WorkshopElevated = Color(0xFF2A223B)
+private val WorkshopOutline = Color(0xFF635477)
 
 private val Graphite = darkColorScheme(
     primary = BrandPurple,
@@ -127,10 +127,10 @@ private val LightPurpleSecondary = Color(0xFF7652A8)
 private val LightRed = Color(0xFFA34141)
 private val LightText = Color(0xFF211A2A)
 private val LightSubtext = Color(0xFF655A70)
-private val LightBase = Color(0xFFF7F3FA)
+private val LightBase = Color(0xFFF6F2FA)
 private val LightSurface = Color(0xFFFFFFFF)
-private val LightElevated = Color(0xFFEEE7F5)
-private val LightOutline = Color(0xFF85768F)
+private val LightElevated = Color(0xFFEDE5F5)
+private val LightOutline = Color(0xFF84758F)
 
 private val Light = lightColorScheme(
     primary = LightPurple,
@@ -206,23 +206,26 @@ private val HighContrast = darkColorScheme(
 private val OpenTaskerTypography = Typography(
     headlineSmall = TextStyle(
         fontWeight = FontWeight.Bold,
-        fontSize = 31.sp,
-        lineHeight = 37.sp,
+        fontSize = 32.sp,
+        lineHeight = 38.sp,
+        letterSpacing = (-0.65).sp,
     ),
     titleLarge = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
-        lineHeight = 27.sp,
+        fontWeight = FontWeight.Bold,
+        fontSize = 24.sp,
+        lineHeight = 30.sp,
+        letterSpacing = (-0.25).sp,
     ),
     titleMedium = TextStyle(
         fontWeight = FontWeight.SemiBold,
         fontSize = 18.sp,
-        lineHeight = 23.sp,
+        lineHeight = 24.sp,
+        letterSpacing = (-0.1).sp,
     ),
     titleSmall = TextStyle(
         fontWeight = FontWeight.SemiBold,
         fontSize = 15.sp,
-        lineHeight = 20.sp,
+        lineHeight = 21.sp,
     ),
     bodyMedium = TextStyle(
         fontWeight = FontWeight.Normal,
@@ -252,11 +255,11 @@ private val OpenTaskerTypography = Typography(
 )
 
 private val OpenTaskerShapes = Shapes(
-    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(2.dp),
-    small = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
-    medium = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
-    large = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+    small = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+    medium = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+    large = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
 )
 
 /**
