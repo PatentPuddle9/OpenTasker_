@@ -101,8 +101,9 @@ internal fun OpenTaskerHeader(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(
-                        horizontal = DesignSystem.Screen.horizontalPadding,
+                     .padding(
+                        start = DesignSystem.Screen.horizontalPadding,
+                        end = DesignSystem.Screen.horizontalPadding,
                         top = 10.dp,
                         bottom = 12.dp,
                     ),
