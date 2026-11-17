@@ -219,7 +219,7 @@ internal object MarketplaceClient {
         expectedSha256: String,
         maxBytes: Int = MAX_BUNDLE_BYTES,
     ): ByteArray = withContext(Dispatchers.IO) {
-        require(Regex("^packages/[a-z0-9][a-z0-9._-]{1,79}/[0-9]+\\\\.[0-9]+\\\\.[0-9]+/(?:bundle\\\\.json|preview\\\\.png|icon\\\\.png)$").matches(path)) {
+        require(Regex("^packages/[a-z0-9][a-z0-9._-]{1,79}/[0-9]+\\\\.[0-9]+\\\\.[0-9]+/(?:bundle\\\\.json|preview\\\\.png|icon\\\\.png|screenshots/[0-9]{2}\\.png)$").matches(path)) {
             "The signed catalogue contains an invalid Marketplace asset path."
         }
         require(expectedSha256.matches(Regex("^[a-fA-F0-9]{64}$"))) {
