@@ -61,8 +61,6 @@ internal data class MarketplacePackage(
     val previewSha256: String = "",
     val iconAssetPath: String = "",
     val iconAssetSha256: String = "",
-    val themeMode: String = "",
-    val themeAccentColor: String = "",
 )
 
 @Serializable

@@ -58,8 +58,6 @@ import com.opentasker.core.marketplace.MarketplaceExternalDestination
 import com.opentasker.core.marketplace.MarketplaceInput
 import com.opentasker.core.marketplace.MarketplacePackage
 import com.opentasker.core.marketplace.MarketplacePackageWatchdog
-import com.opentasker.ui.theme.ThemeMode
-import com.opentasker.ui.theme.ThemePreference
 import com.opentasker.widget.CustomWidgetIconStore
 import com.opentasker.widget.WidgetDisplayConfig
 import com.opentasker.widget.WidgetDisplayProvider
@@ -143,14 +141,6 @@ internal fun MarketplaceScreen(
             errorMessage = null
             runCatching {
                 when (packageEntry.category) {
-                    "Themes" -> {
-                        val payload = JSONObject(MarketplaceClient.downloadRawPackage(packageEntry).toString(Charsets.UTF_8))
-                        val mode = ThemeMode.fromString(payload.optString("themeMode"))
-                        val accent = payload.optString("accentColor")
-                        ThemePreference.set(appContext, mode)
-                        ThemePreference.setAccentColor(appContext, accent)
-                        "Applied theme \"${packageEntry.name}\"."
-                    }
                     "Custom Widget Icons" -> {
                         val payload = JSONObject(MarketplaceClient.downloadRawPackage(packageEntry).toString(Charsets.UTF_8))
                         val bytes = MarketplaceClient.downloadIconAsset(packageEntry)
@@ -222,7 +212,7 @@ internal fun MarketplaceScreen(
     }
 
     fun preview(packageEntry: MarketplacePackage) {
-        if (packageEntry.category in setOf("Widget Displays", "Themes", "Custom Widget Icons")) {
+        if (packageEntry.category in setOf("Widget Displays", "Custom Widget Icons")) {
             selectedDetailsPackage = packageEntry
             return
         }
@@ -242,7 +232,7 @@ internal fun MarketplaceScreen(
 
     LaunchedEffect(Unit) { refresh() }
 
-    val packages = catalog?.packages.orEmpty()
+    val packages = catalog?.packages.orEmpty().filterNot { it.category.equals("Themes", ignoreCase = true) }
     val visiblePackages = remember(packages, searchQuery, categoryFilter) {
         val query = searchQuery.trim()
         packages
@@ -258,7 +248,6 @@ internal fun MarketplaceScreen(
     val actionPackageCount = packages.count { it.category.equals("Actions", ignoreCase = true) }
     val widgetPackageCount = packages.count { it.category.equals("Shortcut Widgets", ignoreCase = true) }
     val displayPackageCount = packages.count { it.category.equals("Widget Displays", ignoreCase = true) }
-    val themePackageCount = packages.count { it.category.equals("Themes", ignoreCase = true) }
     val customIconPackageCount = packages.count { it.category.equals("Custom Widget Icons", ignoreCase = true) }
 
     LazyColumn(
@@ -290,7 +279,7 @@ internal fun MarketplaceScreen(
                                 style = MaterialTheme.typography.headlineSmall,
                             )
                             Text(
-                                "Discover Actions, home-screen widgets, Widget Displays, themes, and custom widget icons from the OpenTasker community.",
+                                "Discover Actions, home-screen widgets, Widget Displays, and custom widget icons from the OpenTasker community.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -299,7 +288,6 @@ internal fun MarketplaceScreen(
                                 Text("${actionPackageCount} Actions", style = MaterialTheme.typography.labelMedium)
                                 Text("${widgetPackageCount} Widgets", style = MaterialTheme.typography.labelMedium)
                                 Text("${displayPackageCount} Displays", style = MaterialTheme.typography.labelMedium)
-                                Text("${themePackageCount} Themes", style = MaterialTheme.typography.labelMedium)
                                 Text("${customIconPackageCount} Icons", style = MaterialTheme.typography.labelMedium)
                             }
                         }
@@ -353,7 +341,7 @@ internal fun MarketplaceScreen(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    listOf("All", "Actions", "Shortcut Widgets", "Widget Displays", "Themes", "Custom Widget Icons").forEach { filter ->
+                    listOf("All", "Actions", "Shortcut Widgets", "Widget Displays", "Custom Widget Icons").forEach { filter ->
                         FilterChip(
                             selected = categoryFilter == filter,
                             onClick = { categoryFilter = filter },
@@ -402,7 +390,7 @@ internal fun MarketplaceScreen(
                         )
                         Text(
                             if (packages.isEmpty()) {
-                                "Publish an Action, Widget Display, theme, or custom icon to get the community catalogue started."
+                                "Publish an Action, Shortcut Widget, Widget Display, or custom icon to get the community catalogue started."
                             } else {
                                 "Try another search or switch the category filter."
                             },
@@ -1054,10 +1042,6 @@ private fun MarketplacePackageDetailsDialog(
                         Text(packageEntry.actionIds.joinToString(), style = MaterialTheme.typography.bodySmall)
                     }
                     Text("Setup fields: ${packageEntry.requiredInputs.size}", style = MaterialTheme.typography.bodySmall)
-                    if (packageEntry.category == "Themes" && packageEntry.themeMode.isNotBlank()) {
-                        Text("Theme mode: ${packageEntry.themeMode}", style = MaterialTheme.typography.bodySmall)
-                        Text("Accent: ${packageEntry.themeAccentColor}", style = MaterialTheme.typography.bodySmall)
-                    }
                     if (packageEntry.category == "Widget Displays") {
                         Text(
                             "Installs onto a Widget Display already placed on your home screen. Action links are removed for safety and must be configured locally.",

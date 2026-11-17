@@ -12,8 +12,6 @@ import com.opentasker.core.model.Profile
 import com.opentasker.core.model.Task
 import com.opentasker.core.transfer.MarketplaceShortcutWidget
 import com.opentasker.core.transfer.OpenTaskerBundleCodec
-import com.opentasker.ui.theme.ThemeMode
-import com.opentasker.ui.theme.ThemePreference
 import com.opentasker.widget.CustomWidgetIcon
 import com.opentasker.widget.CustomWidgetIconStore
 import com.opentasker.widget.TaskWidgetProvider
@@ -26,7 +24,6 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.URLEncoder
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -37,7 +34,6 @@ internal enum class MarketplaceContributionKind(val label: String, val category:
     ACTION("Action", "Actions", "action"),
     SHORTCUT_WIDGET("Shortcut Widget", "Shortcut Widgets", "shortcut_widget"),
     WIDGET_DISPLAY("Widget Display", "Widget Displays", "widget_display"),
-    THEME("Theme", "Themes", "theme"),
     CUSTOM_WIDGET_ICON("Custom Widget Icon", "Custom Widget Icons", "custom_widget_icon"),
 }
 
@@ -51,15 +47,13 @@ internal data class MarketplaceContributionCandidate(
     val widgetDisplayConfig: WidgetDisplayConfig? = null,
     val customIcon: CustomWidgetIcon? = null,
     val customIconBitmap: Bitmap? = null,
-    val themeMode: ThemeMode? = null,
-    val themeAccentColor: String? = null,
 ) {
     val key: String get() = kind.wireValue + ":" + (profile?.id ?: 0L) + ":" +
         (widgetId ?: widgetDisplayId ?: customIcon?.id ?: 0)
     val name: String get() = profile?.name
         ?: customIcon?.name
         ?: widgetDisplayConfig?.states?.firstOrNull()?.title?.takeIf { it.isNotBlank() }
-        ?: if (kind == MarketplaceContributionKind.THEME) "Current appearance" else kind.label
+        ?: kind.label
     val actionCount: Int get() = tasks.sumOf { it.actions.size }
 }
 
@@ -162,13 +156,6 @@ internal object MarketplaceContributionClient {
                 )
             }
 
-            val currentMode = ThemePreference.observe(app).first()
-            val currentAccent = ThemePreference.observeAccentColor(app).first()
-            result += MarketplaceContributionCandidate(
-                kind = MarketplaceContributionKind.THEME,
-                themeMode = currentMode,
-                themeAccentColor = currentAccent,
-            )
 
             CustomWidgetIconStore.observe(app).value.forEach { icon ->
                 val bitmap = CustomWidgetIconStore.loadBitmap(app, icon, 1024) ?: return@forEach
@@ -199,8 +186,6 @@ internal object MarketplaceContributionClient {
         changelog: String,
         documentationUrl: String,
         disclosure: MarketplaceExternalDestinationDraft?,
-        themeMode: String = "amoled",
-        themeAccentColor: String = ThemePreference.DEFAULT_ACCENT_HEX,
         previousVersion: String? = null,
     ): MarketplacePullRequest = withContext(Dispatchers.IO) {
         val id = packageId.trim()
@@ -242,8 +227,6 @@ internal object MarketplaceContributionClient {
         var tasks: List<Task> = emptyList()
         var destinations: List<MarketplaceExternalDestination> = emptyList()
         var iconAssetBytes: ByteArray? = null
-        val activeThemeMode = themeMode.ifBlank { candidate.themeMode?.toStorageString() ?: "amoled" }
-        val activeThemeAccent = themeAccentColor.trim().let { if (it.startsWith("#")) it else "#$it" }
         val payloadText: String = when (candidate.kind) {
             MarketplaceContributionKind.ACTION,
             MarketplaceContributionKind.SHORTCUT_WIDGET -> {
@@ -357,20 +340,6 @@ internal object MarketplaceContributionClient {
                     .toString(2)
             }
 
-            MarketplaceContributionKind.THEME -> {
-                require(activeThemeMode in setOf("system", "dark", "amoled", "light", "high_contrast", "dynamic")) {
-                    "Choose a supported OpenTasker theme mode."
-                }
-                require(activeThemeAccent.matches(Regex("^#[A-Fa-f0-9]{6}$"))) {
-                    "Theme accent must be a six-digit hex color."
-                }
-                JSONObject()
-                    .put("schemaVersion", 1)
-                    .put("type", "theme")
-                    .put("themeMode", activeThemeMode)
-                    .put("accentColor", activeThemeAccent.uppercase())
-                    .toString(2)
-            }
 
             MarketplaceContributionKind.CUSTOM_WIDGET_ICON -> {
                 val customIcon = candidate.customIcon
@@ -405,8 +374,6 @@ internal object MarketplaceContributionClient {
             summary = shortDescription,
             display = candidate.widgetDisplayConfig,
             iconBitmap = candidate.customIconBitmap,
-            themeMode = activeThemeMode,
-            themeAccent = activeThemeAccent,
             listingBackground = if (candidate.kind == MarketplaceContributionKind.CUSTOM_WIDGET_ICON) "#6750A4" else backgroundColor,
             listingForeground = iconColor,
             gradient = gradient,
@@ -456,10 +423,6 @@ internal object MarketplaceContributionClient {
                         .put("riskNotes", item.riskNotes))
                 }
             })
-        if (candidate.kind == MarketplaceContributionKind.THEME) {
-            manifest.put("themeMode", activeThemeMode)
-                .put("themeAccentColor", activeThemeAccent.uppercase())
-        }
         if (iconAssetBytes != null) manifest.put("assetFile", "icon.png")
 
         val upstream = GitHubDeviceAuth.apiRequestBlocking(token, "GET", "/repos/" + REPOSITORY)
@@ -512,8 +475,6 @@ internal object MarketplaceContributionClient {
                         appendLine("Includes the enabled linked Action and the app-style Shortcut Widget presentation.")
                     } else if (candidate.kind == MarketplaceContributionKind.WIDGET_DISPLAY) {
                         appendLine("Includes a reusable Widget Display layout. Publisher-specific Action links are cleared; recipients can connect their own Actions.")
-                    } else if (candidate.kind == MarketplaceContributionKind.THEME) {
-                        appendLine("Includes an OpenTasker appearance preset (theme mode and accent color).")
                     } else if (candidate.kind == MarketplaceContributionKind.CUSTOM_WIDGET_ICON) {
                         appendLine("Includes the original custom icon PNG asset.")
                     }

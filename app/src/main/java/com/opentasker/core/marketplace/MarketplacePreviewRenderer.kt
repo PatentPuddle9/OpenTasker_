@@ -24,8 +24,6 @@ internal object MarketplacePreviewRenderer {
         summary: String,
         display: WidgetDisplayConfig? = null,
         iconBitmap: Bitmap? = null,
-        themeMode: String = "amoled",
-        themeAccent: String = "#B69CFF",
         listingBackground: String = "#6750A4",
         listingForeground: String = "#FFFFFF",
         gradient: Boolean = true,
@@ -45,7 +43,6 @@ internal object MarketplacePreviewRenderer {
 
         when (kind) {
             MarketplaceContributionKind.WIDGET_DISPLAY -> drawWidgetDisplay(canvas, display, name)
-            MarketplaceContributionKind.THEME -> drawTheme(canvas, name, themeMode, themeAccent)
             MarketplaceContributionKind.CUSTOM_WIDGET_ICON -> drawCustomIcon(canvas, name, iconBitmap, listingBackground, listingForeground, gradient)
             else -> drawPackageCard(canvas, name, summary, kind, listingBackground, listingForeground, gradient)
         }
@@ -161,36 +158,6 @@ internal object MarketplacePreviewRenderer {
         }
     }
 
-    private fun drawTheme(canvas: Canvas, name: String, mode: String, accentHex: String) {
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        val dark = mode != "light"
-        val background = if (dark) Color.rgb(14, 11, 19) else Color.rgb(247, 243, 250)
-        val surface = if (dark) Color.rgb(34, 27, 45) else Color.WHITE
-        val accent = parseColor(accentHex, Color.rgb(182, 156, 255))
-        paint.color = background
-        canvas.drawRoundRect(RectF(76f, 124f, 884f, 480f), 28f, 28f, paint)
-        paint.color = surface
-        canvas.drawRoundRect(RectF(108f, 166f, 852f, 452f), 24f, 24f, paint)
-        paint.color = if (dark) Color.WHITE else Color.rgb(33, 26, 42)
-        paint.textSize = 30f
-        paint.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-        canvas.drawText(name.take(36), 148f, 220f, paint)
-        paint.textSize = 18f
-        paint.typeface = Typeface.DEFAULT
-        canvas.drawText("Theme preset · ${mode.replace('_', ' ')}", 148f, 256f, paint)
-        paint.color = accent
-        canvas.drawRoundRect(RectF(148f, 292f, 390f, 362f), 24f, 24f, paint)
-        paint.color = if (Color.luminance(accent) > 0.45f) Color.BLACK else Color.WHITE
-        paint.textSize = 21f
-        paint.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-        canvas.drawText("Primary action", 180f, 336f, paint)
-        val swatches = listOf(accent, blend(accent, Color.WHITE, 0.34f), blend(accent, Color.BLACK, 0.28f), surface, background)
-        swatches.forEachIndexed { index, color ->
-            paint.color = color
-            val swatchX = 148f + index * 126f
-            canvas.drawRoundRect(RectF(swatchX, 388f, swatchX + 96f, 424f), 12f, 12f, paint)
-        }
-    }
 
     private fun drawCustomIcon(canvas: Canvas, name: String, icon: Bitmap?, backgroundHex: String, foregroundHex: String, gradient: Boolean) {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
