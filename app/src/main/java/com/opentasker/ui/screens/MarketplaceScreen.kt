@@ -493,7 +493,7 @@ private fun MarketplaceMyPackagesDialog(
                         "This submits a publisher-verified deletion request without human review. After the signed catalogue is republished, the package will no longer be offered to new users. People who already installed it keep their copy; it won't be removed from their devices.",
                     )
                     Text(
-                        "New users will no longer be able to find or install it. This package ID cannot be reused after deletion.",
+                        "After the withdrawal is processed, this package ID becomes available for a fresh listing starting at version 1.0.0. Existing installs remain untouched.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
