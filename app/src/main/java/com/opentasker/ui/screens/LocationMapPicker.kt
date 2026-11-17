@@ -70,6 +70,8 @@ import java.net.URL
 import java.net.URLEncoder
 import java.util.Locale
 import java.util.concurrent.Executor
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 private data class LocationSearchResult(
     val name: String,
@@ -208,6 +210,23 @@ private fun LocationMapPickerDialog(
             useCurrentLocation()
         } else {
             statusMessage = "Location permission wasn't granted."
+        }
+    }
+
+    // Center a new location trigger near the device when permission was already granted.
+    // Saved coordinates are always preserved and remain the initial map center.
+    androidx.compose.runtime.LaunchedEffect(initialLatitude, initialLongitude) {
+        if (initialLatitude == null && initialLongitude == null) {
+            val hasLocationPermission =
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                ) == PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                    ) == PackageManager.PERMISSION_GRANTED
+            if (hasLocationPermission) useCurrentLocation()
         }
     }
 
@@ -524,38 +543,72 @@ private fun requestPickerLocation(
     onResult: (Location?) -> Unit,
 ) {
     val manager = context.getSystemService(LocationManager::class.java)
-    val provider = listOf(
-        LocationManager.GPS_PROVIDER,
-        LocationManager.NETWORK_PROVIDER,
-    ).firstOrNull { name ->
-        try {
-            manager.isProviderEnabled(name)
-        } catch (_: Exception) {
-            false
+    val mainHandler = Handler(Looper.getMainLooper())
+    val executor = Executor { command -> mainHandler.post(command) }
+
+    val allProviders = runCatching { manager.getProviders(false) }
+        .getOrDefault(emptyList())
+        .let { configured ->
+            (listOf(
+                LocationManager.GPS_PROVIDER,
+                LocationManager.NETWORK_PROVIDER,
+                LocationManager.PASSIVE_PROVIDER,
+            ) + configured).distinct()
         }
+
+    fun isUsable(location: Location?): Boolean =
+        location != null &&
+            location.latitude.isFinite() &&
+            location.latitude in -90.0..90.0 &&
+            location.longitude.isFinite() &&
+            location.longitude in -180.0..180.0
+
+    fun bestLastKnownLocation(): Location? =
+        allProviders.asSequence()
+            .mapNotNull { provider ->
+                runCatching { manager.getLastKnownLocation(provider) }.getOrNull()
+            }
+            .filter(::isUsable)
+            .maxWithOrNull(
+                compareBy<Location> { it.time }
+                    .thenBy { if (it.hasAccuracy()) -it.accuracy else 0f },
+            )
+
+    val enabledProviders = allProviders.filter { provider ->
+        runCatching { manager.isProviderEnabled(provider) }.getOrDefault(false) &&
+            provider != LocationManager.PASSIVE_PROVIDER
     }
-    if (provider == null) {
-        onResult(null)
+
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || enabledProviders.isEmpty()) {
+        onResult(bestLastKnownLocation())
         return
     }
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        val executor = Executor { command -> Handler(Looper.getMainLooper()).post(command) }
+    // Try GPS and network together. Using only the first enabled provider caused false
+    // failures when GPS was on but couldn't get a fix, even though network location worked.
+    val completed = AtomicBoolean(false)
+    val remaining = AtomicInteger(enabledProviders.size)
+
+    fun finish(location: Location?) {
+        if (completed.compareAndSet(false, true)) {
+            mainHandler.post { onResult(location ?: bestLastKnownLocation()) }
+        }
+    }
+
+    enabledProviders.forEach { provider ->
         try {
             manager.getCurrentLocation(provider, CancellationSignal(), executor) { location ->
-                onResult(location)
+                if (isUsable(location)) {
+                    finish(location)
+                } else if (remaining.decrementAndGet() == 0) {
+                    finish(bestLastKnownLocation())
+                }
             }
         } catch (_: SecurityException) {
-            onResult(null)
+            if (remaining.decrementAndGet() == 0) finish(bestLastKnownLocation())
+        } catch (_: IllegalArgumentException) {
+            if (remaining.decrementAndGet() == 0) finish(bestLastKnownLocation())
         }
-    } else {
-        val location = try {
-            manager.getLastKnownLocation(provider)
-                ?: manager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER)
-        } catch (_: SecurityException) {
-            null
-        }
-        onResult(location)
     }
 }
 

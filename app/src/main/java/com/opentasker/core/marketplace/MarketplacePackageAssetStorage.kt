@@ -29,25 +29,8 @@ internal object MarketplacePackageAssetStorage {
             .getString(TREE_URI, null)
             ?.let(Uri::parse)
 
-    fun locationDescription(context: Context): String {
-        val treeUri = selectedTreeUri(context) ?: return "App-private storage"
-        return runCatching {
-            val documentUri = DocumentsContract.buildDocumentUriUsingTree(
-                treeUri,
-                DocumentsContract.getTreeDocumentId(treeUri),
-            )
-            context.contentResolver.query(
-                documentUri,
-                arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME),
-                null,
-                null,
-                null,
-            )?.use { cursor ->
-                val nameColumn = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-                if (cursor.moveToFirst() && nameColumn >= 0) cursor.getString(nameColumn) else null
-            }
-        }.getOrNull()?.takeIf { it.isNotBlank() } ?: "Your selected folder"
-    }
+    fun locationDescription(context: Context): String =
+        if (selectedTreeUri(context) == null) "App-private storage" else "Your selected folder"
 
     fun setTreeUri(context: Context, uri: Uri) {
         val app = context.applicationContext

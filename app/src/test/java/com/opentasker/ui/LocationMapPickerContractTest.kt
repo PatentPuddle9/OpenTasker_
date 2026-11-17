@@ -29,6 +29,22 @@ class LocationMapPickerContractTest {
         assertTrue("the configured radius must be replayed after the page loads", source.contains("window.updateOpenTaskerRadius && window.updateOpenTaskerRadius"))
     }
 
+
+    @Test
+    fun aNewLocationTriggerCentersNearTheDeviceWhenPermissionIsAlreadyGranted() {
+        assertTrue("new location triggers should check existing location permission", source.contains("LaunchedEffect(initialLatitude, initialLongitude)"))
+        assertTrue("saved coordinates must remain the initial map center", source.contains("if (initialLatitude == null && initialLongitude == null)"))
+        assertTrue("the picker should reuse the current-location flow", source.contains("if (hasLocationPermission) useCurrentLocation()"))
+    }
+
+    @Test
+    fun currentLocationTriesEnabledProvidersAndFallsBackToLastKnown() {
+        assertTrue("GPS and network providers should both be considered", source.contains("LocationManager.GPS_PROVIDER") && source.contains("LocationManager.NETWORK_PROVIDER"))
+        assertTrue("all enabled providers should be queried", source.contains("enabledProviders.forEach"))
+        assertTrue("provider failures should use the freshest valid known fix", source.contains("bestLastKnownLocation()"))
+        assertTrue("returned coordinates should be range checked", source.contains("location.latitude in -90.0..90.0") && source.contains("location.longitude in -180.0..180.0"))
+    }
+
     @Test
     fun theMapKeepsItsManualSelectionAndOpenStreetMapAttributionFallback() {
         assertTrue("the map should still allow selection without a tile response", source.contains("Map tiles are unavailable. Check your internet connection; place search and manual selection still work."))
