@@ -494,12 +494,12 @@ private fun MarketplaceMyPackagesDialog(
     )
 }
 
-private fun marketplaceVersionKey(version: String): List<Int> =
+private fun marketplaceVersionKey(version: String): String =
     version.substringBefore("-").substringBefore("+")
         .split(".")
         .take(3)
-        .map { it.toIntOrNull() ?: 0 }
-        .let { parts -> parts + List((3 - parts.size).coerceAtLeast(0)) { 0 } }
+        .map { (it.toIntOrNull() ?: 0).toString().padStart(10, '0') }
+        .let { parts -> (parts + List((3 - parts.size).coerceAtLeast(0)) { "0000000000" }).joinToString(".") }
 
 @Composable
 private fun MarketplacePackageCard(
