@@ -1,8 +1,13 @@
 package com.opentasker.ui.screens
 
 import com.opentasker.app.BuildConfig
+import android.appwidget.AppWidgetManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -33,10 +38,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Alignment
@@ -49,6 +57,16 @@ import com.opentasker.core.marketplace.MarketplaceExternalDestination
 import com.opentasker.core.marketplace.MarketplaceInput
 import com.opentasker.core.marketplace.MarketplacePackage
 import com.opentasker.core.marketplace.MarketplacePackageWatchdog
+import com.opentasker.ui.theme.ThemeMode
+import com.opentasker.ui.theme.ThemePreference
+import com.opentasker.widget.CustomWidgetIconStore
+import com.opentasker.widget.WidgetDisplayConfig
+import com.opentasker.widget.WidgetDisplayProvider
+import com.opentasker.widget.WidgetDisplayRenderer
+import com.opentasker.widget.WidgetDisplayStore
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
+import org.json.JSONObject
 import com.opentasker.core.actions.ActionArgumentSensitivity
 import com.opentasker.core.actions.ActionMetadataRegistry
 import com.opentasker.core.model.ActionSpec
@@ -70,6 +88,7 @@ internal fun MarketplaceScreen(
     var fromCache by remember { mutableStateOf(false) }
     var installingPackageId by remember { mutableStateOf<String?>(null) }
     var inputPackage by remember { mutableStateOf<MarketplacePackage?>(null) }
+    var pendingWidgetDisplay by remember { mutableStateOf<MarketplacePackage?>(null) }
     var showContributionDialog by remember { mutableStateOf(false) }
     var selectedPreviewPackage by remember { mutableStateOf<MarketplacePackage?>(null) }
     var packagePreview by remember { mutableStateOf<OpenTaskerBundle?>(null) }
@@ -109,15 +128,64 @@ internal fun MarketplaceScreen(
         }
     }
 
-    fun install(packageEntry: MarketplacePackage, values: Map<String, String>) {
+    fun install(
+        packageEntry: MarketplacePackage,
+        values: Map<String, String>,
+        targetWidgetDisplayId: Int? = null,
+    ) {
+        if (packageEntry.category == "Widget Displays" && targetWidgetDisplayId == null) {
+            pendingWidgetDisplay = packageEntry
+            return
+        }
         scope.launch {
             installingPackageId = packageEntry.id
             errorMessage = null
             runCatching {
-                MarketplaceClient.downloadAndConfigure(packageEntry, values)
-            }.onSuccess { bundle ->
-                inputPackage = null
-                onInstallBundle(bundle)
+                when (packageEntry.category) {
+                    "Themes" -> {
+                        val payload = JSONObject(MarketplaceClient.downloadRawPackage(packageEntry).toString(Charsets.UTF_8))
+                        val mode = ThemeMode.fromString(payload.optString("themeMode"))
+                        val accent = payload.optString("accentColor")
+                        ThemePreference.set(appContext, mode)
+                        ThemePreference.setAccentColor(appContext, accent)
+                        "Applied theme \"${packageEntry.name}\"."
+                    }
+                    "Custom Widget Icons" -> {
+                        val payload = JSONObject(MarketplaceClient.downloadRawPackage(packageEntry).toString(Charsets.UTF_8))
+                        val bytes = MarketplaceClient.downloadIconAsset(packageEntry)
+                        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                            ?: throw IllegalStateException("The custom icon PNG could not be decoded.")
+                        CustomWidgetIconStore.add(
+                            context = appContext,
+                            croppedImage = bitmap,
+                            name = payload.optString("name").ifBlank { packageEntry.name },
+                            recolorable = payload.optBoolean("recolorable", false),
+                        )
+                        "Added \"${packageEntry.name}\" to your Custom icon library."
+                    }
+                    "Widget Displays" -> {
+                        val widgetId = targetWidgetDisplayId
+                            ?: throw IllegalArgumentException("Choose a Widget Display first.")
+                        require(WidgetDisplayProvider.isWidgetId(appContext, widgetId)) {
+                            "That Widget Display is no longer installed."
+                        }
+                        val payload = JSONObject(MarketplaceClient.downloadRawPackage(packageEntry).toString(Charsets.UTF_8))
+                        val configJson = payload.optJSONObject("config")?.toString()
+                            ?: throw IllegalStateException("The package has no Widget Display configuration.")
+                        val config = Json { ignoreUnknownKeys = true }.decodeFromString<WidgetDisplayConfig>(configJson)
+                        WidgetDisplayStore.save(appContext, widgetId, config)
+                        WidgetDisplayRenderer.updateWidget(appContext, AppWidgetManager.getInstance(appContext), widgetId)
+                        "Applied \"${packageEntry.name}\" to your Widget Display."
+                    }
+                    else -> {
+                        val bundle = MarketplaceClient.downloadAndConfigure(packageEntry, values)
+                        inputPackage = null
+                        onInstallBundle(bundle)
+                        "Imported \"${packageEntry.name}\". Review the import before enabling it."
+                    }
+                }
+            }.onSuccess { message ->
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             }.onFailure { error ->
                 errorMessage = error.message ?: "Package download or validation failed."
             }
@@ -153,6 +221,10 @@ internal fun MarketplaceScreen(
     }
 
     fun preview(packageEntry: MarketplacePackage) {
+        if (packageEntry.category in setOf("Widget Displays", "Themes", "Custom Widget Icons")) {
+            selectedDetailsPackage = packageEntry
+            return
+        }
         scope.launch {
             previewingPackageId = packageEntry.id
             selectedPreviewPackage = packageEntry
@@ -184,6 +256,9 @@ internal fun MarketplaceScreen(
     }
     val actionPackageCount = packages.count { it.category.equals("Actions", ignoreCase = true) }
     val widgetPackageCount = packages.count { it.category.equals("Shortcut Widgets", ignoreCase = true) }
+    val displayPackageCount = packages.count { it.category.equals("Widget Displays", ignoreCase = true) }
+    val themePackageCount = packages.count { it.category.equals("Themes", ignoreCase = true) }
+    val customIconPackageCount = packages.count { it.category.equals("Custom Widget Icons", ignoreCase = true) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -214,7 +289,7 @@ internal fun MarketplaceScreen(
                                 style = MaterialTheme.typography.headlineSmall,
                             )
                             Text(
-                                "Discover ready-made Actions and Shortcut Widgets from the OpenTasker community.",
+                                "Discover Actions, home-screen widgets, Widget Displays, themes, and custom widget icons from the OpenTasker community.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -222,6 +297,9 @@ internal fun MarketplaceScreen(
                                 Text("${packages.size} packages", style = MaterialTheme.typography.labelMedium)
                                 Text("${actionPackageCount} Actions", style = MaterialTheme.typography.labelMedium)
                                 Text("${widgetPackageCount} Widgets", style = MaterialTheme.typography.labelMedium)
+                                Text("${displayPackageCount} Displays", style = MaterialTheme.typography.labelMedium)
+                                Text("${themePackageCount} Themes", style = MaterialTheme.typography.labelMedium)
+                                Text("${customIconPackageCount} Icons", style = MaterialTheme.typography.labelMedium)
                             }
                         }
                         MarketplaceListingIcon(
@@ -274,7 +352,7 @@ internal fun MarketplaceScreen(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    listOf("All", "Actions", "Shortcut Widgets").forEach { filter ->
+                    listOf("All", "Actions", "Shortcut Widgets", "Widget Displays", "Themes", "Custom Widget Icons").forEach { filter ->
                         FilterChip(
                             selected = categoryFilter == filter,
                             onClick = { categoryFilter = filter },
@@ -323,7 +401,7 @@ internal fun MarketplaceScreen(
                         )
                         Text(
                             if (packages.isEmpty()) {
-                                "Publish an Action or Shortcut Widget to get the community catalogue started."
+                                "Publish an Action, Widget Display, theme, or custom icon to get the community catalogue started."
                             } else {
                                 "Try another search or switch the category filter."
                             },
@@ -356,10 +434,10 @@ internal fun MarketplaceScreen(
                 onDetails = { selectedDetailsPackage = packageEntry },
                 onPreview = { preview(packageEntry) },
                 onInstall = {
-                    if (packageEntry.requiredInputs.isEmpty()) {
-                        install(packageEntry, emptyMap())
-                    } else {
-                        inputPackage = packageEntry
+                    when {
+                        packageEntry.category == "Widget Displays" -> pendingWidgetDisplay = packageEntry
+                        packageEntry.requiredInputs.isEmpty() -> install(packageEntry, emptyMap())
+                        else -> inputPackage = packageEntry
                     }
                 },
                 onReport = {
@@ -396,11 +474,22 @@ internal fun MarketplaceScreen(
             onInstall = {
                 selectedPreviewPackage = null
                 packagePreview = null
-                if (packageEntry.requiredInputs.isEmpty()) {
-                    install(packageEntry, emptyMap())
-                } else {
-                    inputPackage = packageEntry
+                when {
+                    packageEntry.category == "Widget Displays" -> pendingWidgetDisplay = packageEntry
+                    packageEntry.requiredInputs.isEmpty() -> install(packageEntry, emptyMap())
+                    else -> inputPackage = packageEntry
                 }
+            },
+        )
+    }
+
+    pendingWidgetDisplay?.let { packageEntry ->
+        MarketplaceWidgetDisplayTargetDialog(
+            packageEntry = packageEntry,
+            onDismiss = { pendingWidgetDisplay = null },
+            onSelect = { widgetId ->
+                pendingWidgetDisplay = null
+                install(packageEntry, emptyMap(), widgetId)
             },
         )
     }
