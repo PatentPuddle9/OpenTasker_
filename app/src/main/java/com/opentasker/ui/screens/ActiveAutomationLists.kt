@@ -164,7 +164,7 @@ internal fun ProfilesScreen(
     val filteredProfiles = remember(profiles, selectedGroup, profileSearchQuery, selectedStatus) {
         profiles
             .filter { selectedGroup == null || it.group == selectedGroup }
-            .filter { profileSearchQuery.isBlank() || profile.name.contains(profileSearchQuery, ignoreCase = true) }
+            .filter { profileSearchQuery.isBlank() || it.name.contains(profileSearchQuery, ignoreCase = true) }
             .filter {
                 when (selectedStatus) {
                     "active" -> it.enabled && !it.requiresRiskAcknowledgement
