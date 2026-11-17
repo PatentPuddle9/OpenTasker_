@@ -22,6 +22,7 @@ import com.opentasker.widget.WidgetDisplayProvider
 import com.opentasker.widget.WidgetDisplayStore
 import com.opentasker.widget.WidgetDisplayElementType
 import com.opentasker.widget.WidgetStyle
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.URLEncoder
 import kotlinx.coroutines.Dispatchers
@@ -198,6 +199,8 @@ internal object MarketplaceContributionClient {
         changelog: String,
         documentationUrl: String,
         disclosure: MarketplaceExternalDestinationDraft?,
+        themeMode: String = "amoled",
+        themeAccentColor: String = ThemePreference.DEFAULT_ACCENT_HEX,
         previousVersion: String? = null,
     ): MarketplacePullRequest = withContext(Dispatchers.IO) {
         val id = packageId.trim()
@@ -236,75 +239,186 @@ internal object MarketplaceContributionClient {
         ) { "Documentation links must use a valid HTTPS URL." }
 
         val app = context.applicationContext
-        val db = OpenTaskerApp_NoHilt.awaitDb()
-        val entity = db.profileDao().getById(candidate.profile.id) ?: throw IOException("The selected Action no longer exists.")
-        val decodedProfile = entity.toDomainDecodeResult()
-        require(decodedProfile.issue == null) { "The selected Action could not be read safely." }
-        val profile = decodedProfile.value
-        require(profile.enabled && !profile.requiresRiskAcknowledgement) {
-            "Turn this Action on in OpenTasker before uploading it. Disabled Actions cannot be contributed."
-        }
-        when (candidate.kind) {
-            MarketplaceContributionKind.ACTION -> require(profile.widgetId == null) { "Select an Action, not a widget-owned Action." }
+        var tasks: List<Task> = emptyList()
+        var destinations: List<MarketplaceExternalDestination> = emptyList()
+        var iconAssetBytes: ByteArray? = null
+        val activeThemeMode = themeMode.ifBlank { candidate.themeMode?.toStorageString() ?: "amoled" }
+        val activeThemeAccent = themeAccentColor.trim().let { if (it.startsWith("#")) it else "#$it" }
+        val payloadText: String = when (candidate.kind) {
+            MarketplaceContributionKind.ACTION,
             MarketplaceContributionKind.SHORTCUT_WIDGET -> {
-                require(candidate.widgetId != null && profile.widgetId == candidate.widgetId) { "This Shortcut Widget is no longer linked to the selected Action." }
-                val isInstalled = AppWidgetManager.getInstance(app).getAppWidgetIds(
-                    ComponentName(app, TaskWidgetProvider::class.java),
-                ).contains(candidate.widgetId)
-                require(isInstalled) { "This Shortcut Widget is no longer installed on the home screen." }
+                val profileId = candidate.profile?.id
+                    ?: throw IOException("The selected Action no longer exists.")
+                val db = OpenTaskerApp_NoHilt.awaitDb()
+                val entity = db.profileDao().getById(profileId)
+                    ?: throw IOException("The selected Action no longer exists.")
+                val decodedProfile = entity.toDomainDecodeResult()
+                require(decodedProfile.issue == null) { "The selected Action could not be read safely." }
+                val profile = decodedProfile.value
+                require(profile.enabled && !profile.requiresRiskAcknowledgement) {
+                    "Turn this Action on in OpenTasker before uploading it. Disabled Actions cannot be contributed."
+                }
+                when (candidate.kind) {
+                    MarketplaceContributionKind.ACTION ->
+                        require(profile.widgetId == null) { "Select an Action, not a widget-owned Action." }
+                    MarketplaceContributionKind.SHORTCUT_WIDGET -> {
+                        require(candidate.widgetId != null && profile.widgetId == candidate.widgetId) {
+                            "This Shortcut Widget is no longer linked to the selected Action."
+                        }
+                        val isInstalled = AppWidgetManager.getInstance(app).getAppWidgetIds(
+                            ComponentName(app, TaskWidgetProvider::class.java),
+                        ).contains(candidate.widgetId)
+                        require(isInstalled) { "This Shortcut Widget is no longer installed on the home screen." }
+                    }
+                    else -> Unit
+                }
+
+                val taskIds = buildList {
+                    add(profile.enterTaskId)
+                    profile.exitTaskId?.takeIf { it > 0L }?.let(::add)
+                    profile.fallbackTaskId?.takeIf { it > 0L }?.let(::add)
+                }.distinct()
+                tasks = taskIds.map { taskId ->
+                    val taskEntity = db.taskDao().getById(taskId) ?: throw IOException("Action data is missing.")
+                    val decodedTask = taskEntity.toDomainDecodeResult()
+                    require(decodedTask.issue == null) { "Action data could not be read safely." }
+                    decodedTask.value
+                }
+                require(tasks.isNotEmpty() && tasks.any { it.actions.isNotEmpty() }) {
+                    "Add at least one action block before contributing this item."
+                }
+
+                val base = OpenTaskerBundleCodec.build(
+                    appVersion = BuildConfig.VERSION_NAME,
+                    exportedAtEpochMs = System.currentTimeMillis(),
+                    // Share the reusable Action flow, not personal triggers or contexts.
+                    // Imported profiles start disabled and are configured by the recipient.
+                    profiles = listOf(
+                        profile.copy(
+                            name = name,
+                            enabled = false,
+                            contexts = emptyList(),
+                            contextExpression = null,
+                            projectId = DEFAULT_PROJECT_ID,
+                            widgetId = null,
+                            marketplacePackageId = null,
+                        ),
+                    ),
+                    tasks = tasks.map { it.copy(projectId = DEFAULT_PROJECT_ID) },
+                    name = name,
+                    description = longDescription.ifBlank { shortDescription },
+                )
+                val widget = if (candidate.kind == MarketplaceContributionKind.SHORTCUT_WIDGET) {
+                    val style = candidate.widgetStyle ?: readStyle(app, candidate.widgetId!!)
+                    MarketplaceShortcutWidget(name, style.icon, style.iconColor, style.backgroundColor, style.gradient, style.shape)
+                } else null
+                val exported = base.copy(
+                    metadata = base.metadata.copy(
+                        name = name,
+                        description = longDescription.ifBlank { shortDescription },
+                        contributionType = candidate.kind.wireValue,
+                        shortcutWidget = widget,
+                    ),
+                )
+                val encoded = OpenTaskerBundleCodec.encode(exported)
+                require(encoded.toByteArray(Charsets.UTF_8).size <= MAX_BUNDLE_BYTES) {
+                    "The exported package is too large."
+                }
+                validateDisclosure(encoded, tasks, disclosure)
+                destinations = makeDestinations(tasks, disclosure)
+                encoded
+            }
+
+            MarketplaceContributionKind.WIDGET_DISPLAY -> {
+                val config = candidate.widgetDisplayConfig
+                    ?: throw IOException("The selected Widget Display is no longer available.")
+                require(candidate.widgetDisplayId != null && WidgetDisplayProvider.isWidgetId(app, candidate.widgetDisplayId)) {
+                    "The selected Widget Display is no longer installed."
+                }
+                require(config.states.isNotEmpty() && config.states.size <= WidgetDisplayStore.MAX_STATES) {
+                    "The Widget Display has an invalid number of states."
+                }
+                require(config.states.none { state -> state.elements.any { it.type == WidgetDisplayElementType.IMAGE && it.imageUri.isNotBlank() } }) {
+                    "This Widget Display uses images stored privately on this device. Remove those image elements before publishing so the layout can be shared safely."
+                }
+                val sharedConfig = config.copy(
+                    states = config.states.map { state ->
+                        state.copy(
+                            elements = state.elements.map { element ->
+                                element.copy(actionProfileId = null, imageUri = "")
+                            },
+                        )
+                    },
+                )
+                JSONObject()
+                    .put("schemaVersion", 1)
+                    .put("type", "widget_display")
+                    .put("config", JSONObject(Json { encodeDefaults = true }.encodeToString(sharedConfig)))
+                    .toString(2)
+            }
+
+            MarketplaceContributionKind.THEME -> {
+                require(activeThemeMode in setOf("system", "dark", "amoled", "light", "high_contrast", "dynamic")) {
+                    "Choose a supported OpenTasker theme mode."
+                }
+                require(activeThemeAccent.matches(Regex("^#[A-Fa-f0-9]{6}$"))) {
+                    "Theme accent must be a six-digit hex color."
+                }
+                JSONObject()
+                    .put("schemaVersion", 1)
+                    .put("type", "theme")
+                    .put("themeMode", activeThemeMode)
+                    .put("accentColor", activeThemeAccent.uppercase())
+                    .toString(2)
+            }
+
+            MarketplaceContributionKind.CUSTOM_WIDGET_ICON -> {
+                val customIcon = candidate.customIcon
+                    ?: throw IOException("The selected custom widget icon is no longer available.")
+                val bitmap = candidate.customIconBitmap
+                    ?: CustomWidgetIconStore.loadBitmap(app, customIcon, 1024)
+                    ?: throw IOException("The custom widget icon image could not be loaded.")
+                val output = ByteArrayOutputStream()
+                require(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
+                    "Could not encode the custom widget icon."
+                }
+                iconAssetBytes = output.toByteArray()
+                require(iconAssetBytes!!.size in 1..15 * 1024 * 1024) {
+                    "The custom widget icon exceeds the 15 MB package limit."
+                }
+                JSONObject()
+                    .put("schemaVersion", 1)
+                    .put("type", "custom_widget_icon")
+                    .put("name", customIcon.name)
+                    .put("recolorable", customIcon.recolorable)
+                    .toString(2)
             }
         }
 
-        val taskIds = buildList {
-            add(profile.enterTaskId)
-            profile.exitTaskId?.takeIf { it > 0L }?.let(::add)
-            profile.fallbackTaskId?.takeIf { it > 0L }?.let(::add)
-        }.distinct()
-        val tasks = taskIds.map { taskId ->
-            val taskEntity = db.taskDao().getById(taskId) ?: throw IOException("Action data is missing.")
-            val decodedTask = taskEntity.toDomainDecodeResult()
-            require(decodedTask.issue == null) { "Action data could not be read safely." }
-            decodedTask.value
+        require(payloadText.toByteArray(Charsets.UTF_8).size <= MAX_BUNDLE_BYTES) {
+            "The Marketplace package data is too large."
         }
-        require(tasks.isNotEmpty() && tasks.any { it.actions.isNotEmpty() }) { "Add at least one action block before contributing this item." }
 
-        val base = OpenTaskerBundleCodec.build(
-            appVersion = BuildConfig.VERSION_NAME,
-            exportedAtEpochMs = System.currentTimeMillis(),
-            // Share the reusable action flow, not the contributor's personal triggers/contexts.
-            // Imported marketplace profiles start disabled and are configured by the recipient.
-            profiles = listOf(
-                profile.copy(
-                    name = name,
-                    enabled = false,
-                    contexts = emptyList(),
-                    contextExpression = null,
-                    projectId = DEFAULT_PROJECT_ID,
-                    widgetId = null,
-                    marketplacePackageId = null,
-                ),
-            ),
-            tasks = tasks.map { it.copy(projectId = DEFAULT_PROJECT_ID) },
+        val previewBitmap = MarketplacePreviewRenderer.render(
+            kind = candidate.kind,
             name = name,
-            description = longDescription.ifBlank { shortDescription },
+            summary = shortDescription,
+            display = candidate.widgetDisplayConfig,
+            iconBitmap = candidate.customIconBitmap,
+            themeMode = activeThemeMode,
+            themeAccent = activeThemeAccent,
+            listingBackground = if (candidate.kind == MarketplaceContributionKind.CUSTOM_WIDGET_ICON) "#6750A4" else backgroundColor,
+            listingForeground = iconColor,
+            gradient = gradient,
         )
-        val widget = if (candidate.kind == MarketplaceContributionKind.SHORTCUT_WIDGET) {
-            val style = candidate.widgetStyle ?: readStyle(app, candidate.widgetId!!)
-            MarketplaceShortcutWidget(name, style.icon, style.iconColor, style.backgroundColor, style.gradient, style.shape)
-        } else null
-        val bundle = base.copy(
-            metadata = base.metadata.copy(
-                name = name,
-                description = longDescription.ifBlank { shortDescription },
-                contributionType = candidate.kind.wireValue,
-                shortcutWidget = widget,
-            ),
-        )
-        val bundleText = OpenTaskerBundleCodec.encode(bundle)
-        require(bundleText.toByteArray(Charsets.UTF_8).size <= MAX_BUNDLE_BYTES) { "The exported package is too large." }
-        validateDisclosure(bundleText, tasks, disclosure)
-        val destinations = makeDestinations(tasks, disclosure)
-
+        val previewOutput = ByteArrayOutputStream()
+        require(previewBitmap.compress(Bitmap.CompressFormat.PNG, 100, previewOutput)) {
+            "Could not generate the Marketplace preview PNG."
+        }
+        val previewBytes = previewOutput.toByteArray()
+        require(previewBytes.size in 1..2 * 1024 * 1024) {
+            "The generated preview image exceeds the 2 MB limit."
+        }
         val token = GitHubDeviceAuth.accessToken(app)
         val login = GitHubDeviceAuth.apiRequestBlocking(token, "GET", "/user").optString("login").trim()
         require(login.matches(Regex("^[A-Za-z0-9-]{1,39}$"))) { "GitHub did not return a valid username." }
