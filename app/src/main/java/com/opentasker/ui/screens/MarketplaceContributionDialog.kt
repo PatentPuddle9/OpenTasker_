@@ -51,6 +51,8 @@ import com.opentasker.core.marketplace.MarketplaceContributionClient
 import com.opentasker.core.marketplace.MarketplaceContributionKind
 import com.opentasker.core.marketplace.MarketplacePackage
 import com.opentasker.core.marketplace.MarketplaceExternalDestinationDraft
+import com.opentasker.core.marketplace.MarketplaceFaqDraft
+import com.opentasker.core.marketplace.MarketplaceDependencyDraft
 import com.opentasker.core.marketplace.allowedMarketplaceVersions
 import kotlinx.coroutines.launch
 
@@ -91,6 +93,14 @@ internal fun MarketplaceContributionDialog(
     var listingShape by remember(existingPackage?.id) { mutableStateOf(existingPackage?.shape ?: "squircle") }
     var changelog by remember(existingPackage?.id) { mutableStateOf(existingPackage?.changelog.orEmpty()) }
     var documentationUrl by remember(existingPackage?.id) { mutableStateOf(existingPackage?.documentationUrl.orEmpty()) }
+    var faqsText by remember(existingPackage?.id) {
+        mutableStateOf(existingPackage?.faqs?.joinToString("\n") { "${it.question} | ${it.answer}" }.orEmpty())
+    }
+    var dependenciesText by remember(existingPackage?.id) {
+        mutableStateOf(existingPackage?.dependencies?.joinToString("\n") {
+            it.id + "@" + it.minimumVersion + if (it.optional) "?" else ""
+        }.orEmpty())
+    }
     var showIconPicker by remember { mutableStateOf(false) }
     var provider by remember { mutableStateOf("") }
     var domains by remember { mutableStateOf("") }
@@ -125,6 +135,22 @@ internal fun MarketplaceContributionDialog(
         }
     } == true
     val validPackageId = packageId.matches(Regex("^[a-z0-9][a-z0-9._-]{1,79}$"))
+    val faqLines = faqsText.lineSequence().map { it.trim() }.filter { it.isNotBlank() }.toList()
+    val validFaqs = faqLines.size <= 10 && faqLines.all { line ->
+        val separator = line.indexOf('|')
+        separator in 1 until line.lastIndex &&
+            line.substring(0, separator).trim().isNotEmpty() &&
+            line.substring(0, separator).trim().length <= 160 &&
+            line.substring(separator + 1).trim().isNotEmpty() &&
+            line.substring(separator + 1).trim().length <= 1200
+    }
+    val dependencyLines = dependenciesText.lineSequence().map { it.trim() }.filter { it.isNotBlank() }.toList()
+    val validDependencies = dependencyLines.size <= 10 &&
+        dependencyLines.distinctBy { it.substringBefore('@').lowercase() }.size == dependencyLines.size &&
+        dependencyLines.all { line ->
+            line.matches(Regex("^[a-z0-9][a-z0-9._-]{1,79}@[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?\\??$")) &&
+                line.substringBefore('@') != packageId
+        }
     val validDetails = packageName.isNotBlank() &&
         packageName.length <= 80 &&
         validPackageId &&
@@ -140,6 +166,7 @@ internal fun MarketplaceContributionDialog(
             values.size <= 10 && values.distinctBy { it.lowercase() }.size == values.size &&
                 values.all { it.matches(Regex("^[A-Za-z0-9][A-Za-z0-9 _+-]{0,23}$")) }
         } &&
+        validFaqs && validDependencies &&
         (documentationUrl.isBlank() || documentationUrl.trim().startsWith("https://")) &&
         version in allowedVersions
     val validDisclosure = !requiresDisclosure || (
@@ -234,6 +261,20 @@ internal fun MarketplaceContributionDialog(
                     documentationUrl = documentationUrl,
                     disclosure = external,
                     previousVersion = existingPackage?.version,
+                    faqs = faqLines.map { line ->
+                        val separator = line.indexOf('|')
+                        MarketplaceFaqDraft(line.substring(0, separator).trim(), line.substring(separator + 1).trim())
+                    },
+                    dependencies = dependencyLines.map { line ->
+                        val optional = line.endsWith("?")
+                        val value = line.removeSuffix("?")
+                        val separator = value.lastIndexOf('@')
+                        MarketplaceDependencyDraft(
+                            id = value.substring(0, separator),
+                            minimumVersion = value.substring(separator + 1),
+                            optional = optional,
+                        )
+                    },
                 )
             }.onSuccess { pull ->
                 pullRequestNumber = pull.number
@@ -655,6 +696,26 @@ internal fun MarketplaceContributionDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 minLines = 2,
                                 maxLines = 5,
+                            )
+                            OutlinedTextField(
+                                value = faqsText,
+                                onValueChange = { faqsText = it.take(14000) },
+                                label = { Text("FAQs (optional)") },
+                                supportingText = { Text("One per line: question | answer · Up to 10 entries") },
+                                modifier = Modifier.fillMaxWidth(),
+                                minLines = 3,
+                                maxLines = 7,
+                                isError = !validFaqs,
+                            )
+                            OutlinedTextField(
+                                value = dependenciesText,
+                                onValueChange = { dependenciesText = it.take(1200) },
+                                label = { Text("Package dependencies (optional)") },
+                                supportingText = { Text("One per line: package-id@1.2.3 · Add ? for optional dependencies") },
+                                modifier = Modifier.fillMaxWidth(),
+                                minLines = 2,
+                                maxLines = 5,
+                                isError = !validDependencies,
                             )
                             OutlinedTextField(
                                 value = documentationUrl,
