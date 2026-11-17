@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import com.opentasker.core.marketplace.MarketplaceClient
 import com.opentasker.core.marketplace.GitHubDeviceAuth
 import com.opentasker.core.marketplace.MarketplaceContributionClient
+import com.opentasker.core.marketplace.MarketplaceCommunityActions
 import com.opentasker.core.marketplace.MarketplaceCatalog
 import com.opentasker.core.marketplace.MarketplaceExternalDestination
 import com.opentasker.core.marketplace.MarketplaceInput
@@ -71,7 +72,9 @@ import com.opentasker.core.actions.ActionMetadataRegistry
 import com.opentasker.core.model.ActionSpec
 import com.opentasker.core.model.Profile
 import com.opentasker.core.transfer.OpenTaskerBundle
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun MarketplaceScreen(
@@ -104,11 +107,25 @@ internal fun MarketplaceScreen(
     var deletingPackageId by remember { mutableStateOf<String?>(null) }
     var deletionErrorMessage by remember { mutableStateOf<String?>(null) }
     var deletionRequestUrl by remember { mutableStateOf<String?>(null) }
+    var currentGithubLogin by remember { mutableStateOf(GitHubDeviceAuth.savedLogin(appContext)) }
+    var currentGithubUserId by remember { mutableStateOf<String?>(null) }
+    var ratingSubmittingPackageId by remember { mutableStateOf<String?>(null) }
+    var featureSubmittingPackageId by remember { mutableStateOf<String?>(null) }
 
     fun refresh() {
         scope.launch {
             loading = true
             errorMessage = null
+            val rememberedLogin = GitHubDeviceAuth.savedLogin(appContext)
+            val verifiedLogin = if (rememberedLogin != null) {
+                runCatching { GitHubDeviceAuth.verifySavedLogin(appContext) }.getOrNull()
+            } else null
+            currentGithubLogin = verifiedLogin ?: rememberedLogin
+            currentGithubUserId = if (verifiedLogin != null) {
+                runCatching {
+                    withContext(Dispatchers.IO) { MarketplaceCommunityActions.currentUser(appContext).id.toString() }
+                }.getOrNull()
+            } else null
             runCatching { MarketplaceClient.loadCatalog(appContext) }
                 .onSuccess { result ->
                     catalog = result.catalog
@@ -211,6 +228,51 @@ internal fun MarketplaceScreen(
         }
     }
 
+    fun ratePackage(packageEntry: MarketplacePackage, stars: Int) {
+        scope.launch {
+            if (currentGithubLogin == null) {
+                Toast.makeText(context, "Sign in with GitHub in Settings → Account to rate packages.", Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            ratingSubmittingPackageId = packageEntry.id
+            runCatching {
+                MarketplaceCommunityActions.submitRating(appContext, packageEntry.id, packageEntry.publisher, stars)
+            }.onSuccess {
+                Toast.makeText(
+                    context,
+                    "Your rating was submitted. It will appear after the Marketplace catalogue refreshes.",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }.onFailure { error ->
+                Toast.makeText(context, error.message ?: "Couldn't submit your rating.", Toast.LENGTH_LONG).show()
+            }
+            ratingSubmittingPackageId = null
+        }
+    }
+
+    fun requestFeaturedChange(packageEntry: MarketplacePackage) {
+        scope.launch {
+            if (!MarketplaceCommunityActions.canFeaturePackages(currentGithubLogin)) {
+                Toast.makeText(context, "Only trusted Marketplace maintainers can feature packages.", Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            featureSubmittingPackageId = packageEntry.id
+            runCatching {
+                MarketplaceCommunityActions.requestFeaturedChange(appContext, packageEntry.id, !packageEntry.featured)
+            }.onSuccess {
+                val action = if (packageEntry.featured) "unfeatured" else "submitted to be featured"
+                Toast.makeText(
+                    context,
+                    "The request to have this package " + action + " was submitted. Refresh after processing.",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }.onFailure { error ->
+                Toast.makeText(context, error.message ?: "Couldn't update featured status.", Toast.LENGTH_LONG).show()
+            }
+            featureSubmittingPackageId = null
+        }
+    }
+
     fun preview(packageEntry: MarketplacePackage) {
         if (packageEntry.category in setOf("Widget Displays", "Custom Widget Icons")) {
             selectedDetailsPackage = packageEntry
@@ -237,13 +299,18 @@ internal fun MarketplaceScreen(
         val query = searchQuery.trim()
         packages
             .filter { item ->
-                (categoryFilter == "All" || item.category.equals(categoryFilter, ignoreCase = true)) &&
+                val categoryMatches = when (categoryFilter) {
+                    "All" -> true
+                    "Featured" -> item.featured
+                    else -> item.category.equals(categoryFilter, ignoreCase = true)
+                }
+                categoryMatches &&
                     (query.isBlank() || listOf(
                         item.name, item.summary, item.description, item.id, item.publisher, item.category,
                     ).any { it.contains(query, ignoreCase = true) } ||
                         item.tags.any { it.contains(query, ignoreCase = true) })
             }
-            .sortedBy { it.name.lowercase() }
+            .sortedWith(compareByDescending<MarketplacePackage> { it.featured }.thenBy { it.name.lowercase() })
     }
     val actionPackageCount = packages.count { it.category.equals("Actions", ignoreCase = true) }
     val widgetPackageCount = packages.count { it.category.equals("Shortcut Widgets", ignoreCase = true) }
@@ -341,7 +408,7 @@ internal fun MarketplaceScreen(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    listOf("All", "Actions", "Shortcut Widgets", "Widget Displays", "Custom Widget Icons").forEach { filter ->
+                    listOf("All", "Featured", "Actions", "Shortcut Widgets", "Widget Displays", "Custom Widget Icons").forEach { filter ->
                         FilterChip(
                             selected = categoryFilter == filter,
                             onClick = { categoryFilter = filter },
@@ -389,10 +456,10 @@ internal fun MarketplaceScreen(
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Text(
-                            if (packages.isEmpty()) {
-                                "Publish an Action, Shortcut Widget, Widget Display, or custom icon to get the community catalogue started."
-                            } else {
-                                "Try another search or switch the category filter."
+                            when {
+                                packages.isEmpty() -> "Publish an Action, Shortcut Widget, Widget Display, or custom icon to get the community catalogue started."
+                                categoryFilter == "Featured" -> "No packages are featured right now."
+                                else -> "Try another search or switch the category filter."
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -410,6 +477,11 @@ internal fun MarketplaceScreen(
                 compatible = isVersionAtLeast(BuildConfig.VERSION_NAME, packageEntry.minimumAppVersion),
                 protectionEnabled = watchdogStatus[packageEntry.id]?.first ?: true,
                 locallyDisabled = watchdogStatus[packageEntry.id]?.second ?: false,
+                currentUserRating = currentGithubUserId?.let { packageEntry.ratingVotes[it] },
+                signedIn = currentGithubLogin != null,
+                publisherOwnsPackage = currentGithubLogin?.equals(packageEntry.publisher, ignoreCase = true) == true,
+                ratingSubmitting = ratingSubmittingPackageId == packageEntry.id,
+                onRate = { stars -> ratePackage(packageEntry, stars) },
                 onProtectionChanged = { enabled ->
                     MarketplacePackageWatchdog.setPackageProtectionEnabled(appContext, packageEntry.id, enabled)
                     val wasDisabled = watchdogStatus[packageEntry.id]?.second ?: false
@@ -442,6 +514,14 @@ internal fun MarketplaceScreen(
     selectedDetailsPackage?.let { packageEntry ->
         MarketplacePackageDetailsDialog(
             packageEntry = packageEntry,
+            currentUserRating = currentGithubUserId?.let { packageEntry.ratingVotes[it] },
+            signedIn = currentGithubLogin != null,
+            publisherOwnsPackage = currentGithubLogin?.equals(packageEntry.publisher, ignoreCase = true) == true,
+            ratingSubmitting = ratingSubmittingPackageId == packageEntry.id,
+            onRate = { stars -> ratePackage(packageEntry, stars) },
+            canManageFeatured = MarketplaceCommunityActions.canFeaturePackages(currentGithubLogin),
+            featureSubmitting = featureSubmittingPackageId == packageEntry.id,
+            onToggleFeatured = { requestFeaturedChange(packageEntry) },
             onDismiss = { selectedDetailsPackage = null },
             onOpenUrl = { url ->
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
@@ -796,6 +876,11 @@ private fun MarketplacePackageCard(
     compatible: Boolean,
     protectionEnabled: Boolean,
     locallyDisabled: Boolean,
+    currentUserRating: Int?,
+    signedIn: Boolean,
+    publisherOwnsPackage: Boolean,
+    ratingSubmitting: Boolean,
+    onRate: (Int) -> Unit,
     onProtectionChanged: (Boolean) -> Unit,
     onClearDisabled: () -> Unit,
     onDetails: () -> Unit,
@@ -834,6 +919,9 @@ private fun MarketplacePackageCard(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
+                    if (packageEntry.featured) {
+                        Text("★ FEATURED", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
+                    }
                 }
                 Surface(
                     shape = RoundedCornerShape(50),
@@ -855,6 +943,14 @@ private fun MarketplacePackageCard(
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
+            )
+            MarketplacePackageRating(
+                packageEntry = packageEntry,
+                currentUserRating = currentUserRating,
+                signedIn = signedIn,
+                publisherOwnsPackage = publisherOwnsPackage,
+                submitting = ratingSubmitting,
+                onRate = onRate,
             )
 
             if (packageEntry.tags.isNotEmpty()) {
@@ -956,8 +1052,78 @@ private fun MarketplacePackageCard(
 }
 
 @Composable
+private fun MarketplacePackageRating(
+    packageEntry: MarketplacePackage,
+    currentUserRating: Int?,
+    signedIn: Boolean,
+    publisherOwnsPackage: Boolean,
+    submitting: Boolean,
+    onRate: (Int) -> Unit,
+) {
+    val displayedStars = (packageEntry.ratingAverage + 0.5).toInt().coerceIn(0, 5)
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            repeat(5) { index ->
+                Text(
+                    text = if (index < displayedStars) "★" else "☆",
+                    modifier = Modifier.clickable(enabled = signedIn && !publisherOwnsPackage && !submitting) {
+                        onRate(index + 1)
+                    },
+                    color = if (index < displayedStars) MaterialTheme.colorScheme.tertiary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+            Text(
+                text = if (packageEntry.ratingCount == 0) {
+                    "No ratings yet"
+                } else {
+                    String.format("%.1f · %d", packageEntry.ratingAverage, packageEntry.ratingCount)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 6.dp),
+            )
+            if (submitting) {
+                Text("Sending…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        when {
+            currentUserRating != null -> Text(
+                "Your rating: " + currentUserRating + "/5",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            !signedIn -> Text(
+                "Sign in with GitHub to rate",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            publisherOwnsPackage -> Text(
+                "Publishers can't rate their own packages",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            else -> Text(
+                "Tap a star to rate",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
 private fun MarketplacePackageDetailsDialog(
     packageEntry: MarketplacePackage,
+    currentUserRating: Int?,
+    signedIn: Boolean,
+    publisherOwnsPackage: Boolean,
+    ratingSubmitting: Boolean,
+    onRate: (Int) -> Unit,
+    canManageFeatured: Boolean,
+    featureSubmitting: Boolean,
+    onToggleFeatured: () -> Unit,
     onDismiss: () -> Unit,
     onOpenUrl: (String) -> Unit,
 ) {
@@ -1030,6 +1196,43 @@ private fun MarketplacePackageDetailsDialog(
                     item {
                         Text("What's new in v${packageEntry.version}", style = MaterialTheme.typography.titleSmall)
                         Text(packageEntry.changelog, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                item {
+                    Text("Community rating", style = MaterialTheme.typography.titleSmall)
+                    MarketplacePackageRating(
+                        packageEntry = packageEntry,
+                        currentUserRating = currentUserRating,
+                        signedIn = signedIn,
+                        publisherOwnsPackage = publisherOwnsPackage,
+                        submitting = ratingSubmitting,
+                        onRate = onRate,
+                    )
+                }
+                if (canManageFeatured) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("Marketplace placement", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                if (packageEntry.featured) "This package is currently featured near the top of the Marketplace."
+                                else "Feature this package to highlight it in the Marketplace's Featured filter.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            OutlinedButton(
+                                onClick = onToggleFeatured,
+                                enabled = !featureSubmitting,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(
+                                    when {
+                                        featureSubmitting -> "Submitting request…"
+                                        packageEntry.featured -> "Remove from Featured"
+                                        else -> "Feature this package"
+                                    },
+                                )
+                            }
+                        }
                     }
                 }
                 item {
