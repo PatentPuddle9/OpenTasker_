@@ -1055,6 +1055,7 @@ private fun MarketplacePackageCard(
     onProtectionChanged: (Boolean) -> Unit,
     onClearDisabled: () -> Unit,
     onDetails: () -> Unit,
+    onSaveToCollection: () -> Unit,
     onPreview: () -> Unit,
     onInstall: () -> Unit,
     onReport: () -> Unit,
@@ -1122,6 +1123,11 @@ private fun MarketplacePackageCard(
                 publisherOwnsPackage = publisherOwnsPackage,
                 submitting = ratingSubmitting,
                 onRate = onRate,
+            )
+            Text(
+                "${packageEntry.downloadCount} installs · ${packageEntry.weeklyDownloads} this week · ${packageEntry.reviews.size} reviews",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             if (packageEntry.tags.isNotEmpty()) {
@@ -1215,7 +1221,8 @@ private fun MarketplacePackageCard(
             ) {
                 Text(if (installing) "Checking package…" else "Install package")
             }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                TextButton(onClick = onSaveToCollection) { Text("Save to collection") }
                 TextButton(onClick = onReport) { Text("Report listing") }
             }
         }
@@ -1287,6 +1294,13 @@ private fun MarketplacePackageRating(
 @Composable
 private fun MarketplacePackageDetailsDialog(
     packageEntry: MarketplacePackage,
+    allPackages: List<MarketplacePackage>,
+    currentUserId: Long?,
+    reviewSubmitting: Boolean,
+    helpfulSubmittingReviewId: String?,
+    onWriteReview: () -> Unit,
+    onHelpful: (com.opentasker.core.marketplace.MarketplaceReview) -> Unit,
+    onSaveToCollection: () -> Unit,
     currentUserRating: Int?,
     signedIn: Boolean,
     publisherOwnsPackage: Boolean,
