@@ -53,36 +53,52 @@ fun ProjectScopeBar(
     val selectedName = projects.firstOrNull { it.id == selectedProjectId }?.name
         ?: stringResource(R.string.projects_all)
 
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 0.dp,
+    Row(
+        modifier = modifier.fillMaxWidth().padding(
+            horizontal = DesignSystem.Screen.horizontalPadding,
+            vertical = 7.dp,
+        ),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = DesignSystem.Screen.horizontalPadding, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            Column(Modifier.weight(1f)) {
-            Text(
-                stringResource(R.string.projects_scope_label),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 2.dp),
-            )
-            TextButton(
-                onClick = { menuExpanded = true },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(DesignSystem.Radii.md),
+        Box(Modifier.weight(1f)) {
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                shape = RoundedCornerShape(14.dp),
             ) {
-                Icon(Icons.Filled.Folder, contentDescription = stringResource(R.string.projects_scope_label))
-                Text(
-                    selectedName,
-                    modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Icon(Icons.Filled.ExpandMore, contentDescription = stringResource(R.string.action_expand))
+                TextButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.Folder,
+                        contentDescription = stringResource(R.string.projects_scope_label),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f).padding(horizontal = 9.dp),
+                        verticalArrangement = Arrangement.spacedBy(0.dp),
+                    ) {
+                        Text(
+                            stringResource(R.string.projects_scope_label).uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            selectedName,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Icon(
+                        Icons.Filled.ExpandMore,
+                        contentDescription = stringResource(R.string.action_expand),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                 DropdownMenuItem(
@@ -102,9 +118,20 @@ fun ProjectScopeBar(
                     )
                 }
             }
-            }
-            IconButton(onClick = { managerVisible = true }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.projects_manage))
+        }
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            shape = RoundedCornerShape(13.dp),
+        ) {
+            IconButton(
+                onClick = { managerVisible = true },
+                modifier = Modifier.size(46.dp),
+            ) {
+                Icon(
+                    Icons.Filled.MoreVert,
+                    contentDescription = stringResource(R.string.projects_manage),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
