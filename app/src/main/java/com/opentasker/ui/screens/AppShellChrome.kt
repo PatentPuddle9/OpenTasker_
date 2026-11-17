@@ -93,7 +93,7 @@ internal fun OpenTaskerHeader(
     showSearch: Boolean = true,
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.background,
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
         tonalElevation = 0.dp,
     ) {
         Column(
@@ -107,19 +107,31 @@ internal fun OpenTaskerHeader(
                     .padding(
                         start = DesignSystem.Screen.horizontalPadding,
                         end = DesignSystem.Screen.horizontalPadding,
-                        top = 10.dp,
-                        bottom = 10.dp,
+                        top = 14.dp,
+                        bottom = 13.dp,
                     ),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.app_name).uppercase(),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            letterSpacing = 1.8.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                    )
                     Text(
                         stringResource(screen.labelRes),
                         style = MaterialTheme.typography.headlineSmall.copy(
-                            fontSize = 27.sp,
-                            lineHeight = 32.sp,
-                            letterSpacing = (-0.45).sp,
+                            fontSize = 28.sp,
+                            lineHeight = 33.sp,
+                            letterSpacing = (-0.7).sp,
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -135,7 +147,6 @@ internal fun OpenTaskerHeader(
                                     .background(
                                         color = when (screen) {
                                             OpenTaskerScreen.Diagnostics -> MaterialTheme.colorScheme.tertiary
-                                            OpenTaskerScreen.RunLog, OpenTaskerScreen.Inspector -> MaterialTheme.colorScheme.primary
                                             else -> MaterialTheme.colorScheme.primary
                                         },
                                         shape = CircleShape,
@@ -152,15 +163,20 @@ internal fun OpenTaskerHeader(
                     }
                 }
                 if (showSearch) {
-                    IconButton(
-                        onClick = onOpenSearch,
-                        modifier = Modifier.size(44.dp),
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Search,
-                            contentDescription = stringResource(R.string.global_search_content_description),
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
+                        IconButton(
+                            onClick = onOpenSearch,
+                            modifier = Modifier.size(48.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Search,
+                                contentDescription = stringResource(R.string.global_search_content_description),
+                                tint = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
                     }
                 }
             }
@@ -168,7 +184,7 @@ internal fun OpenTaskerHeader(
                 Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)),
+                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)),
             )
         }
     }
@@ -187,32 +203,38 @@ internal fun OpenTaskerNavigationItem(
     val notSelectedDescription = stringResource(R.string.a11y_not_selected)
     Column(
         modifier = modifier
-            .heightIn(min = 56.dp)
+            .heightIn(min = 64.dp)
             .clickable(role = Role.Tab, onClick = onClick)
             .semantics(mergeDescendants = true) {
                 this.selected = selected
                 stateDescription = if (selected) selectedDescription else notSelectedDescription
             }
-            .padding(horizontal = 3.dp, vertical = 4.dp),
+            .padding(horizontal = 2.dp, vertical = 5.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Box(
             modifier = Modifier
-                .size(width = 44.dp, height = 28.dp),
+                .size(width = 54.dp, height = 32.dp)
+                .background(
+                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                    shape = RoundedCornerShape(14.dp),
+                ),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 icon,
                 contentDescription = label,
-                tint = contentColor,
-                modifier = Modifier.size(22.dp),
+                tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else contentColor,
+                modifier = Modifier.size(21.dp),
             )
         }
-        Spacer(Modifier.height(3.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             label,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Medium,
+            ),
             color = contentColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -245,21 +267,22 @@ internal fun StatusPill(
 ) {
     Surface(
         modifier = modifier,
-        color = Color.Transparent,
+        color = color.copy(alpha = 0.13f),
+        shape = RoundedCornerShape(percent = 50),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 Modifier
-                    .size(6.dp)
+                    .size(7.dp)
                     .background(color, RoundedCornerShape(percent = 50)),
             )
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
                 color = color,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
