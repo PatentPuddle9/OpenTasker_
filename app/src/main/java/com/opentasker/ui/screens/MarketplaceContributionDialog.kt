@@ -379,7 +379,7 @@ internal fun MarketplaceContributionDialog(
                         if (existingPackage == null) {
                             "Your package will be exported as data-only JSON, uploaded on a separate branch, and submitted as a pull request."
                         } else {
-                            "The updated package will be submitted as a new immutable version. It will not replace older versions, and it will remain unpublished until a trusted moderator approves the pull request."
+                            "The updated package will be submitted as a new immutable version. It will not replace older versions, and it will remain unpublished until another authorized repository collaborator approves the pull request. High-risk updates also need trusted-moderator approval."
                         },
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
