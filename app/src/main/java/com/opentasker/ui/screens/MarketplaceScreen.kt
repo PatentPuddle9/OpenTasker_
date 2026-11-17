@@ -528,20 +528,43 @@ private fun MarketplaceMyPackagesDialog(
                                     Card(modifier = Modifier.fillMaxWidth()) {
                                         Column(
                                             modifier = Modifier.padding(12.dp),
-                                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp),
                                         ) {
-                                            Text(packageEntry.name, style = MaterialTheme.typography.titleSmall)
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                MarketplaceListingIcon(
+                                                    icon = packageEntry.icon,
+                                                    iconColor = packageEntry.iconColor,
+                                                    backgroundColor = packageEntry.backgroundColor,
+                                                    gradient = packageEntry.gradient,
+                                                    shapeKey = packageEntry.shape,
+                                                    modifier = Modifier.size(48.dp),
+                                                    iconSize = 22.dp,
+                                                )
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(packageEntry.name, style = MaterialTheme.typography.titleSmall)
+                                                    Text(
+                                                        "v${packageEntry.version} · ${packageEntry.category}",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    )
+                                                }
+                                            }
                                             Text(
-                                                "${packageEntry.id} · v${packageEntry.version} · ${packageEntry.category}",
+                                                packageEntry.summary,
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis,
                                             )
                                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                                 OutlinedButton(
                                                     onClick = { onEdit(packageEntry) },
                                                     enabled = deletingPackageId == null,
                                                 ) {
-                                                    Text("Edit")
+                                                    Text("Edit listing")
                                                 }
                                                 TextButton(
                                                     onClick = { confirmingDelete = packageEntry },
