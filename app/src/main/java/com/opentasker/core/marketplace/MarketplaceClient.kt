@@ -65,7 +65,9 @@ internal data class MarketplacePackage(
     val ratingAverage: Double = 0.0,
     val ratingCount: Int = 0,
     val ratingVotes: Map<String, Int> = emptyMap(),
+    val ratingDistribution: Map<String, Int> = emptyMap(),
     val reviews: List<MarketplaceReview> = emptyList(),
+    val reviewCount: Int = 0,
     val downloadCount: Int = 0,
     val uniqueInstallerCount: Int = 0,
     val weeklyDownloads: Int = 0,
@@ -86,6 +88,15 @@ internal data class MarketplaceReview(
     val updatedAt: String = "",
     val helpfulCount: Int = 0,
     val helpfulUserIds: List<Long> = emptyList(),
+    val verifiedInstaller: Boolean = false,
+    val publisherResponse: MarketplacePublisherResponse? = null,
+)
+
+@Serializable
+internal data class MarketplacePublisherResponse(
+    val author: String,
+    val body: String,
+    val updatedAt: String = "",
 )
 
 @Serializable
