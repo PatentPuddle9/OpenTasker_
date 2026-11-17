@@ -45,6 +45,27 @@ class LocationMapPickerContractTest {
         assertTrue("returned coordinates should be range checked", source.contains("location.latitude in -90.0..90.0") && source.contains("location.longitude in -180.0..180.0"))
     }
 
+
+    @Test
+    fun mapRetriesFailedTilesAndOffersManualRetry() {
+        assertTrue("failed map tiles should have bounded automatic retries", source.contains("function retryFailedTile(image)"))
+        assertTrue("the map should provide a manual retry hook", source.contains("window.retryOpenTaskerMapTiles = function()"))
+        assertTrue("tile failures should surface a retry control", source.contains("id=\"retry-tiles\""))
+    }
+
+    @Test
+    fun mapIdentifiesItsTileRequestsAndExplicitlyLoadsImages() {
+        assertTrue("tile requests should use an identifiable OpenTasker user agent", source.contains("OpenTasker-MapPicker/"))
+        assertTrue("the WebView should explicitly load map images", source.contains("settings.loadsImagesAutomatically = true"))
+    }
+
+    @Test
+    fun mapSupportsPinchZoomAlongsideSingleFingerPan() {
+        assertTrue("the map should track multiple active touch pointers", source.contains("var activePointers = Object.create(null)"))
+        assertTrue("pinch zoom should use the distance between touch points", source.contains("function pointDistance(first, second)"))
+        assertTrue("pinch distance should change the map zoom", source.contains("Math.log(distance / pinchState.distance)"))
+    }
+
     @Test
     fun theMapKeepsItsManualSelectionAndOpenStreetMapAttributionFallback() {
         assertTrue("the map should still allow selection without a tile response", source.contains("Map tiles are unavailable. Check your internet connection; place search and manual selection still work."))

@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.CancellationSignal
 import android.os.Handler
 import android.os.Looper
+import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -360,12 +361,16 @@ private fun LocationMapPickerDialog(
                         WebView(viewContext).apply {
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
+                            settings.loadsImagesAutomatically = true
                             settings.cacheMode = WebSettings.LOAD_DEFAULT
                             settings.allowFileAccess = false
                             settings.allowContentAccess = false
                             settings.javaScriptCanOpenWindowsAutomatically = false
+                            // OpenStreetMap requires native apps to identify themselves with a
+                            // stable, app-specific User-Agent instead of a generic WebView UA.
                             settings.userAgentString =
-                                settings.userAgentString + " OpenTasker/" + BuildConfig.VERSION_NAME
+                                "OpenTasker-MapPicker/" + BuildConfig.VERSION_NAME +
+                                    " (+https://github.com/PatentPuddle9/OpenTasker_)"
                             webViewClient = object : WebViewClient() {
                                 override fun onPageFinished(view: WebView, url: String?) {
                                     super.onPageFinished(view, url)
@@ -405,7 +410,14 @@ private fun LocationMapPickerDialog(
                                     }
                                 }
                             }
-                            webChromeClient = WebChromeClient()
+                            webChromeClient = object : WebChromeClient() {
+                                override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
+                                    if (consoleMessage.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
+                                        statusMessage = "The map reported a rendering error. You can still search for a place or reopen the map."
+                                    }
+                                    return super.onConsoleMessage(consoleMessage)
+                                }
+                            }
                             setBackgroundColor(android.graphics.Color.rgb(232, 232, 232))
                             isVerticalScrollBarEnabled = false
                             isHorizontalScrollBarEnabled = false
@@ -683,9 +695,12 @@ private fun locationPickerHtml(
               gap:5px; pointer-events:auto; }
             .zoom-button { width:40px; height:40px; border:1px solid #bbb; border-radius:8px;
               background:#fff; color:#222; font-size:25px; line-height:1; box-shadow:0 1px 4px #0003; }
-            #tile-status { display:none; position:absolute; z-index:4; top:12px; left:62px; right:12px;
+            #tile-status { display:none; position:absolute; z-index:6; top:12px; left:62px; right:12px;
               padding:8px 10px; border-radius:8px; background:#fff; color:#524b5b;
-              box-shadow:0 1px 4px #0003; font-size:12px; }
+              box-shadow:0 1px 4px #0003; font-size:12px; align-items:center; gap:8px; }
+            #tile-status-text { flex:1; min-width:0; }
+            #retry-tiles { border:0; border-radius:6px; padding:6px 9px; background:#6750a4;
+              color:#fff; font-size:12px; font-weight:600; pointer-events:auto; }
             #attribution { position:absolute; z-index:5; right:0; bottom:0; padding:3px 6px;
               background:rgba(255,255,255,.86); color:#333; font-size:10px; pointer-events:auto; }
             #attribution a { color:#315f91; }
@@ -702,7 +717,10 @@ private fun locationPickerHtml(
               <button class="zoom-button" id="zoom-in" aria-label="Zoom in">+</button>
               <button class="zoom-button" id="zoom-out" aria-label="Zoom out">−</button>
             </div>
-            <div id="tile-status"></div>
+            <div id="tile-status" role="status" aria-live="polite">
+              <span id="tile-status-text"></span>
+              <button id="retry-tiles" type="button">Retry map</button>
+            </div>
             <div id="attribution">© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a></div>
           </div>
           <script>
@@ -716,12 +734,16 @@ private fun locationPickerHtml(
               var pin = document.getElementById('pin');
               var circle = document.getElementById('circle');
               var tileStatus = document.getElementById('tile-status');
+              var tileStatusText = document.getElementById('tile-status-text');
+              var retryTilesButton = document.getElementById('retry-tiles');
               var centerLat = CENTER_LAT;
               var centerLon = CENTER_LON;
               var zoom = ZOOM;
               var selected = HAS_POINT ? { lat:CENTER_LAT, lon:CENTER_LON } : null;
               var activeRadius = MAP_RADIUS;
               var pointer = null;
+              var activePointers = Object.create(null);
+              var pinchState = null;
               var tileCache = Object.create(null);
               var visibleTileKeys = [];
               var renderQueued = false;
@@ -762,13 +784,36 @@ private fun locationPickerHtml(
                   if (tile && tile.dataset.state === 'error') failures++;
                 }
                 if (failures > 0 && failures >= visibleTileKeys.length) {
-                  tileStatus.textContent = 'Map tiles are unavailable. Check your internet connection; place search and manual selection still work.';
-                  tileStatus.style.display = 'block';
+                  tileStatusText.textContent = 'Map tiles could not load. Check your connection, then retry.';
+                  retryTilesButton.style.display = 'inline-flex';
+                  tileStatus.style.display = 'flex';
                 } else if (failures > 0) {
-                  tileStatus.textContent = 'Some map tiles could not be loaded.';
-                  tileStatus.style.display = 'block';
+                  tileStatusText.textContent = 'Some map tiles could not load.';
+                  retryTilesButton.style.display = 'inline-flex';
+                  tileStatus.style.display = 'flex';
                 } else {
                   tileStatus.style.display = 'none';
+                }
+              }
+              function requestTile(image) {
+                image.dataset.state = 'loading';
+                image.src = image.dataset.url;
+              }
+              function retryFailedTile(image) {
+                var attempts = Number(image.dataset.retryCount || '0');
+                if (attempts < 2) {
+                  image.dataset.retryCount = String(attempts + 1);
+                  window.setTimeout(function() {
+                    if (image.parentNode === tilesLayer) {
+                      requestTile(image);
+                    } else {
+                      image.dataset.state = 'error';
+                      updateTileStatus();
+                    }
+                  }, 600 * (attempts + 1));
+                } else {
+                  image.dataset.state = 'error';
+                  updateTileStatus();
                 }
               }
               function renderTiles(width, height, centerX, centerY) {
@@ -793,16 +838,18 @@ private fun locationPickerHtml(
                       image.draggable = false;
                       image.dataset.state = 'loading';
                       image.dataset.key = key;
+                      image.dataset.url = 'https://tile.openstreetmap.org/' + key + '.png';
+                      image.dataset.retryCount = '0';
                       image.onload = function() {
                         this.dataset.state = 'loaded';
+                        this.dataset.retryCount = '0';
                         updateTileStatus();
                       };
                       image.onerror = function() {
-                        this.dataset.state = 'error';
-                        updateTileStatus();
+                        retryFailedTile(this);
                       };
                       tileCache[key] = image;
-                      image.src = 'https://tile.openstreetmap.org/' + key + '.png';
+                      requestTile(image);
                     }
                     image.style.left = (tx * TILE_SIZE - left) + 'px';
                     image.style.top = (ty * TILE_SIZE - top) + 'px';
@@ -826,6 +873,20 @@ private fun locationPickerHtml(
                   });
                 }
               }
+              window.retryOpenTaskerMapTiles = function() {
+                visibleTileKeys.forEach(function(key) {
+                  var tile = tileCache[key];
+                  if (tile && tile.dataset.state === 'error') {
+                    tile.dataset.retryCount = '0';
+                    requestTile(tile);
+                  }
+                });
+                updateTileStatus();
+              };
+              retryTilesButton.addEventListener('click', function(event) {
+                event.stopPropagation();
+                window.retryOpenTaskerMapTiles();
+              });
               function renderSelection(width, height, centerX, centerY) {
                 if (!selected) {
                   pin.style.display = 'none';
@@ -879,21 +940,54 @@ private fun locationPickerHtml(
                 var rect = map.getBoundingClientRect();
                 return { x:event.clientX - rect.left, y:event.clientY - rect.top };
               }
+              function pointDistance(first, second) {
+                var dx = first.x - second.x;
+                var dy = first.y - second.y;
+                return Math.sqrt(dx * dx + dy * dy);
+              }
               map.addEventListener('pointerdown', function(event) {
                 if (event.target.closest && event.target.closest('.zoom-button')) return;
+                if (event.target === retryTilesButton) return;
                 var pos = pointerPosition(event);
-                pointer = {
-                  id:event.pointerId, x:pos.x, y:pos.y,
-                  startX:pos.x, startY:pos.y,
-                  centerX:lonToX(centerLon), centerY:latToY(centerLat),
-                  draggingPin:event.target === pin, moved:false
-                };
+                activePointers[event.pointerId] = pos;
                 map.setPointerCapture(event.pointerId);
+                var ids = Object.keys(activePointers);
+                if (ids.length === 1) {
+                  pointer = {
+                    id:event.pointerId, x:pos.x, y:pos.y,
+                    startX:pos.x, startY:pos.y,
+                    centerX:lonToX(centerLon), centerY:latToY(centerLat),
+                    draggingPin:event.target === pin, moved:false
+                  };
+                } else if (ids.length === 2) {
+                  var first = activePointers[ids[0]];
+                  var second = activePointers[ids[1]];
+                  pointer = null;
+                  pinchState = {
+                    distance:Math.max(1, pointDistance(first, second)),
+                    zoom:zoom
+                  };
+                }
                 event.preventDefault();
               });
               map.addEventListener('pointermove', function(event) {
-                if (!pointer || pointer.id !== event.pointerId) return;
+                if (!activePointers[event.pointerId]) return;
                 var pos = pointerPosition(event);
+                activePointers[event.pointerId] = pos;
+                var ids = Object.keys(activePointers);
+                if (ids.length >= 2) {
+                  if (pinchState) {
+                    var first = activePointers[ids[0]];
+                    var second = activePointers[ids[1]];
+                    var distance = Math.max(1, pointDistance(first, second));
+                    var zoomDelta = Math.log(distance / pinchState.distance) / Math.LN2;
+                    zoom = clamp(Math.round(pinchState.zoom + zoomDelta), 2, 19);
+                    scheduleRender();
+                  }
+                  event.preventDefault();
+                  return;
+                }
+                if (!pointer || pointer.id !== event.pointerId) return;
                 var dx = pos.x - pointer.startX;
                 var dy = pos.y - pointer.startY;
                 if (Math.abs(dx) + Math.abs(dy) > 4) pointer.moved = true;
@@ -911,19 +1005,25 @@ private fun locationPickerHtml(
                 event.preventDefault();
               });
               function finishPointer(event) {
-                if (!pointer || pointer.id !== event.pointerId) return;
+                if (!activePointers[event.pointerId]) return;
+                var wasSinglePointer = Object.keys(activePointers).length === 1 &&
+                  pointer && pointer.id === event.pointerId;
                 var pos = pointerPosition(event);
-                if (!pointer.moved) {
-                  selected = screenToPoint(pos.x, pos.y);
-                  notifyPoint();
-                } else if (pointer.draggingPin) {
-                  notifyPoint();
+                if (wasSinglePointer) {
+                  if (!pointer.moved) {
+                    selected = screenToPoint(pos.x, pos.y);
+                    notifyPoint();
+                  } else if (pointer.draggingPin) {
+                    notifyPoint();
+                  }
                 }
+                delete activePointers[event.pointerId];
                 pointer = null;
+                pinchState = null;
                 scheduleRender();
               }
               map.addEventListener('pointerup', finishPointer);
-              map.addEventListener('pointercancel', function() { pointer = null; });
+              map.addEventListener('pointercancel', finishPointer);
               document.getElementById('zoom-in').addEventListener('click', function(event) {
                 event.stopPropagation();
                 zoom = Math.min(19, zoom + 1);
