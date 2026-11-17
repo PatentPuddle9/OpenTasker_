@@ -130,12 +130,25 @@ internal object MarketplaceContributionClient {
         packageName: String,
         version: String,
         summary: String,
+        description: String,
+        tags: List<String>,
+        icon: String,
+        iconColor: String,
+        backgroundColor: String,
+        gradient: Boolean,
+        shape: String,
+        changelog: String,
+        documentationUrl: String,
         disclosure: MarketplaceExternalDestinationDraft?,
         previousVersion: String? = null,
     ): MarketplacePullRequest = withContext(Dispatchers.IO) {
         val id = packageId.trim()
         val name = packageName.trim()
-        val description = summary.trim()
+        val shortDescription = summary.trim()
+        val longDescription = description.trim()
+        val cleanTags = tags.map { it.trim() }.filter { it.isNotBlank() }.distinctBy { it.lowercase() }
+        val cleanChangelog = changelog.trim()
+        val cleanDocumentationUrl = documentationUrl.trim()
         require(id.matches(Regex("^[a-z0-9][a-z0-9._-]{1,79}$"))) { "Package ID must be a lowercase slug." }
         require(name.isNotBlank() && name.length <= 80) { "Package name must be 1–80 characters." }
         val allowedVersions = previousVersion?.let(::allowedMarketplaceVersions)
@@ -146,7 +159,23 @@ internal object MarketplaceContributionClient {
                 "Version must increase by exactly one step from $previousVersion. Allowed next versions: ${allowedVersions?.joinToString()}."
             }
         }
-        require(description.isNotBlank() && description.length <= 400) { "Summary must be 1–400 characters." }
+        require(shortDescription.isNotBlank() && shortDescription.length <= 400) { "Summary must be 1–400 characters." }
+        require(longDescription.length <= 4000) { "The full description must be 4000 characters or fewer." }
+        require(cleanTags.size <= 10 && cleanTags.all { it.matches(Regex("^[A-Za-z0-9][A-Za-z0-9 _+-]{0,23}$")) }) {
+            "Use up to 10 short tags with letters, numbers, spaces, plus signs, underscores, or hyphens."
+        }
+        require(icon.matches(Regex("^[a-z0-9][a-z0-9-]{0,63}$"))) { "Choose a built-in Marketplace icon." }
+        require(iconColor.matches(Regex("^#?[A-Fa-f0-9]{6}$"))) { "Icon color must be a six-digit hex color." }
+        require(backgroundColor.matches(Regex("^#?[A-Fa-f0-9]{6}$"))) { "Background color must be a six-digit hex color." }
+        require(shape in setOf("squircle", "rounded_square", "circle", "square", "teardrop")) {
+            "Choose a supported listing icon shape."
+        }
+        require(cleanChangelog.length <= 2000) { "Release notes must be 2000 characters or fewer." }
+        require(cleanDocumentationUrl.isBlank() || (
+            cleanDocumentationUrl.startsWith("https://") &&
+                android.net.Uri.parse(cleanDocumentationUrl).host != null
+            )
+        ) { "Documentation links must use a valid HTTPS URL." }
 
         val app = context.applicationContext
         val db = OpenTaskerApp_NoHilt.awaitDb()
@@ -199,7 +228,7 @@ internal object MarketplaceContributionClient {
             ),
             tasks = tasks.map { it.copy(projectId = DEFAULT_PROJECT_ID) },
             name = name,
-            description = description,
+            description = longDescription.ifBlank { shortDescription },
         )
         val widget = if (candidate.kind == MarketplaceContributionKind.SHORTCUT_WIDGET) {
             val style = candidate.widgetStyle ?: readStyle(app, candidate.widgetId!!)
@@ -208,7 +237,7 @@ internal object MarketplaceContributionClient {
         val bundle = base.copy(
             metadata = base.metadata.copy(
                 name = name,
-                description = description,
+                description = longDescription.ifBlank { shortDescription },
                 contributionType = candidate.kind.wireValue,
                 shortcutWidget = widget,
             ),
@@ -227,7 +256,16 @@ internal object MarketplaceContributionClient {
             .put("name", name)
             .put("publisher", login)
             .put("version", version)
-            .put("summary", description)
+            .put("summary", shortDescription)
+            .put("description", longDescription)
+            .put("tags", JSONArray(cleanTags))
+            .put("icon", icon)
+            .put("iconColor", if (iconColor.startsWith("#")) iconColor else "#$iconColor")
+            .put("backgroundColor", if (backgroundColor.startsWith("#")) backgroundColor else "#$backgroundColor")
+            .put("gradient", gradient)
+            .put("shape", shape)
+            .put("changelog", cleanChangelog)
+            .put("documentationUrl", cleanDocumentationUrl)
             .put("category", candidate.kind.category)
             .put("minimumAppVersion", BuildConfig.VERSION_NAME.substringBefore('-').substringBefore('+'))
             .put("bundleFile", "bundle.json")
