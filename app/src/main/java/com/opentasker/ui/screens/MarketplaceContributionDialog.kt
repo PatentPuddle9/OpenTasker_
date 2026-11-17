@@ -7,6 +7,14 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import com.opentasker.widget.WidgetIconCatalog
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -79,6 +87,16 @@ internal fun MarketplaceContributionDialog(
     }
     var version by remember(existingPackage?.version) { mutableStateOf(allowedVersions.first()) }
     var summary by remember(existingPackage?.id) { mutableStateOf(existingPackage?.summary.orEmpty()) }
+    var fullDescription by remember(existingPackage?.id) { mutableStateOf(existingPackage?.description.orEmpty()) }
+    var tagsText by remember(existingPackage?.id) { mutableStateOf(existingPackage?.tags?.joinToString(", ").orEmpty()) }
+    var listingIcon by remember(existingPackage?.id) { mutableStateOf(existingPackage?.icon ?: "bolt") }
+    var listingIconColor by remember(existingPackage?.id) { mutableStateOf(existingPackage?.iconColor ?: "#FFFFFF") }
+    var listingBackgroundColor by remember(existingPackage?.id) { mutableStateOf(existingPackage?.backgroundColor ?: "#6750A4") }
+    var listingGradient by remember(existingPackage?.id) { mutableStateOf(existingPackage?.gradient ?: true) }
+    var listingShape by remember(existingPackage?.id) { mutableStateOf(existingPackage?.shape ?: "squircle") }
+    var changelog by remember(existingPackage?.id) { mutableStateOf(existingPackage?.changelog.orEmpty()) }
+    var documentationUrl by remember(existingPackage?.id) { mutableStateOf(existingPackage?.documentationUrl.orEmpty()) }
+    var showIconPicker by remember { mutableStateOf(false) }
     var provider by remember { mutableStateOf("") }
     var domains by remember { mutableStateOf("") }
     var hostingCountry by remember { mutableStateOf("Unknown") }
@@ -117,6 +135,17 @@ internal fun MarketplaceContributionDialog(
         validPackageId &&
         summary.isNotBlank() &&
         summary.length <= 400 &&
+        fullDescription.length <= 4000 &&
+        changelog.length <= 2000 &&
+        listingIcon.matches(Regex("^[a-z0-9][a-z0-9-]{0,63}$")) &&
+        listingIconColor.matches(Regex("^#?[A-Fa-f0-9]{6}$")) &&
+        listingBackgroundColor.matches(Regex("^#?[A-Fa-f0-9]{6}$")) &&
+        listingShape in setOf("squircle", "rounded_square", "circle", "square", "teardrop") &&
+        tagsText.split(',', ';').map { it.trim() }.filter { it.isNotBlank() }.let { values ->
+            values.size <= 10 && values.distinctBy { it.lowercase() }.size == values.size &&
+                values.all { it.matches(Regex("^[A-Za-z0-9][A-Za-z0-9 _+-]{0,23}$")) }
+        } &&
+        (documentationUrl.isBlank() || documentationUrl.trim().startsWith("https://")) &&
         version in allowedVersions
     val validDisclosure = !requiresDisclosure || (
         provider.isNotBlank() &&
@@ -199,6 +228,15 @@ internal fun MarketplaceContributionDialog(
                     packageName = packageName,
                     version = version,
                     summary = summary,
+                    description = fullDescription,
+                    tags = tagsText.split(',', ';').map { it.trim() }.filter { it.isNotBlank() }.distinctBy { it.lowercase() },
+                    icon = listingIcon,
+                    iconColor = listingIconColor,
+                    backgroundColor = listingBackgroundColor,
+                    gradient = listingGradient,
+                    shape = listingShape,
+                    changelog = changelog,
+                    documentationUrl = documentationUrl,
                     disclosure = external,
                     previousVersion = existingPackage?.version,
                 )
@@ -210,6 +248,16 @@ internal fun MarketplaceContributionDialog(
             }
             submitting = false
         }
+    }
+
+    if (showIconPicker) {
+        ActionIconPickerDialog(
+            selectedIcon = listingIcon,
+            onIconSelected = { listingIcon = it },
+            onDismiss = { showIconPicker = false },
+            includeCustomIcons = false,
+        )
+        return
     }
 
     val title = when {
@@ -457,10 +505,132 @@ internal fun MarketplaceContributionDialog(
                                 value = summary,
                                 onValueChange = { summary = it.take(400) },
                                 label = { Text("Short description") },
-                                supportingText = { Text("${summary.length}/400") },
+                                supportingText = { Text("${summary.length}/400 · Shown on Marketplace cards") },
                                 modifier = Modifier.fillMaxWidth(),
                                 minLines = 2,
-                                maxLines = 4,
+                                maxLines = 3,
+                            )
+                            OutlinedTextField(
+                                value = fullDescription,
+                                onValueChange = { fullDescription = it.take(4000) },
+                                label = { Text("Full description") },
+                                supportingText = { Text("${fullDescription.length}/4000 · Explain what it does, how to use it, and any requirements") },
+                                modifier = Modifier.fillMaxWidth(),
+                                minLines = 4,
+                                maxLines = 8,
+                            )
+                            OutlinedTextField(
+                                value = tagsText,
+                                onValueChange = { tagsText = it.take(300) },
+                                label = { Text("Search tags") },
+                                supportingText = { Text("Separate up to 10 tags with commas · e.g. home, lighting, notifications") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                            )
+
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        MarketplaceListingIcon(
+                                            icon = listingIcon,
+                                            iconColor = listingIconColor,
+                                            backgroundColor = listingBackgroundColor,
+                                            gradient = listingGradient,
+                                            shapeKey = listingShape,
+                                            modifier = Modifier.size(64.dp),
+                                            iconSize = 30.dp,
+                                        )
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("Listing icon", style = MaterialTheme.typography.titleSmall)
+                                            Text(
+                                                "Give your package its own look in the Marketplace.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        OutlinedButton(onClick = { showIconPicker = true }) {
+                                            Text("Choose")
+                                        }
+                                    }
+                                    Text("Icon shape", style = MaterialTheme.typography.labelLarge)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        listOf(
+                                            "squircle" to "Squircle",
+                                            "rounded_square" to "Rounded",
+                                            "circle" to "Circle",
+                                            "square" to "Square",
+                                            "teardrop" to "Teardrop",
+                                        ).forEach { (key, label) ->
+                                            FilterChip(
+                                                selected = listingShape == key,
+                                                onClick = { listingShape = key },
+                                                label = { Text(label) },
+                                            )
+                                        }
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        OutlinedTextField(
+                                            value = listingIconColor,
+                                            onValueChange = { listingIconColor = it.filter { ch -> ch.isLetterOrDigit() || ch == '#' }.take(7) },
+                                            label = { Text("Symbol color") },
+                                            modifier = Modifier.weight(1f),
+                                            singleLine = true,
+                                        )
+                                        OutlinedTextField(
+                                            value = listingBackgroundColor,
+                                            onValueChange = { listingBackgroundColor = it.filter { ch -> ch.isLetterOrDigit() || ch == '#' }.take(7) },
+                                            label = { Text("Background") },
+                                            modifier = Modifier.weight(1f),
+                                            singleLine = true,
+                                        )
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("Gradient background", style = MaterialTheme.typography.bodyMedium)
+                                            Text(
+                                                "Adds depth to the icon tile.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        Switch(
+                                            checked = listingGradient,
+                                            onCheckedChange = { listingGradient = it },
+                                        )
+                                    }
+                                }
+                            }
+                            OutlinedTextField(
+                                value = changelog,
+                                onValueChange = { changelog = it.take(2000) },
+                                label = { Text("What's new in this version") },
+                                supportingText = { Text("${changelog.length}/2000 · Optional release notes") },
+                                modifier = Modifier.fillMaxWidth(),
+                                minLines = 2,
+                                maxLines = 5,
+                            )
+                            OutlinedTextField(
+                                value = documentationUrl,
+                                onValueChange = { documentationUrl = it.take(300) },
+                                label = { Text("Documentation link (optional)") },
+                                supportingText = { Text("HTTPS link to setup instructions or a guide") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                isError = documentationUrl.isNotBlank() && !documentationUrl.trim().startsWith("https://"),
                             )
                             Text(
                                 if (existingPackage == null) "Starting version" else "Choose the next version",
@@ -535,6 +705,17 @@ internal fun MarketplaceContributionDialog(
                                     Text(packageId, style = MaterialTheme.typography.labelSmall)
                                     Text("Version $version · ${selectedKind.label}")
                                     Text(summary)
+                                    if (fullDescription.isNotBlank()) Text(fullDescription)
+                                    if (tagsText.isNotBlank()) Text("Tags: $tagsText", style = MaterialTheme.typography.bodySmall)
+                                    MarketplaceListingIcon(
+                                        icon = listingIcon,
+                                        iconColor = listingIconColor,
+                                        backgroundColor = listingBackgroundColor,
+                                        gradient = listingGradient,
+                                        shapeKey = listingShape,
+                                        modifier = Modifier.size(52.dp),
+                                        iconSize = 24.dp,
+                                    )
                                     Text("${selected?.tasks?.size ?: 0} flow(s) · ${selected?.actionCount ?: 0} blocks")
                                     Text("Publisher: @${account ?: "not signed in"}")
                                 }
