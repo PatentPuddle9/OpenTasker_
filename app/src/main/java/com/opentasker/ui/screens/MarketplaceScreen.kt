@@ -118,9 +118,9 @@ internal fun MarketplaceScreen(
             errorMessage = null
             val rememberedLogin = GitHubDeviceAuth.savedLogin(appContext)
             val verifiedLogin = if (rememberedLogin != null) {
-                runCatching { GitHubDeviceAuth.verifySavedLogin(appContext) }.getOrNull()
+                runCatching { GitHubDeviceAuth.verifySavedLogin(appContext) }.getOrElse { rememberedLogin }
             } else null
-            currentGithubLogin = verifiedLogin ?: rememberedLogin
+            currentGithubLogin = verifiedLogin
             currentGithubUserId = if (verifiedLogin != null) {
                 runCatching {
                     withContext(Dispatchers.IO) { MarketplaceCommunityActions.currentUser(appContext).id.toString() }
@@ -130,6 +130,9 @@ internal fun MarketplaceScreen(
                 .onSuccess { result ->
                     catalog = result.catalog
                     fromCache = result.fromCache
+                    selectedDetailsPackage?.let { selected ->
+                        selectedDetailsPackage = result.catalog.packages.firstOrNull { it.id == selected.id }
+                    }
                     watchdogStatus = result.catalog.packages.associate { item ->
                         item.id to (
                             MarketplacePackageWatchdog.packageProtectionEnabled(appContext, item.id) to
