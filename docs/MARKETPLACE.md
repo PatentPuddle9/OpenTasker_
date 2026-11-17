@@ -57,6 +57,16 @@ Collections are stored locally on the device and allow packages to be grouped an
 
 Publishers can add up to ten FAQs, up to ten dependencies, and up to four PNG screenshots from the in-app contribution flow. The app resizes screenshots to a maximum dimension of 2048 pixels and enforces a 2 MB limit per image. The generated listing preview remains attached to the pull request, alongside any additional screenshots. Validation errors and moderator requests for changes are shown on the GitHub pull request.
 
+## Publisher dashboard and community controls
+
+The My Packages screen is a publisher dashboard. It summarizes total install events, seven-day activity, weighted average rating, and review count. Each listing includes quick access to package insights and reviews, creating a new immutable package version, and a publisher-verified deletion request. Publishers can respond publicly to reviews from the package details page; responses are limited to 800 characters and are filtered for likely contact details or credentials.
+
+Community reviews are sorted by helpfulness or recency. Users can mark another account's review helpful once and can report a review for spam, harassment, misinformation, unsafe content, or another concern. A review from an account with a recorded signed-in installation is marked as a verified installer. Publishers cannot review their own packages.
+
+Moderation remains maintainer-controlled. Trusted reviewers can hide or restore individual reviews, quarantine or restore a package version, and suspend or unsuspend a publisher through verified GitHub issue comments. Three independent reports move a review into a withheld-under-review state until a moderator acts. Quarantine and publisher suspension affect new catalogue availability; existing local imports are not remotely modified.
+
+Package pull requests accept only the expected manifest, bundle, generated preview, optional icon, and PNG screenshot files. Unexpected file types, files over 8 MB, and package versions over 20 MB are rejected before publication. High-risk action blocks remain explicitly marked high risk even after review approval.
+
 ## Offline behavior
 
 The app caches only a catalogue that has already passed signature verification. Previously imported automations remain stored locally; the marketplace is not required for them to run.
