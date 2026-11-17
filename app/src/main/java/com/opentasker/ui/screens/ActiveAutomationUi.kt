@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -651,11 +652,20 @@ fun ActiveAutomationUi(
         },
         bottomBar = {
             if (!useNavigationRail) {
-                Column {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.78f))
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                        tonalElevation = 0.dp,
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 7.dp)
+                        .navigationBarsPadding(),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    shape = RoundedCornerShape(21.dp),
+                    shadowElevation = 5.dp,
+                    tonalElevation = 1.dp,
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp, vertical = 3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(0.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         primaryNavigationScreens.forEach { destination ->
                             OpenTaskerNavigationItem(
