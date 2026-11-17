@@ -61,6 +61,7 @@ internal data class MarketplacePackage(
     val previewSha256: String = "",
     val iconAssetPath: String = "",
     val iconAssetSha256: String = "",
+    val assets: List<MarketplacePackageAsset> = emptyList(),
     val featured: Boolean = false,
     val ratingAverage: Double = 0.0,
     val ratingCount: Int = 0,
@@ -119,6 +120,15 @@ internal data class MarketplaceScreenshot(
 )
 
 @Serializable
+internal data class MarketplacePackageAsset(
+    val key: String,
+    val path: String,
+    val sha256: String,
+    val mediaType: String,
+    val sizeBytes: Int,
+)
+
+@Serializable
 internal data class MarketplaceInput(
     val key: String,
     val label: String,
@@ -152,6 +162,8 @@ internal object MarketplaceClient {
     private const val SIGNATURE_CACHE = "verified_signature"
     private const val MAX_CATALOG_BYTES = 2 * 1024 * 1024
     private const val MAX_BUNDLE_BYTES = 8 * 1024 * 1024
+    private const val MAX_PACKAGE_ASSET_BYTES = 10 * 1024 * 1024
+    private val safePackageAssetPath = Regex("""^packages/[a-z0-9][a-z0-9._-]{1,79}/[0-9]+\.[0-9]+\.[0-9]+/assets/[a-z0-9][a-z0-9._-]{0,70}\.(?:png|mp3|ogg|wav|m4a)$""")
     private const val CONNECT_TIMEOUT_MS = 15_000
     private const val READ_TIMEOUT_MS = 20_000
 
@@ -230,7 +242,10 @@ internal object MarketplaceClient {
         expectedSha256: String,
         maxBytes: Int = MAX_BUNDLE_BYTES,
     ): ByteArray = withContext(Dispatchers.IO) {
-        require(Regex("^packages/[a-z0-9][a-z0-9._-]{1,79}/[0-9]+\\\\.[0-9]+\\\\.[0-9]+/(?:bundle\\\\.json|preview\\\\.png|icon\\\\.png|screenshots/[0-9]{2}\\.png)$").matches(path)) {
+        require(
+            Regex("""^packages/[a-z0-9][a-z0-9._-]{1,79}/[0-9]+\.[0-9]+\.[0-9]+/(?:bundle\.json|preview\.png|icon\.png|screenshots/[0-9]{2}\.png|assets/[a-z0-9][a-z0-9._-]{0,70}\.(?:png|mp3|ogg|wav|m4a))$""")
+                .matches(path),
+        ) {
             "The signed catalogue contains an invalid Marketplace asset path."
         }
         require(expectedSha256.matches(Regex("^[a-fA-F0-9]{64}$"))) {
@@ -280,7 +295,43 @@ internal object MarketplaceClient {
 
         val rawBundle = rawBytes.toString(Charsets.UTF_8)
         val configuredBundle = substituteRequiredInputs(rawBundle, packageEntry.requiredInputs, inputValues)
-        val bundleObject = json.parseToJsonElement(configuredBundle) as? JsonObject
+        require(packageEntry.assets.size <= 12) { "This package declares too many content assets." }
+        require(packageEntry.assets.map { it.key }.distinct().size == packageEntry.assets.size) {
+            "The signed catalogue contains duplicate package asset keys."
+        }
+        val assetPayloads = packageEntry.assets.map { asset ->
+            require(asset.key.matches(Regex("""^asset-(?:0[1-9]|1[0-2])$"""))) {
+                "The signed catalogue contains an invalid package asset key."
+            }
+            require(safePackageAssetPath.matches(asset.path) && asset.sizeBytes in 1..MAX_PACKAGE_ASSET_BYTES) {
+                "The signed catalogue contains an invalid package asset declaration."
+            }
+            require(asset.mediaType in setOf("image/png", "audio/mpeg", "audio/ogg", "audio/wav", "audio/mp4")) {
+                "The signed catalogue contains an unsupported package media type."
+            }
+            val bytes = downloadVerifiedAsset(asset.path, asset.sha256, MAX_PACKAGE_ASSET_BYTES)
+            require(bytes.size == asset.sizeBytes) {
+                "The package asset ${asset.key} has an unexpected size."
+            }
+            MarketplacePackageAssetStorage.AssetContent(
+                key = asset.key,
+                fileName = asset.path.substringAfterLast('/'),
+                mediaType = asset.mediaType,
+                bytes = bytes,
+            )
+        }
+        val installedAssets = if (assetPayloads.isEmpty()) {
+            emptyMap()
+        } else {
+            MarketplacePackageAssetStorage.installAssets(
+                context = context.applicationContext,
+                packageId = packageEntry.id,
+                version = packageEntry.version,
+                assets = assetPayloads,
+            )
+        }
+        val rewrittenBundle = replacePackageAssetReferences(configuredBundle, installedAssets)
+        val bundleObject = json.parseToJsonElement(rewrittenBundle) as? JsonObject
             ?: error("The downloaded package is not a valid OpenTasker bundle.")
         val existingMetadata = bundleObject["metadata"] as? JsonObject ?: JsonObject(emptyMap())
         val taggedMetadata = JsonObject(
@@ -288,6 +339,34 @@ internal object MarketplaceClient {
         )
         val taggedBundle = JsonObject(bundleObject + ("metadata" to taggedMetadata))
         json.encodeToString(JsonElement.serializer(), taggedBundle)
+    }
+
+    private fun replacePackageAssetReferences(
+        bundleText: String,
+        installedAssets: Map<String, String>,
+    ): String {
+        val parsed = json.parseToJsonElement(bundleText)
+        val token = Regex("""\{\{asset:([a-z0-9][a-z0-9-]{0,31})}}""")
+        fun rewrite(element: JsonElement): JsonElement = when (element) {
+            is JsonObject -> JsonObject(element.mapValues { (_, value) -> rewrite(value) })
+            is JsonArray -> JsonArray(element.map(::rewrite))
+            is JsonPrimitive -> {
+                if (!element.isString) element else {
+                    val original = element.content
+                    require(!original.contains("{{asset:") || token.containsMatchIn(original)) {
+                        "The package contains an invalid asset reference."
+                    }
+                    val replaced = token.replace(original) { match ->
+                        installedAssets[match.groupValues[1]]
+                            ?: throw IllegalArgumentException(
+                                "The package references ${match.value}, but that file was not included.",
+                            )
+                    }
+                    JsonPrimitive(replaced)
+                }
+            }
+        }
+        return json.encodeToString(JsonElement.serializer(), rewrite(parsed))
     }
 
     private fun verifyCatalogSignature(rawCatalog: String, signatureText: String) {
