@@ -879,6 +879,10 @@ internal fun MarketplaceScreen(
                 showMyPackages = false
                 editingPackage = packageEntry
             },
+            onDetails = { packageEntry ->
+                showMyPackages = false
+                selectedDetailsPackage = packageEntry
+            },
             onDelete = { packageEntry -> requestPackageDeletion(packageEntry) },
             onOpenUrl = { url ->
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
@@ -910,17 +914,23 @@ private fun MarketplaceMyPackagesDialog(
     deletionErrorMessage: String?,
     deletionRequestUrl: String?,
     onEdit: (MarketplacePackage) -> Unit,
+    onDetails: (MarketplacePackage) -> Unit,
     onDelete: (MarketplacePackage) -> Unit,
     onOpenUrl: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var confirmingDelete by remember { mutableStateOf<MarketplacePackage?>(null) }
+    val totalDownloads = packages.sumOf { it.downloadCount }
+    val weeklyDownloads = packages.sumOf { it.weeklyDownloads }
+    val totalReviews = packages.sumOf { it.reviewCount }
+    val averageRating = packages.filter { it.ratingCount > 0 }
+        .let { rated -> if (rated.isEmpty()) 0.0 else rated.sumOf { it.ratingAverage * it.ratingCount } / rated.sumOf { it.ratingCount } }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                confirmingDelete?.let { "Delete ${it.name}?" } ?: "My published packages",
+                confirmingDelete?.let { "Delete ${it.name}?" } ?: "Publisher dashboard",
             )
         },
         text = {
@@ -952,6 +962,41 @@ private fun MarketplaceMyPackagesDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
                         )
+                        Text("Publisher insights", style = MaterialTheme.typography.titleSmall)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            listOf(
+                                "Packages" to packages.size.toString(),
+                                "Installs" to totalDownloads.toString(),
+                                "7-day" to weeklyDownloads.toString(),
+                            ).forEach { (label, value) ->
+                                Card(modifier = Modifier.weight(1f)) {
+                                    Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Text(value, style = MaterialTheme.typography.titleMedium)
+                                        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Card(modifier = Modifier.weight(1f)) {
+                                Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(if (packages.isEmpty()) "—" else String.format(java.util.Locale.ROOT, "%.2f", averageRating), style = MaterialTheme.typography.titleMedium)
+                                    Text("Average rating", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                            Card(modifier = Modifier.weight(1f)) {
+                                Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(totalReviews.toString(), style = MaterialTheme.typography.titleMedium)
+                                    Text("Reviews", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
                         if (packages.isEmpty()) {
                             Text("No published packages were found for this account.")
                         } else {
@@ -988,19 +1033,32 @@ private fun MarketplaceMyPackagesDialog(
                                                 maxLines = 2,
                                                 overflow = TextOverflow.Ellipsis,
                                             )
-                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Text(
+                                                "${packageEntry.downloadCount} installs · ${packageEntry.weeklyDownloads} this week · ${packageEntry.ratingAverage} ★ · ${packageEntry.reviewCount} reviews",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            packageEntry.reviews.firstOrNull()?.let { latest ->
+                                                Text("Latest review: ${latest.title} — ${latest.body.take(110)}", style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                            }
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            ) {
+                                                OutlinedButton(
+                                                    onClick = { onDetails(packageEntry) },
+                                                    enabled = deletingPackageId == null,
+                                                    modifier = Modifier.weight(1f),
+                                                ) { Text("Insights & reviews") }
                                                 OutlinedButton(
                                                     onClick = { onEdit(packageEntry) },
                                                     enabled = deletingPackageId == null,
-                                                ) {
-                                                    Text("Edit listing")
-                                                }
+                                                    modifier = Modifier.weight(1f),
+                                                ) { Text("New version") }
                                                 TextButton(
                                                     onClick = { confirmingDelete = packageEntry },
                                                     enabled = deletingPackageId == null,
-                                                ) {
-                                                    Text("Delete")
-                                                }
+                                                ) { Text("Delete") }
                                             }
                                         }
                                     }
