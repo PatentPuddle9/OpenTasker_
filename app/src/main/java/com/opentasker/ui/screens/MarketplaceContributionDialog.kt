@@ -19,6 +19,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -250,26 +251,26 @@ internal fun MarketplaceContributionDialog(
                         }
                     }
                 } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        listOf("Choose", "Details", "Review").forEachIndexed { index, label ->
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             Text(
-                                text = if (index == step) "● $label" else "${index + 1}. $label",
-                                modifier = Modifier.weight(1f),
-                                style = if (index == step) {
-                                    MaterialTheme.typography.labelLarge
-                                } else {
-                                    MaterialTheme.typography.labelMedium
-                                },
-                                color = if (index == step) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
+                                listOf("Choose item", "Package details", "Review & publish")[step],
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                            Text(
+                                "${step + 1} of 3",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+                        LinearProgressIndicator(
+                            progress = { (step + 1) / 3f },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
 
                     Card {
@@ -349,18 +350,22 @@ internal fun MarketplaceContributionDialog(
                             )
                             if (existingPackage == null) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedButton(
+                                    FilterChip(
+                                        selected = selectedKind == MarketplaceContributionKind.ACTION,
                                         onClick = {
                                             selectedKind = MarketplaceContributionKind.ACTION
                                             selectedKey = null
                                         },
-                                    ) { Text("Action") }
-                                    OutlinedButton(
+                                        label = { Text("Actions") },
+                                    )
+                                    FilterChip(
+                                        selected = selectedKind == MarketplaceContributionKind.SHORTCUT_WIDGET,
                                         onClick = {
                                             selectedKind = MarketplaceContributionKind.SHORTCUT_WIDGET
                                             selectedKey = null
                                         },
-                                    ) { Text("Shortcut Widget") }
+                                        label = { Text("Shortcut widgets") },
+                                    )
                                 }
                             }
                             when {
@@ -458,14 +463,16 @@ internal fun MarketplaceContributionDialog(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
                                 allowedVersions.forEach { choice ->
-                                    OutlinedButton(
+                                    FilterChip(
+                                        selected = version == choice,
                                         onClick = { version = choice },
-                                        enabled = !submitting,
-                                    ) {
-                                        Text(if (version == choice) "✓ $choice" else choice)
-                                    }
+                                        label = { Text(choice) },
+                                    )
                                 }
                             }
                             if (version !in allowedVersions) {
@@ -528,24 +535,41 @@ internal fun MarketplaceContributionDialog(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text("Included blocks", style = MaterialTheme.typography.titleSmall)
-                            selected?.tasks?.forEach { task ->
-                                Card {
-                                    Column(
-                                        modifier = Modifier.padding(10.dp),
-                                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                                    ) {
-                                        Text(task.name, style = MaterialTheme.typography.labelLarge)
+                            Card {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    selected?.tasks?.forEachIndexed { taskIndex, task ->
+                                        if (taskIndex > 0) {
+                                            Text(
+                                                task.name,
+                                                style = MaterialTheme.typography.labelLarge,
+                                            )
+                                        } else {
+                                            Text(task.name, style = MaterialTheme.typography.labelLarge)
+                                        }
                                         task.actions.forEachIndexed { index, action ->
                                             val blockName = ActionMetadataRegistry.get(action.type)
                                                 ?.let { metadata -> runCatching { context.getString(metadata.nameRes) }.getOrNull() }
                                                 ?: action.type
                                                     .split('.', '_', '-')
                                                     .joinToString(" ") { part -> part.replaceFirstChar { it.uppercase() } }
-                                            Text(
-                                                "${index + 1}. $blockName",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                Text(
+                                                    "${index + 1}",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                )
+                                                Text(
+                                                    blockName,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                )
+                                            }
                                         }
                                     }
                                 }
