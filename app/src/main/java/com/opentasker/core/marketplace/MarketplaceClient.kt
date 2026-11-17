@@ -275,6 +275,7 @@ internal object MarketplaceClient {
         downloadVerifiedAsset(packageEntry.iconAssetPath, packageEntry.iconAssetSha256, 15 * 1024 * 1024)
 
     suspend fun downloadAndConfigure(
+        context: Context,
         packageEntry: MarketplacePackage,
         inputValues: Map<String, String>,
     ): String = withContext(Dispatchers.IO) {
@@ -295,6 +296,22 @@ internal object MarketplaceClient {
 
         val rawBundle = rawBytes.toString(Charsets.UTF_8)
         val configuredBundle = substituteRequiredInputs(rawBundle, packageEntry.requiredInputs, inputValues)
+        val rewrittenBundle = resolvePackageAssetReferences(context, packageEntry, configuredBundle)
+        val bundleObject = json.parseToJsonElement(rewrittenBundle) as? JsonObject
+            ?: error("The downloaded package is not a valid OpenTasker bundle.")
+        val existingMetadata = bundleObject["metadata"] as? JsonObject ?: JsonObject(emptyMap())
+        val taggedMetadata = JsonObject(
+            existingMetadata + ("marketplacePackageId" to JsonPrimitive(packageEntry.id)),
+        )
+        val taggedBundle = JsonObject(bundleObject + ("metadata" to taggedMetadata))
+        json.encodeToString(JsonElement.serializer(), taggedBundle)
+    }
+
+    suspend fun resolvePackageAssetReferences(
+        context: Context,
+        packageEntry: MarketplacePackage,
+        payloadText: String,
+    ): String = withContext(Dispatchers.IO) {
         require(packageEntry.assets.size <= 12) { "This package declares too many content assets." }
         require(packageEntry.assets.map { it.key }.distinct().size == packageEntry.assets.size) {
             "The signed catalogue contains duplicate package asset keys."
@@ -330,15 +347,7 @@ internal object MarketplaceClient {
                 assets = assetPayloads,
             )
         }
-        val rewrittenBundle = replacePackageAssetReferences(configuredBundle, installedAssets)
-        val bundleObject = json.parseToJsonElement(rewrittenBundle) as? JsonObject
-            ?: error("The downloaded package is not a valid OpenTasker bundle.")
-        val existingMetadata = bundleObject["metadata"] as? JsonObject ?: JsonObject(emptyMap())
-        val taggedMetadata = JsonObject(
-            existingMetadata + ("marketplacePackageId" to JsonPrimitive(packageEntry.id)),
-        )
-        val taggedBundle = JsonObject(bundleObject + ("metadata" to taggedMetadata))
-        json.encodeToString(JsonElement.serializer(), taggedBundle)
+        replacePackageAssetReferences(payloadText, installedAssets)
     }
 
     private fun replacePackageAssetReferences(
