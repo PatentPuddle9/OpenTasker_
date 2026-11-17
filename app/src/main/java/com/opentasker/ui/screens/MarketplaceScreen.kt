@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Surface
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -615,10 +616,12 @@ private fun MarketplacePackageCard(
     locallyDisabled: Boolean,
     onProtectionChanged: (Boolean) -> Unit,
     onClearDisabled: () -> Unit,
+    onDetails: () -> Unit,
     onPreview: () -> Unit,
     onInstall: () -> Unit,
     onReport: () -> Unit,
 ) {
+    val highRisk = packageEntry.riskLevel.equals("high", ignoreCase = true)
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -626,10 +629,81 @@ private fun MarketplacePackageCard(
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(packageEntry.name, style = MaterialTheme.typography.titleMedium)
-            Text(packageEntry.summary, style = MaterialTheme.typography.bodyMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                MarketplaceListingIcon(
+                    icon = packageEntry.icon,
+                    iconColor = packageEntry.iconColor,
+                    backgroundColor = packageEntry.backgroundColor,
+                    gradient = packageEntry.gradient,
+                    shapeKey = packageEntry.shape,
+                    modifier = Modifier.size(64.dp),
+                    iconSize = 30.dp,
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(packageEntry.name, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "by @${packageEntry.publisher}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        "${packageEntry.category} · v${packageEntry.version}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = if (highRisk) MaterialTheme.colorScheme.errorContainer
+                    else MaterialTheme.colorScheme.secondaryContainer,
+                ) {
+                    Text(
+                        packageEntry.riskLevel.uppercase(),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (highRisk) MaterialTheme.colorScheme.onErrorContainer
+                        else MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
+            }
+
+            Text(
+                packageEntry.summary,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            if (packageEntry.tags.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    packageEntry.tags.take(8).forEach { tag ->
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                        ) {
+                            Text(
+                                tag,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+
             if (!compatible) {
                 Text(
                     "Requires OpenTasker ${packageEntry.minimumAppVersion} or newer.",
@@ -639,27 +713,15 @@ private fun MarketplacePackageCard(
             }
             if (locallyDisabled) {
                 Text(
-                    "! Disabled on this device after repeated rapid executions.",
+                    "Disabled on this device after repeated rapid executions.",
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
-            Text(
-                "${packageEntry.category} · v${packageEntry.version} · by @${packageEntry.publisher}",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall,
-            )
-
-            val highRisk = packageEntry.riskLevel.equals("high", ignoreCase = true)
-            Text(
-                text = "Risk: ${packageEntry.riskLevel.uppercase()}",
-                color = if (highRisk) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary,
-                style = MaterialTheme.typography.labelLarge,
-            )
             if (highRisk && packageEntry.reviewStatus.equals("approved", ignoreCase = true)) {
-                val reviewers = packageEntry.reviewedBy.joinToString().ifBlank { "marketplace moderators" }
+                val reviewers = packageEntry.reviewedBy.joinToString().ifBlank { "Marketplace moderators" }
                 Text(
-                    "High-risk action. Reviewed and approved by $reviewers on ${packageEntry.reviewedAt ?: "a recorded review date"}. Moderator approval does not remove the high-risk warning.",
+                    "High-risk package. Approved by $reviewers on ${packageEntry.reviewedAt ?: "the recorded review date"}. Approval does not remove the high-risk warning.",
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -674,39 +736,162 @@ private fun MarketplacePackageCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Rapid-fire protection", style = MaterialTheme.typography.bodyMedium)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Rapid-fire protection", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Locally limits repeated executions.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Switch(checked = protectionEnabled, onCheckedChange = onProtectionChanged)
             }
             if (locallyDisabled) {
                 TextButton(onClick = onClearDisabled) { Text("Clear local safety lock") }
             }
 
-            if (packageEntry.actionIds.isNotEmpty()) {
-                Text(
-                    "Actions: ${packageEntry.actionIds.joinToString()}",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-
-            packageEntry.externalDestinations.forEach { destination ->
-                ExternalDestinationDisclosure(destination)
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onPreview, enabled = !previewing && !installing) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(onClick = onDetails, modifier = Modifier.weight(1f)) {
+                    Text("Details")
+                }
+                OutlinedButton(
+                    onClick = onPreview,
+                    enabled = !previewing && !installing,
+                    modifier = Modifier.weight(1f),
+                ) {
                     Text(if (previewing) "Loading…" else "Preview")
                 }
-                Button(onClick = onInstall, enabled = !installing && !locallyDisabled && compatible) {
+                Button(
+                    onClick = onInstall,
+                    enabled = !installing && !locallyDisabled && compatible,
+                    modifier = Modifier.weight(1f),
+                ) {
                     Text(if (installing) "Checking…" else "Install")
                 }
-                TextButton(onClick = onReport) {
-                    Text("Report")
-                }
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onReport) { Text("Report listing") }
             }
         }
     }
+}
+
+@Composable
+private fun MarketplacePackageDetailsDialog(
+    packageEntry: MarketplacePackage,
+    onDismiss: () -> Unit,
+    onOpenUrl: (String) -> Unit,
+) {
+    val highRisk = packageEntry.riskLevel.equals("high", ignoreCase = true)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                MarketplaceListingIcon(
+                    icon = packageEntry.icon,
+                    iconColor = packageEntry.iconColor,
+                    backgroundColor = packageEntry.backgroundColor,
+                    gradient = packageEntry.gradient,
+                    shapeKey = packageEntry.shape,
+                    modifier = Modifier.size(56.dp),
+                    iconSize = 26.dp,
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(packageEntry.name, style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "@${packageEntry.publisher} · v${packageEntry.version}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item {
+                    Text("About", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        packageEntry.description.ifBlank { packageEntry.summary },
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    if (packageEntry.tags.isNotEmpty()) {
+                        Text(
+                            "Tags: ${packageEntry.tags.joinToString(" · ")}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+                if (packageEntry.changelog.isNotBlank()) {
+                    item {
+                        Text("What's new in v${packageEntry.version}", style = MaterialTheme.typography.titleSmall)
+                        Text(packageEntry.changelog, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                item {
+                    Text("Package information", style = MaterialTheme.typography.titleSmall)
+                    Text("Type: ${packageEntry.category}", style = MaterialTheme.typography.bodySmall)
+                    Text("Package ID: ${packageEntry.id}", style = MaterialTheme.typography.bodySmall)
+                    Text("Minimum app version: ${packageEntry.minimumAppVersion}", style = MaterialTheme.typography.bodySmall)
+                    Text("Included blocks: ${packageEntry.actionIds.size}", style = MaterialTheme.typography.bodySmall)
+                    if (packageEntry.actionIds.isNotEmpty()) {
+                        Text(packageEntry.actionIds.joinToString(), style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text("Setup fields: ${packageEntry.requiredInputs.size}", style = MaterialTheme.typography.bodySmall)
+                }
+                item {
+                    Text("Safety and review", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "Risk level: ${packageEntry.riskLevel.uppercase()}",
+                        color = if (highRisk) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary,
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                    Text(
+                        when {
+                            packageEntry.reviewStatus.equals("approved", ignoreCase = true) ->
+                                "Reviewed by ${packageEntry.reviewedBy.joinToString().ifBlank { "Marketplace moderators" }} on ${packageEntry.reviewedAt ?: "the recorded review date"}."
+                            packageEntry.reviewStatus.equals("automated", ignoreCase = true) ->
+                                "Automated package validation passed. This is not a manual security audit."
+                            else -> "Review status: ${packageEntry.reviewStatus}."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        "OpenTasker verifies the signed catalogue and package checksum. Imported profiles start disabled and still go through the normal import and permission review.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (packageEntry.externalDestinations.isNotEmpty()) {
+                    item { Text("External services", style = MaterialTheme.typography.titleSmall) }
+                    items(packageEntry.externalDestinations) { destination ->
+                        ExternalDestinationDisclosure(destination)
+                    }
+                }
+                if (packageEntry.documentationUrl.isNotBlank()) {
+                    item {
+                        TextButton(onClick = { onOpenUrl(packageEntry.documentationUrl) }) {
+                            Text("Open documentation")
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Done") }
+        },
+    )
 }
 
 @Composable
