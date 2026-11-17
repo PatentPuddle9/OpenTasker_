@@ -273,66 +273,76 @@ internal fun MarketplaceContributionDialog(
                         )
                     }
 
-                    Card {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            if (account != null) {
-                                Text("Publishing as @${account}", style = MaterialTheme.typography.labelLarge)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (account != null) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Signed in", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("@${account}", style = MaterialTheme.typography.titleSmall)
+                                }
                                 TextButton(
                                     onClick = {
                                         GitHubDeviceAuth.signOut(context)
                                         account = null
                                         challenge = null
                                     },
-                                ) { Text("Switch account") }
-                            } else {
+                                ) { Text("Switch") }
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("GitHub account", style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        "Required to publish.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                Button(
+                                    onClick = { startSignIn() },
+                                    enabled = !signingIn && GitHubDeviceAuth.isConfigured,
+                                ) {
+                                    Text(if (signingIn) "Waiting…" else "Sign in")
+                                }
+                            }
+                            if (!GitHubDeviceAuth.isConfigured) {
+                                Text(
+                                    "GitHub sign-in isn't configured in this build.",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            challenge?.let { device ->
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text("GitHub account", style = MaterialTheme.typography.titleSmall)
-                                        Text(
-                                            "Sign in to submit your package as a pull request.",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                    Button(
-                                        onClick = { startSignIn() },
-                                        enabled = !signingIn && GitHubDeviceAuth.isConfigured,
-                                    ) {
-                                        Text(if (signingIn) "Waiting…" else "Sign in")
-                                    }
-                                }
-                                if (!GitHubDeviceAuth.isConfigured) {
-                                    Text(
-                                        "Publishing isn't available in this build because GitHub sign-in isn't configured.",
-                                        color = MaterialTheme.colorScheme.error,
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
-                                }
-                                challenge?.let { device ->
-                                    Text("Enter this code on GitHub", style = MaterialTheme.typography.bodySmall)
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("Enter this code on GitHub", style = MaterialTheme.typography.labelMedium)
                                         Text(
                                             device.userCode,
                                             style = MaterialTheme.typography.headlineSmall,
                                             color = MaterialTheme.colorScheme.primary,
                                         )
-                                        OutlinedButton(onClick = {
-                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                            clipboard.setPrimaryClip(ClipData.newPlainText("GitHub device code", device.userCode))
-                                        }) {
-                                            Text("Copy")
-                                        }
                                     }
-                                    TextButton(onClick = { openUrl(device.verificationUri) }) {
-                                        Text("Open GitHub sign-in")
+                                    OutlinedButton(onClick = {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                        clipboard.setPrimaryClip(ClipData.newPlainText("GitHub device code", device.userCode))
+                                    }) {
+                                        Text("Copy code")
                                     }
+                                }
+                                TextButton(onClick = { openUrl(device.verificationUri) }) {
+                                    Text("Open GitHub")
                                 }
                             }
                         }
