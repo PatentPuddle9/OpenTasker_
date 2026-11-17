@@ -65,6 +65,46 @@ internal data class MarketplacePackage(
     val ratingAverage: Double = 0.0,
     val ratingCount: Int = 0,
     val ratingVotes: Map<String, Int> = emptyMap(),
+    val reviews: List<MarketplaceReview> = emptyList(),
+    val downloadCount: Int = 0,
+    val uniqueInstallerCount: Int = 0,
+    val weeklyDownloads: Int = 0,
+    val publishedAt: String = "",
+    val faqs: List<MarketplaceFaq> = emptyList(),
+    val dependencies: List<MarketplaceDependency> = emptyList(),
+    val screenshots: List<MarketplaceScreenshot> = emptyList(),
+)
+
+@Serializable
+internal data class MarketplaceReview(
+    val reviewId: String,
+    val userId: Long,
+    val author: String,
+    val title: String,
+    val body: String,
+    val createdAt: String = "",
+    val updatedAt: String = "",
+    val helpfulCount: Int = 0,
+    val helpfulUserIds: List<Long> = emptyList(),
+)
+
+@Serializable
+internal data class MarketplaceFaq(
+    val question: String,
+    val answer: String,
+)
+
+@Serializable
+internal data class MarketplaceDependency(
+    val id: String,
+    val minimumVersion: String,
+    val optional: Boolean = false,
+)
+
+@Serializable
+internal data class MarketplaceScreenshot(
+    val path: String,
+    val sha256: String,
 )
 
 @Serializable
