@@ -57,6 +57,12 @@ internal data class MarketplacePackage(
     val externalDestinations: List<MarketplaceExternalDestination> = emptyList(),
     val bundlePath: String,
     val bundleSha256: String,
+    val previewPath: String = "",
+    val previewSha256: String = "",
+    val iconAssetPath: String = "",
+    val iconAssetSha256: String = "",
+    val themeMode: String = "",
+    val themeAccentColor: String = "",
 )
 
 @Serializable
@@ -165,6 +171,40 @@ internal object MarketplaceClient {
             }
             OpenTaskerBundleCodec.decode(rawBytes.toString(Charsets.UTF_8))
         }
+
+    suspend fun downloadVerifiedAsset(
+        path: String,
+        expectedSha256: String,
+        maxBytes: Int = MAX_BUNDLE_BYTES,
+    ): ByteArray = withContext(Dispatchers.IO) {
+        require(Regex("^packages/[a-z0-9][a-z0-9._-]{1,79}/[0-9]+\\\\.[0-9]+\\\\.[0-9]+/(?:bundle\\\\.json|preview\\\\.png|icon\\\\.png)$").matches(path)) {
+            "The signed catalogue contains an invalid Marketplace asset path."
+        }
+        require(expectedSha256.matches(Regex("^[a-fA-F0-9]{64}$"))) {
+            "The signed catalogue contains an invalid asset checksum."
+        }
+        val bytes = readBytes("${MarketplaceTrust.CATALOG_BASE_URL}/$path", maxBytes)
+        val actual = MessageDigest.getInstance("SHA-256")
+            .digest(bytes)
+            .joinToString("") { "%02x".format(it) }
+        require(actual.equals(expectedSha256, ignoreCase = true)) {
+            "The package asset checksum does not match the signed catalogue. The download was stopped."
+        }
+        bytes
+    }
+
+    suspend fun downloadRawPackage(packageEntry: MarketplacePackage): ByteArray =
+        downloadVerifiedAsset(packageEntry.bundlePath, packageEntry.bundleSha256, MAX_BUNDLE_BYTES)
+
+    suspend fun downloadPreviewImage(packageEntry: MarketplacePackage): ByteArray? =
+        if (packageEntry.previewPath.isBlank() || packageEntry.previewSha256.isBlank()) {
+            null
+        } else {
+            downloadVerifiedAsset(packageEntry.previewPath, packageEntry.previewSha256, 2 * 1024 * 1024)
+        }
+
+    suspend fun downloadIconAsset(packageEntry: MarketplacePackage): ByteArray =
+        downloadVerifiedAsset(packageEntry.iconAssetPath, packageEntry.iconAssetSha256, 15 * 1024 * 1024)
 
     suspend fun downloadAndConfigure(
         packageEntry: MarketplacePackage,
