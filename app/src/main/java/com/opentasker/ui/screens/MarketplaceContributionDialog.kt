@@ -96,7 +96,9 @@ internal fun MarketplaceContributionDialog(
     var changelog by remember(existingPackage?.id) { mutableStateOf(existingPackage?.changelog.orEmpty()) }
     var documentationUrl by remember(existingPackage?.id) { mutableStateOf(existingPackage?.documentationUrl.orEmpty()) }
     var screenshotUris by remember(existingPackage?.id) { mutableStateOf<List<Uri>>(emptyList()) }
+    var includePackageAssets by remember(existingPackage?.id) { mutableStateOf(false) }
     var assetUris by remember(existingPackage?.id) { mutableStateOf<List<Uri>>(emptyList()) }
+    var assetSelectionMessage by remember { mutableStateOf<String?>(null) }
     var faqsText by remember(existingPackage?.id) {
         mutableStateOf(existingPackage?.faqs?.joinToString("\n") { "${it.question} | ${it.answer}" }.orEmpty())
     }
@@ -128,6 +130,11 @@ internal fun MarketplaceContributionDialog(
         contract = ActivityResultContracts.OpenMultipleDocuments(),
     ) { selectedUris ->
         assetUris = selectedUris.take(12)
+        assetSelectionMessage = if (selectedUris.size > 12) {
+            "Only the first 12 selected files were added."
+        } else {
+            null
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -291,7 +298,7 @@ internal fun MarketplaceContributionDialog(
                         )
                     },
                     screenshotUris = screenshotUris,
-                    assetUris = assetUris,
+                    assetUris = if (includePackageAssets) assetUris else emptyList(),
                 )
             }.onSuccess { pull ->
                 pullRequestNumber = pull.number
@@ -764,39 +771,84 @@ internal fun MarketplaceContributionDialog(
                                     ) {
                                         Text("Package images & audio", style = MaterialTheme.typography.titleSmall)
                                         Text(
-                                            "Optional files travel with this package version. Add up to 12 PNG/JPG/WebP images or MP3/OGG/WAV/M4A audio files. Images are converted to clean PNGs before publishing.",
+                                            "Package media is opt-in. Nothing extra is uploaded unless you turn this on and choose files.",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
-                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            OutlinedButton(onClick = {
-                                                packageAssetPicker.launch(arrayOf("image/*", "audio/*"))
-                                            }) {
-                                                Text(if (assetUris.isEmpty()) "Add files" else "Change files")
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text("Include images & audio")
+                                                Text(
+                                                    "Attach up to 12 files to this package version.",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
                                             }
-                                            if (assetUris.isNotEmpty()) {
-                                                TextButton(onClick = { assetUris = emptyList() }) { Text("Clear") }
-                                            }
-                                        }
-                                        Text("${assetUris.size}/12 selected", style = MaterialTheme.typography.labelSmall)
-                                        assetUris.forEachIndexed { index, _ ->
-                                            val token = "asset-" + (index + 1).toString().padStart(2, '0')
-                                            Text(
-                                                "{{asset:$token}}",
-                                                style = MaterialTheme.typography.labelMedium,
-                                                color = MaterialTheme.colorScheme.primary,
+                                            Switch(
+                                                checked = includePackageAssets,
+                                                onCheckedChange = { enabled ->
+                                                    includePackageAssets = enabled
+                                                    if (!enabled) {
+                                                        assetUris = emptyList()
+                                                        assetSelectionMessage = null
+                                                    }
+                                                },
                                             )
                                         }
-                                        Text(
-                                            "Use the matching reference in an Action file/audio path or a Widget Display image source. OpenTasker replaces it with the installed local file when someone installs the package.",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                        if (existingPackage?.assets?.isNotEmpty() == true && assetUris.isEmpty()) {
+                                        if (includePackageAssets) {
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                OutlinedButton(onClick = {
+                                                    packageAssetPicker.launch(arrayOf("image/*", "audio/*"))
+                                                }) {
+                                                    Text(if (assetUris.isEmpty()) "Choose files" else "Change files")
+                                                }
+                                                if (assetUris.isNotEmpty()) {
+                                                    TextButton(onClick = {
+                                                        assetUris = emptyList()
+                                                        assetSelectionMessage = null
+                                                    }) { Text("Clear") }
+                                                }
+                                            }
                                             Text(
-                                                "This is a new immutable version. Re-select any package files you want to carry forward.",
+                                                "${assetUris.size}/12 selected · PNG/JPG/WebP images and MP3/OGG/WAV/M4A audio",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            assetSelectionMessage?.let { warning ->
+                                                Text(
+                                                    warning,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.error,
+                                                )
+                                            }
+                                            assetUris.forEachIndexed { index, _ ->
+                                                val token = "asset-" + (index + 1).toString().padStart(2, '0')
+                                                Text(
+                                                    "{{asset:$token}}",
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                )
+                                            }
+                                            Text(
+                                                "Use each reference in an Action file/audio path or a Widget Display image source. OpenTasker replaces it with the installed local file.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        } else if (existingPackage?.assets?.isNotEmpty() == true) {
+                                            Text(
+                                                "The previous version included media. Turn this on and re-select any files you want to include in this new version.",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.tertiary,
+                                            )
+                                        } else {
+                                            Text(
+                                                "No extra images or audio will be included.",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
                                         }
                                     }
