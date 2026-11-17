@@ -3,6 +3,7 @@ package com.opentasker.core.marketplace
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
+import android.graphics.Bitmap
 import android.util.Base64
 import com.opentasker.app.BuildConfig
 import com.opentasker.app.OpenTaskerApp_NoHilt
@@ -11,29 +12,53 @@ import com.opentasker.core.model.Profile
 import com.opentasker.core.model.Task
 import com.opentasker.core.transfer.MarketplaceShortcutWidget
 import com.opentasker.core.transfer.OpenTaskerBundleCodec
+import com.opentasker.ui.theme.ThemeMode
+import com.opentasker.ui.theme.ThemePreference
+import com.opentasker.widget.CustomWidgetIcon
+import com.opentasker.widget.CustomWidgetIconStore
 import com.opentasker.widget.TaskWidgetProvider
+import com.opentasker.widget.WidgetDisplayConfig
+import com.opentasker.widget.WidgetDisplayProvider
+import com.opentasker.widget.WidgetDisplayStore
+import com.opentasker.widget.WidgetDisplayElementType
 import com.opentasker.widget.WidgetStyle
 import java.io.IOException
 import java.net.URLEncoder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.json.JSONArray
 import org.json.JSONObject
 
 internal enum class MarketplaceContributionKind(val label: String, val category: String, val wireValue: String) {
     ACTION("Action", "Actions", "action"),
     SHORTCUT_WIDGET("Shortcut Widget", "Shortcut Widgets", "shortcut_widget"),
+    WIDGET_DISPLAY("Widget Display", "Widget Displays", "widget_display"),
+    THEME("Theme", "Themes", "theme"),
+    CUSTOM_WIDGET_ICON("Custom Widget Icon", "Custom Widget Icons", "custom_widget_icon"),
 }
 
 internal data class MarketplaceContributionCandidate(
     val kind: MarketplaceContributionKind,
-    val profile: Profile,
-    val tasks: List<Task>,
+    val profile: Profile? = null,
+    val tasks: List<Task> = emptyList(),
     val widgetId: Int? = null,
     val widgetStyle: WidgetStyle? = null,
+    val widgetDisplayId: Int? = null,
+    val widgetDisplayConfig: WidgetDisplayConfig? = null,
+    val customIcon: CustomWidgetIcon? = null,
+    val customIconBitmap: Bitmap? = null,
+    val themeMode: ThemeMode? = null,
+    val themeAccentColor: String? = null,
 ) {
-    val key: String get() = kind.wireValue + ":" + profile.id + ":" + (widgetId ?: 0)
-    val name: String get() = profile.name
+    val key: String get() = kind.wireValue + ":" + (profile?.id ?: 0L) + ":" +
+        (widgetId ?: widgetDisplayId ?: customIcon?.id ?: 0)
+    val name: String get() = profile?.name
+        ?: customIcon?.name
+        ?: widgetDisplayConfig?.states?.firstOrNull()?.title?.takeIf { it.isNotBlank() }
+        ?: if (kind == MarketplaceContributionKind.THEME) "Current appearance" else kind.label
     val actionCount: Int get() = tasks.sumOf { it.actions.size }
 }
 
@@ -96,7 +121,13 @@ internal object MarketplaceContributionClient {
                     tasks += decoded.value
                 }
                 if (tasks.isNotEmpty() && tasks.any { it.actions.isNotEmpty() }) {
-                    result += MarketplaceContributionCandidate(kind, profile, tasks, widgetId, style)
+                    result += MarketplaceContributionCandidate(
+                        kind = kind,
+                        profile = profile,
+                        tasks = tasks,
+                        widgetId = widgetId,
+                        widgetStyle = style,
+                    )
                 }
             }
 
@@ -120,6 +151,33 @@ internal object MarketplaceContributionClient {
                 )
                 append(profile, MarketplaceContributionKind.SHORTCUT_WIDGET, id, style)
             }
+
+            WidgetDisplayProvider.instances(app).forEach { instance ->
+                val config = WidgetDisplayStore.load(app, instance.widgetId)
+                result += MarketplaceContributionCandidate(
+                    kind = MarketplaceContributionKind.WIDGET_DISPLAY,
+                    widgetDisplayId = instance.widgetId,
+                    widgetDisplayConfig = config,
+                )
+            }
+
+            val currentMode = ThemePreference.observe(app).first()
+            val currentAccent = ThemePreference.observeAccentColor(app).first()
+            result += MarketplaceContributionCandidate(
+                kind = MarketplaceContributionKind.THEME,
+                themeMode = currentMode,
+                themeAccentColor = currentAccent,
+            )
+
+            CustomWidgetIconStore.observe(app).value.forEach { icon ->
+                val bitmap = CustomWidgetIconStore.loadBitmap(app, icon, 1024) ?: return@forEach
+                result += MarketplaceContributionCandidate(
+                    kind = MarketplaceContributionKind.CUSTOM_WIDGET_ICON,
+                    customIcon = icon,
+                    customIconBitmap = bitmap,
+                )
+            }
+
             result.sortedWith(compareBy<MarketplaceContributionCandidate> { it.kind.ordinal }.thenBy { it.name.lowercase() })
         }
 
