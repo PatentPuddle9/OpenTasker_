@@ -17,6 +17,8 @@ internal object MarketplaceCommunityActions {
     private const val REVIEW_MARKER = "<!-- opentasker-marketplace-review:v1 -->"
     private const val HELPFUL_MARKER = "<!-- opentasker-marketplace-helpful:v1 -->"
     private const val DOWNLOAD_MARKER = "<!-- opentasker-marketplace-download:v1 -->"
+    private const val PUBLISHER_RESPONSE_MARKER = "<!-- opentasker-marketplace-publisher-response:v1 -->"
+    private const val REVIEW_REPORT_MARKER = "<!-- opentasker-marketplace-review-report:v1 -->"
     private val curatorLogins = setOf("PatentPuddle9")
 
     fun canFeaturePackages(login: String?): Boolean =
@@ -150,6 +152,57 @@ internal object MarketplaceCommunityActions {
             "[Marketplace install] $packageId",
             DOWNLOAD_MARKER,
             JSONObject().put("packageId", packageId).put("version", version),
+        )
+    }
+
+
+    suspend fun submitPublisherResponse(
+        context: Context,
+        packageId: String,
+        publisher: String,
+        reviewUserId: Long,
+        response: String,
+    ): String = withContext(Dispatchers.IO) {
+        require(reviewUserId > 0L) { "The review reference is invalid." }
+        require(response.trim().isNotEmpty() && response.length <= 800) {
+            "Write between 1 and 800 characters."
+        }
+        val token = GitHubDeviceAuth.accessToken(context.applicationContext)
+        val user = GitHubDeviceAuth.apiRequestBlocking(token, "GET", "/user")
+        val login = user.optString("login").trim()
+        require(login.isNotBlank() && login.equals(publisher, ignoreCase = true)) {
+            "Only the package publisher can respond to its reviews."
+        }
+        createCommunityIssue(
+            token,
+            "[Marketplace publisher response] $packageId",
+            PUBLISHER_RESPONSE_MARKER,
+            JSONObject()
+                .put("packageId", packageId)
+                .put("reviewUserId", reviewUserId)
+                .put("response", response.trim()),
+        )
+    }
+
+    suspend fun reportReview(
+        context: Context,
+        packageId: String,
+        reviewUserId: Long,
+        reason: String,
+    ): String = withContext(Dispatchers.IO) {
+        require(reviewUserId > 0L) { "The review reference is invalid." }
+        require(reason in setOf("spam", "harassment", "misinformation", "unsafe", "other")) {
+            "Choose a valid report reason."
+        }
+        val token = GitHubDeviceAuth.accessToken(context.applicationContext)
+        createCommunityIssue(
+            token,
+            "[Marketplace review report] $packageId",
+            REVIEW_REPORT_MARKER,
+            JSONObject()
+                .put("packageId", packageId)
+                .put("reviewUserId", reviewUserId)
+                .put("reason", reason),
         )
     }
 
