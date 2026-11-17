@@ -35,6 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.opentasker.core.marketplace.MarketplaceClient
+import com.opentasker.core.marketplace.GitHubDeviceAuth
+import com.opentasker.core.marketplace.MarketplaceContributionClient
 import com.opentasker.core.marketplace.MarketplaceCatalog
 import com.opentasker.core.marketplace.MarketplaceExternalDestination
 import com.opentasker.core.marketplace.MarketplaceInput
@@ -67,6 +69,13 @@ internal fun MarketplaceScreen(
     var previewingPackageId by remember { mutableStateOf<String?>(null) }
     var previewError by remember { mutableStateOf<String?>(null) }
     var watchdogStatus by remember { mutableStateOf<Map<String, Pair<Boolean, Boolean>>>(emptyMap()) }
+    var showMyPackages by remember { mutableStateOf(false) }
+    var managedAccount by remember { mutableStateOf<String?>(null) }
+    var checkingManagedAccount by remember { mutableStateOf(false) }
+    var editingPackage by remember { mutableStateOf<MarketplacePackage?>(null) }
+    var deletingPackageId by remember { mutableStateOf<String?>(null) }
+    var deletionErrorMessage by remember { mutableStateOf<String?>(null) }
+    var deletionRequestUrl by remember { mutableStateOf<String?>(null) }
 
     fun refresh() {
         scope.launch {
@@ -103,6 +112,33 @@ internal fun MarketplaceScreen(
                 errorMessage = error.message ?: "Package download or validation failed."
             }
             installingPackageId = null
+        }
+    }
+
+    fun openMyPackages() {
+        scope.launch {
+            checkingManagedAccount = true
+            deletionErrorMessage = null
+            deletionRequestUrl = null
+            managedAccount = runCatching { GitHubDeviceAuth.verifySavedLogin(appContext) }.getOrNull()
+            showMyPackages = true
+            checkingManagedAccount = false
+        }
+    }
+
+    fun requestPackageDeletion(packageEntry: MarketplacePackage) {
+        scope.launch {
+            deletingPackageId = packageEntry.id
+            deletionErrorMessage = null
+            deletionRequestUrl = null
+            runCatching {
+                MarketplaceContributionClient.requestDeletion(context, packageEntry)
+            }.onSuccess { request ->
+                deletionRequestUrl = request.url
+            }.onFailure { error ->
+                deletionErrorMessage = error.message ?: "Couldn't submit the deletion request."
+            }
+            deletingPackageId = null
         }
     }
 
@@ -152,6 +188,12 @@ internal fun MarketplaceScreen(
                         onClick = { showContributionDialog = true },
                     ) {
                         Text("Contribute")
+                    }
+                    OutlinedButton(
+                        onClick = { openMyPackages() },
+                        enabled = !checkingManagedAccount,
+                    ) {
+                        Text(if (checkingManagedAccount) "Loading…" else "My Packages")
                     }
                 }
                 if (fromCache) {
@@ -270,7 +312,194 @@ internal fun MarketplaceScreen(
     if (showContributionDialog) {
         MarketplaceContributionDialog(onDismiss = { showContributionDialog = false })
     }
+
+    if (showMyPackages) {
+        val ownedPackages = remember(catalog, managedAccount) {
+            val login = managedAccount
+            if (login.isNullOrBlank()) {
+                emptyList()
+            } else {
+                catalog?.packages.orEmpty()
+                    .filter { it.publisher.equals(login, ignoreCase = true) }
+                    .groupBy { it.id }
+                    .values
+                    .mapNotNull { versions -> versions.maxByOrNull { marketplaceVersionKey(it.version) } }
+                    .sortedBy { it.name.lowercase() }
+            }
+        }
+        MarketplaceMyPackagesDialog(
+            account = managedAccount,
+            packages = ownedPackages,
+            checkingAccount = checkingManagedAccount,
+            deletingPackageId = deletingPackageId,
+            deletionErrorMessage = deletionErrorMessage,
+            deletionRequestUrl = deletionRequestUrl,
+            onEdit = { packageEntry ->
+                showMyPackages = false
+                editingPackage = packageEntry
+            },
+            onDelete = { packageEntry -> requestPackageDeletion(packageEntry) },
+            onOpenUrl = { url ->
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+            },
+            onDismiss = {
+                showMyPackages = false
+                refresh()
+            },
+        )
+    }
+
+    editingPackage?.let { packageEntry ->
+        MarketplaceContributionDialog(
+            existingPackage = packageEntry,
+            onDismiss = {
+                editingPackage = null
+                refresh()
+            },
+        )
+    }
 }
+
+@Composable
+private fun MarketplaceMyPackagesDialog(
+    account: String?,
+    packages: List<MarketplacePackage>,
+    checkingAccount: Boolean,
+    deletingPackageId: String?,
+    deletionErrorMessage: String?,
+    deletionRequestUrl: String?,
+    onEdit: (MarketplacePackage) -> Unit,
+    onDelete: (MarketplacePackage) -> Unit,
+    onOpenUrl: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var confirmingDelete by remember { mutableStateOf<MarketplacePackage?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                confirmingDelete?.let { "Delete ${it.name}?" } ?: "My published packages",
+            )
+        },
+        text = {
+            if (confirmingDelete != null) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "This immediately withdraws the package from the Marketplace without a review. People who already installed it keep their copy; it won't be removed from their devices.",
+                    )
+                    Text(
+                        "New users will no longer be able to find or install it. This package ID cannot be reused after deletion.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (deletingPackageId == confirmingDelete?.id) {
+                        CircularProgressIndicator()
+                        Text("Submitting publisher-verified deletion request…")
+                    }
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (checkingAccount) {
+                        CircularProgressIndicator()
+                        Text("Checking your GitHub account…")
+                    } else if (account == null) {
+                        Text("Sign in with GitHub in Settings → Account to manage your published packages.")
+                    } else {
+                        Text(
+                            "Signed in as @${account}. Only packages published by this account are shown.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        if (packages.isEmpty()) {
+                            Text("No published packages were found for this account.")
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 440.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                items(packages, key = { it.id }) { packageEntry ->
+                                    Card(modifier = Modifier.fillMaxWidth()) {
+                                        Column(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                                        ) {
+                                            Text(packageEntry.name, style = MaterialTheme.typography.titleSmall)
+                                            Text(
+                                                "${packageEntry.id} · v${packageEntry.version} · ${packageEntry.category}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                OutlinedButton(
+                                                    onClick = { onEdit(packageEntry) },
+                                                    enabled = deletingPackageId == null,
+                                                ) {
+                                                    Text("Edit")
+                                                }
+                                                TextButton(
+                                                    onClick = { confirmingDelete = packageEntry },
+                                                    enabled = deletingPackageId == null,
+                                                ) {
+                                                    Text("Delete")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (deletingPackageId != null) {
+                        Text("Deletion request is being processed.")
+                    }
+                    deletionErrorMessage?.let { message ->
+                        Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                    deletionRequestUrl?.let { url ->
+                        Text(
+                            "Deletion request submitted. The Marketplace will automatically withdraw the listing; existing installs remain untouched.",
+                            color = MaterialTheme.colorScheme.tertiary,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        TextButton(onClick = { onOpenUrl(url) }) { Text("View deletion request") }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (confirmingDelete != null) {
+                Button(
+                    onClick = {
+                        confirmingDelete?.let(onDelete)
+                        confirmingDelete = null
+                    },
+                    enabled = deletingPackageId == null,
+                ) {
+                    Text("Delete package")
+                }
+            } else {
+                TextButton(onClick = onDismiss) { Text("Done") }
+            }
+        },
+        dismissButton = {
+            if (confirmingDelete != null) {
+                TextButton(onClick = { confirmingDelete = null }, enabled = deletingPackageId == null) {
+                    Text("Cancel")
+                }
+            }
+        },
+    )
+}
+
+private fun marketplaceVersionKey(version: String): List<Int> =
+    version.substringBefore("-").substringBefore("+")
+        .split(".")
+        .take(3)
+        .map { it.toIntOrNull() ?: 0 }
+        .let { parts -> parts + List((3 - parts.size).coerceAtLeast(0)) { 0 } }
 
 @Composable
 private fun MarketplacePackageCard(
