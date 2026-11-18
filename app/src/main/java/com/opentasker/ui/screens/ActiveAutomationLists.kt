@@ -176,11 +176,10 @@ internal fun ProfilesScreen(
     val activeCount = profiles.count { it.enabled && !it.requiresRiskAcknowledgement }
     val pausedCount = profiles.size - activeCount
     val triggerCount = profiles.sumOf { it.contexts.size }
-    // Cache the backing execution records once; a long Action list should not be rescanned for
-    // every row while Compose is scrolling.
     val tasksById = remember(allTasks) { allTasks.associateBy(Task::id) }
 
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 164.dp),
         modifier = Modifier.fillMaxSize().padding(contentPadding),
         contentPadding = PaddingValues(
             start = DesignSystem.Screen.horizontalPadding,
@@ -188,12 +187,15 @@ internal fun ProfilesScreen(
             top = 18.dp,
             bottom = 112.dp,
         ),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
+        verticalArrangement = Arrangement.spacedBy(11.dp),
     ) {
         if (storageDecodeIssues.isNotEmpty()) {
-            item { StorageDecodeWarningCard(storageDecodeIssues) }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                StorageDecodeWarningCard(storageDecodeIssues)
+            }
         }
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -278,7 +280,7 @@ internal fun ProfilesScreen(
                 }
             }
         }
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -316,7 +318,7 @@ internal fun ProfilesScreen(
                 )
             }
         }
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 item {
                     FilterChip(
@@ -359,7 +361,7 @@ internal fun ProfilesScreen(
                 }
             }
         }
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -381,7 +383,7 @@ internal fun ProfilesScreen(
             }
         }
         if (filteredProfiles.isEmpty()) {
-            item {
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 InlineNotice(
                     title = stringResource(R.string.workspace_no_matching_profiles),
                     body = stringResource(R.string.workspace_no_matching_profiles_body),
@@ -521,75 +523,95 @@ private fun ProfileCard(
         shape = RoundedCornerShape(17.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp, pressedElevation = 2.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 13.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(13.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                shape = RoundedCornerShape(13.dp),
-                modifier = Modifier.size(50.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
             ) {
-                IconButton(
-                    onClick = onRun,
-                    enabled = testEnabled,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .semantics { this.contentDescription = testDescription },
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.size(54.dp),
                 ) {
-                    WidgetIconImage(
-                        iconKey = profile.icon,
-                        contentDescription = null,
-                        tint = if (profile.enabled) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(25.dp),
+                    IconButton(
+                        onClick = onRun,
+                        enabled = testEnabled,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .semantics { this.contentDescription = testDescription },
+                    ) {
+                        WidgetIconImage(
+                            iconKey = profile.icon,
+                            contentDescription = null,
+                            tint = if (profile.enabled) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(27.dp),
+                        )
+                    }
+                }
+                if (!widgetOwned) {
+                    ProfileActionsMenu(
+                        contentDescription = stringResource(R.string.a11y_duplicate_profile, profile.name),
+                        editDescription = stringResource(R.string.a11y_edit_profile, profile.name),
+                        canUndo = canUndo,
+                        canRedo = canRedo,
+                        onEdit = onEdit,
+                        onPreflight = onPreflight,
+                        onTest = onRun,
+                        testEnabled = testEnabled,
+                        onDuplicate = onDuplicate,
+                        onUndo = onUndo,
+                        onRedo = onRedo,
+                        onDelete = onDelete,
                     )
                 }
             }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
                     profile.name,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    "$actionCount steps  ·  ${profile.contexts.size} triggers",
+                    "$actionCount steps",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(7.dp),
-                ) {
-                    StatusPill(profileState, statusColor)
-                    if (widgetOwned) StatusPill("Widget", MaterialTheme.colorScheme.tertiary)
-                }
             }
-            if (!widgetOwned) {
-                ProfileActionsMenu(
-                    contentDescription = stringResource(R.string.a11y_duplicate_profile, profile.name),
-                    editDescription = stringResource(R.string.a11y_edit_profile, profile.name),
-                    canUndo = canUndo,
-                    canRedo = canRedo,
-                    onEdit = onEdit,
-                    onPreflight = onPreflight,
-                    onTest = onRun,
-                    testEnabled = testEnabled,
-                    onDuplicate = onDuplicate,
-                    onUndo = onUndo,
-                    onRedo = onRedo,
-                    onDelete = onDelete,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                StatusPill(profileState, statusColor)
+                if (widgetOwned) StatusPill("Widget", MaterialTheme.colorScheme.tertiary)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "${profile.contexts.size} triggers",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+                Text(
+                    "TAP ICON TO TEST",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 8.sp,
+                        letterSpacing = 0.45.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
+                    maxLines = 1,
                 )
             }
         }
