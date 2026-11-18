@@ -3,6 +3,7 @@ package com.opentasker.ui.screens
 import com.opentasker.ui.icons.Icons
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,8 +18,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -43,6 +46,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.opentasker.app.R
 import com.opentasker.core.model.Variable
 import com.opentasker.core.model.VariableNamePolicy
@@ -101,78 +105,183 @@ fun VariablesScreen(
         }
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(contentPadding),
-        contentPadding = PaddingValues(DesignSystem.Screen.horizontalPadding),
-        verticalArrangement = Arrangement.spacedBy(DesignSystem.Screen.cardGap),
+    val secretCount = variables.count { it.isSecret }
+    val visibleCount = filtered.size
+    Box(
+        modifier = Modifier.fillMaxSize().padding(contentPadding),
     ) {
-        item {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                label = { Text(stringResource(R.string.variables_search_label)) },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.variables_search_label)) },
-                trailingIcon = if (searchQuery.isNotBlank()) {
-                    {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.variables_search_clear))
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = DesignSystem.Screen.horizontalPadding,
+                end = DesignSystem.Screen.horizontalPadding,
+                top = 18.dp,
+                bottom = 112.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Bottom,
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(3.dp),
+                        ) {
+                            Text(
+                                "DATA",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    letterSpacing = 1.2.sp,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                ),
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                "Variable library",
+                                style = MaterialTheme.typography.headlineSmall.copy(
+                                    fontSize = 25.sp,
+                                    letterSpacing = (-0.6).sp,
+                                ),
+                            )
+                            Text(
+                                "Reusable values for your automations.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Text(
+                            "$visibleCount / ${variables.size}",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 4.dp),
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(9.dp),
+                    ) {
+                        listOf(
+                            Triple(variables.size.toString(), "TOTAL", MaterialTheme.colorScheme.onSurface),
+                            Triple((variables.size - secretCount).toString(), "STANDARD", MaterialTheme.colorScheme.primary),
+                            Triple(secretCount.toString(), "PRIVATE", MaterialTheme.colorScheme.tertiary),
+                        ).forEach { (value, label, tint) ->
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                                shape = RoundedCornerShape(13.dp),
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
+                                    Text(
+                                        value,
+                                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
+                                        color = tint,
+                                    )
+                                    Text(
+                                        label,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = 8.sp,
+                                            letterSpacing = 0.45.sp,
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                    )
+                                }
+                            }
                         }
                     }
-                } else {
-                    null
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(DesignSystem.Radii.md),
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-        if (filtered.isEmpty()) {
+                }
+            }
             item {
-                VariableEmptyState(
-                    title = if (variables.isEmpty()) stringResource(R.string.empty_variables_title) else stringResource(R.string.empty_variables_search),
-                    body = if (variables.isEmpty()) {
-                        stringResource(R.string.empty_variables_body)
-                    } else {
-                        stringResource(R.string.empty_variables_search_body)
-                    },
-                    onCreate = if (variables.isEmpty()) {
-                        { showCreateDialog = true }
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text(stringResource(R.string.variables_search_label)) },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.variables_search_label)) },
+                    trailingIcon = if (searchQuery.isNotBlank()) {
+                        {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.variables_search_clear))
+                            }
+                        }
                     } else {
                         null
                     },
+                    singleLine = true,
+                    shape = RoundedCornerShape(13.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
-        } else {
-            items(filtered, key = { "${it.projectId}:${it.name}" }) { variable ->
-                VariableRow(
-                    variable = variable,
-                    onEdit = {
-                        editTargetName = variable.name
-                        editTargetProjectId = variable.projectId
-                    },
-                    onDelete = {
-                        pendingDeleteName = variable.name
-                        pendingDeleteProjectId = variable.projectId
-                    },
-                )
-            }
-        }
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = DesignSystem.Spacing.md),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                Button(
-                    onClick = { showCreateDialog = true },
-                    shape = RoundedCornerShape(DesignSystem.Radii.md),
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 3.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.variables_create))
-                    Text(stringResource(R.string.variables_create), modifier = Modifier.padding(start = 6.dp))
+                    Text(
+                        "SAVED VARIABLES",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            letterSpacing = 0.9.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        ),
+                    )
+                    Text(
+                        "$visibleCount shown",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            if (filtered.isEmpty()) {
+                item {
+                    VariableEmptyState(
+                        title = if (variables.isEmpty()) stringResource(R.string.empty_variables_title) else stringResource(R.string.empty_variables_search),
+                        body = if (variables.isEmpty()) {
+                            stringResource(R.string.empty_variables_body)
+                        } else {
+                            stringResource(R.string.empty_variables_search_body)
+                        },
+                        onCreate = if (variables.isEmpty()) {
+                            { showCreateDialog = true }
+                        } else {
+                            null
+                        },
+                    )
+                }
+            } else {
+                items(filtered, key = { "${it.projectId}:${it.name}" }) { variable ->
+                    VariableRow(
+                        variable = variable,
+                        onEdit = {
+                            editTargetName = variable.name
+                            editTargetProjectId = variable.projectId
+                        },
+                        onDelete = {
+                            pendingDeleteName = variable.name
+                            pendingDeleteProjectId = variable.projectId
+                        },
+                    )
                 }
             }
         }
+        ExtendedFloatingActionButton(
+            onClick = { showCreateDialog = true },
+            icon = { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.variables_create)) },
+            text = { Text(stringResource(R.string.variables_create)) },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(
+                    end = DesignSystem.Screen.horizontalPadding,
+                    bottom = 16.dp,
+                ),
+            shape = RoundedCornerShape(15.dp),
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+        )
     }
 
     val editTarget = remember(variables, editTargetName, editTargetProjectId) {
