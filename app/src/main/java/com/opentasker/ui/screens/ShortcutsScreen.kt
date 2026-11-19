@@ -119,42 +119,29 @@ internal fun ShortcutsScreen(
 
     if (widgets.isEmpty()) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 24.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(contentPadding)
+                .padding(horizontal = DesignSystem.Screen.horizontalPadding),
             horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.Center,
         ) {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                shape = RoundedCornerShape(22.dp),
-                modifier = Modifier.size(76.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Outlined.Widgets,
-                        contentDescription = null,
-                        modifier = Modifier.size(34.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-            Spacer(Modifier.size(22.dp))
-            Text(
-                "YOUR HOME SCREEN",
-                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.2.sp),
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(Modifier.size(6.dp))
-            Text("No widgets yet", style = MaterialTheme.typography.headlineSmall)
-            Spacer(Modifier.size(6.dp))
-            Text(
-                "Put your most-used Actions one tap away, or create a Widget Display for live information.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Icon(
+                Icons.Outlined.Widgets,
+                contentDescription = null,
+                modifier = Modifier.size(38.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.size(18.dp))
             Text(
-                "Use Create below to add your first widget.",
-                style = MaterialTheme.typography.labelMedium,
+                "No widgets yet",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.size(5.dp))
+            Text(
+                "Add an Action shortcut or a Widget Display to your home screen.",
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -164,89 +151,17 @@ internal fun ShortcutsScreen(
             contentPadding = PaddingValues(
                 start = DesignSystem.Screen.horizontalPadding,
                 end = DesignSystem.Screen.horizontalPadding,
-                top = 18.dp,
-                bottom = 112.dp,
+                top = 12.dp,
+                bottom = 104.dp,
             ),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Bottom,
-                    ) {
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(
-                                "HOME SCREEN",
-                                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.2.sp),
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                            Text(
-                                "Your widgets",
-                                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 25.sp),
-                            )
-                            Text(
-                                "Quick access, right where you need it.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Text(
-                            "${widgets.size} ITEMS",
-                            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.6.sp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 4.dp),
-                        )
-                    }
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    "ACTION SHORTCUTS",
-                                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.55.sp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Text(
-                                    widgets.count { it.type == OpenTaskerWidgetType.ACTION_SHORTCUT }.toString(),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                            }
-                            Box(
-                                Modifier.width(1.dp).size(height = 34.dp, width = 1.dp)
-                                    .background(MaterialTheme.colorScheme.outlineVariant),
-                            )
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    "WIDGET DISPLAYS",
-                                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.55.sp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Text(
-                                    widgets.count { it.type == OpenTaskerWidgetType.DISPLAY }.toString(),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            item {
                 Text(
-                    "INSTALLED WIDGETS",
-                    style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.0.sp),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(top = 5.dp),
+                    "Manage the widgets installed on your home screen.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 5.dp),
                 )
             }
             items(widgets, key = { "${it.type.name}_${it.widgetId}" }) { widget ->
@@ -265,63 +180,77 @@ internal fun ShortcutsScreen(
                 }
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                    shape = RoundedCornerShape(17.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    ),
+                    border = BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                    ),
+                    shape = RoundedCornerShape(14.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(13.dp),
-                        horizontalArrangement = Arrangement.spacedBy(13.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 13.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Surface(
-                            modifier = Modifier.size(62.dp),
+                            modifier = Modifier.size(48.dp),
                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(11.dp),
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 WidgetIconImage(
                                     iconKey = widget.icon,
                                     contentDescription = widget.name,
                                     tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(32.dp),
+                                    modifier = Modifier.size(25.dp),
                                 )
                             }
                         }
                         Column(
                             modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(3.dp),
                         ) {
                             Text(
                                 widget.name,
                                 style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                             Text(
-                                if (widget.type == OpenTaskerWidgetType.DISPLAY) "WIDGET DISPLAY" else "ACTION SHORTCUT",
-                                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.6.sp),
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                            Text(
-                                "${widget.variantLabel}  ·  #${widget.widgetId}",
+                                if (widget.type == OpenTaskerWidgetType.DISPLAY) {
+                                    "Widget Display · ${widget.variantLabel}"
+                                } else {
+                                    "Action shortcut · ${widget.variantLabel}"
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            IconButton(onClick = { menuExpanded = true }) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = "Widget options")
+                        Box {
+                            IconButton(
+                                onClick = { menuExpanded = true },
+                                modifier = Modifier.size(40.dp),
+                            ) {
+                                Icon(
+                                    Icons.Filled.MoreVert,
+                                    contentDescription = "Widget options",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                             androidx.compose.material3.DropdownMenu(
                                 expanded = menuExpanded,
                                 onDismissRequest = { menuExpanded = false },
                             ) {
                                 androidx.compose.material3.DropdownMenuItem(
-                                    text = { Text("Edit widget") },
+                                    text = { Text("Edit") },
                                     leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
                                     onClick = {
                                         menuExpanded = false
@@ -329,7 +258,14 @@ internal fun ShortcutsScreen(
                                     },
                                 )
                                 androidx.compose.material3.DropdownMenuItem(
-                                    text = { Text("Delete widget") },
+                                    text = { Text("Delete") },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Filled.Delete,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                        )
+                                    },
                                     onClick = {
                                         menuExpanded = false
                                         pendingDelete = widget
