@@ -612,6 +612,7 @@ fun ActiveAutomationUi(
         },
         floatingActionButton = {
             when (screen) {
+                OpenTaskerScreen.Home -> Unit
                 OpenTaskerScreen.Actions -> {
                     val createLabel = stringResource(R.string.profile_new)
                     ExtendedFloatingActionButton(

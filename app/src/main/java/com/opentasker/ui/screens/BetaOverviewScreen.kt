@@ -331,7 +331,7 @@ internal fun BetaOverviewScreen(
                         )
                     }
                     Icon(
-                        Icons.Filled.ArrowForward,
+                        Icons.Filled.ChevronRight,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

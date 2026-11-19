@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 
-// Command Center palette with a customizable sage accent and quiet graphite surfaces.
+// Signal-blue workspace palette with a customizable accent and deep midnight surfaces.
 private val SignalBlue = Color(0xFF6BCFF2)
 private val SignalBluePale = Color(0xFFB7E9FA)
 private val SignalOrange = Color(0xFFFFB86B)
@@ -38,17 +38,17 @@ private val WorkshopOutline = Color(0xFF526C88)
 
 private val Graphite = darkColorScheme(
     primary = SignalBlue,
-    onPrimary = Color(0xFF1B241B),
-    primaryContainer = Color(0xFF303A30),
-    onPrimaryContainer = Color(0xFFE6ECE1),
+    onPrimary = Color(0xFF071722),
+    primaryContainer = Color(0xFF153B55),
+    onPrimaryContainer = Color(0xFFEAF5FC),
     secondary = SignalOrange,
-    onSecondary = Color(0xFF262316),
-    secondaryContainer = Color(0xFF332E22),
-    onSecondaryContainer = Color(0xFFE8DFCC),
+    onSecondary = Color(0xFF2B1A08),
+    secondaryContainer = Color(0xFF3D2B19),
+    onSecondaryContainer = Color(0xFFFFE6C8),
     tertiary = SignalBluePale,
-    onTertiary = Color(0xFF20291F),
-    tertiaryContainer = Color(0xFF343D33),
-    onTertiaryContainer = Color(0xFFE6ECE1),
+    onTertiary = Color(0xFF09212A),
+    tertiaryContainer = Color(0xFF163B49),
+    onTertiaryContainer = Color(0xFFD8F4FC),
     error = SignalRed,
     onError = Color(0xFF350F0C),
     errorContainer = Color(0xFF481B17),
@@ -60,7 +60,7 @@ private val Graphite = darkColorScheme(
     surfaceVariant = WorkshopNavy,
     onSurfaceVariant = TextSecondary,
     outline = WorkshopOutline,
-    outlineVariant = Color(0xFF303A30),
+    outlineVariant = Color(0xFF2A4058),
     // AlertDialog uses surfaceContainerHigh and DropdownMenu uses surfaceContainer. Leaving these
     // unset fell back to Material's mismatched default surface tokens, so every editor dialog and menu
     // in this dialog-heavy app rendered off-palette.
@@ -68,8 +68,8 @@ private val Graphite = darkColorScheme(
     surfaceContainerLow = WorkshopNavy,
     surfaceContainer = WorkshopSurface,
     surfaceContainerHigh = WorkshopElevated,
-    surfaceContainerHighest = Color(0xFF333C33),
-    surfaceBright = Color(0xFF3C463B),
+    surfaceContainerHighest = Color(0xFF2B4058),
+    surfaceBright = Color(0xFF344D68),
     surfaceDim = WorkshopBackground,
 )
 
@@ -82,17 +82,17 @@ private val Graphite = darkColorScheme(
  */
 private val Amoled = darkColorScheme(
     primary = SignalBlue,
-    onPrimary = Color(0xFF1B241B),
-    primaryContainer = Color(0xFF30402F),
-    onPrimaryContainer = Color(0xFFE6ECE1),
+    onPrimary = Color(0xFF071722),
+    primaryContainer = Color(0xFF13374E),
+    onPrimaryContainer = Color(0xFFEAF5FC),
     secondary = SignalOrange,
-    onSecondary = Color(0xFF262316),
-    secondaryContainer = Color(0xFF302A20),
+    onSecondary = Color(0xFF2B1A08),
+    secondaryContainer = Color(0xFF342719),
     onSecondaryContainer = Color(0xFFE6DFC8),
     tertiary = SignalBluePale,
-    onTertiary = Color(0xFF20291F),
-    tertiaryContainer = Color(0xFF343D33),
-    onTertiaryContainer = Color(0xFFE6ECE1),
+    onTertiary = Color(0xFF09212A),
+    tertiaryContainer = Color(0xFF163B49),
+    onTertiaryContainer = Color(0xFFD8F4FC),
     error = SignalRed,
     onError = Color(0xFF350F0C),
     errorContainer = Color(0xFF381915),
@@ -108,17 +108,17 @@ private val Amoled = darkColorScheme(
     // Raised from #1B1F1D: against pure black, alpha-washed at the call sites, the old value
     // landed near 1.07:1 and card and section boundaries simply vanished. Text was never the
     // problem here - the grouping cues were.
-    outlineVariant = Color(0xFF303A30),
+    outlineVariant = Color(0xFF2A4058),
     surfaceContainerLowest = Color.Black,
     surfaceContainerLow = WorkshopNavy,
-    surfaceContainer = Color(0xFF080B08),
+    surfaceContainer = Color(0xFF080F18),
     surfaceContainerHigh = WorkshopElevated,
-    surfaceContainerHighest = Color(0xFF333C33),
-    surfaceBright = Color(0xFF3C463B),
+    surfaceContainerHighest = Color(0xFF2B4058),
+    surfaceBright = Color(0xFF344D68),
     surfaceDim = Color.Black,
 )
 
-// Warm sage and stone palette for the light theme. Mirrors the dark scheme's structure so every
+// Cool porcelain and blue palette for the light theme. Mirrors the dark scheme's structure so every
 // semantic token (including the *Container and outlineVariant slots the UI relies on) is defined
 // and coherent in both modes, rather than falling back to mismatched Material defaults.
 private val LightBlue = Color(0xFF155F8D)
