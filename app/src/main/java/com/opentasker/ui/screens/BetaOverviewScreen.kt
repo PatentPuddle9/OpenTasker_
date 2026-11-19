@@ -50,6 +50,7 @@ internal fun BetaOverviewScreen(
     contentPadding: PaddingValues,
     onCreateAction: () -> Unit,
     onRunAction: (Profile) -> Unit,
+    onEditAction: (Profile) -> Unit,
     onNavigate: (OpenTaskerScreen) -> Unit,
 ) {
     if (!contentLoaded) {
@@ -239,7 +240,7 @@ internal fun BetaOverviewScreen(
                             profile = profile,
                             task = tasksById[profile.enterTaskId],
                             runBusy = runBusy,
-                            onEdit = { onNavigate(OpenTaskerScreen.Actions) },
+                            onEdit = { onEditAction(profile) },
                             onRun = { onRunAction(profile) },
                         )
                     }

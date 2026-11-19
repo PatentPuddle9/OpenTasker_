@@ -710,6 +710,10 @@ fun ActiveAutomationUi(
                         scope.launch { snackbarHostState.showSnackbar("Add at least one action step before testing this action.") }
                     }
                 },
+                onEditAction = { profile ->
+                    screenOrdinal = OpenTaskerScreen.Actions.ordinal
+                    openProfileDialog(profile)
+                },
                 onNavigate = navigateToScreen,
             )
 
