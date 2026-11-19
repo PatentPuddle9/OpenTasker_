@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.BorderStroke
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,7 +62,7 @@ internal val secondaryNavigationScreens =
 
 internal fun OpenTaskerScreen.icon(): androidx.compose.ui.graphics.vector.ImageVector = when (this) {
     OpenTaskerScreen.Home -> Icons.Outlined.Tune
-    OpenTaskerScreen.Actions -> Icons.Outlined.PlayCircle
+    OpenTaskerScreen.Actions -> Icons.AutoMirrored.Outlined.PlaylistPlay
     OpenTaskerScreen.Shortcuts -> Icons.Outlined.Widgets
     OpenTaskerScreen.Vars -> Icons.Outlined.Key
     OpenTaskerScreen.Flow -> Icons.Outlined.AccountTree
