@@ -336,7 +336,7 @@ private fun VariableRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                if (sensitive) Icons.Filled.VisibilityOff else Icons.Filled.DataObject,
+                if (sensitive) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
                 contentDescription = stringResource(
                     if (sensitive) R.string.variables_sensitive_indicator else R.string.variables_standard_indicator,
                 ),
