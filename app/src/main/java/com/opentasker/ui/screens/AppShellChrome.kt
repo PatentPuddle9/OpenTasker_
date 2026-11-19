@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -82,8 +81,8 @@ internal fun shouldNavigateBackToActions(screen: OpenTaskerScreen): Boolean =
     screen != OpenTaskerScreen.Actions
 
 /**
- * Compact destination header. The old oversized title stack took up nearly a fifth of a phone
- * screen before the user could reach their content; this keeps a clear title without wasting it.
+ * Quiet page heading. Content begins close beneath the title, with the current page's count or
+ * supporting detail kept secondary rather than competing with the title.
  */
 @Composable
 internal fun OpenTaskerHeader(
@@ -92,101 +91,73 @@ internal fun OpenTaskerHeader(
     onOpenSearch: () -> Unit,
     showSearch: Boolean = true,
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.background,
-        tonalElevation = 0.dp,
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                     .padding(
-                        start = DesignSystem.Screen.horizontalPadding,
-                        end = DesignSystem.Screen.horizontalPadding,
-                        top = 10.dp,
-                        bottom = 12.dp,
-                    ),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(
+                    start = DesignSystem.Screen.horizontalPadding,
+                    end = DesignSystem.Screen.horizontalPadding,
+                    top = 14.dp,
+                    bottom = 13.dp,
+                ),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Surface(
-                    modifier = Modifier.size(42.dp),
-                    shape = RoundedCornerShape(13.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Outlined.Tune,
-                            contentDescription = stringResource(R.string.app_name),
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(21.dp),
-                        )
-                    }
-                }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(1.dp),
-                ) {
+                Text(
+                    text = stringResource(screen.labelRes),
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontSize = 27.sp,
+                        lineHeight = 32.sp,
+                        letterSpacing = (-0.55).sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (!detail.isNullOrBlank()) {
                     Text(
-                        text = stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            letterSpacing = 1.15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        ),
+                        text = detail,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                    Text(
-                        text = stringResource(screen.labelRes),
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontSize = 23.sp,
-                            lineHeight = 27.sp,
-                            letterSpacing = (-0.45).sp,
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    if (!detail.isNullOrBlank()) {
-                        Text(
-                            text = detail,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-                if (showSearch) {
-                    Surface(
-                        shape = RoundedCornerShape(13.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    ) {
-                        IconButton(
-                            onClick = onOpenSearch,
-                            modifier = Modifier.size(42.dp),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Search,
-                                contentDescription = stringResource(R.string.global_search_content_description),
-                                tint = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-                    }
                 }
             }
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f)),
-            )
+            if (showSearch) {
+                IconButton(
+                    onClick = onOpenSearch,
+                    modifier = Modifier.size(44.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Search,
+                        contentDescription = stringResource(R.string.global_search_content_description),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(23.dp),
+                    )
+                }
+            }
         }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f)),
+        )
     }
 }
 
-/** A consistent destination control for both the compact bottom bar and expanded rail. */
+/** Standard icon-and-label destination for the phone bar and expanded navigation rail. */
 @Composable
 internal fun OpenTaskerNavigationItem(
     selected: Boolean,
@@ -201,43 +172,42 @@ internal fun OpenTaskerNavigationItem(
 
     Column(
         modifier = modifier
-            .heightIn(min = 62.dp)
+            .heightIn(min = 68.dp)
             .clickable(role = Role.Tab, onClick = onClick)
             .semantics(mergeDescendants = true) {
                 this.selected = selected
                 stateDescription = if (selected) selectedDescription else notSelectedDescription
             }
-            .padding(horizontal = 4.dp, vertical = 5.dp),
+            .padding(horizontal = 3.dp, vertical = 7.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .size(width = 56.dp, height = 32.dp)
-                .background(
-                    color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else Color.Transparent,
-                    shape = RoundedCornerShape(11.dp),
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                icon,
-                contentDescription = label,
-                tint = contentColor,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-        Spacer(Modifier.height(3.dp))
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = contentColor,
+            modifier = Modifier.size(22.dp),
+        )
+        Spacer(Modifier.height(5.dp))
         Text(
-            label,
+            text = label,
             style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 10.sp,
+                fontSize = 11.sp,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
             ),
             color = contentColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(4.dp))
+        Box(
+            Modifier
+                .size(width = if (selected) 18.dp else 5.dp, height = 2.dp)
+                .background(
+                    if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    CircleShape,
+                ),
         )
     }
 }
@@ -250,12 +220,12 @@ internal fun SummaryMetric(value: String, label: String, modifier: Modifier = Mo
     ) {
         Text(
             value,
-            style = MaterialTheme.typography.titleLarge.copy(fontSize = 21.sp, lineHeight = 24.sp),
+            style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
             label,
-            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.45.sp),
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -263,34 +233,25 @@ internal fun SummaryMetric(value: String, label: String, modifier: Modifier = Mo
     }
 }
 
+/** A small state cue that reads as part of the row, not a separate badge or nested card. */
 @Composable
 internal fun StatusPill(
     label: String,
     color: Color,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
+    Row(
         modifier = modifier,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = RoundedCornerShape(9.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier
-                    .size(6.dp)
-                    .background(color, CircleShape),
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        Box(Modifier.size(6.dp).background(color, CircleShape))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
