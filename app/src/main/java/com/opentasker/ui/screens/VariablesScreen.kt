@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -120,6 +122,23 @@ fun VariablesScreen(
             verticalArrangement = Arrangement.spacedBy(11.dp),
         ) {
             item {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        "LIVE DATA",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            letterSpacing = 1.2.sp,
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        "Values your automations can read",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            item {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -145,21 +164,36 @@ fun VariablesScreen(
                 )
             }
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 1.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(top = 7.dp, bottom = 2.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     Text(
-                        "Saved variables",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        "VARIABLE REGISTER",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            letterSpacing = 1.3.sp,
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
                     )
-                    Text(
-                        "$visibleCount of ${variables.size}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            "Stored values",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            "$visibleCount / ${variables.size}",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontFamily = FontFamily.Monospace,
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
             if (filtered.isEmpty()) {
@@ -315,33 +349,30 @@ private fun VariableRow(
     onDelete: () -> Unit,
 ) {
     val sensitive = variable.isSecret
-    Card(
-        onClick = onEdit,
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-        border = BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-        ),
-        shape = RoundedCornerShape(13.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 13.dp, vertical = 11.dp),
-            horizontalArrangement = Arrangement.spacedBy(11.dp),
+                .clickable(onClick = onEdit)
+                .padding(horizontal = 3.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Box(
+                modifier = Modifier
+                    .size(width = 3.dp, height = 44.dp)
+                    .background(
+                        if (sensitive) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                        RoundedCornerShape(2.dp),
+                    ),
+            )
             Icon(
                 if (sensitive) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
                 contentDescription = stringResource(
                     if (sensitive) R.string.variables_sensitive_indicator else R.string.variables_standard_indicator,
                 ),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(21.dp),
+                modifier = Modifier.size(19.dp),
             )
             Column(
                 modifier = Modifier.weight(1f),
@@ -349,8 +380,11 @@ private fun VariableRow(
             ) {
                 Text(
                     text = "%${variable.name}",
-                    style = MaterialTheme.typography.titleSmall.copy(fontFamily = FontFamily.Monospace),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -368,9 +402,12 @@ private fun VariableRow(
             }
             if (sensitive) {
                 Text(
-                    "Private",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.tertiary,
+                    "PRIVATE",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        letterSpacing = 0.45.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.secondary,
                 )
             }
             IconButton(
@@ -381,13 +418,16 @@ private fun VariableRow(
                     Icons.Filled.Delete,
                     contentDescription = stringResource(R.string.action_delete),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(19.dp),
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
+            thickness = 1.dp,
+        )
     }
 }
-
 @Composable
 private fun VariablePill(label: String, color: Color) {
     Text(
