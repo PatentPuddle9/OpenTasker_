@@ -907,16 +907,17 @@ internal fun ActionRow(
     val runDescription = stringResource(R.string.a11y_run_action, index + 1, actionLabel)
     val moveUpDescription = stringResource(R.string.a11y_move_action_up, index + 1, actionLabel)
     val moveDownDescription = stringResource(R.string.a11y_move_action_down, index + 1, actionLabel)
+
     Column(Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 11.dp),
             verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                shape = RoundedCornerShape(DesignSystem.Radii.sm),
-                modifier = Modifier.size(36.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = RoundedCornerShape(9.dp),
+                modifier = Modifier.size(34.dp),
             ) {
                 if (SingleActionRun.isRunnableAlone(action)) {
                     IconButton(
@@ -929,21 +930,31 @@ internal fun ActionRow(
                         Icon(
                             Icons.Filled.PlayArrow,
                             contentDescription = runDescription,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(19.dp),
                         )
                     }
                 } else {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = "${index + 1}",
+                            text = (index + 1).toString(),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
             }
-            Column(Modifier.weight(1f)) {
-                Text(actionLabel, style = MaterialTheme.typography.titleSmall)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text(
+                    actionLabel,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text(
                     ActionSummaryFormatter.format(resources, action.type, action.args)
                         .ifBlank { metadataDescription ?: stringResource(R.string.workspace_no_arguments) },
@@ -953,26 +964,32 @@ internal fun ActionRow(
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (capability.level != CapabilityLevel.Supported) {
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(3.dp))
                     StatusPill(
-                        if (capability.level == CapabilityLevel.Unsupported) stringResource(R.string.label_unsupported) else stringResource(R.string.status_needs_setup),
-                        if (capability.level == CapabilityLevel.Unsupported) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                        if (capability.level == CapabilityLevel.Unsupported) {
+                            stringResource(R.string.label_unsupported)
+                        } else {
+                            stringResource(R.string.status_needs_setup)
+                        },
+                        if (capability.level == CapabilityLevel.Unsupported) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.secondary
+                        },
                     )
                 }
                 action.condition?.takeIf(String::isNotBlank)?.let { condition ->
-                    Spacer(Modifier.height(6.dp))
                     Text(
                         stringResource(R.string.action_condition_summary, condition),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 if (action.continueOnError) {
-                    Spacer(Modifier.height(4.dp))
                     Text(
                         stringResource(R.string.action_continue_on_error_summary),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -983,16 +1000,19 @@ internal fun ActionRow(
                 Icon(
                     Icons.Filled.ChevronRight,
                     contentDescription = editDescription,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.clearAndSetSemantics { },
                 )
             }
             Box {
                 IconButton(onClick = { menuExpanded = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.nav_more))
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = stringResource(R.string.nav_more),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                    // The menu item text is only "Move up"/"Move down", so without an explicit
-                    // description a screen reader cannot say which action moves.
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.projects_move_up)) },
                         onClick = { menuExpanded = false; onMoveUp() },
@@ -1005,12 +1025,7 @@ internal fun ActionRow(
                         enabled = canMoveDown,
                         modifier = Modifier.semantics { contentDescription = moveDownDescription },
                     )
-                    // Flow-control markers are omitted rather than disabled: "Run this if"
-                    // has no meaning on its own, so offering it greyed out would only invite
-                    // the question of why.
                     if (SingleActionRun.isRunnableAlone(action)) {
-                        // Only one run happens at a time, and a second tap used to be swallowed
-                        // with no sign anything had happened. Say which state the option is in.
                         DropdownMenuItem(
                             text = {
                                 Text(
@@ -1027,12 +1042,18 @@ internal fun ActionRow(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_delete)) },
                         onClick = { menuExpanded = false; onDelete() },
-                        leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = deleteDescription, tint = MaterialTheme.colorScheme.error) },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Delete,
+                                contentDescription = deleteDescription,
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        },
                     )
                 }
             }
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f))
     }
 }
 
@@ -1046,18 +1067,28 @@ internal fun ContextRow(
     val contextTypeLabel = stringResource(contextTitleRes(context.type))
     val editDescription = stringResource(R.string.a11y_edit_context, index + 1, contextTypeLabel)
     val deleteDescription = stringResource(R.string.a11y_delete_context, index + 1, contextTypeLabel)
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f),
-        shape = RoundedCornerShape(DesignSystem.Radii.sm),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    Column(Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(DesignSystem.Spacing.sm),
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Column(Modifier.weight(1f)) {
-                Text(contextTypeLabel, style = MaterialTheme.typography.titleSmall)
+            Text(
+                (index + 1).toString(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.width(20.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text(
+                    contextTypeLabel,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
                 Text(
                     contextConfigSummary(context),
                     style = MaterialTheme.typography.bodySmall,
@@ -1065,9 +1096,9 @@ internal fun ContextRow(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-            }
-            if (context.invert) {
-                StatusPill(stringResource(R.string.label_inverted), MaterialTheme.colorScheme.secondary)
+                if (context.invert) {
+                    StatusPill(stringResource(R.string.label_inverted), MaterialTheme.colorScheme.secondary)
+                }
             }
             IconButton(
                 onClick = onEdit,
@@ -1076,6 +1107,7 @@ internal fun ContextRow(
                 Icon(
                     Icons.Filled.Edit,
                     contentDescription = editDescription,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.clearAndSetSemantics { },
                 )
             }
@@ -1086,10 +1118,12 @@ internal fun ContextRow(
                 Icon(
                     Icons.Filled.Delete,
                     contentDescription = deleteDescription,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.clearAndSetSemantics { },
-                    tint = MaterialTheme.colorScheme.error,
                 )
             }
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f))
     }
 }
+
