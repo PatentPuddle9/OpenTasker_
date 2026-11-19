@@ -173,9 +173,6 @@ internal fun ProfilesScreen(
                 }
             }
     }
-    val activeCount = profiles.count { it.enabled && !it.requiresRiskAcknowledgement }
-    val pausedCount = profiles.size - activeCount
-    val triggerCount = profiles.sumOf { it.contexts.size }
     val tasksById = remember(allTasks) { allTasks.associateBy(Task::id) }
 
     LazyVerticalGrid(
@@ -184,100 +181,15 @@ internal fun ProfilesScreen(
         contentPadding = PaddingValues(
             start = DesignSystem.Screen.horizontalPadding,
             end = DesignSystem.Screen.horizontalPadding,
-            top = 18.dp,
-            bottom = 112.dp,
+            top = 12.dp,
+            bottom = 104.dp,
         ),
-        horizontalArrangement = Arrangement.spacedBy(11.dp),
-        verticalArrangement = Arrangement.spacedBy(11.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (storageDecodeIssues.isNotEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 StorageDecodeWarningCard(storageDecodeIssues)
-            }
-        }
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(3.dp),
-                    ) {
-                        Text(
-                            "WORKSPACE",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                letterSpacing = 1.25.sp,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                            ),
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Text(
-                            "Automation overview",
-                            style = MaterialTheme.typography.headlineSmall.copy(
-                                fontSize = 25.sp,
-                                lineHeight = 30.sp,
-                                letterSpacing = (-0.7).sp,
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            "A clear view of what is ready to run.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Text(
-                        "${profiles.size} TOTAL",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            letterSpacing = 0.7.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                        ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 4.dp),
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(9.dp),
-                ) {
-                    listOf(
-                        Triple(activeCount.toString(), "ACTIVE", MaterialTheme.colorScheme.primary),
-                        Triple(pausedCount.toString(), "PAUSED", MaterialTheme.colorScheme.onSurfaceVariant),
-                        Triple(triggerCount.toString(), "TRIGGERS", MaterialTheme.colorScheme.tertiary),
-                    ).forEach { (value, label, tint) ->
-                        Surface(
-                            modifier = Modifier.weight(1f),
-                            color = MaterialTheme.colorScheme.surfaceContainerLow,
-                            shape = RoundedCornerShape(13.dp),
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
-                                verticalArrangement = Arrangement.spacedBy(2.dp),
-                            ) {
-                                Text(
-                                    value,
-                                    style = MaterialTheme.typography.titleLarge.copy(
-                                        fontSize = 21.sp,
-                                        lineHeight = 24.sp,
-                                    ),
-                                    color = tint,
-                                )
-                                Text(
-                                    label,
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontSize = 9.sp,
-                                        letterSpacing = 0.6.sp,
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                )
-                            }
-                        }
-                    }
-                }
             }
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
@@ -305,7 +217,7 @@ internal fun ProfilesScreen(
                         }
                     } else null,
                     singleLine = true,
-                    shape = RoundedCornerShape(13.dp),
+                    shape = RoundedCornerShape(DesignSystem.Radii.md),
                 )
                 WorkspaceActionsButton(
                     onBrowseTemplates = onBrowseTemplates,
@@ -319,7 +231,7 @@ internal fun ProfilesScreen(
             }
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
                     FilterChip(
                         selected = selectedStatus == "all",
@@ -331,7 +243,7 @@ internal fun ProfilesScreen(
                     FilterChip(
                         selected = selectedStatus == "active",
                         onClick = { selectedStatus = "active" },
-                        label = { Text("Active") },
+                        label = { Text("Enabled") },
                     )
                 }
                 item {
@@ -347,7 +259,7 @@ internal fun ProfilesScreen(
                             Modifier
                                 .padding(horizontal = 2.dp)
                                 .width(1.dp)
-                                .height(28.dp)
+                                .height(24.dp)
                                 .background(MaterialTheme.colorScheme.outlineVariant),
                         )
                     }
@@ -363,21 +275,18 @@ internal fun ProfilesScreen(
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 1.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    "YOUR ACTIONS",
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        letterSpacing = 1.0.sp,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                    ),
+                    "Actions",
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    "${filteredProfiles.size} shown",
-                    style = MaterialTheme.typography.labelSmall,
+                    "${filteredProfiles.size} of ${profiles.size}",
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -504,7 +413,7 @@ private fun ProfileCard(
     val testEnabled = !runBusy && !profile.requiresRiskAcknowledgement
     val testDescription = stringResource(R.string.a11y_test_action, profile.name)
     val profileState = when {
-        widgetOwned -> "Home-screen shortcut"
+        widgetOwned -> "Widget action"
         profile.requiresRiskAcknowledgement -> stringResource(R.string.imported_profile_review_required)
         profile.enabled -> stringResource(R.string.label_enabled)
         else -> stringResource(R.string.label_paused)
@@ -519,13 +428,16 @@ private fun ProfileCard(
         onClick = onEdit,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
-        shape = RoundedCornerShape(17.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp, pressedElevation = 2.dp),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f),
+        ),
+        shape = RoundedCornerShape(14.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp, pressedElevation = 1.dp),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(13.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -534,8 +446,8 @@ private fun ProfileCard(
             ) {
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.size(54.dp),
+                    shape = RoundedCornerShape(11.dp),
+                    modifier = Modifier.size(46.dp),
                 ) {
                     IconButton(
                         onClick = onRun,
@@ -549,7 +461,7 @@ private fun ProfileCard(
                             contentDescription = null,
                             tint = if (profile.enabled) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(27.dp),
+                            modifier = Modifier.size(23.dp),
                         )
                     }
                 }
@@ -570,49 +482,34 @@ private fun ProfileCard(
                     )
                 }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(
-                    profile.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    "$actionCount steps",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
+            Text(
+                profile.name,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                minLines = 1,
+            )
+            Text(
+                "$actionCount steps  ·  ${profile.contexts.size} triggers",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 StatusPill(profileState, statusColor)
-                if (widgetOwned) StatusPill("Widget", MaterialTheme.colorScheme.tertiary)
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "${profile.contexts.size} triggers",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-                Text(
-                    "TAP ICON TO TEST",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = 8.sp,
-                        letterSpacing = 0.45.sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
-                    maxLines = 1,
-                )
+                if (widgetOwned) {
+                    Text(
+                        "Widget",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
             }
         }
     }
