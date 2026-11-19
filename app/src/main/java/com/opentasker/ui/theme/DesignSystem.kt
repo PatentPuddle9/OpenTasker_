@@ -3,8 +3,8 @@ package com.opentasker.ui.theme
 import androidx.compose.ui.unit.dp
 
 /**
- * OpenTasker design system: a calm, editorial interface with neutral surfaces, controlled spacing,
- * and crisp hierarchy.
+ * OpenTasker design system: a calm command-center interface with quiet surfaces, tight rhythm,
+ * and a clear reading order.
  */
 object DesignSystem {
     object Spacing {
@@ -30,7 +30,7 @@ object DesignSystem {
         val sm = 8.dp
         val md = 12.dp
         val lg = 16.dp
-        val xl = 24.dp
+        val xl = 20.dp
         val xxl = 24.dp
     }
 
