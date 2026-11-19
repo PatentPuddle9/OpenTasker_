@@ -147,15 +147,21 @@ internal fun SceneOverviewCard(
 @Composable
 private fun SceneThumbnail(scene: Scene) {
     val shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
+    val backgroundColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)
+    val palette = listOf(
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.secondary,
+        MaterialTheme.colorScheme.tertiary,
+    )
     androidx.compose.foundation.Canvas(
         modifier = Modifier
             .fillMaxWidth()
             .height(132.dp)
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainerLow),
+            .background(backgroundColor),
     ) {
         val gridStep = 18.dp.toPx()
-        val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)
         var x = 0f
         while (x <= size.width) {
             drawLine(gridColor, androidx.compose.ui.geometry.Offset(x, 0f), androidx.compose.ui.geometry.Offset(x, size.height), 1.dp.toPx())
@@ -168,11 +174,6 @@ private fun SceneThumbnail(scene: Scene) {
         }
         val scaleX = size.width / scene.widthDp.coerceAtLeast(1)
         val scaleY = size.height / scene.heightDp.coerceAtLeast(1)
-        val palette = listOf(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.secondary,
-            MaterialTheme.colorScheme.tertiary,
-        )
         scene.elements.forEachIndexed { index, element ->
             val color = palette[index % palette.size]
             val left = element.xDp * scaleX
