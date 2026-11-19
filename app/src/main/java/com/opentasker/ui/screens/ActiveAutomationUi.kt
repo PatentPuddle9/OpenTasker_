@@ -543,7 +543,7 @@ fun ActiveAutomationUi(
         showMoreDestinations = false
     }
     BackHandler(enabled = shouldNavigateBackToActions(screen)) {
-        screenOrdinal = OpenTaskerScreen.Actions.ordinal
+        screenOrdinal = OpenTaskerScreen.Home.ordinal
         showMoreDestinations = false
     }
     val startNewProfile = {
