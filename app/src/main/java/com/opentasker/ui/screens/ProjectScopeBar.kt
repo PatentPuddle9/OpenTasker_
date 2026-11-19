@@ -56,51 +56,43 @@ fun ProjectScopeBar(
         ?: stringResource(R.string.projects_all)
 
     Row(
-        modifier = modifier.fillMaxWidth().padding(
-            horizontal = DesignSystem.Screen.horizontalPadding,
-            vertical = 7.dp,
-        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = DesignSystem.Screen.horizontalPadding,
+                vertical = 2.dp,
+            ),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Text(
+            stringResource(R.string.projects_scope_label),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Box(Modifier.weight(1f)) {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                shape = RoundedCornerShape(14.dp),
+            TextButton(
+                onClick = { menuExpanded = true },
+                shape = RoundedCornerShape(DesignSystem.Radii.sm),
             ) {
-                TextButton(
-                    onClick = { menuExpanded = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                ) {
-                    Icon(
-                        Icons.Filled.Folder,
-                        contentDescription = stringResource(R.string.projects_scope_label),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Column(
-                        modifier = Modifier.weight(1f).padding(horizontal = 9.dp),
-                        verticalArrangement = Arrangement.spacedBy(0.dp),
-                    ) {
-                        Text(
-                            stringResource(R.string.projects_scope_label).uppercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            selectedName,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    Icon(
-                        Icons.Filled.ExpandMore,
-                        contentDescription = stringResource(R.string.action_expand),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                Icon(
+                    Icons.Filled.Folder,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    selectedName,
+                    modifier = Modifier.padding(horizontal = 7.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Icon(
+                    Icons.Filled.ExpandMore,
+                    contentDescription = stringResource(R.string.action_expand),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                 DropdownMenuItem(
@@ -121,20 +113,15 @@ fun ProjectScopeBar(
                 }
             }
         }
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-            shape = RoundedCornerShape(13.dp),
+        IconButton(
+            onClick = { managerVisible = true },
+            modifier = Modifier.size(40.dp),
         ) {
-            IconButton(
-                onClick = { managerVisible = true },
-                modifier = Modifier.size(46.dp),
-            ) {
-                Icon(
-                    Icons.Filled.MoreVert,
-                    contentDescription = stringResource(R.string.projects_manage),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            Icon(
+                Icons.Filled.MoreVert,
+                contentDescription = stringResource(R.string.projects_manage),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 
