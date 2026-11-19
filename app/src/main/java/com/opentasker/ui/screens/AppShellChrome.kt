@@ -84,6 +84,7 @@ internal fun shouldNavigateBackToActions(screen: OpenTaskerScreen): Boolean =
  * The work surface gets the full width; every destination is one tap away from the
  * same launcher sheet, with no persistent navigation strip competing with the content.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun BetaWorkspaceChrome(
     screen: OpenTaskerScreen,
