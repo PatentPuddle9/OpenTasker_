@@ -44,7 +44,7 @@ enum class ThemeMode {
 private val Context.themeDataStore: DataStore<Preferences> by preferencesDataStore(name = "theme_prefs")
 
 object ThemePreference {
-    const val DEFAULT_ACCENT_HEX = "#9E91B1"
+    const val DEFAULT_ACCENT_HEX = "#A9B79E"
     private val KEY = stringPreferencesKey("theme_mode")
     private val ACCENT_KEY = stringPreferencesKey("accent_color_hex")
 
