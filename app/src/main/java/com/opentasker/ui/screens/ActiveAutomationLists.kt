@@ -5,6 +5,7 @@ import androidx.annotation.StringRes
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -422,21 +423,23 @@ private fun ProfileCard(
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    Card(
-        onClick = onEdit,
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shape = RoundedCornerShape(6.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp, pressedElevation = 1.dp),
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onEdit)
+                .padding(vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(11.dp),
         ) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(48.dp)
+                    .background(statusColor, RoundedCornerShape(3.dp)),
+            )
             Text(
-                profile.id.toString().takeLast(3).padStart(3, '0'),
+                "#${profile.id.toString().takeLast(3).padStart(3, '0')}",
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
@@ -445,8 +448,8 @@ private fun ProfileCard(
             )
             Surface(
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                shape = RoundedCornerShape(4.dp),
-                modifier = Modifier.size(46.dp),
+                shape = RoundedCornerShape(11.dp),
+                modifier = Modifier.size(44.dp),
             ) {
                 IconButton(
                     onClick = onRun,
@@ -458,7 +461,7 @@ private fun ProfileCard(
                         contentDescription = null,
                         tint = if (profile.enabled) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(23.dp),
                     )
                 }
             }
@@ -482,6 +485,18 @@ private fun ProfileCard(
                 )
                 StatusPill(profileState, statusColor)
             }
+            IconButton(
+                onClick = onRun,
+                enabled = testEnabled,
+                modifier = Modifier.semantics { this.contentDescription = testDescription },
+            ) {
+                Icon(
+                    Icons.Filled.PlayArrow,
+                    contentDescription = null,
+                    tint = if (testEnabled) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             if (!widgetOwned) {
                 ProfileActionsMenu(
                     contentDescription = stringResource(R.string.a11y_duplicate_profile, profile.name),
@@ -499,6 +514,7 @@ private fun ProfileCard(
                 )
             }
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f))
     }
 }
 @Composable
