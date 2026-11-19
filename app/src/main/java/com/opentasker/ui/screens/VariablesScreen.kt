@@ -105,7 +105,6 @@ fun VariablesScreen(
         }
     }
 
-    val secretCount = variables.count { it.isSecret }
     val visibleCount = filtered.size
     Box(
         modifier = Modifier.fillMaxSize().padding(contentPadding),
@@ -115,93 +114,22 @@ fun VariablesScreen(
             contentPadding = PaddingValues(
                 start = DesignSystem.Screen.horizontalPadding,
                 end = DesignSystem.Screen.horizontalPadding,
-                top = 18.dp,
-                bottom = 112.dp,
+                top = 12.dp,
+                bottom = 104.dp,
             ),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp),
         ) {
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.Bottom,
-                    ) {
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(3.dp),
-                        ) {
-                            Text(
-                                "DATA",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    letterSpacing = 1.2.sp,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                                ),
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                            Text(
-                                "Variable library",
-                                style = MaterialTheme.typography.headlineSmall.copy(
-                                    fontSize = 25.sp,
-                                    letterSpacing = (-0.6).sp,
-                                ),
-                            )
-                            Text(
-                                "Reusable values for your automations.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Text(
-                            "$visibleCount / ${variables.size}",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 4.dp),
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(9.dp),
-                    ) {
-                        listOf(
-                            Triple(variables.size.toString(), "TOTAL", MaterialTheme.colorScheme.onSurface),
-                            Triple((variables.size - secretCount).toString(), "STANDARD", MaterialTheme.colorScheme.primary),
-                            Triple(secretCount.toString(), "PRIVATE", MaterialTheme.colorScheme.tertiary),
-                        ).forEach { (value, label, tint) ->
-                            Surface(
-                                modifier = Modifier.weight(1f),
-                                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                                shape = RoundedCornerShape(13.dp),
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                                ) {
-                                    Text(
-                                        value,
-                                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
-                                        color = tint,
-                                    )
-                                    Text(
-                                        label,
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontSize = 8.sp,
-                                            letterSpacing = 0.45.sp,
-                                        ),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
             item {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     placeholder = { Text(stringResource(R.string.variables_search_label)) },
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.variables_search_label)) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.Search,
+                            contentDescription = stringResource(R.string.variables_search_label),
+                        )
+                    },
                     trailingIcon = if (searchQuery.isNotBlank()) {
                         {
                             IconButton(onClick = { searchQuery = "" }) {
@@ -212,26 +140,24 @@ fun VariablesScreen(
                         null
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(13.dp),
+                    shape = RoundedCornerShape(DesignSystem.Radii.md),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
             item {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 3.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 1.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "SAVED VARIABLES",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            letterSpacing = 0.9.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                        ),
+                        "Saved variables",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        "$visibleCount shown",
-                        style = MaterialTheme.typography.labelSmall,
+                        "$visibleCount of ${variables.size}",
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -278,12 +204,11 @@ fun VariablesScreen(
                     end = DesignSystem.Screen.horizontalPadding,
                     bottom = 16.dp,
                 ),
-            shape = RoundedCornerShape(15.dp),
+            shape = RoundedCornerShape(13.dp),
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
         )
     }
-
     val editTarget = remember(variables, editTargetName, editTargetProjectId) {
         editTargetName?.let { targetName -> variables.firstOrNull { it.name == targetName && it.projectId == editTargetProjectId } }
     }
@@ -393,40 +318,39 @@ private fun VariableRow(
     Card(
         onClick = onEdit,
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f)),
-        shape = RoundedCornerShape(DesignSystem.Radii.lg),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+        ),
+        shape = RoundedCornerShape(13.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = 13.dp, vertical = 11.dp),
+            horizontalArrangement = Arrangement.spacedBy(11.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(
-                modifier = Modifier.size(42.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                shape = RoundedCornerShape(DesignSystem.Radii.sm),
+            Icon(
+                if (sensitive) Icons.Filled.VisibilityOff else Icons.Filled.DataObject,
+                contentDescription = stringResource(
+                    if (sensitive) R.string.variables_sensitive_indicator else R.string.variables_standard_indicator,
+                ),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(21.dp),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
-                Icon(
-                    if (sensitive) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                    contentDescription = stringResource(
-                        if (sensitive) {
-                            R.string.variables_sensitive_indicator
-                        } else {
-                            R.string.variables_standard_indicator
-                        },
-                    ),
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(10.dp).size(22.dp),
-                )
-            }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = "%${variable.name}",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontFamily = FontFamily.Monospace,
+                    style = MaterialTheme.typography.titleSmall.copy(fontFamily = FontFamily.Monospace),
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -438,18 +362,26 @@ private fun VariableRow(
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (sensitive) {
-                    VariablePill(stringResource(R.string.label_hidden), MaterialTheme.colorScheme.secondary)
-                }
             }
-            IconButton(onClick = onDelete) {
+            if (sensitive) {
+                Text(
+                    "Private",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
+            }
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(40.dp),
+            ) {
                 Icon(
                     Icons.Filled.Delete,
                     contentDescription = stringResource(R.string.action_delete),
-                    tint = MaterialTheme.colorScheme.error,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(19.dp),
                 )
             }
         }
