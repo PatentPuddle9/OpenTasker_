@@ -116,11 +116,37 @@ internal fun RunLogScreenContent(
             .padding(contentPadding)
             .testTag(RUN_LOG_LIST_TAG),
         contentPadding = PaddingValues(
-            horizontal = DesignSystem.Screen.horizontalPadding,
-            vertical = DesignSystem.Screen.verticalPadding,
+            start = DesignSystem.Screen.horizontalPadding,
+            end = DesignSystem.Screen.horizontalPadding,
+            top = 18.dp,
+            bottom = 28.dp,
         ),
         verticalArrangement = Arrangement.spacedBy(DesignSystem.Screen.cardGap),
     ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 5.dp),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        "RUNTIME / HISTORY",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            letterSpacing = 1.25.sp,
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text("Execution stream", style = MaterialTheme.typography.titleLarge)
+                }
+                Text(
+                    totalCount.toString().padStart(2, '0'),
+                    style = MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Monospace),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         if (activeExecutions.isNotEmpty()) {
             item {
                 ActiveExecutionsCard(
@@ -360,13 +386,11 @@ private fun RunLogFilterCard(
 ) {
     val hasActiveFilters = statusFilter != RunLogStatusFilter.All || selectedTaskId != null || dateFilter != RunLogDateFilter.All
     var expanded by rememberSaveable { mutableStateOf(hasActiveFilters) }
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shape = RoundedCornerShape(DesignSystem.Radii.md),
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -444,6 +468,7 @@ private fun RunLogFilterCard(
                 }
             }
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))
     }
 }
 
@@ -500,12 +525,11 @@ private fun RunLogSummaryCard(
     val skipped = outcomes.count { it == RunLogOutcome.Skipped }
     val held = outcomes.count { it == RunLogOutcome.Held }
     val shareDescription = stringResource(R.string.run_log_share_diagnostic)
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(DesignSystem.Radii.md),
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Icon(
                     Icons.Filled.CheckCircle,
@@ -557,6 +581,7 @@ private fun RunLogSummaryCard(
                 } }
             }
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))
     }
 }
 
@@ -587,23 +612,12 @@ private fun RunLogCard(
         val name = runLogSourceName(key)
         entry.sourceLabel?.let { "$name: $it" } ?: name
     } ?: diagnostics.source
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-        border = BorderStroke(
-            1.dp,
-            if (outcome == RunLogOutcome.Failed || outcome == RunLogOutcome.Interrupted) {
-                accent.copy(alpha = 0.48f)
-            } else {
-                MaterialTheme.colorScheme.outlineVariant
-            },
-        ),
-        shape = RoundedCornerShape(DesignSystem.Radii.md),
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 5.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 3.dp, end = 3.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
@@ -738,6 +752,13 @@ private fun RunLogCard(
                 }
             }
         }
+        HorizontalDivider(
+            color = if (outcome == RunLogOutcome.Failed || outcome == RunLogOutcome.Interrupted) {
+                accent.copy(alpha = 0.58f)
+            } else {
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
+            },
+        )
     }
 }
 
