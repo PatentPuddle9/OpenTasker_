@@ -13,8 +13,13 @@ on:
       - "build.gradle.kts"
       - "settings.gradle.kts"
       - "gradle.properties"
-      - ".github/workflows/build.yml"
   workflow_dispatch:
+
+# Keep only the newest build for each branch; rapid UI commits must not
+# flood Actions with APK builds for superseded intermediate commits.
+concurrency:
+  group: opentasker-apk-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
