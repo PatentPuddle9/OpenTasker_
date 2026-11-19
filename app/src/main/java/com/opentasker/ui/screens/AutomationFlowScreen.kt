@@ -109,8 +109,8 @@ fun AutomationFlowScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(contentPadding),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(start = 18.dp, top = 14.dp, end = 18.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp),
     ) {
         item {
             FlowOverviewCard(
@@ -176,39 +176,54 @@ private fun FlowOverviewCard(
     graphs: List<AutomationFlowGraph>,
 ) {
     val warningCount = graphs.sumOf { it.warnings.size + it.lintFindings.size }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.36f)),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shape = RoundedCornerShape(com.opentasker.ui.theme.DesignSystem.Radii.md),
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+        Text(
+            "SYSTEM MAP",
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.4.sp,
+            ),
+            color = MaterialTheme.colorScheme.primary,
+        )
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Icon(
-                Icons.Filled.CheckCircle,
-                contentDescription = stringResource(R.string.nav_flow),
-                tint = if (warningCount == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.size(22.dp),
-            )
-            Text(
-                if (warningCount == 0) stringResource(R.string.status_ready) else stringResource(R.string.label_issue_count, warningCount),
-                style = MaterialTheme.typography.titleSmall,
-                color = if (warningCount == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                stringResource(R.string.header_flow_detail, profiles.size),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Automation topology", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "${profiles.size} flows  /  ${graphs.sumOf { it.nodes.size }} nodes",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Box(
+                    Modifier.size(7.dp).background(
+                        if (warningCount == 0) MaterialTheme.colorScheme.tertiary
+                        else MaterialTheme.colorScheme.error,
+                        RoundedCornerShape(2.dp),
+                    ),
+                )
+                Text(
+                    if (warningCount == 0) stringResource(R.string.status_ready)
+                    else stringResource(R.string.label_issue_count, warningCount),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (warningCount == 0) MaterialTheme.colorScheme.tertiary
+                    else MaterialTheme.colorScheme.error,
+                )
+            }
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
-
 @Composable
 private fun FlowGraphCard(
     graph: AutomationFlowGraph,
@@ -217,47 +232,61 @@ private fun FlowGraphCard(
 ) {
     val profileNode = graph.nodes.firstOrNull { it.kind == AutomationFlowNodeKind.PROFILE }
         ?: return
+    val activeContexts = graph.contextNodes.count { !it.muted }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics { contentDescription = graph.title },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.20f)),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shape = RoundedCornerShape(com.opentasker.ui.theme.DesignSystem.Radii.md),
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(Modifier.weight(1f)) {
-                    Text(graph.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        stringResource(
-                            R.string.flow_context_summary,
-                            graph.contextNodes.size,
-                        ),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                FlowStatusPill(
-                    label = if (profileNode.muted) stringResource(R.string.status_disabled) else stringResource(R.string.label_enabled),
-                    color = if (profileNode.muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    graph.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "${graph.nodes.size} nodes  /  $activeContexts active triggers",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-
-            if (graph.contextNodes.isNotEmpty()) {
-                graph.contextNodes.forEach { node ->
-                    FlowNodeView(
-                        node = node,
-                        onNodeTargetSelected = onNodeTargetSelected,
-                    )
-                    FlowEdgeLabel(stringResource(R.string.flow_all_context_rules))
-                }
-            }
-            FlowInlineCommand(label = stringResource(R.string.profile_add_context), onClick = { onAddContext(graph.profileId) })
-
-            FlowNodeView(profileNode, onNodeTargetSelected)
+            FlowStatusPill(
+                label = if (profileNode.muted) stringResource(R.string.status_disabled)
+                else stringResource(R.string.label_enabled),
+                color = if (profileNode.muted) MaterialTheme.colorScheme.onSurfaceVariant
+                else MaterialTheme.colorScheme.tertiary,
+            )
         }
+
+        FlowCanvasOverview(
+            graph = graph,
+            profileNode = profileNode,
+            onNodeTargetSelected = onNodeTargetSelected,
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                stringResource(R.string.flow_all_context_rules),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            TextButton(onClick = { onAddContext(graph.profileId) }) {
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(stringResource(R.string.profile_add_context))
+            }
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f))
     }
 }
 

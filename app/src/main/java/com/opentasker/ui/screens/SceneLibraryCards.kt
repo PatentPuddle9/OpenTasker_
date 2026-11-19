@@ -2,7 +2,11 @@ package com.opentasker.ui.screens
 
 import com.opentasker.ui.icons.Icons
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -141,6 +145,64 @@ internal fun SceneOverviewCard(
 }
 
 @Composable
+private fun SceneThumbnail(scene: Scene) {
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
+    androidx.compose.foundation.Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(132.dp)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        val gridStep = 18.dp.toPx()
+        val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)
+        var x = 0f
+        while (x <= size.width) {
+            drawLine(gridColor, androidx.compose.ui.geometry.Offset(x, 0f), androidx.compose.ui.geometry.Offset(x, size.height), 1.dp.toPx())
+            x += gridStep
+        }
+        var y = 0f
+        while (y <= size.height) {
+            drawLine(gridColor, androidx.compose.ui.geometry.Offset(0f, y), androidx.compose.ui.geometry.Offset(size.width, y), 1.dp.toPx())
+            y += gridStep
+        }
+        val scaleX = size.width / scene.widthDp.coerceAtLeast(1)
+        val scaleY = size.height / scene.heightDp.coerceAtLeast(1)
+        val palette = listOf(
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.secondary,
+            MaterialTheme.colorScheme.tertiary,
+        )
+        scene.elements.forEachIndexed { index, element ->
+            val color = palette[index % palette.size]
+            val left = element.xDp * scaleX
+            val top = element.yDp * scaleY
+            val width = (element.widthDp * scaleX).coerceAtLeast(5.dp.toPx())
+            val height = (element.heightDp * scaleY).coerceAtLeast(5.dp.toPx())
+            drawRoundRect(
+                color = color.copy(alpha = 0.19f),
+                topLeft = androidx.compose.ui.geometry.Offset(left, top),
+                size = androidx.compose.ui.geometry.Size(
+                    width.coerceAtMost(size.width - left),
+                    height.coerceAtMost(size.height - top),
+                ),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(5.dp.toPx()),
+            )
+            drawRoundRect(
+                color = color.copy(alpha = 0.88f),
+                topLeft = androidx.compose.ui.geometry.Offset(left, top),
+                size = androidx.compose.ui.geometry.Size(
+                    width.coerceAtMost(size.width - left),
+                    height.coerceAtMost(size.height - top),
+                ),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(5.dp.toPx()),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.5.dp.toPx()),
+            )
+        }
+    }
+}
+
+@Composable
 internal fun SceneCard(
     scene: Scene,
     tasks: List<Task>,
@@ -204,6 +266,8 @@ internal fun SceneCard(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+
+            SceneThumbnail(scene = scene)
 
             if (expanded) ScenePreviewBox(
                 scene = scene,
