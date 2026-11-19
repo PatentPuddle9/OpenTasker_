@@ -12,26 +12,26 @@ object DesignSystem {
         val sm = 8.dp
         val md = 12.dp
         val lg = 16.dp
-        val xl = 22.dp
+        val xl = 20.dp
         val xxl = 32.dp
     }
 
     object Screen {
         val horizontalPadding = 20.dp
-        val verticalPadding = 18.dp
+        val verticalPadding = 16.dp
         val cardPadding = 16.dp
-        val heroCardPadding = 20.dp
-        val sectionGap = 20.dp
-        val cardGap = 10.dp
+        val heroCardPadding = 18.dp
+        val sectionGap = 18.dp
+        val cardGap = 12.dp
     }
 
     object Radii {
-        val xs = 5.dp
-        val sm = 9.dp
-        val md = 13.dp
-        val lg = 17.dp
+        val xs = 4.dp
+        val sm = 8.dp
+        val md = 12.dp
+        val lg = 16.dp
         val xl = 24.dp
-        val xxl = 26.dp
+        val xxl = 24.dp
     }
 
     object Elevation {
@@ -45,8 +45,8 @@ object DesignSystem {
     object ComponentSize {
         val buttonSmall = 36.dp
         val buttonMedium = 44.dp
-        val buttonLarge = 50.dp
-        val buttonXLarge = 56.dp
+        val buttonLarge = 48.dp
+        val buttonXLarge = 52.dp
 
         val iconSmall = 16.dp
         val iconMedium = 20.dp
@@ -55,7 +55,7 @@ object DesignSystem {
         val iconXLarge = 48.dp
 
         val touchTargetMin = 48.dp
-        val listItemHeight = 64.dp
+        val listItemHeight = 60.dp
         val checkboxSize = 24.dp
         val statusIndicator = 8.dp
         val compactControlHeight = 40.dp
@@ -75,7 +75,7 @@ object DesignSystem {
         val hintText = 0.64f
         val elevatedSurface = 0.96f
         val restingSurface = 0.88f
-        val selectedSurface = 0.16f
-        val subtleBorder = 0.56f
+        val selectedSurface = 0.12f
+        val subtleBorder = 0.42f
     }
 }
