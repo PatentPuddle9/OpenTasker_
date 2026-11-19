@@ -28,8 +28,8 @@ private val Sage = Color(0xFFA9B79E)
 private val SageBright = Color(0xFFD8E0D1)
 private val SignalAmber = Color(0xFFC8AD83)
 private val SignalRed = Color(0xFFD18A80)
-private val Text = Color(0xFFF0EEF1)
-private val TextSecondary = Color(0xFFA7A5AD)
+private val Text = Color(0xFFE9EDE7)
+private val TextSecondary = Color(0xFFA4ADA1)
 private val WorkshopBackground = Color(0xFF111511)
 private val WorkshopSurface = Color(0xFF191E19)
 private val WorkshopNavy = Color(0xFF202820)
@@ -62,7 +62,7 @@ private val Graphite = darkColorScheme(
     outline = WorkshopOutline,
     outlineVariant = Color(0xFF303A30),
     // AlertDialog uses surfaceContainerHigh and DropdownMenu uses surfaceContainer. Leaving these
-    // unset fell back to Material's purple-tinted baseline tokens, so every editor dialog and menu
+    // unset fell back to Material's mismatched default surface tokens, so every editor dialog and menu
     // in this dialog-heavy app rendered off-palette.
     surfaceContainerLowest = WorkshopBackground,
     surfaceContainerLow = WorkshopNavy,
@@ -88,7 +88,7 @@ private val Amoled = darkColorScheme(
     secondary = SignalAmber,
     onSecondary = Color(0xFF262316),
     secondaryContainer = Color(0xFF302A20),
-    onSecondaryContainer = Color(0xFFFFE0A0),
+    onSecondaryContainer = Color(0xFFE6DFC8),
     tertiary = SageBright,
     onTertiary = Color(0xFF20291F),
     tertiaryContainer = Color(0xFF343D33),
@@ -111,7 +111,7 @@ private val Amoled = darkColorScheme(
     outlineVariant = Color(0xFF303A30),
     surfaceContainerLowest = Color.Black,
     surfaceContainerLow = WorkshopNavy,
-    surfaceContainer = Color(0xFF080610),
+    surfaceContainer = Color(0xFF080B08),
     surfaceContainerHigh = WorkshopElevated,
     surfaceContainerHighest = Color(0xFF333C33),
     surfaceBright = Color(0xFF3C463B),
