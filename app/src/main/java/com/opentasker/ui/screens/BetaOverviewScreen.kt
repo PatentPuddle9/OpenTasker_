@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.opentasker.core.model.Profile
 import com.opentasker.core.model.Task
 import com.opentasker.ui.theme.DesignSystem
-import com.opentasker.widget.WidgetIconImage
+import com.opentasker.ui.icons.WidgetIconImage
 
 @Composable
 internal fun BetaOverviewScreen(
@@ -67,7 +67,7 @@ internal fun BetaOverviewScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(contentPadding),
-        contentPadding = PaddingValues(horizontal = DesignSystem.Screen.horizontalPadding, top = 22.dp, bottom = 30.dp),
+        contentPadding = PaddingValues(start = DesignSystem.Screen.horizontalPadding, top = 22.dp, end = DesignSystem.Screen.horizontalPadding, bottom = 30.dp),
         verticalArrangement = Arrangement.spacedBy(26.dp),
     ) {
         item {
