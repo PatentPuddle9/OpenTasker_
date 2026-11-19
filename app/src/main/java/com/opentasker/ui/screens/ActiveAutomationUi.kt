@@ -567,7 +567,7 @@ fun ActiveAutomationUi(
         // with the list under it whenever a project was selected.
         OpenTaskerScreen.Actions -> stringResource(R.string.header_profiles_detail, projectProfiles.count { it.enabled }, projectProfiles.size)
         OpenTaskerScreen.Shortcuts -> stringResource(R.string.header_shortcuts_detail, taskWidgetCount(context))
-        OpenTaskerScreen.Vars -> stringResource(R.string.header_variables_detail, globalVariables.size)
+        OpenTaskerScreen.Vars -> stringResource(R.string.header_variables_detail, projectVariables.size)
         OpenTaskerScreen.Flow -> stringResource(R.string.header_flow_detail, projectProfiles.size)
         OpenTaskerScreen.Scenes -> stringResource(R.string.header_scenes_detail, scenes.sumOf { it.elements.size }, scenes.size)
         OpenTaskerScreen.Inspector -> stringResource(R.string.header_inspector_detail)
