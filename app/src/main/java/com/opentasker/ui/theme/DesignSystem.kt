@@ -17,21 +17,21 @@ object DesignSystem {
     }
 
     object Screen {
-        val horizontalPadding = 20.dp
-        val verticalPadding = 16.dp
-        val cardPadding = 16.dp
-        val heroCardPadding = 18.dp
-        val sectionGap = 18.dp
-        val cardGap = 12.dp
+        val horizontalPadding = 18.dp
+        val verticalPadding = 18.dp
+        val cardPadding = 14.dp
+        val heroCardPadding = 20.dp
+        val sectionGap = 24.dp
+        val cardGap = 10.dp
     }
 
     object Radii {
-        val xs = 4.dp
-        val sm = 8.dp
-        val md = 12.dp
-        val lg = 16.dp
-        val xl = 20.dp
-        val xxl = 24.dp
+        val xs = 2.dp
+        val sm = 4.dp
+        val md = 7.dp
+        val lg = 10.dp
+        val xl = 12.dp
+        val xxl = 16.dp
     }
 
     object Elevation {

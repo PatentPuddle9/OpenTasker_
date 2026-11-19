@@ -50,8 +50,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -78,7 +76,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -205,7 +202,6 @@ fun ActiveAutomationUi(
     val context = LocalContext.current.applicationContext
     val blueprintCatalogStore = remember(context) { BlueprintCatalogStore(context) }
     val availableBlueprints = remember(blueprintCatalogStore) { blueprintCatalogStore.available() }
-    val useNavigationRail = usesNavigationRail(LocalConfiguration.current.screenWidthDp, LocalConfiguration.current.fontScale)
     val viewModel: ActiveAutomationViewModel = viewModel(factory = ActiveAutomationViewModelFactory(db, context))
     val profiles by viewModel.profiles.collectAsState(); val contentLoaded by viewModel.contentLoaded.collectAsState(); val historyAvailability by viewModel.historyAvailability.collectAsState()
     val runBusy by viewModel.runActionBusy.collectAsState()
@@ -229,7 +225,7 @@ fun ActiveAutomationUi(
     val showUndoableMessage = remember(scope, snackbarHostState, undoLabel) {
         undoableMessages(scope, snackbarHostState, undoLabel)
     }
-    var screenOrdinal by rememberSaveable { mutableIntStateOf(0) }
+    var screenOrdinal by rememberSaveable { mutableIntStateOf(OpenTaskerScreen.Home.ordinal) }
     var selectedProjectId by rememberSaveable { mutableStateOf<Long?>(null) }
     var showGlobalSearchDialog by rememberSaveable { mutableStateOf(false) }
     var focusedVariableName by rememberSaveable { mutableStateOf<String?>(null) }
@@ -247,7 +243,7 @@ fun ActiveAutomationUi(
     val actionNamesByExecutionId = remember(actionBindings) { actionBindings.associate { it.execution.id to it.action.name } }
     val projectScenes = remember(scenes, selectedProjectId) { scenes.filter { selectedProjectId == null || it.projectId == selectedProjectId } }
     val projectVariables = remember(globalVariables, selectedProjectId) { globalVariables.filter { selectedProjectId == null || it.projectId == selectedProjectId } }
-    val screen = OpenTaskerScreen.entries.getOrElse(screenOrdinal) { OpenTaskerScreen.Actions }
+    val screen = OpenTaskerScreen.entries.getOrElse(screenOrdinal) { OpenTaskerScreen.Home }
     var taskDialogId by rememberSaveable { mutableLongStateOf(NO_DIALOG_ENTITY_ID) }
     var profileDialogId by rememberSaveable { mutableLongStateOf(NO_DIALOG_ENTITY_ID) }
     var showCreateProfileDialog by rememberSaveable { mutableStateOf(false) }
@@ -542,6 +538,10 @@ fun ActiveAutomationUi(
     }
 
     var showMoreDestinations by rememberSaveable { mutableStateOf(false) }
+    val navigateToScreen: (OpenTaskerScreen) -> Unit = { destination ->
+        screenOrdinal = destination.ordinal
+        showMoreDestinations = false
+    }
     BackHandler(enabled = shouldNavigateBackToActions(screen)) {
         screenOrdinal = OpenTaskerScreen.Actions.ordinal
         showMoreDestinations = false
@@ -563,6 +563,7 @@ fun ActiveAutomationUi(
     }
 
     val headerDetail = when (screen) {
+        OpenTaskerScreen.Home -> ""
         // Counted over the same project-scoped lists the screens render, or the header disagreed
         // with the list under it whenever a project was selected.
         OpenTaskerScreen.Actions -> stringResource(R.string.header_profiles_detail, projectProfiles.count { it.enabled }, projectProfiles.size)
@@ -586,11 +587,15 @@ fun ActiveAutomationUi(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Column {
-                OpenTaskerHeader(
+                BetaWorkspaceChrome(
                     screen = screen,
                     detail = headerDetail.takeIf { it.isNotBlank() },
                     onOpenSearch = { showGlobalSearchDialog = true },
                     showSearch = screen != OpenTaskerScreen.Settings && screen != OpenTaskerScreen.Marketplace,
+                    showMoreDestinations = showMoreDestinations,
+                    onToggleMoreDestinations = { showMoreDestinations = !showMoreDestinations },
+                    onDismissMoreDestinations = { showMoreDestinations = false },
+                    onNavigate = navigateToScreen,
                 )
                 if (screen in setOf(OpenTaskerScreen.Actions, OpenTaskerScreen.Vars, OpenTaskerScreen.Scenes, OpenTaskerScreen.Flow)) {
                     ProjectScopeBar(
@@ -649,58 +654,6 @@ fun ActiveAutomationUi(
                 OpenTaskerScreen.Diagnostics -> Unit
             }
         },
-        bottomBar = {
-            if (!useNavigationRail) {
-                Column {
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.62f),
-                        thickness = 1.dp,
-                    )
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                        tonalElevation = 0.dp,
-                    ) {
-                        primaryNavigationScreens.forEach { destination ->
-                            OpenTaskerNavigationItem(
-                                selected = screen == destination,
-                                onClick = {
-                                    screenOrdinal = destination.ordinal
-                                    showMoreDestinations = false
-                                },
-                                icon = destination.icon(),
-                                label = stringResource(destination.labelRes),
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                        Box(Modifier.weight(1f)) {
-                            OpenTaskerNavigationItem(
-                                selected = screen in secondaryNavigationScreens || showMoreDestinations,
-                                onClick = { showMoreDestinations = true },
-                                icon = Icons.Outlined.MoreHoriz,
-                                label = stringResource(R.string.nav_more),
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                            DropdownMenu(
-                                expanded = showMoreDestinations,
-                                onDismissRequest = { showMoreDestinations = false },
-                                modifier = Modifier.align(Alignment.TopEnd),
-                            ) {
-                                secondaryNavigationScreens.forEach { destination ->
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(destination.labelRes)) },
-                                        leadingIcon = { Icon(destination.icon(), contentDescription = stringResource(destination.labelRes)) },
-                                        onClick = {
-                                            screenOrdinal = destination.ordinal
-                                            showMoreDestinations = false
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
     ) { innerPadding ->
         val permissionScreen: @Composable (Boolean) -> Unit = { settingsOnly ->
             PermissionOnboardingScreen(
@@ -738,37 +691,27 @@ fun ActiveAutomationUi(
                 },
             )
         }
-        Row(Modifier.fillMaxSize()) {
-            if (useNavigationRail) {
-                NavigationRail(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .widthIn(min = 88.dp, max = 128.dp),
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .verticalScroll(rememberScrollState()),
-                    ) {
-                        adaptiveNavigationScreens.forEach { destination ->
-                            OpenTaskerNavigationItem(
-                                selected = screen == destination,
-                                onClick = {
-                                    screenOrdinal = destination.ordinal
-                                    showMoreDestinations = false
-                                },
-                                icon = destination.icon(),
-                                label = stringResource(destination.labelRes),
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                    }
-                }
-            }
-            Box(Modifier.weight(1f).fillMaxHeight()) {
+        Box(Modifier.fillMaxSize()) {
         when (screen) {
+            OpenTaskerScreen.Home -> BetaOverviewScreen(
+                profiles = projectProfiles,
+                tasks = tasks,
+                runCount = runLogPage.totalCount,
+                runBusy = runBusy,
+                contentLoaded = contentLoaded,
+                contentPadding = innerPadding,
+                onCreateAction = startNewProfile,
+                onRunAction = { profile ->
+                    val actionTask = tasks.firstOrNull { it.id == profile.enterTaskId }
+                    if (actionTask != null && actionTask.actions.isNotEmpty()) {
+                        viewModel.runTaskNow(actionTask.copy(name = profile.name))
+                    } else {
+                        scope.launch { snackbarHostState.showSnackbar("Add at least one action step before testing this action.") }
+                    }
+                },
+                onNavigate = navigateToScreen,
+            )
+
             OpenTaskerScreen.Actions -> ProfilesScreen(
                 profiles = projectProfiles,
                 tasks = projectTasks,
@@ -955,7 +898,6 @@ fun ActiveAutomationUi(
                 onCopy = viewModel.diagnostics::copyDiagnosticReport,
             )
         }
-            }
         }
     }
 

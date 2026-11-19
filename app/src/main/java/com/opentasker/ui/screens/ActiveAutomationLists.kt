@@ -175,24 +175,22 @@ internal fun ProfilesScreen(
     }
     val tasksById = remember(allTasks) { allTasks.associateBy(Task::id) }
 
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 164.dp),
+    LazyColumn(
         modifier = Modifier.fillMaxSize().padding(contentPadding),
         contentPadding = PaddingValues(
             start = DesignSystem.Screen.horizontalPadding,
             end = DesignSystem.Screen.horizontalPadding,
             top = 12.dp,
-            bottom = 104.dp,
+            bottom = 28.dp,
         ),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (storageDecodeIssues.isNotEmpty()) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
+            item {
                 StorageDecodeWarningCard(storageDecodeIssues)
             }
         }
-        item(span = { GridItemSpan(maxLineSpan) }) {
+        item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -230,7 +228,7 @@ internal fun ProfilesScreen(
                 )
             }
         }
-        item(span = { GridItemSpan(maxLineSpan) }) {
+        item {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
                     FilterChip(
@@ -273,7 +271,7 @@ internal fun ProfilesScreen(
                 }
             }
         }
-        item(span = { GridItemSpan(maxLineSpan) }) {
+        item {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 1.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -292,7 +290,7 @@ internal fun ProfilesScreen(
             }
         }
         if (filteredProfiles.isEmpty()) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
+            item {
                 InlineNotice(
                     title = stringResource(R.string.workspace_no_matching_profiles),
                     body = stringResource(R.string.workspace_no_matching_profiles_body),
@@ -420,7 +418,7 @@ private fun ProfileCard(
     }
     val statusColor = when {
         profile.requiresRiskAcknowledgement -> MaterialTheme.colorScheme.error
-        profile.enabled -> MaterialTheme.colorScheme.primary
+        profile.enabled -> MaterialTheme.colorScheme.tertiary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -428,93 +426,81 @@ private fun ProfileCard(
         onClick = onEdit,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        border = BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f),
-        ),
-        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shape = RoundedCornerShape(6.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp, pressedElevation = 1.dp),
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(13.dp),
-            verticalArrangement = Arrangement.spacedBy(9.dp),
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
+            Text(
+                profile.id.toString().takeLast(3).padStart(3, '0'),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                ),
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = RoundedCornerShape(4.dp),
+                modifier = Modifier.size(46.dp),
             ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = RoundedCornerShape(11.dp),
-                    modifier = Modifier.size(46.dp),
+                IconButton(
+                    onClick = onRun,
+                    enabled = testEnabled,
+                    modifier = Modifier.fillMaxSize().semantics { this.contentDescription = testDescription },
                 ) {
-                    IconButton(
-                        onClick = onRun,
-                        enabled = testEnabled,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .semantics { this.contentDescription = testDescription },
-                    ) {
-                        WidgetIconImage(
-                            iconKey = profile.icon,
-                            contentDescription = null,
-                            tint = if (profile.enabled) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(23.dp),
-                        )
-                    }
-                }
-                if (!widgetOwned) {
-                    ProfileActionsMenu(
-                        contentDescription = stringResource(R.string.a11y_duplicate_profile, profile.name),
-                        editDescription = stringResource(R.string.a11y_edit_profile, profile.name),
-                        canUndo = canUndo,
-                        canRedo = canRedo,
-                        onEdit = onEdit,
-                        onPreflight = onPreflight,
-                        onTest = onRun,
-                        testEnabled = testEnabled,
-                        onDuplicate = onDuplicate,
-                        onUndo = onUndo,
-                        onRedo = onRedo,
-                        onDelete = onDelete,
+                    WidgetIconImage(
+                        iconKey = profile.icon,
+                        contentDescription = null,
+                        tint = if (profile.enabled) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp),
                     )
                 }
             }
-            Text(
-                profile.name,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                minLines = 1,
-            )
-            Text(
-                "$actionCount steps  ·  ${profile.contexts.size} triggers",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
+                Text(
+                    profile.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "$actionCount steps  /  ${profile.contexts.size} triggers",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 StatusPill(profileState, statusColor)
-                if (widgetOwned) {
-                    Text(
-                        "Widget",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.tertiary,
-                    )
-                }
+            }
+            if (!widgetOwned) {
+                ProfileActionsMenu(
+                    contentDescription = stringResource(R.string.a11y_duplicate_profile, profile.name),
+                    editDescription = stringResource(R.string.a11y_edit_profile, profile.name),
+                    canUndo = canUndo,
+                    canRedo = canRedo,
+                    onEdit = onEdit,
+                    onPreflight = onPreflight,
+                    onTest = onRun,
+                    testEnabled = testEnabled,
+                    onDuplicate = onDuplicate,
+                    onUndo = onUndo,
+                    onRedo = onRedo,
+                    onDelete = onDelete,
+                )
             }
         }
     }
 }
-
 @Composable
 internal fun TasksScreen(
     tasks: List<Task>,

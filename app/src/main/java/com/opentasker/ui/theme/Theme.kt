@@ -24,28 +24,28 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 
 // Command Center palette with a customizable sage accent and quiet graphite surfaces.
-private val Sage = Color(0xFFA9B79E)
-private val SageBright = Color(0xFFD8E0D1)
-private val SignalAmber = Color(0xFFC8AD83)
-private val SignalRed = Color(0xFFD18A80)
-private val Text = Color(0xFFE9EDE7)
-private val TextSecondary = Color(0xFFA4ADA1)
-private val WorkshopBackground = Color(0xFF111511)
-private val WorkshopSurface = Color(0xFF191E19)
-private val WorkshopNavy = Color(0xFF202820)
-private val WorkshopElevated = Color(0xFF293229)
-private val WorkshopOutline = Color(0xFF525D51)
+private val SignalBlue = Color(0xFF6BCFF2)
+private val SignalBluePale = Color(0xFFB7E9FA)
+private val SignalOrange = Color(0xFFFFB86B)
+private val SignalRed = Color(0xFFFF817C)
+private val Text = Color(0xFFEAF1FB)
+private val TextSecondary = Color(0xFFA9B8CB)
+private val WorkshopBackground = Color(0xFF0A101B)
+private val WorkshopSurface = Color(0xFF111B2A)
+private val WorkshopNavy = Color(0xFF18283D)
+private val WorkshopElevated = Color(0xFF223650)
+private val WorkshopOutline = Color(0xFF526C88)
 
 private val Graphite = darkColorScheme(
-    primary = Sage,
+    primary = SignalBlue,
     onPrimary = Color(0xFF1B241B),
     primaryContainer = Color(0xFF303A30),
     onPrimaryContainer = Color(0xFFE6ECE1),
-    secondary = SignalAmber,
+    secondary = SignalOrange,
     onSecondary = Color(0xFF262316),
     secondaryContainer = Color(0xFF332E22),
     onSecondaryContainer = Color(0xFFE8DFCC),
-    tertiary = SageBright,
+    tertiary = SignalBluePale,
     onTertiary = Color(0xFF20291F),
     tertiaryContainer = Color(0xFF343D33),
     onTertiaryContainer = Color(0xFFE6ECE1),
@@ -81,15 +81,15 @@ private val Graphite = darkColorScheme(
  * body text keeps 19:1 on black and secondary text ~8.8:1.
  */
 private val Amoled = darkColorScheme(
-    primary = Sage,
+    primary = SignalBlue,
     onPrimary = Color(0xFF1B241B),
     primaryContainer = Color(0xFF30402F),
     onPrimaryContainer = Color(0xFFE6ECE1),
-    secondary = SignalAmber,
+    secondary = SignalOrange,
     onSecondary = Color(0xFF262316),
     secondaryContainer = Color(0xFF302A20),
     onSecondaryContainer = Color(0xFFE6DFC8),
-    tertiary = SageBright,
+    tertiary = SignalBluePale,
     onTertiary = Color(0xFF20291F),
     tertiaryContainer = Color(0xFF343D33),
     onTertiaryContainer = Color(0xFFE6ECE1),
@@ -121,30 +121,30 @@ private val Amoled = darkColorScheme(
 // Warm sage and stone palette for the light theme. Mirrors the dark scheme's structure so every
 // semantic token (including the *Container and outlineVariant slots the UI relies on) is defined
 // and coherent in both modes, rather than falling back to mismatched Material defaults.
-private val LightPurple = Color(0xFF65785E)
-private val LightAmber = Color(0xFF75694C)
-private val LightPurpleSecondary = Color(0xFF6F8068)
-private val LightRed = Color(0xFF9A5E54)
-private val LightText = Color(0xFF232820)
-private val LightSubtext = Color(0xFF666D61)
-private val LightBase = Color(0xFFF1F3EE)
-private val LightSurface = Color(0xFFFBFCF8)
-private val LightElevated = Color(0xFFE7EBE3)
-private val LightOutline = Color(0xFF747D70)
+private val LightBlue = Color(0xFF155F8D)
+private val LightAmber = Color(0xFF80500F)
+private val LightTeal = Color(0xFF32738A)
+private val LightRed = Color(0xFF9B3E3B)
+private val LightText = Color(0xFF132034)
+private val LightSubtext = Color(0xFF566A82)
+private val LightBase = Color(0xFFF2F6FA)
+private val LightSurface = Color(0xFFFFFFFF)
+private val LightElevated = Color(0xFFE6EDF5)
+private val LightOutline = Color(0xFF71849A)
 
 private val Light = lightColorScheme(
-    primary = LightPurple,
+    primary = LightBlue,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFDDE6D7),
-    onPrimaryContainer = Color(0xFF283525),
+    primaryContainer = Color(0xFFD7ECF7),
+    onPrimaryContainer = Color(0xFF123247),
     secondary = LightAmber,
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFEBE6D7),
-    onSecondaryContainer = Color(0xFF3A3527),
-    tertiary = LightPurpleSecondary,
+    secondaryContainer = Color(0xFFFFE9D0),
+    onSecondaryContainer = Color(0xFF4B2D08),
+    tertiary = LightTeal,
     onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFDDE6D7),
-    onTertiaryContainer = Color(0xFF283525),
+    tertiaryContainer = Color(0xFFDDECF0),
+    onTertiaryContainer = Color(0xFF173C48),
     error = LightRed,
     onError = Color.White,
     errorContainer = Color(0xFFFFDEDA),
@@ -156,16 +156,16 @@ private val Light = lightColorScheme(
     surfaceVariant = LightElevated,
     onSurfaceVariant = LightSubtext,
     outline = LightOutline,
-    outlineVariant = Color(0xFFDDE2D8),
+    outlineVariant = Color(0xFFD5E0EA),
     // Without these, dialogs and menus fall back to Material's lavender baseline
     // containers, which read as clearly off-palette against the warm cream surfaces.
     surfaceContainerLowest = Color(0xFFFFFFFF),
     surfaceContainerLow = LightSurface,
-    surfaceContainer = Color(0xFFF0F2ED),
+    surfaceContainer = Color(0xFFF0F4F8),
     surfaceContainerHigh = LightElevated,
-    surfaceContainerHighest = Color(0xFFE1E7DE),
+    surfaceContainerHighest = Color(0xFFDCE6F0),
     surfaceBright = Color(0xFFFFFFFF),
-    surfaceDim = Color(0xFFE2E7E0),
+    surfaceDim = Color(0xFFE0E8F0),
 )
 
 private val HighContrast = darkColorScheme(
@@ -206,15 +206,15 @@ private val HighContrast = darkColorScheme(
 private val OpenTaskerTypography = Typography(
     headlineSmall = TextStyle(
         fontWeight = FontWeight.Bold,
-        fontSize = 28.sp,
-        lineHeight = 34.sp,
-        letterSpacing = (-0.65).sp,
+        fontSize = 32.sp,
+        lineHeight = 38.sp,
+        letterSpacing = (-0.9).sp,
     ),
     titleLarge = TextStyle(
         fontWeight = FontWeight.Bold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        letterSpacing = (-0.25).sp,
+        fontSize = 24.sp,
+        lineHeight = 30.sp,
+        letterSpacing = (-0.45).sp,
     ),
     titleMedium = TextStyle(
         fontWeight = FontWeight.SemiBold,
@@ -255,11 +255,11 @@ private val OpenTaskerTypography = Typography(
 )
 
 private val OpenTaskerShapes = Shapes(
-    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
-    small = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-    medium = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-    large = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(2.dp),
+    small = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
+    medium = androidx.compose.foundation.shape.RoundedCornerShape(7.dp),
+    large = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
 )
 
 /**
@@ -310,7 +310,7 @@ fun OpenTaskerTheme(
         darkTheme -> Graphite
         else -> Light
     }
-    val accent = runCatching { Color(android.graphics.Color.parseColor(accentColorHex)) }.getOrDefault(Sage)
+    val accent = runCatching { Color(android.graphics.Color.parseColor(accentColorHex)) }.getOrDefault(SignalBlue)
     // High-contrast mode keeps its explicit accessibility palette; all other modes derive a
     // coordinated set of tones from the single user-selected accent.
     val adjustedColors = if (highContrast) colors else colors.withOpenTaskerAccent(accent, darkTheme)
@@ -346,7 +346,7 @@ fun selectedContainerColor(): Color =
         .compositeOver(MaterialTheme.colorScheme.surface)
 
 
-private val AccentInk = Color(0xFF1B241B)
+private val AccentInk = Color(0xFF071722)
 
 private data class AccentHsl(
     val hue: Float,
