@@ -1053,4 +1053,46 @@
 <string name="catalog_action_sound_play_field_stream_label" formatted="false">Audio stream</string>
 
 <string name="catalog_action_sound_play_field_stream_hint" formatted="false">Music by default. Ringer and Notifications use the ringer or notification volume and go quiet on vibrate or silent, and Do Not Disturb can silence them too. On Android 17 a task started in the background can only be heard on Alarm, which needs exact-alarm access and follows the alarm volume.</string>
+    <string name="catalog_action_calendar_event_add_name" formatted="false">Add Calendar Event</string>
+    <string name="catalog_action_calendar_event_add_description" formatted="false">Add an event to a calendar and put the new event id in %event_id</string>
+    <string name="catalog_action_calendar_event_add_field_calendar_label" formatted="false">Calendar</string>
+    <string name="catalog_action_calendar_event_add_field_calendar_hint" formatted="false">Its name as your calendar app shows it, or its id</string>
+    <string name="catalog_action_calendar_event_add_field_title_label" formatted="false">Title</string>
+    <string name="catalog_action_calendar_event_add_field_start_label" formatted="false">Start</string>
+    <string name="catalog_action_calendar_event_add_field_start_hint" formatted="false">now, epoch milliseconds, 2026-11-22 or 2026-11-22 09:30</string>
+    <string name="catalog_action_calendar_event_add_field_end_label" formatted="false">End</string>
+    <string name="catalog_action_calendar_event_add_field_end_hint" formatted="false">Written like Start. For an all-day event, the last day. Blank uses Duration</string>
+    <string name="catalog_action_calendar_event_add_field_duration_label" formatted="false">Duration (minutes)</string>
+    <string name="catalog_action_calendar_event_add_field_duration_hint" formatted="false">60 by default. All-day events take an End day instead</string>
+    <string name="catalog_action_calendar_event_add_field_all_day_label" formatted="false">All day</string>
+    <string name="catalog_action_calendar_event_add_field_description_label" formatted="false">Description</string>
+    <string name="catalog_action_calendar_event_add_field_location_label" formatted="false">Location</string>
+    <string name="catalog_action_calendar_event_add_field_var_label" formatted="false">Variable prefix</string>
+    <string name="catalog_action_calendar_event_add_field_var_hint" formatted="false">event by default, so the new event id lands in %event_id</string>
+    <string name="catalog_action_calendar_event_query_name" formatted="false">Find Calendar Events</string>
+    <string name="catalog_action_calendar_event_query_description" formatted="false">Read the events in a time window into %event_count, %event_titles, %event_starts and more</string>
+    <string name="catalog_action_calendar_event_query_field_from_label" formatted="false">From</string>
+    <string name="catalog_action_calendar_event_query_field_from_hint" formatted="false">now by default. Also epoch milliseconds, 2026-11-22 or 2026-11-22 09:30</string>
+    <string name="catalog_action_calendar_event_query_field_to_label" formatted="false">To</string>
+    <string name="catalog_action_calendar_event_query_field_to_hint" formatted="false">A day after From by default, and at most a year after it</string>
+    <string name="catalog_action_calendar_event_query_field_calendar_label" formatted="false">Calendar</string>
+    <string name="catalog_action_calendar_event_query_field_calendar_hint" formatted="false">A name or id to look in. Blank looks in every calendar</string>
+    <string name="catalog_action_calendar_event_query_field_max_label" formatted="false">Most events</string>
+    <string name="catalog_action_calendar_event_query_field_max_hint" formatted="false">10 by default, 50 at most</string>
+    <string name="catalog_action_calendar_event_query_field_var_label" formatted="false">Variable prefix</string>
+    <string name="catalog_action_calendar_event_query_field_var_hint" formatted="false">event by default. Titles and locations are kept hidden in the run log</string>
+    <string name="action_option_location_fix" formatted="false">Fresh fix</string>
+    <string name="action_option_location_last_known" formatted="false">Last known only</string>
+    <string name="catalog_action_location_get_name" formatted="false">Get Location</string>
+    <string name="catalog_action_location_get_description" formatted="false">Read where the phone is into %location_lat, %location_lon, %location_accuracy and %location_age</string>
+    <string name="catalog_action_location_get_field_mode_label" formatted="false">Mode</string>
+    <string name="catalog_action_location_get_field_mode_hint" formatted="false">Fresh fix asks GPS and network location. Last known only reads what the phone already has and costs no battery</string>
+    <string name="catalog_action_location_get_field_accuracy_label" formatted="false">Accuracy (meters)</string>
+    <string name="catalog_action_location_get_field_accuracy_hint" formatted="false">Wait for a fix at least this good. Blank takes the first one</string>
+    <string name="catalog_action_location_get_field_timeout_label" formatted="false">Timeout (seconds)</string>
+    <string name="catalog_action_location_get_field_timeout_hint" formatted="false">How long to wait for a fresh fix, 1 to 120. 30 by default</string>
+    <string name="catalog_action_location_get_field_var_label" formatted="false">Variable prefix</string>
+    <string name="catalog_action_location_get_field_var_hint" formatted="false">location by default. Latitude and longitude are kept hidden in the run log</string>
+    <string name="catalog_action_settings_read_name" formatted="false">Read Setting</string>
+    <string name="catalog_action_settings_read_description" formatted="false">Read one Android setting by name into a variable. Reading needs no access, but Android hides some names from apps.</string>
 </resources>

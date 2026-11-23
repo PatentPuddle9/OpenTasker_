@@ -753,4 +753,46 @@
     <string name="catalog_action_shortcut_publish_field_mode_hint" formatted="false">动态会立即更新；固定需询问启动器</string>
     <string name="action_option_shortcut_dynamic" formatted="false">动态</string>
     <string name="action_option_shortcut_pinned" formatted="false">固定</string>
+    <string name="catalog_action_calendar_event_add_name" formatted="false">添加日历活动</string>
+    <string name="catalog_action_calendar_event_add_description" formatted="false">向日历添加活动，并把新活动的ID存入%event_id</string>
+    <string name="catalog_action_calendar_event_add_field_calendar_label" formatted="false">日历</string>
+    <string name="catalog_action_calendar_event_add_field_calendar_hint" formatted="false">日历应用中显示的名称，或其ID</string>
+    <string name="catalog_action_calendar_event_add_field_title_label" formatted="false">标题</string>
+    <string name="catalog_action_calendar_event_add_field_start_label" formatted="false">开始</string>
+    <string name="catalog_action_calendar_event_add_field_start_hint" formatted="false">now、纪元毫秒数、2026-11-22或2026-11-22 09:30</string>
+    <string name="catalog_action_calendar_event_add_field_end_label" formatted="false">结束</string>
+    <string name="catalog_action_calendar_event_add_field_end_hint" formatted="false">写法与“开始”相同。全天活动填写最后一天。留空则使用“时长”</string>
+    <string name="catalog_action_calendar_event_add_field_duration_label" formatted="false">时长（分钟）</string>
+    <string name="catalog_action_calendar_event_add_field_duration_hint" formatted="false">默认为60。全天活动改为填写结束日期</string>
+    <string name="catalog_action_calendar_event_add_field_all_day_label" formatted="false">全天</string>
+    <string name="catalog_action_calendar_event_add_field_description_label" formatted="false">描述</string>
+    <string name="catalog_action_calendar_event_add_field_location_label" formatted="false">地点</string>
+    <string name="catalog_action_calendar_event_add_field_var_label" formatted="false">变量前缀</string>
+    <string name="catalog_action_calendar_event_add_field_var_hint" formatted="false">默认为event，因此新活动的ID会存入%event_id</string>
+    <string name="catalog_action_calendar_event_query_name" formatted="false">查找日历活动</string>
+    <string name="catalog_action_calendar_event_query_description" formatted="false">把某个时间段内的活动读入%event_count、%event_titles、%event_starts等变量</string>
+    <string name="catalog_action_calendar_event_query_field_from_label" formatted="false">从</string>
+    <string name="catalog_action_calendar_event_query_field_from_hint" formatted="false">默认为now。也可以是纪元毫秒数、2026-11-22或2026-11-22 09:30</string>
+    <string name="catalog_action_calendar_event_query_field_to_label" formatted="false">到</string>
+    <string name="catalog_action_calendar_event_query_field_to_hint" formatted="false">默认为“从”之后一天，最多为其后一年</string>
+    <string name="catalog_action_calendar_event_query_field_calendar_label" formatted="false">日历</string>
+    <string name="catalog_action_calendar_event_query_field_calendar_hint" formatted="false">要查找的日历名称或ID。留空则查找所有日历</string>
+    <string name="catalog_action_calendar_event_query_field_max_label" formatted="false">最多活动数</string>
+    <string name="catalog_action_calendar_event_query_field_max_hint" formatted="false">默认为10，最多50</string>
+    <string name="catalog_action_calendar_event_query_field_var_label" formatted="false">变量前缀</string>
+    <string name="catalog_action_calendar_event_query_field_var_hint" formatted="false">默认为event。标题和地点在运行日志中保持隐藏</string>
+    <string name="action_option_location_fix" formatted="false">重新定位</string>
+    <string name="action_option_location_last_known" formatted="false">仅用上次已知位置</string>
+    <string name="catalog_action_location_get_name" formatted="false">获取位置</string>
+    <string name="catalog_action_location_get_description" formatted="false">把手机所在位置读入%location_lat、%location_lon、%location_accuracy和%location_age</string>
+    <string name="catalog_action_location_get_field_mode_label" formatted="false">模式</string>
+    <string name="catalog_action_location_get_field_mode_hint" formatted="false">“重新定位”会使用GPS和网络定位。“仅用上次已知位置”读取手机已有的位置，不耗电</string>
+    <string name="catalog_action_location_get_field_accuracy_label" formatted="false">精度（米）</string>
+    <string name="catalog_action_location_get_field_accuracy_hint" formatted="false">等待至少达到此精度的定位。留空则采用第一次定位</string>
+    <string name="catalog_action_location_get_field_timeout_label" formatted="false">超时（秒）</string>
+    <string name="catalog_action_location_get_field_timeout_hint" formatted="false">等待新定位的时长，1到120。默认为30</string>
+    <string name="catalog_action_location_get_field_var_label" formatted="false">变量前缀</string>
+    <string name="catalog_action_location_get_field_var_hint" formatted="false">默认为location。纬度和经度在运行日志中保持隐藏</string>
+    <string name="catalog_action_settings_read_name" formatted="false">读取设置</string>
+    <string name="catalog_action_settings_read_description" formatted="false">按名称将一个Android设置读入变量。读取无需授权，但Android会对应用隐藏部分名称。</string>
 </resources>

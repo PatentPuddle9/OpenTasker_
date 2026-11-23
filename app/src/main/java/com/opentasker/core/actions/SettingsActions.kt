@@ -765,3 +765,31 @@ class SettingsWriteAction : DeclaredAction(ActionCatalog.require("settings.write
         return ActionResult.Success
     }
 }
+
+/** Reads one named Android setting into a variable, without needing a write grant. */
+class SettingsReadAction : DeclaredAction(ActionCatalog.require("settings.read")) {
+    override suspend fun run(ctx: ActionContext, args: Map<String, String>): ActionResult {
+        val tableName = args["table"]?.trim()?.lowercase().orEmpty()
+        val table = SettingsTable.entries.firstOrNull { it.wireValue == tableName }
+            ?: return ActionResult.Failure("Choose the table to read: global, secure, or system.")
+        val key = args["key"]?.trim().orEmpty()
+        if (!SETTINGS_KEY_PATTERN.matches(key)) {
+            return ActionResult.Failure("A setting name is up to 64 characters of a-z, 0-9, underscore or dot.")
+        }
+        val output = VariableNamePolicy.normalize(args["var"].orEmpty())
+            ?: return ActionResult.Failure("Choose a variable to store the setting in.")
+        val target = "${table.wireValue}/$key"
+        val value = runCatching {
+            when (table) {
+                SettingsTable.GLOBAL -> Settings.Global.getString(ctx.app.contentResolver, key)
+                SettingsTable.SECURE -> Settings.Secure.getString(ctx.app.contentResolver, key)
+                SettingsTable.SYSTEM -> Settings.System.getString(ctx.app.contentResolver, key)
+            }
+        }.getOrElse { error ->
+            return ActionResult.Failure("Android won't let this app read $target: ${error.message ?: "it refused"}")
+        }
+        ctx.variables.set(output, value.orEmpty())
+        ctx.logger("Read setting $target")
+        return ActionResult.Success
+    }
+}

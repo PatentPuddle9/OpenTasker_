@@ -1942,4 +1942,7 @@
     <string name="ui_message_project_renamed">项目已重命名</string>
     <string name="ui_message_project_reordered">项目已重新排序</string>
     <string name="ui_message_project_deleted">项目已删除</string>
+    <string name="setup_calendar_write_title">日历编辑</string>
+    <string name="setup_calendar_write_body">添加日历事件所需。Android 将它与读取日历分开授予，所以这里会同时请求两者。</string>
+    <string name="setup_calendar_write_required_for">添加日历事件</string>
 </resources>

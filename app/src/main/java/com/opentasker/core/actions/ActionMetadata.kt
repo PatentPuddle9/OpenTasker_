@@ -1612,4 +1612,89 @@ fun registerActionMetadata() {
             )
         )
     )
+
+    ActionMetadataRegistry.register(
+        ActionMetadata(
+            id = "settings.read",
+            nameRes = R.string.catalog_action_settings_read_name,
+            descriptionRes = R.string.catalog_action_settings_read_description,
+            categoryRes = R.string.catalog_category_settings,
+            fields = listOf(
+                ActionField(
+                    "table",
+                    R.string.catalog_action_settings_write_field_table_label,
+                    FieldType.DROPDOWN,
+                    required = true,
+                    hintRes = R.string.catalog_action_settings_write_field_table_hint,
+                    options = settingsTableOptions,
+                ),
+                ActionField(
+                    "key",
+                    R.string.catalog_action_settings_write_field_key_label,
+                    FieldType.TEXT,
+                    required = true,
+                    hintRes = R.string.catalog_action_settings_write_field_key_hint,
+                    sensitive = false,
+                ),
+                ActionField(
+                    "var",
+                    R.string.catalog_action_settings_read_field_var_label,
+                    FieldType.TEXT,
+                    required = true,
+                    hintRes = R.string.catalog_action_settings_read_field_var_hint,
+                ),
+            )
+        )
+    )
+
+    ActionMetadataRegistry.register(
+        ActionMetadata(
+            id = "calendar.event.add",
+            nameRes = R.string.catalog_action_calendar_event_add_name,
+            descriptionRes = R.string.catalog_action_calendar_event_add_description,
+            categoryRes = R.string.catalog_category_app,
+            fields = listOf(
+                ActionField("calendar", R.string.catalog_action_calendar_event_add_field_calendar_label, required = true, hintRes = R.string.catalog_action_calendar_event_add_field_calendar_hint),
+                ActionField("title", R.string.catalog_action_calendar_event_add_field_title_label, required = true, sensitive = true),
+                ActionField("start", R.string.catalog_action_calendar_event_add_field_start_label, required = true, hintRes = R.string.catalog_action_calendar_event_add_field_start_hint),
+                ActionField("end", R.string.catalog_action_calendar_event_add_field_end_label, hintRes = R.string.catalog_action_calendar_event_add_field_end_hint),
+                ActionField("duration", R.string.catalog_action_calendar_event_add_field_duration_label, FieldType.NUMBER, hintRes = R.string.catalog_action_calendar_event_add_field_duration_hint, numberRule = integerRule(1, CalendarEventAddAction.MAX_DURATION_MINUTES)),
+                ActionField("all_day", R.string.catalog_action_calendar_event_add_field_all_day_label, FieldType.CHECKBOX),
+                ActionField("description", R.string.catalog_action_calendar_event_add_field_description_label, FieldType.MULTILINE, sensitive = true),
+                ActionField("location", R.string.catalog_action_calendar_event_add_field_location_label, sensitive = true),
+                ActionField("var", R.string.catalog_action_calendar_event_add_field_var_label, hintRes = R.string.catalog_action_calendar_event_add_field_var_hint),
+            ),
+        )
+    )
+
+    ActionMetadataRegistry.register(
+        ActionMetadata(
+            id = "calendar.event.query",
+            nameRes = R.string.catalog_action_calendar_event_query_name,
+            descriptionRes = R.string.catalog_action_calendar_event_query_description,
+            categoryRes = R.string.catalog_category_variable,
+            fields = listOf(
+                ActionField("from", R.string.catalog_action_calendar_event_query_field_from_label, hintRes = R.string.catalog_action_calendar_event_query_field_from_hint),
+                ActionField("to", R.string.catalog_action_calendar_event_query_field_to_label, hintRes = R.string.catalog_action_calendar_event_query_field_to_hint),
+                ActionField("calendar", R.string.catalog_action_calendar_event_query_field_calendar_label, hintRes = R.string.catalog_action_calendar_event_query_field_calendar_hint),
+                ActionField("max", R.string.catalog_action_calendar_event_query_field_max_label, FieldType.NUMBER, hintRes = R.string.catalog_action_calendar_event_query_field_max_hint, numberRule = integerRule(1, CalendarEventQueryAction.MAX_RESULTS.toLong())),
+                ActionField("var", R.string.catalog_action_calendar_event_query_field_var_label, hintRes = R.string.catalog_action_calendar_event_query_field_var_hint),
+            ),
+        )
+    )
+
+    ActionMetadataRegistry.register(
+        ActionMetadata(
+            id = "location.get",
+            nameRes = R.string.catalog_action_location_get_name,
+            descriptionRes = R.string.catalog_action_location_get_description,
+            categoryRes = R.string.catalog_category_variable,
+            fields = listOf(
+                ActionField("mode", R.string.catalog_action_location_get_field_mode_label, FieldType.DROPDOWN, hintRes = R.string.catalog_action_location_get_field_mode_hint, options = listOf(option(LocationGetAction.MODE_FIX, R.string.action_option_location_fix), option(LocationGetAction.MODE_LAST_KNOWN, R.string.action_option_location_last_known))),
+                ActionField("accuracy", R.string.catalog_action_location_get_field_accuracy_label, FieldType.NUMBER, hintRes = R.string.catalog_action_location_get_field_accuracy_hint, numberRule = decimalRule(1.0)),
+                ActionField("timeout", R.string.catalog_action_location_get_field_timeout_label, FieldType.NUMBER, hintRes = R.string.catalog_action_location_get_field_timeout_hint, numberRule = integerRule(1, LocationGetAction.MAX_TIMEOUT_SECONDS)),
+                ActionField("var", R.string.catalog_action_location_get_field_var_label, hintRes = R.string.catalog_action_location_get_field_var_hint),
+            )
+        )
+    )
 }

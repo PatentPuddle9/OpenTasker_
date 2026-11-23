@@ -2287,4 +2287,7 @@
 <string name="sub_task_input_error_return_variable">returnVariable names where the returned value goes. Pick another name.</string>
 
 <string name="sub_task_input_error_reset_return_variable">resetReturnVariable is the switch that clears that variable first. Pick another name.</string>
+    <string name="setup_calendar_write_title">Calendar editing</string>
+    <string name="setup_calendar_write_body">Needed to add calendar events. Android grants it apart from reading the calendar, so this asks for both.</string>
+    <string name="setup_calendar_write_required_for">Adding calendar events</string>
 </resources>

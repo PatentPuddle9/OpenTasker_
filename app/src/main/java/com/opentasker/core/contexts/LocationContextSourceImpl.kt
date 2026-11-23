@@ -189,6 +189,20 @@ class LocationContextSourceImpl(
     }
 }
 
+/** Fine or approximate location, either of which lets Android hand out a fix. */
+internal fun hasForegroundLocationAccess(context: Context): Boolean =
+    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+/** The providers a one-shot location read can listen to: GPS, network, then passive. */
+internal fun enabledLocationProviders(locationManager: LocationManager): List<String> {
+    val active = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+        .filter { provider -> runCatching { locationManager.isProviderEnabled(provider) }.getOrDefault(false) }
+    val passive = if (runCatching { locationManager.isProviderEnabled(LocationManager.PASSIVE_PROVIDER) }.getOrDefault(false))
+        listOf(LocationManager.PASSIVE_PROVIDER) else emptyList()
+    return active + passive
+}
+
 internal class LocationListenerRegistrationState(
     private val removeUpdates: (LocationListener) -> Unit,
 ) {

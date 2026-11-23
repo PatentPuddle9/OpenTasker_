@@ -26,7 +26,7 @@ The app is developed on the [Experimental branch](https://github.com/PatentPuddl
 
 ## Features
 
-### Actions (86 registered + 10 engine-handled)
+### Actions (90 registered + 10 engine-handled)
 
 Actions are OpenTasker's automation units. Each Action has a name, icon, trigger conditions, and an ordered sequence of action blocks. You can run an Action from the app, let its triggers run it automatically, or expose it through a launcher shortcut or widget.
 
@@ -43,7 +43,7 @@ Actions are OpenTasker's automation units. Each Action has a name, icon, trigger
 
 Actions are project-scoped for organization. Use the project selector to switch between a single Project or **All**, then create, rename, reorder, or delete Projects from the project manager.
 
-The runtime catalogue contains **86 registered action entries**, plus **10 engine-handled flow commands**. Two registered entries are explicit unsupported placeholders for imported Tasker and MacroDroid actions; they report that the imported action is unsupported rather than pretending to execute it. The complete index is below.
+The runtime catalogue contains **90 registered action entries**, plus **10 engine-handled flow commands**. Two registered entries are explicit unsupported placeholders for imported Tasker and MacroDroid actions; they report that the imported action is unsupported rather than pretending to execute it. The complete index is below.
 
 ### Triggers
 
@@ -70,18 +70,18 @@ The trigger picker is searchable and grouped into ten categories. The category i
 
 ### Complete action catalogue
 
-The action catalogue contains 86 registered entries plus 10 engine-handled flow commands. This table describes the user-facing capability and includes the stable action ID stored in automations.
+The action catalogue contains 90 registered entries plus 10 engine-handled flow commands. This table describes the user-facing capability and includes the stable action ID stored in automations.
 
 | Category | Count | Action blocks and functionality |
 |---|---:|---|
-| **Settings and device control** | 24 | Toggle Wi-Fi and Bluetooth (`wifi.toggle`, `bluetooth.toggle`); scan nearby Wi-Fi networks (`wifi.scan`); read/set brightness and volume (`brightness.read`, `brightness.set`, `volume.read`, `volume.set`); toggle airplane mode and mobile data (`airplane.toggle`, `mobile.toggle`); set Always-on Display and screen timeout (`aod.set`, `screen.timeout`); write an allowed system setting (`settings.write`); set Do Not Disturb and Zen rules (`dnd.set`, `zen.rule.set`, `zen.rule.clear`); set ringer mode (`ringer.set`); read/set torch state (`torch.read`, `torch.set`); set a Quick Settings tile (`tile.set`); apply a temporary reversible setting (`state.temporary`); inspect/select an input method (`ime.info`, `ime.set`); turn the screen off or wake it (`screen.off`, `wake`). |
-| **Apps and shortcuts** | 11 | Launch an Android intent or app (`intent.launch`, `app.launch`); archive/unarchive an app (`app.archive`, `app.unarchive`); publish a launcher shortcut (`shortcut.publish`); dispatch a Locale setting (`plugin.locale.fire`); kill an app where Android permits it (`app.kill`); return to Home (`home.go`); open a URL (`url.open`); send an SMS (`sms.send`); capture a screenshot (`screenshot.take`). |
+| **Settings and device control** | 25 | Toggle Wi-Fi and Bluetooth (`wifi.toggle`, `bluetooth.toggle`); scan nearby Wi-Fi networks (`wifi.scan`); read/set brightness and volume (`brightness.read`, `brightness.set`, `volume.read`, `volume.set`); toggle airplane mode and mobile data (`airplane.toggle`, `mobile.toggle`); set Always-on Display and screen timeout (`aod.set`, `screen.timeout`); write an allowed system setting (`settings.write`) and read a setting (`settings.read`); set Do Not Disturb and Zen rules (`dnd.set`, `zen.rule.set`, `zen.rule.clear`); set ringer mode (`ringer.set`); read/set torch state (`torch.read`, `torch.set`); set a Quick Settings tile (`tile.set`); apply a temporary reversible setting (`state.temporary`); inspect/select an input method (`ime.info`, `ime.set`); turn the screen off or wake it (`screen.off`, `wake`). |
+| **Apps and shortcuts** | 12 | Launch an Android intent or app (`intent.launch`, `app.launch`); add an event to a calendar (`calendar.event.add`); archive/unarchive an app (`app.archive`, `app.unarchive`); publish a launcher shortcut (`shortcut.publish`); dispatch a Locale setting (`plugin.locale.fire`); kill an app where Android permits it (`app.kill`); return to Home (`home.go`); open a URL (`url.open`); send an SMS (`sms.send`); capture a screenshot (`screenshot.take`). |
 | **Files** | 5 | Read, write, append, delete, and list files (`file.read`, `file.write`, `file.append`, `file.delete`, `file.list`). |
 | **Network and integrations** | 8 | Make a configurable HTTP request or use GET/POST shortcuts (`http.request`, `http.get`, `http.post`); send a Home Assistant webhook (`integration.home_assistant.webhook`); publish MQTT messages (`mqtt.publish`); ping a host (`ping`); download a file (`download`); send Wake-on-LAN (`wol`). |
 | **Media** | 6 | Play, stop, or pause audio (`sound.play`, `sound.stop`, `sound.pause`); move to the next/previous track (`track.next`, `track.previous`); mute media (`media.mute`). |
 | **System, scenes, and widgets** | 9 | Show a saved Scene overlay (`scene.show`); control a Widget Display state or slideshow (`widget.display.control`); request secure device sign-in (`auth.device_credential`); write clipboard text (`clipboard.set`); reboot or lock the device (`reboot`, `lock`); add a message to the run log (`log`). The two remaining entries (`tasker.unsupported`, `macrodroid.unsupported`) are explicit compatibility placeholders for imported actions that OpenTasker cannot execute. |
 | **Notifications and prompts** | 7 | Show a dialog above other apps (`notify.show`); post a standard notification without a progress bar (`notify.send`); show a Toast (`toast.show`); cancel a notification (`notify.cancel`); post/update a progress notification (`notify.progress`); speak text with text-to-speech (`tts.speak`); vibrate (`vibrate`). |
-| **Variables and data** | 13 | Set and persist variables (`var.set`, `var.persist`); read clipboard text (`clipboard.get`); look up contacts (`contacts.lookup`); read structured JSON/CSV/XML/HTML data (`data.read`); format, parse, and add to date/time values (`datetime.format`, `datetime.parse`, `datetime.add`); match, replace, split, join, and take substrings from text (`text.match`, `text.replace`, `text.split`, `text.join`, `text.substring`). |
+| **Variables and data** | 15 | Set and persist variables (`var.set`, `var.persist`); read clipboard text (`clipboard.get`); look up contacts (`contacts.lookup`); find calendar events (`calendar.event.query`) and read current coordinates (`location.get`); read structured JSON/CSV/XML/HTML data (`data.read`); format, parse, and add to date/time values (`datetime.format`, `datetime.parse`, `datetime.add`); match, replace, split, join, and take substrings from text (`text.match`, `text.replace`, `text.split`, `text.join`, `text.substring`). |
 | **Flow** | 1 runnable + 10 engine commands | Wait (`flow.wait`). Engine commands run another Action/subflow (`task.run`), branch on conditions (`flow.if`, `flow.else`, `flow.endif`), iterate collections (`flow.foreach`, `flow.endfor`), stop a run (`flow.stop`), and handle errors (`flow.try`, `flow.catch`, `flow.endtry`). |
 | **Plugins and scripts** | 2 | Query a Locale/Tasker condition plugin (`plugin.locale.query`) and run an approved Termux script (`script.termux.run`). |
 

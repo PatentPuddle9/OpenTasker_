@@ -71,6 +71,9 @@ object AutomationSensitivityRegistry {
 
     private val dataAccessActionIds = setOf(
         "clipboard.get",
+        "settings.read",
+        "calendar.event.query",
+        "location.get",
         "contacts.lookup",
         "plugin.locale.query",
         "script.termux.run",
@@ -80,6 +83,8 @@ object AutomationSensitivityRegistry {
     )
 
     private val externalTransmissionActionIds = setOf(
+        // A synced calendar uploads the new event to its account.
+        "calendar.event.add",
         "intent.launch",
         "plugin.locale.fire",
         "plugin.locale.query",
@@ -99,6 +104,7 @@ object AutomationSensitivityRegistry {
 
     private val deviceControlActionIds = setOf(
         "clipboard.set",
+        "calendar.event.add",
         "notify.show",
         "notify.send",
         "notify.cancel",

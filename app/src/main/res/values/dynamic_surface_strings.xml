@@ -260,4 +260,7 @@
 <string name="capability_vpn_tunnel_setup" formatted="false">Requires WireGuard or Tailscale. WireGuard also needs its control permission and Allow remote control apps turned on.</string>
 
 <string name="capability_shizuku_script_setup" formatted="false">Requires Shizuku access and an approved script hash.</string>
+    <string name="capability_location_get_setup" formatted="false">Needs location access from the Foreground location row in Setup, and the Background location row when a profile runs it.</string>
+    <string name="capability_calendar_event_add_setup" formatted="false">Needs the Calendar editing row in Setup, and a calendar that takes new events.</string>
+    <string name="capability_calendar_event_query_setup" formatted="false">Needs the Calendar access row in Setup.</string>
 </resources>

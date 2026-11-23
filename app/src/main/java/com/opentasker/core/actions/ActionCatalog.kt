@@ -132,6 +132,10 @@ object ActionCatalog {
         define("script.termux.run", ActionCategory.PLUGIN, ActionRetrySafety.NEVER, ::TermuxScriptAction),
         define("tasker.unsupported", ActionCategory.SYSTEM, ActionRetrySafety.NEVER, ::TaskerUnsupportedAction),
         define("macrodroid.unsupported", ActionCategory.SYSTEM, ActionRetrySafety.NEVER, ::MacroDroidUnsupportedAction),
+        define("settings.read", ActionCategory.SETTINGS, ActionRetrySafety.IDEMPOTENT, ::SettingsReadAction),
+        define("calendar.event.add", ActionCategory.APP, ActionRetrySafety.NEVER, ::CalendarEventAddAction),
+        define("calendar.event.query", ActionCategory.VARIABLE, ActionRetrySafety.IDEMPOTENT, ::CalendarEventQueryAction),
+        define("location.get", ActionCategory.VARIABLE, ActionRetrySafety.IDEMPOTENT, ::LocationGetAction),
     )
 
     /** Engine-handled flow markers have metadata but no runtime Action implementation. */
